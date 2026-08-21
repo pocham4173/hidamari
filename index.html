@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ひだまり</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--asa:#FFF8EA;--hi:#F0932B;--hi-usui:#FDE3BC;--cha:#4A3B2A;--ha:#7C9A6D;--usucha:#8A7A65;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Zen Maru Gothic',sans-serif;background:#EFE6D6;color:var(--cha);display:flex;justify-content:center;min-height:100vh;}
+.phone{width:100%;max-width:430px;background:var(--asa);min-height:100vh;}
+.page{display:none;min-height:100vh;flex-direction:column;}
+.page.active{display:flex;}
+/* 入口 */
+#entry{align-items:center;justify-content:center;text-align:center;padding:30px;background:linear-gradient(170deg,#FCD98A,#F7B955 60%,#F0932B);}
+#entry .sun{width:90px;height:90px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFF6DC,#FFD65E 70%);box-shadow:0 0 40px 14px rgba(255,220,110,.6);margin-bottom:14px;}
+#entry h1{font-size:2rem;font-weight:900;letter-spacing:.2em;color:#5A3A10;}
+#entry p{color:#7A5518;margin:10px 0 26px;}
+.entry-btn{display:block;width:100%;max-width:300px;margin:0 auto 16px;background:#fff;border:none;border-radius:22px;padding:24px;font-family:inherit;font-size:1.3rem;font-weight:900;color:var(--cha);box-shadow:0 5px 0 rgba(160,110,40,.35);cursor:pointer;}
+.entry-btn small{display:block;font-size:.82rem;font-weight:400;color:var(--usucha);margin-top:4px;}
+.entry-btn:active{transform:translateY(3px);box-shadow:none;}
+/* ヘッダー */
+.head{background:linear-gradient(160deg,#FCD98A,#F0932B);border-radius:0 0 28px 28px;padding:24px 20px;color:#5A3A10;text-align:center;}
+.head .nm{font-size:1.2rem;font-weight:700;}
+.head .dt{font-size:.95rem;margin-top:2px;}
+.body{flex:1;padding:20px 18px;display:flex;flex-direction:column;gap:16px;}
+/* 挨拶ボタン */
+.aisatsu{background:#fff;border:none;border-radius:28px;padding:36px 20px;font-family:inherit;cursor:pointer;box-shadow:0 8px 0 #E3CFA8;text-align:center;transition:transform .08s;}
+.aisatsu .ic{font-size:3.6rem;}
+.aisatsu .tx{font-size:2.3rem;font-weight:900;color:var(--hi);margin-top:6px;}
+.aisatsu .sb{font-size:.95rem;color:var(--usucha);margin-top:8px;}
+.aisatsu:active{transform:translateY(6px);box-shadow:0 2px 0 #E3CFA8;}
+.aisatsu.done{background:#F2F7EE;box-shadow:none;pointer-events:none;}
+.aisatsu.done .tx{color:var(--ha);font-size:1.7rem;}
+.pop{background:#FFF1DE;border:2px solid var(--hi-usui);border-radius:20px;padding:16px;text-align:center;font-size:1.15rem;font-weight:700;display:none;}
+.pop.show{display:block;animation:pop .4s;}
+@keyframes pop{from{transform:scale(.85);opacity:0;}to{transform:scale(1);opacity:1;}}
+.note{text-align:center;font-size:.78rem;color:var(--usucha);line-height:1.7;}
+.back{background:none;border:none;font-family:inherit;color:#B79A6B;font-size:.8rem;text-decoration:underline;cursor:pointer;padding:14px;}
+/* 家族 */
+.card{background:#fff;border-radius:18px;padding:16px;box-shadow:0 2px 10px rgba(120,90,40,.08);}
+.card h3{font-size:1.02rem;margin-bottom:10px;}
+.ev{padding:10px 4px;border-bottom:1px dashed #EADFC9;font-size:1rem;line-height:1.6;}
+.ev:last-child{border-bottom:none;}
+.ev .tm{font-size:.78rem;color:var(--usucha);}
+.big-btn{display:block;width:100%;background:var(--ha);color:#fff;border:none;border-radius:15px;font-family:inherit;font-weight:700;font-size:1.05rem;padding:15px;margin-top:10px;cursor:pointer;box-shadow:0 3px 0 #5F7D52;}
+.big-btn:active{transform:translateY(2px);box-shadow:none;}
+.empty{color:var(--usucha);font-size:.92rem;text-align:center;padding:14px 0;}
+</style>
+</head>
+<body>
+<div class="phone">
+
+<!-- 入口 -->
+<div class="page" id="entry">
+  <div class="sun"></div>
+  <h1>ひだまり</h1>
+  <p>どちらで つかいますか?</p>
+  <button class="entry-btn" onclick="setMode('honnin')">🌸 ご本人<small>かんたん画面</small></button>
+  <button class="entry-btn" onclick="setMode('kazoku')">👨‍👩‍👧 ご家族<small>見守り・管理の画面</small></button>
+</div>
+
+<!-- 本人 -->
+<div class="page" id="honnin">
+  <div class="head"><div class="nm">ひだまり</div><div class="dt" id="h-date"></div></div>
+  <div class="body">
+    <button class="aisatsu" id="btn-a" onclick="sendAisatsu()">
+      <div class="ic" id="a-ic">☀️</div>
+      <div class="tx" id="a-tx">おはよう</div>
+      <div class="sb">おすと かぞくに とどきます</div>
+    </button>
+    <div class="pop" id="pop-henji"></div>
+    <div class="note">きょうも ひだまりに きてくれて ありがとう</div>
+  </div>
+  <button class="back" onclick="resetMode()">← 入口にもどる</button>
+</div>
+
+<!-- 家族 -->
+<div class="page" id="kazoku">
+  <div class="head"><div class="nm">☀ ひだまり</div><div class="dt">きょうの ようす</div></div>
+  <div class="body">
+    <div class="card">
+      <h3>☀️ きょうの挨拶</h3>
+      <div id="ev-list"><div class="empty">まだ届いていません</div></div>
+      <button class="big-btn" onclick="sendStamp()">🌸 おへんじスタンプを送る</button>
+    </div>
+    <div class="note">挨拶が届くと、ここにすぐ表示されます(自動更新)</div>
+  </div>
+  <button class="back" onclick="resetMode()">← 入口にもどる</button>
+</div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyA3bGGlSk_btdBP5i0XWg0VidskwviHR3A",
+  authDomain: "hidamari-5f8de.firebaseapp.com",
+  projectId: "hidamari-5f8de",
+  storageBucket: "hidamari-5f8de.firebasestorage.app",
+  messagingSenderId: "565713968884",
+  appId: "1:565713968884:web:0a9665d1fe5e0fa161c8a1"
+});
+const db = firebase.firestore();
+
+function todayStr(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function slot(){
+  const h=new Date().getHours();
+  if(h>=5&&h<11) return {key:'asa', ic:'☀️', tx:'おはよう'};
+  if(h>=11&&h<17) return {key:'hiru', ic:'🌤', tx:'こんにちは'};
+  return {key:'yoru', ic:'🌙', tx:'こんばんは'};
+}
+
+/* モード記憶 */
+function setMode(m){localStorage.setItem('hidamariMode',m);show(m);}
+function resetMode(){localStorage.removeItem('hidamariMode');show('entry');}
+function show(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id==='honnin') initHonnin();
+  if(id==='kazoku') initKazoku();
+}
+
+/* ===== 本人 ===== */
+let henjiUnsub=null;
+function initHonnin(){
+  const d=new Date();
+  const yobi=['日','月','火','水','木','金','土'][d.getDay()];
+  document.getElementById('h-date').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日('+yobi+')';
+  const s=slot();
+  document.getElementById('a-ic').textContent=s.ic;
+  document.getElementById('a-tx').textContent=s.tx;
+  const done=localStorage.getItem('aisatsu-'+todayStr()+'-'+s.key);
+  const b=document.getElementById('btn-a');
+  if(done){b.classList.add('done');document.getElementById('a-tx').textContent='とどきました';document.getElementById('a-ic').textContent='💮';}
+  /* 家族からのスタンプを見張る */
+  if(henjiUnsub) henjiUnsub();
+  henjiUnsub=db.collection('events')
+    .where('date','==',todayStr())
+    .onSnapshot(snap=>{
+      let stamp=null;
+      snap.forEach(doc=>{const v=doc.data();if(v.type==='stamp')stamp=v;});
+      if(stamp){
+        const p=document.getElementById('pop-henji');
+        p.textContent='🌸 かぞくから おへんじが とどきました';
+        p.classList.add('show');
+      }
+    });
+}
+function sendAisatsu(){
+  const s=slot();
+  if(navigator.vibrate) navigator.vibrate(80);
+  db.collection('events').add({
+    type:'aisatsu', text:s.tx, date:todayStr(), slot:s.key,
+    at:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  localStorage.setItem('aisatsu-'+todayStr()+'-'+s.key,'1');
+  const b=document.getElementById('btn-a');
+  b.classList.add('done');
+  document.getElementById('a-ic').textContent='💮';
+  document.getElementById('a-tx').textContent='とどきました';
+}
+
+/* ===== 家族 ===== */
+let evUnsub=null;
+function initKazoku(){
+  if(evUnsub) evUnsub();
+  evUnsub=db.collection('events')
+    .where('date','==',todayStr())
+    .onSnapshot(snap=>{
+      const items=[];
+      snap.forEach(doc=>{const v=doc.data();if(v.at)items.push(v);});
+      items.sort((a,b)=>a.at.seconds-b.at.seconds);
+      const box=document.getElementById('ev-list');
+      if(items.length===0){box.innerHTML='<div class="empty">まだ届いていません</div>';return;}
+      box.innerHTML=items.map(v=>{
+        const t=new Date(v.at.seconds*1000);
+        const tm=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
+        const label=v.type==='stamp'?'🌸 おへんじスタンプ(家族)':'☀️ 「'+v.text+'」が届きました';
+        return '<div class="ev"><div class="tm">'+tm+'</div>'+label+'</div>';
+      }).join('');
+    });
+}
+function sendStamp(){
+  if(navigator.vibrate) navigator.vibrate(50);
+  db.collection('events').add({
+    type:'stamp', date:todayStr(),
+    at:firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+/* 起動 */
+const saved=localStorage.getItem('hidamariMode');
+show(saved||'entry');
+</script>
+</body>
+</html>
