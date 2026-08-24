@@ -243,12 +243,26 @@ td.today{background:var(--hi);color:#fff;}
 <div class="page" id="connect-page" style="background:#fff;">
   <div class="setup-wrap">
     <div class="setup-ttl">家族とつながる</div>
-    <p class="setup-lead" id="connect-lead">はじめて使う場合は「新しくはじめる」を。すでにご家族が使っている場合は、家族の画面の設定で発行した招待コードを入力してください。</p>
+    <p class="setup-lead" id="connect-lead">はじめて使う場合は「新しくはじめる」を。すでにご家族が使っている場合は、招待コードを入力してください。</p>
+    <div id="together-box" style="display:none;max-width:320px;margin:0 auto;">
+      <label class="consent-item"><input type="checkbox" id="ck-together"> ご本人に、このアプリの利用と記録の共有を説明し、了解を得ています</label>
+    </div>
     <button class="entry-btn" id="btn-newgroup" onclick="createGroup()">新しくはじめる</button>
     <div class="setup-or">─ または ─</div>
     <input type="text" id="in-code" class="setup-input" placeholder="招待コードを入力" autocapitalize="characters" autocomplete="off">
     <button class="entry-btn sub" onclick="joinByCode()">招待コードで参加</button>
+    <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、すでに利用中のご家族の画面の「設定」→「家族・本人を招待する」で発行できます。コードで参加すると「承認待ち」になり、ご本人または管理のご家族が認めると利用できます。招待コードは一度使うと再び使えません。認められなかったときや申請を取り下げたときは、新しいコードを発行してもらってください。<br><br>この端末は一度つながると、モードを切り替えても同じご家族の記録を使います。</div>
     <button class="consent-back" onclick="showPage('entry')">← 入口に戻る</button>
+  </div>
+</div>
+
+<!-- ===== 承認待ち ===== -->
+<div class="page" id="pending-page" style="background:#fff;">
+  <div class="setup-wrap">
+    <div class="setup-ttl">承認待ちです</div>
+    <p class="setup-lead">参加の申請を送りました。ご本人または管理のご家族が「参加を認める」を押すと、利用をはじめられます。承認されるまで、記録は表示されません。<br>この画面はそのままで大丈夫です。承認されると自動で切り替わります。<br>一度使った招待コードは、もう一度は使えません。申請を取り下げたときや認められなかったときは、新しい招待コードを発行してもらってください。</p>
+    <div class="note" id="pending-err" style="display:none;max-width:320px;margin:0 auto 14px;text-align:left;color:#B0492F;">いまの状態を確認できませんでした。通信環境を確認して、この画面を開き直してください。参加が認められなかったときも、この表示になることがあります。その場合は「申請を取り下げる」を押すと入口に戻れます。</div>
+    <button class="entry-btn sub" onclick="cancelJoinRequest()">申請を取り下げる</button>
   </div>
 </div>
 
@@ -264,6 +278,7 @@ td.today{background:var(--hi);color:#fff;}
       <div class="days" id="y-days">-</div>
       <div class="pl" id="y-label">ご家族が登録すると表示されます</div>
     </div>
+    <div id="h-approve"></div>
     <div class="pop" id="pop-msg"></div>
     <button class="aisatsu" id="btn-a" onclick="sendAisatsu()">
       <div class="ic" id="a-ic">☀️</div>
@@ -286,6 +301,7 @@ td.today{background:var(--hi);color:#fff;}
     <button class="cal-open" onclick="openCal()">カレンダーを見る</button>
     <div class="h-links">
       <button onclick="openMembers()">つながっている家族</button>
+      <button onclick="openCancel()">今日の記録をとりけす</button>
     </div>
   </div>
   <button class="back" onclick="openBackConfirm()">入口に戻る</button>
@@ -339,6 +355,16 @@ td.today{background:var(--hi);color:#fff;}
   </div>
 </div>
 
+<!-- 今日の記録のとりけし(本人) -->
+<div class="modal" id="cancel-modal">
+  <div class="modal-box">
+    <div class="ttl">今日の記録をとりけす</div>
+    <p style="font-size:.92rem;color:#7A6A55;line-height:1.7;margin-bottom:10px;">まちがえて押した記録を、とりけすことができます。とりけせるのは、この端末で今日つけた記録だけです。</p>
+    <div id="cancel-list"><div class="empty">読み込み中…</div></div>
+    <button class="modal-close" onclick="closeCancel()">とじる</button>
+  </div>
+</div>
+
 <!-- 設定(家族) -->
 <div class="modal" id="settings-modal">
   <div class="modal-box adult-font">
@@ -384,6 +410,7 @@ td.today{background:var(--hi);color:#fff;}
 
     <!-- ホーム -->
     <div class="ftab" id="t-home">
+      <div id="card-pending"></div>
       <div class="card" id="card-next-yotei" style="display:none;">
         <h3>次の予定</h3>
         <div id="f-next-yotei" style="font-size:1.02rem;font-weight:700;">まだ登録がありません</div>
@@ -442,6 +469,10 @@ td.today{background:var(--hi);color:#fff;}
         <h3>これからの予定</h3>
         <div id="yt-list"><div class="empty">まだ登録がありません</div></div>
       </div>
+      <div class="card">
+        <h3 id="f-cal-ttl">今月のカレンダー</h3>
+        <table class="cal" id="f-cal-table"></table>
+      </div>
     </div>
 
     <!-- 記録(構想) -->
@@ -449,9 +480,9 @@ td.today{background:var(--hi);color:#fff;}
       <div class="card plan">
         <span class="badge">今後の構想(まだ使えません)</span>
         <h3>記録 ─ このタブに入る予定のもの</h3>
-        <div class="plan-item"><b>1. 本人プロフィール</b> ─ 名前・生年月日・住所など。1回入力すれば下の機能に自動で反映されます</div>
-        <div class="plan-item"><b>2. 書類ポケット</b> ─ 保険証・診察券・お薬手帳などを写真で保存(写真は自動で軽くなります)</div>
-        <div class="plan-item"><b>3. 体調管理履歴</b> ─ 毎日の調子・服薬確認・様子メモの一覧(1か月単位・過去にさかのぼれる)。受診時にそのまま見せられる形を目指します</div>
+        <div class="plan-item"><b>1. 基本プロフィール</b> ─ アプリ内で使う表示名と、本人・家族の役割を登録します。住所や正確な生年月日は取得しません</div>
+        <div class="plan-item"><b>2. 書類ポケット(検討を凍結)</b> ─ 資格確認書・診察券・お薬手帳・マイナンバーカードなどの画像保存は、現在実装していません。安全性・必要性を検討中です</div>
+        <div class="plan-item"><b>3. 毎日の記録</b> ─ 本人が選んだ体調、家族による服薬確認、様子メモ、予定を1か月単位で確認できます。記録した人と日時を表示します。本人・家族が入力した生活上の記録であり、医療機関が作成した診療記録ではありません。本人の判断で、受診時の参考として画面を見せることができます</div>
         <div class="plan-item"><b>4. 日々の記録まとめ(AI補助・今後検証予定)</b> ─ 記録を集計し、読みやすい文章にまとめる機能を検討しています。診断や異常の判定は行いません。記録がないことは、未実施や異常を意味しません。医療記録やケア計画に代わるものではありません</div>
         <div class="plan-item"><b>5. 災害・緊急時カード(今後検証予定)</b> ─ 本人が選んだ緊急連絡先や服薬情報などを、家族がPDFまたは画像のカードに作成し、印刷できる機能を検討しています。本人の了解を大切にし、必要な情報だけを記載します。医療機関の記録、お薬手帳、緊急通報に代わるものではありません</div>
         <div class="plan-item"><b>6. おまもりタグ(二次元コード・今後検証予定)</b> ─ 外出先などで困ったとき、読み取った方から登録した家族へ知らせることができます。家族の電話番号や住所は表示しません。自宅・コンビニで印刷できるデータを作成できます。本人の尊厳に配慮し、「徘徊」という表現は使用しません</div>
@@ -465,9 +496,8 @@ td.today{background:var(--hi);color:#fff;}
         <h3>相談 ─ このタブに入る予定のもの</h3>
         <div class="plan-item"><b>連絡先(優先順)</b> ─ 家族・緊急連絡先を優先順に登録。タップで発信</div>
         <div class="plan-item"><b>かかりつけ・夜間救急</b> ─ 病院の連絡先を登録してすぐ電話</div>
-        <div class="plan-item"><b>タクシー・外出支援</b> ─ タクシー会社・介護タクシー・上田市の外出支援制度の案内</div>
-        <div class="plan-item"><b>上田市の相談窓口</b> ─ 地域包括支援センターなど、困りごと別の連絡先</div>
-        <div class="plan-item"><b>介護認定ガイド</b> ─ 申請の流れをやさしく解説</div>
+        <div class="plan-item"><b>上田市の相談窓口</b> ─ 地域包括支援センターなど、困りごと別の窓口案内。「介護について相談したい」(地域包括支援センター・介護保険のしおり・認定申請・高齢者介護課)、「移動・外出について相談したい」(公共交通・タクシー利用補助の公式ページ・交通政策課)を含みます。公式情報への案内に限定し、アプリ内で対象者の判定・申請可否の判断・予約・補助金額の保証は行いません</div>
+        <div class="plan-item" style="border-bottom:none;color:#8A7A62;">※アプリの記録や個人情報が上田市へ自動送信されることはありません</div>
       </div>
     </div>
 
@@ -533,6 +563,20 @@ function col(name){ return grp().collection(name); }
 function uid(){ return auth.currentUser ? auth.currentUser.uid : ''; }
 function myName(){ return localStorage.getItem('mainicoName')||'家族'; }
 function isKOnly(){ return localStorage.getItem('kazokuOnly')==='1'; }
+/* 画面表示用のエスケープ。名前や本文に記号が含まれても表示が壊れないようにする */
+const ESC_MAP={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, c=>ESC_MAP[c]); }
+/* onclick に埋め込む値。ID・種別・時間帯だけを想定し、記号は落とす */
+function jsArg(v){ return String(v==null?'':v).replace(/[^A-Za-z0-9_-]/g,''); }
+/* 承認ボタン用の置き場。名前をonclickに埋め込まず、IDも取り違えないようにする */
+let memberNames={};
+let memberIds={};
+function memberRef(mid){ return memberIds[mid]||mid; }
+function rememberMember(realId, name){
+  const id=jsArg(realId);
+  memberIds[id]=realId; memberNames[id]=name||'';
+  return id;
+}
 function addEvent(data){
   return col('events').add(Object.assign({
     date:todayStr(), at:firebase.firestore.FieldValue.serverTimestamp(), uid:uid()
@@ -583,24 +627,38 @@ function agreeConsent(kind){
 }
 function afterConsent(){
   localStorage.setItem('mainicoPendingMode', pendingMode);
-  if(pendingMode==='honnin'){
-    if(gid()){ finishSetup(); return; }
-    document.getElementById('connect-lead').textContent='ご家族の画面の「設定」で発行した招待コードを入力してください。はじめてご本人だけで使う場合は「新しくはじめる」も選べます。';
-    showPage('connect-page'); return;
-  }
-  if(!localStorage.getItem('mainicoName')){ showPage('name-page'); return; }
+  if(pendingMode!=='honnin' && !localStorage.getItem('mainicoName')){ showPage('name-page'); return; }
   if(gid()){ finishSetup(); return; }
-  document.getElementById('connect-lead').textContent='はじめて使う場合は「新しくはじめる」を。すでにご家族が使っている場合は、招待コードを入力してください。';
+  setupConnectPage();
   showPage('connect-page');
+}
+function setupConnectPage(){
+  const lead=document.getElementById('connect-lead');
+  const btn=document.getElementById('btn-newgroup');
+  const tb=document.getElementById('together-box');
+  if(pendingMode==='honnin'){
+    lead.textContent='ご家族の画面の「設定」で発行した招待コードを入力してください。ご本人がはじめて使う場合は「新しくはじめる」も選べます。';
+    btn.textContent='新しくはじめる'; tb.style.display='none';
+  }else if(pendingMode==='kazoku'){
+    lead.textContent='はじめて使うご家庭は「ご本人と一緒に初期設定する」を。すでにご家族が使っている場合は、招待コードを入力してください。';
+    btn.textContent='ご本人と一緒に初期設定する'; tb.style.display='block';
+  }else{
+    lead.textContent='はじめて使う場合は「新しくはじめる」を。すでにご家族が使っている場合は、招待コードを入力してください。';
+    btn.textContent='新しくはじめる'; tb.style.display='none';
+  }
 }
 function saveName(){
   const n=document.getElementById('in-name').value.trim();
   if(!n){alert('お名前を入力してください');return;}
   localStorage.setItem('mainicoName',n);
   if(gid()){ finishSetup(); return; }
+  setupConnectPage();
   showPage('connect-page');
 }
 async function createGroup(){
+  if(pendingMode==='kazoku' && !document.getElementById('ck-together').checked){
+    alert('ご本人に説明し、了解を得てからチェックを入れてください'); return;
+  }
   try{
     const ref=await db.collection('groups').add({
       createdBy: uid(),
@@ -609,6 +667,7 @@ async function createGroup(){
     await ref.collection('members').doc(uid()).set({
       name: pendingMode==='honnin' ? '本人' : myName(),
       role: pendingMode==='honnin' ? 'honnin' : 'kazoku',
+      status: 'approved',
       joinedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     localStorage.setItem('mainicoGid', ref.id);
@@ -627,12 +686,13 @@ async function joinByCode(){
     await db.collection('groups').doc(v.groupId).collection('members').doc(uid()).set({
       name: pendingMode==='honnin' ? '本人' : myName(),
       role: pendingMode==='honnin' ? 'honnin' : 'kazoku',
+      status: 'pending',
       inviteCode: code,
       joinedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     await db.collection('invites').doc(code).update({used:true});
     localStorage.setItem('mainicoGid', v.groupId);
-    finishSetup();
+    showPending();
   }catch(e){ alert('参加できませんでした。コードと通信状態を確認してください。\n'+e.message); }
 }
 function finishSetup(){
@@ -640,6 +700,54 @@ function finishSetup(){
   localStorage.setItem('kazokuOnly', m==='konly'?'1':'');
   localStorage.setItem('mainicoMode', m==='honnin'?'honnin':'kazoku');
   startMode();
+}
+let pendingUnsub=null;
+let cancelling=false;
+function showPending(){
+  cancelling=false;
+  showPage('pending-page');
+  if(pendingUnsub) pendingUnsub();
+  pendingUnsub=col('members').doc(uid()).onSnapshot(doc=>{
+    const errBox=document.getElementById('pending-err');
+    if(errBox) errBox.style.display='none';
+    if(!doc.exists){
+      if(cancelling) return; /* 自分で取り下げ中。案内は cancelJoinRequest 側で出す */
+      if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
+      alert('参加は認められませんでした。');
+      localStorage.removeItem('mainicoGid');
+      localStorage.removeItem('mainicoMode');
+      location.reload();
+      return;
+    }
+    if(doc.data().status==='approved'){
+      if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
+      finishSetup();
+    }
+  }, err=>{
+    console.warn('pending', err);
+    const n=document.getElementById('pending-err');
+    if(n) n.style.display='block';
+  });
+}
+async function cancelJoinRequest(){
+  if(!confirm('参加の申請を取り下げますか?\n使った招待コードは、もう一度は使えません。参加し直すときは、新しい招待コードを発行してもらってください。')) return;
+  cancelling=true;
+  try{
+    await col('members').doc(uid()).delete();
+  }catch(e){
+    /* 失敗したときは何も消さず、承認待ちの画面のまま残す */
+    cancelling=false;
+    const n=document.getElementById('pending-err');
+    if(n) n.style.display='block';
+    alert('申請を取り下げできませんでした。\n通信の状態を確認して、もう一度お試しください。\n' + (e && e.message ? e.message : ''));
+    return;
+  }
+  /* ここから先は削除に成功したときだけ */
+  if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
+  alert('申請を取り下げました。\n参加し直すときは、ご家族に新しい招待コードを発行してもらってください。');
+  localStorage.removeItem('mainicoGid');
+  localStorage.removeItem('mainicoMode');
+  location.reload();
 }
 function startMode(){
   const m=localStorage.getItem('mainicoMode');
@@ -704,6 +812,10 @@ function initHonnin(){
      && !localStorage.getItem('kibun-'+todayStr()))
     document.getElementById('kibun-box').style.display='block';
 
+  if(memWatchUnsub) memWatchUnsub();
+  memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
+    renderPendingCard('h-approve', snap);
+  }, err=>console.warn('members', err));
   if(honninUnsub) honninUnsub();
   honninUnsub=col('events').where('date','==',todayStr())
     .onSnapshot(snap=>{
@@ -716,6 +828,8 @@ function initHonnin(){
           msgs.push({at:v.at, text:(v.name||'家族')+'さん:「'+(v.text||'')+'」'});
         if(v.type==='ask-kusuri' && !localStorage.getItem('kusuri-'+todayStr()+'-'+slot().key))
           msgs.push({at:v.at, text:(v.name||'家族')+'さんから「お薬飲んだ?」'});
+        if(v.type==='member-joined')
+          msgs.push({at:v.at, text:(v.text||'')+'さんが家族として参加しました'});
       });
       if(msgs.length>0){
         msgs.sort((a,b)=>(b.at?b.at.seconds:0)-(a.at?a.at.seconds:0));
@@ -801,7 +915,7 @@ function openCal(){
   yoteiCache.forEach(v=>{
     const dd=new Date(v.date+'T00:00:00');
     if(dd.getFullYear()===y && dd.getMonth()===m){
-      marks[dd.getDate()]=(marks[dd.getDate()]||'')+(v.kind||'📌');
+      marks[dd.getDate()]=(marks[dd.getDate()]||'')+esc(v.kind||'📌');
     }
   });
   const first=new Date(y,m,1).getDay();
@@ -819,6 +933,98 @@ function openCal(){
 }
 function closeCal(){ document.getElementById('cal-modal').classList.remove('show'); }
 
+/* 承認待ちカード(本人・家族共通) */
+let memWatchUnsub=null;
+function renderPendingCard(elId, snap){
+  const el=document.getElementById(elId);
+  if(!el) return;
+  if(snap.empty){ el.innerHTML=''; return; }
+  let html='';
+  snap.forEach(doc=>{
+    const v=doc.data();
+    const id=rememberMember(doc.id, v.name);
+    html+='<div style="background:#fff;border:3px solid #E0711A;border-radius:18px;padding:15px;margin-bottom:12px;">'+
+      '<div style="font-size:1.05rem;font-weight:900;line-height:1.6;margin-bottom:10px;">'+esc(v.name)+'さんを家族として参加させますか?</div>'+
+      '<div style="display:flex;gap:8px;">'+
+      '<button style="flex:1;font-family:inherit;font-size:1rem;font-weight:900;padding:13px;border:none;border-radius:12px;background:#5F7D52;color:#fff;cursor:pointer;" onclick="approveMember(\''+id+'\')">参加を認める</button>'+
+      '<button style="flex:1;font-family:inherit;font-size:1rem;font-weight:900;padding:13px;border:2px solid #C9B8A0;border-radius:12px;background:#fff;color:#7A5A34;cursor:pointer;" onclick="denyMember(\''+id+'\')">認めない</button>'+
+      '</div><div style="font-size:.78rem;color:#7A6A55;margin-top:8px;line-height:1.6;">心当たりのない申請は認めないでください。認めるまで、この人は記録を見られません。</div></div>';
+  });
+  el.innerHTML=html;
+}
+
+/* 家族側の月カレンダー */
+function renderFamilyCal(){
+  const tbl=document.getElementById('f-cal-table');
+  if(!tbl) return;
+  const d=new Date();
+  const y=d.getFullYear(), m=d.getMonth();
+  document.getElementById('f-cal-ttl').textContent=(m+1)+'月のカレンダー';
+  const marks={};
+  yoteiCache.forEach(v=>{
+    const dd=new Date(v.date+'T00:00:00');
+    if(dd.getFullYear()===y && dd.getMonth()===m){
+      marks[dd.getDate()]=(marks[dd.getDate()]||'')+esc(v.kind||'📌');
+    }
+  });
+  const first=new Date(y,m,1).getDay();
+  const last=new Date(y,m+1,0).getDate();
+  let html='<tr><th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr><tr>';
+  for(let i=0;i<first;i++) html+='<td></td>';
+  for(let day=1;day<=last;day++){
+    const cls=(day===d.getDate())?' class="today"':'';
+    html+='<td'+cls+'>'+day+(marks[day]?'<span class="mk">'+marks[day]+'</span>':'')+'</td>';
+    if((first+day)%7===0) html+='</tr><tr>';
+  }
+  html+='</tr>';
+  tbl.innerHTML=html;
+}
+
+/* 今日の記録のとりけし(本人) */
+async function openCancel(){
+  document.getElementById('cancel-modal').classList.add('show');
+  const box=document.getElementById('cancel-list');
+  try{
+    const snap=await col('events').where('date','==',todayStr()).get();
+    const mine=[];
+    snap.forEach(doc=>{ const v=doc.data(); if(v.uid===uid()) { v._id=doc.id; mine.push(v); } });
+    mine.sort((a,b)=>(a.at?a.at.seconds:0)-(b.at?b.at.seconds:0));
+    if(mine.length===0){ box.innerHTML='<div class="empty">今日この端末でつけた記録はありません</div>'; return; }
+    const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')','onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':()=>'服薬の確認','memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':()=>'「お薬飲んだ?」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ'};
+    box.innerHTML=mine.map(v=>{
+      const t=v.at?new Date(v.at.seconds*1000):null;
+      const tm=t?(t.getHours()+':'+String(t.getMinutes()).padStart(2,'0')):'';
+      return '<div class="member-row"><span>'+tm+' '+esc(nm[v.type]?nm[v.type](v):v.type)+'</span>'+
+        '<button class="member-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\''+jsArg(v.type)+'\',\''+jsArg(v.slot)+'\')">とりけす</button></div>';
+    }).join('');
+  }catch(e){ box.innerHTML='<div class="empty">読み込めませんでした</div>'; }
+}
+function closeCancel(){ document.getElementById('cancel-modal').classList.remove('show'); }
+async function cancelEvent(id,type,slot){
+  if(!confirm('この記録をとりけしますか?')) return;
+  try{
+    await col('events').doc(id).delete();
+    const t=todayStr();
+    if(type==='aisatsu'){
+      localStorage.removeItem('aisatsu-'+t+'-'+slot);
+      /* 今日の挨拶がすべて取り消されたら、花の日数も1日戻す */
+      let rest=1;
+      try{
+        const snap=await col('events').where('date','==',t).get();
+        rest=0;
+        snap.forEach(doc=>{ const v=doc.data(); if(v.type==='aisatsu' && v.uid===uid()) rest++; });
+      }catch(e){ rest=1; }
+      if(rest===0 && localStorage.getItem('greetDayCounted-'+t)){
+        localStorage.removeItem('greetDayCounted-'+t);
+        localStorage.setItem('greetDays', String(Math.max(0, greetDays()-1)));
+      }
+    }
+    if(type==='kibun') localStorage.removeItem('kibun-'+t);
+    if(type==='kusuri') localStorage.removeItem('kusuri-'+t+'-'+slot);
+    location.reload();
+  }catch(e){ alert('とりけせませんでした: '+e.message); }
+}
+
 /* つながっている家族(本人側・閲覧) */
 async function openMembers(){
   document.getElementById('members-modal').classList.add('show');
@@ -829,11 +1035,35 @@ async function openMembers(){
     let html='';
     snap.forEach(doc=>{
       const v=doc.data();
-      html+='<div class="member-row"><span>'+(v.name||'')+(v.role==='honnin'?' (ご本人)':'')+'</span></div>';
+      const me=(doc.id===uid());
+      const id=rememberMember(doc.id, v.name);
+      if(v.status==='pending'){
+        html+='<div class="member-row"><span>'+esc(v.name)+' (承認待ち)</span></div>';
+      }else{
+        html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?' (ご本人)':'')+(me?' (あなた)':'')+'</span>'+
+          '<button class="member-del" onclick="honninRemove(\''+id+'\','+(me?'true':'false')+')">'+(me?'共有をやめる':'解除')+'</button></div>';
+      }
     });
     box.innerHTML=html;
-    document.getElementById('members-note').textContent='共有をやめたいときは、ご家族の画面の「設定」から解除できます。';
+    document.getElementById('members-note').textContent='「解除」すると、その家族はあなたの記録を見られなくなります。いつでも解除できます。';
   }catch(e){ box.innerHTML='<div class="empty">読み込めませんでした</div>'; }
+}
+async function honninRemove(mid, isMe){
+  mid=memberRef(mid);
+  const msg=isMe
+    ?'家族との共有をやめますか?\nあなたの記録は誰にも見えなくなり、入口に戻ります。'
+    :'この家族を解除しますか?\n解除すると、この家族はあなたの記録(過去の分も含む)を見られなくなります。';
+  if(!confirm(msg)) return;
+  try{
+    await col('members').doc(mid).delete();
+    if(isMe){
+      localStorage.removeItem('mainicoGid');
+      localStorage.removeItem('mainicoMode');
+      location.reload();
+      return;
+    }
+    openMembers();
+  }catch(e){ alert('解除できませんでした: '+e.message); }
 }
 function closeMembers(){ document.getElementById('members-modal').classList.remove('show'); }
 
@@ -842,7 +1072,7 @@ let evUnsub=null, ytListUnsub=null;
 function initKazoku(){
   const d=new Date();
   const kOnly=isKOnly();
-  document.getElementById('f-lg').textContent=kOnly?'まいにこ ─ 記録':'まいにこ ─ 管理';
+  document.getElementById('f-lg').textContent=kOnly?'まいにこ ─ 家族のみで記録中':'まいにこ ─ 管理';
   document.getElementById('f-title').textContent=dateJp(d);
   document.getElementById('home-date-h3').textContent=dateJp(d)+' の記録';
   document.getElementById('btn-back-aisatsu').textContent='「'+slot().tx+'」を返す';
@@ -855,6 +1085,10 @@ function initKazoku(){
     :'本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。';
   applySimpleView();
   showTab('t-home');
+  if(memWatchUnsub) memWatchUnsub();
+  memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
+    renderPendingCard('card-pending', snap);
+  }, err=>console.warn('members', err));
   if(evUnsub) evUnsub();
   evUnsub=col('events').where('date','==',todayStr())
     .onSnapshot(snap=>{
@@ -873,7 +1107,10 @@ function initKazoku(){
       items.sort((a,b)=>a.at.seconds-b.at.seconds);
       const box=document.getElementById('ev-list');
       const kOnlyNow=isKOnly();
-      if(items.length===0){
+      /* 家族記録モードでは、家族が記録した種類だけを表示する */
+      const kAllowed={'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1};
+      const vis=items.filter(v=>!kOnlyNow || kAllowed[v.type]);
+      if(vis.length===0){
         box.innerHTML='<div class="empty">'+(kOnlyNow?'今日の様子はまだ記録されていません':'まだ届いていません')+'</div>';
         return;
       }
@@ -892,26 +1129,29 @@ function initKazoku(){
         'ask-kusuri':v=>(v.name||'家族')+'さんが「お薬飲んだ?」を送りました',
         'kibun-kazoku':v=>(v.name||'家族')+'さんが体調を記録: '+v.text,
         'kusuri-kakunin':v=>(v.name||'家族')+'さんが服薬を確認しました',
+        'member-joined':v=>(v.text||'')+'さんが家族として参加しました',
         'memo':v=>(v.name||'家族')+': '+v.text
       };
-      box.innerHTML=items.map(v=>{
+      box.innerHTML=vis.map(v=>{
         const t=new Date(v.at.seconds*1000);
         const tm=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
         if(v.type==='onegai' && !kOnlyNow){
           const soto=(v.text==='今日はそっとしておいて');
-          const head=soto?'今日はそっとしておいてほしいそうです':'お願いが届きました: 「'+v.text+'」';
+          const head=soto?'今日はそっとしておいてほしいそうです':'お願いが届きました: 「'+esc(v.text)+'」';
           const rl=(replies[v._id]||[]).map(r=>{
             const rt=new Date(r.at.seconds*1000);
-            return '↳ '+(r.name||'家族')+'さん「'+r.text+'」('+rt.getHours()+':'+String(rt.getMinutes()).padStart(2,'0')+')';
+            return '↳ '+esc(r.name||'家族')+'さん「'+esc(r.text)+'」('+rt.getHours()+':'+String(rt.getMinutes()).padStart(2,'0')+')';
           }).join('<br>');
           const btns=soto?'':'<div class="reply-row">'+
             ['今から対応するね','あとで連絡するね','今は対応できないよ'].map(r=>
-              '<button class="reply-btn" onclick="sendOnegaiBack(\''+v._id+'\',\''+r+'\')">'+r+'</button>').join('')+'</div>';
+              '<button class="reply-btn" onclick="sendOnegaiBack(\''+jsArg(v._id)+'\',\''+r+'\')">'+r+'</button>').join('')+'</div>';
           return '<div class="ev onegai-ev"><div class="tm">'+tm+'</div><b>'+head+'</b>'+
                  (rl?'<div class="reply-log">'+rl+'</div>':'')+btns+'</div>';
         }
         if(v.type==='onegai-back') return '';
-        return '<div class="ev"><div class="tm">'+tm+'</div>'+(label[v.type]?label[v.type](v):'')+'</div>';
+        const own=(v.uid===uid() && (v.type==='kibun-kazoku'||v.type==='kusuri-kakunin'||v.type==='memo'))
+          ? ' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\''+jsArg(v.type)+'\',\''+jsArg(v.slot)+'\')">とりけす</button>' : '';
+        return '<div class="ev"><div class="tm">'+tm+'</div>'+esc(label[v.type]?label[v.type](v):'')+own+'</div>';
       }).join('');
     }, err=>console.warn('events', err));
   if(ytListUnsub) ytListUnsub();
@@ -928,11 +1168,12 @@ function initKazoku(){
     }else{
       fEl.textContent='まだ登録がありません';
     }
+    renderFamilyCal();
     if(future.length===0){box.innerHTML='<div class="empty">まだ登録がありません</div>';return;}
     box.innerHTML=future.map(v=>{
       const dd=new Date(v.date+'T00:00:00');
-      return '<div class="yt-item"><span>'+(v.kind||'')+' '+dateJp(dd)+' '+(v.label||'')+
-        '</span><button class="yt-del" onclick="delYotei(\''+v._id+'\')">削除</button></div>';
+      return '<div class="yt-item"><span>'+esc(v.kind)+' '+dateJp(dd)+' '+esc(v.label)+
+        '</span><button class="yt-del" onclick="delYotei(\''+jsArg(v._id)+'\')">削除</button></div>';
     }).join('');
   });
 }
@@ -1012,13 +1253,44 @@ async function renderSetMembers(){
     snap.forEach(doc=>{
       const v=doc.data();
       const me=(doc.id===uid());
-      html+='<div class="member-row"><span>'+(v.name||'')+(v.role==='honnin'?' (ご本人)':'')+(me?' (この端末)':'')+'</span>'+
-        '<button class="member-del" onclick="removeMember(\''+doc.id+'\','+(me?'true':'false')+')">解除</button></div>';
+      const id=rememberMember(doc.id, v.name);
+      if(v.status==='pending'){
+        html+='<div class="member-row"><span>'+esc(v.name)+' (承認待ち)</span><span>'+
+          '<button class="member-del" style="border-color:#5F7D52;color:#4C6541;margin-right:6px;" onclick="approveMember(\''+id+'\')">参加を認める</button>'+
+          '<button class="member-del" onclick="denyMember(\''+id+'\')">認めない</button></span></div>';
+      }else{
+        html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?' (ご本人)':'')+(me?' (この端末)':'')+'</span>'+
+          '<button class="member-del" onclick="removeMember(\''+id+'\','+(me?'true':'false')+')">解除</button></div>';
+      }
     });
     box.innerHTML=html;
   }catch(e){ box.innerHTML='<div class="empty">読み込めませんでした</div>'; }
 }
+/* 家族の設定画面が開いているときだけ描き直す(本人画面からの承認では動かさない) */
+function refreshSetMembersIfOpen(){
+  const m=document.getElementById('settings-modal');
+  if(m && m.classList.contains('show')) renderSetMembers();
+}
+async function approveMember(mid){
+  try{
+    const mname=memberNames[mid]||'新しい家族';
+    mid=memberRef(mid);
+    await col('members').doc(mid).update({status:'approved'});
+    addEvent({type:'member-joined', text:mname, name:myName()});
+    refreshSetMembersIfOpen();
+  }catch(e){ alert('承認できませんでした: '+e.message); }
+}
+async function denyMember(mid){
+  mid=memberRef(mid);
+  if(!confirm('この参加申請を認めない(削除する)? 相手は記録を見られないまま入口に戻ります。')) return;
+  try{
+    await col('members').doc(mid).delete();
+    refreshSetMembersIfOpen();
+    alert('参加を認めませんでした。\nこのとき使われた招待コードは、もう使えません。あらためて招待するときは、「家族・本人を招待する」で新しい招待コードを発行してください。');
+  }catch(e){ alert('操作できませんでした: '+e.message); }
+}
 async function removeMember(mid, isMe){
+  mid=memberRef(mid);
   if(!confirm(isMe?'この端末の接続を解除しますか?\n解除すると、この家族の記録は見られなくなります。':'この人の接続を解除しますか?\n解除すると、その人はこの家族の記録(過去の分も含む)を見られなくなります。')) return;
   try{
     await col('members').doc(mid).delete();
@@ -1062,19 +1334,25 @@ async function deleteAllData(){
   if(!confirm('この家族の全データ(挨拶・体調・服薬・予定・お願い・メモ・家族の接続)を削除しますか?\nこの操作は元に戻せません。')) return;
   if(!confirm('本当に削除しますか?\n削除後、データは残りません(バックアップは設定されていません)。')) return;
   try{
-    async function wipe(name){
+    async function wipe(name, skipId){
       while(true){
         const snap=await col(name).limit(200).get();
         if(snap.empty) break;
         const batch=db.batch();
-        snap.forEach(doc=>batch.delete(doc.ref));
+        let n=0;
+        snap.forEach(doc=>{ if(doc.id!==skipId){ batch.delete(doc.ref); n++; } });
+        if(n===0) break;
         await batch.commit();
       }
     }
     await wipe('events');
     await wipe('yotei');
-    await wipe('members');
-    await grp().delete();
+    /* 自分のメンバー情報だけ残したままグループを消し、最後に自分を消す */
+    await wipe('members', uid());
+    let grpErr=null;
+    try{ await grp().delete(); }catch(e){ grpErr=e; }
+    try{ await col('members').doc(uid()).delete(); }catch(e){ console.warn('self', e); }
+    if(grpErr) throw grpErr;
     localStorage.removeItem('mainicoGid');
     localStorage.removeItem('mainicoMode');
     alert('すべてのデータを削除しました。');
@@ -1098,6 +1376,10 @@ auth.onAuthStateChanged(async user=>{
       if(!me.exists){
         localStorage.removeItem('mainicoGid');
         localStorage.removeItem('mainicoMode');
+      }else if(me.data().status==='pending'){
+        document.getElementById('loading').style.display='none';
+        showPending();
+        return;
       }
     }catch(e){
       localStorage.removeItem('mainicoGid');
