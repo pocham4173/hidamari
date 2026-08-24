@@ -702,13 +702,16 @@ function finishSetup(){
   startMode();
 }
 let pendingUnsub=null;
+let cancelling=false;
 function showPending(){
+  cancelling=false;
   showPage('pending-page');
   if(pendingUnsub) pendingUnsub();
   pendingUnsub=col('members').doc(uid()).onSnapshot(doc=>{
     const errBox=document.getElementById('pending-err');
     if(errBox) errBox.style.display='none';
     if(!doc.exists){
+      if(cancelling) return; /* 自分で取り下げ中。案内は cancelJoinRequest 側で出す */
       if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
       alert('参加は認められませんでした。');
       localStorage.removeItem('mainicoGid');
@@ -728,8 +731,19 @@ function showPending(){
 }
 async function cancelJoinRequest(){
   if(!confirm('参加の申請を取り下げますか?\n使った招待コードは、もう一度は使えません。参加し直すときは、新しい招待コードを発行してもらってください。')) return;
+  cancelling=true;
+  try{
+    await col('members').doc(uid()).delete();
+  }catch(e){
+    /* 失敗したときは何も消さず、承認待ちの画面のまま残す */
+    cancelling=false;
+    const n=document.getElementById('pending-err');
+    if(n) n.style.display='block';
+    alert('申請を取り下げできませんでした。\n通信の状態を確認して、もう一度お試しください。\n' + (e && e.message ? e.message : ''));
+    return;
+  }
+  /* ここから先は削除に成功したときだけ */
   if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
-  try{ await col('members').doc(uid()).delete(); }catch(e){}
   alert('申請を取り下げました。\n参加し直すときは、ご家族に新しい招待コードを発行してもらってください。');
   localStorage.removeItem('mainicoGid');
   localStorage.removeItem('mainicoMode');
