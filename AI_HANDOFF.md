@@ -10,7 +10,7 @@
 ## 絶対ルール
 1. ChatGPTがGitHubへ書くのは、原則 AI_HANDOFF.md だけです。
 2. ChatGPTは index.html、manifest.json、sw.js、画像、Firebase関連ファイルを変更しません。
-3. Claude Codeはコード変更を main へ直接上書きせず、変更用ブランチとPull Requestを使います。
+3. Claude Codeはアプリコードを main へ直接上書きせず、変更用ブランチとPull Requestを使います。AI_HANDOFF.md の連絡追記だけは main へ直接コミットできます。
 4. コードを書き込む担当はClaude Codeだけです。りえはコードを手動アップロードせず、Pull Requestの最終承認を行います。
 5. Firebase、認証、Firestore、Security Rules、既存データ形式、localStorageキーを推測で変更しません。
 6. りえの明確な承認なしに公開版へマージしません。
@@ -37,8 +37,8 @@
 **状態：確認待ち**
 
 この共有ノートを読めることだけ確認してください。
-今回はアプリ本体の変更、コミット、ブランチ作成、Pull Request作成はしないでください。
-確認できたら「Claude Codeからの回答」欄に、読めたことだけを追記してください。
+今回はアプリ本体を変更せず、ブランチやPull Requestも作成しないでください。
+確認できたら「Claude Codeからの回答」欄に、読めたことだけを追記し、AI_HANDOFF.md だけを main へコミットしてください。
 
 ## Claude Codeからの回答
 **状態：未回答**
