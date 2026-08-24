@@ -140,15 +140,26 @@ if (sw === null) {
 const needed = new Map(); // ファイル名 -> どこから参照されているか
 
 function need(ref, from) {
-  if (!ref) return;
-  const clean = String(ref).split(/[?#]/)[0].replace(/^\.\//, '');
-  if (!clean || /^(?:https?:|data:|blob:|mailto:|tel:|\/\/)/i.test(clean)) return;
-  if (clean.startsWith('/')) return; // サーバーの置き場所しだいなので対象外
+  if (ref === undefined || ref === null) return;
+  const raw = String(ref).trim();
+  if (raw.startsWith('#') || raw.startsWith('?')) return; // ページ内リンクは対象外
+  let clean = raw.split(/[?#]/)[0];
+  // 外部URL(https: data: mailto: など)は対象外
+  if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(clean)) return;
+  // 「/」から始まる指定はサーバーの置き場所しだいなので対象外
+  if (clean.startsWith('/')) return;
+  clean = clean.replace(/^(?:\.\/)+/, '');
+  if (clean === '.') clean = '';
+  /* 「./」「」「sub/」のようにフォルダを指す書き方は、
+     そのフォルダの入口ファイル index.html を確かめます。
+     start_url: "./" は公開の入口 index.html を指すため、ここで拾われます。 */
+  if (clean === '' || clean.endsWith('/')) clean += 'index.html';
   needed.set(clean, [...(needed.get(clean) || []), from]);
 }
 
 if (manifest) {
-  need(manifest.start_url, 'manifest.json の start_url');
+  // start_url の記載がないときは、公開の入口(index.html)が既定の入口になります
+  need(manifest.start_url === undefined ? './' : manifest.start_url, 'manifest.json の start_url');
   for (const icon of manifest.icons || []) need(icon.src, 'manifest.json のアイコン');
 }
 if (html !== null) {
