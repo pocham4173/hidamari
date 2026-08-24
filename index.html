@@ -251,7 +251,7 @@ td.today{background:var(--hi);color:#fff;}
     <div class="setup-or">─ または ─</div>
     <input type="text" id="in-code" class="setup-input" placeholder="招待コードを入力" autocapitalize="characters" autocomplete="off">
     <button class="entry-btn sub" onclick="joinByCode()">招待コードで参加</button>
-    <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、すでに利用中のご家族の画面の「設定」→「家族・本人を招待する」で発行できます。コードで参加すると「承認待ち」になり、ご本人または管理のご家族が認めると利用できます。<br><br>この端末は一度つながると、モードを切り替えても同じご家族の記録を使います。</div>
+    <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、すでに利用中のご家族の画面の「設定」→「家族・本人を招待する」で発行できます。コードで参加すると「承認待ち」になり、ご本人または管理のご家族が認めると利用できます。招待コードは一度使うと再び使えません。認められなかったときや申請を取り下げたときは、新しいコードを発行してもらってください。<br><br>この端末は一度つながると、モードを切り替えても同じご家族の記録を使います。</div>
     <button class="consent-back" onclick="showPage('entry')">← 入口に戻る</button>
   </div>
 </div>
@@ -260,7 +260,7 @@ td.today{background:var(--hi);color:#fff;}
 <div class="page" id="pending-page" style="background:#fff;">
   <div class="setup-wrap">
     <div class="setup-ttl">承認待ちです</div>
-    <p class="setup-lead">参加の申請を送りました。ご本人または管理のご家族が「参加を認める」を押すと、利用をはじめられます。承認されるまで、記録は表示されません。<br>この画面はそのままで大丈夫です。承認されると自動で切り替わります。</p>
+    <p class="setup-lead">参加の申請を送りました。ご本人または管理のご家族が「参加を認める」を押すと、利用をはじめられます。承認されるまで、記録は表示されません。<br>この画面はそのままで大丈夫です。承認されると自動で切り替わります。<br>一度使った招待コードは、もう一度は使えません。申請を取り下げたときや認められなかったときは、新しい招待コードを発行してもらってください。</p>
     <div class="note" id="pending-err" style="display:none;max-width:320px;margin:0 auto 14px;text-align:left;color:#B0492F;">いまの状態を確認できませんでした。通信環境を確認して、この画面を開き直してください。参加が認められなかったときも、この表示になることがあります。その場合は「申請を取り下げる」を押すと入口に戻れます。</div>
     <button class="entry-btn sub" onclick="cancelJoinRequest()">申請を取り下げる</button>
   </div>
@@ -726,22 +726,11 @@ function showPending(){
     if(n) n.style.display='block';
   });
 }
-/* 使わなかった招待コードを、もう一度使えるように戻す */
-async function releaseInvite(code){
-  if(!code) return;
-  try{ await db.collection('invites').doc(code).update({used:false}); }
-  catch(e){ console.warn('invite', e); }
-}
-async function memberInviteCode(mid){
-  try{ const d=await col('members').doc(mid).get(); return d.exists ? (d.data().inviteCode||'') : ''; }
-  catch(e){ return ''; }
-}
 async function cancelJoinRequest(){
-  if(!confirm('参加の申請を取り下げますか?')) return;
+  if(!confirm('参加の申請を取り下げますか?\n使った招待コードは、もう一度は使えません。参加し直すときは、新しい招待コードを発行してもらってください。')) return;
   if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
-  const code=await memberInviteCode(uid());
   try{ await col('members').doc(uid()).delete(); }catch(e){}
-  await releaseInvite(code);
+  alert('申請を取り下げました。\n参加し直すときは、ご家族に新しい招待コードを発行してもらってください。');
   localStorage.removeItem('mainicoGid');
   localStorage.removeItem('mainicoMode');
   location.reload();
@@ -1281,10 +1270,9 @@ async function denyMember(mid){
   mid=memberRef(mid);
   if(!confirm('この参加申請を認めない(削除する)? 相手は記録を見られないまま入口に戻ります。')) return;
   try{
-    const code=await memberInviteCode(mid);
     await col('members').doc(mid).delete();
-    await releaseInvite(code);
     refreshSetMembersIfOpen();
+    alert('参加を認めませんでした。\nこのとき使われた招待コードは、もう使えません。あらためて招待するときは、「家族・本人を招待する」で新しい招待コードを発行してください。');
   }catch(e){ alert('操作できませんでした: '+e.message); }
 }
 async function removeMember(mid, isMe){
