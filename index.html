@@ -105,6 +105,55 @@ table.cal td{padding:6px 0 4px;font-size:1.15rem;border-radius:12px;height:52px;
 table.cal td:empty{background:none;}
 table.cal td .mk{font-size:.95rem;display:block;line-height:1.15;margin-top:1px;}
 td.today{background:var(--hi);color:#fff;}
+
+/* ===== 記録タブ(月間記録) ===== */
+.rec-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.rec-ttl{flex:1;text-align:center;font-size:1.05rem;font-weight:900;color:var(--cha);}
+.rec-nav{
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;min-height:48px;padding:0 12px;
+  font-family:inherit;font-size:.86rem;font-weight:700;color:var(--cha);
+  background:#fff;border:2px solid #DDD2BE;border-radius:10px;cursor:pointer;white-space:nowrap;
+}
+.rec-nav:disabled{color:#BDB4A5;border-color:#EFE8DA;background:#FAF7F1;cursor:default;}
+/* 記録カレンダー。日付は押せるので、どの日も高さ48px以上にする */
+table.cal-rec td{height:auto;min-height:48px;padding:0;background:none;}
+table.cal-rec td.pad{background:none;}
+.rec-day{
+  width:100%;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:inherit;font-size:1.05rem;font-weight:700;color:var(--cha);line-height:1.15;
+  background:#FBF8F2;border:2px solid transparent;border-radius:12px;padding:5px 0 4px;cursor:pointer;
+}
+.rec-day .mk{font-size:.68rem;font-weight:700;color:var(--ha-koi);margin-top:1px;}
+.rec-day .mk-non{font-size:.68rem;color:#C4BCAE;margin-top:1px;}
+.rec-day.today{background:var(--hi);color:#fff;}
+.rec-day.today .mk{color:#fff;}
+.rec-day.today .mk-non{color:#FFF0D6;}
+.rec-day.sel{border-color:var(--cha);box-shadow:0 0 0 2px #fff inset;}
+.rec-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.76rem;color:var(--usucha);margin-top:9px;}
+.rec-legend b{color:var(--ha-koi);}
+/* その日の記録 */
+.rec-ev{padding:9px 2px;border-bottom:1px solid #F0EAE0;font-size:.95rem;line-height:1.55;}
+.rec-ev:last-child{border-bottom:none;}
+.rec-ev .tm{font-size:.78rem;color:var(--usucha);font-weight:700;}
+.rec-ev .who{font-size:.78rem;color:var(--usucha);}
+.rec-ev.rep{padding-left:14px;border-left:3px solid #EFE8DA;background:#FCFAF6;}
+.rec-kind{
+  display:inline-block;font-size:.72rem;font-weight:700;border-radius:5px;padding:1px 7px;margin-right:6px;
+  background:#F1EDE5;color:#6B5C46;
+}
+.rec-kind.k-kusuri{background:#F2F5EF;color:var(--ha-koi);}
+.rec-kind.k-kibun{background:#FFF6E2;color:#8A6A00;}
+.rec-kind.k-onegai{background:#FAF0EC;color:#A34A2E;}
+/* 月のまとめ */
+.rec-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;}
+.rec-sum .it{background:#FBF8F2;border:1px solid #EFE8DA;border-radius:10px;padding:9px 11px;}
+.rec-sum .it .k{font-size:.78rem;color:var(--usucha);}
+.rec-sum .it .v{font-size:1.15rem;font-weight:900;color:var(--cha);}
+@media (max-width:360px){
+  .rec-day{font-size:.95rem;}
+  .rec-day .mk,.rec-day .mk-non{font-size:.62rem;}
+  .rec-nav{padding:0 8px;font-size:.8rem;}
+}
 .cal-legend{display:flex;gap:12px;justify-content:center;margin-top:10px;font-size:.9rem;color:var(--usucha);flex-wrap:wrap;font-weight:700;}
 .onegai-grid{display:grid;grid-template-columns:1fr;gap:10px;}
 .onegai-item{background:var(--asa);border:2px solid #D9E2D3;border-radius:16px;padding:16px;font-family:inherit;font-size:1.15rem;font-weight:900;color:var(--cha);cursor:pointer;text-align:center;}
@@ -484,17 +533,34 @@ td.today{background:var(--hi);color:#fff;}
       </div>
     </div>
 
-    <!-- 記録(構想) -->
+    <!-- 記録(月間記録) -->
     <div class="ftab" id="t-kiroku" style="display:none;">
-      <div class="card plan">
-        <span class="badge">今後の構想(まだ使えません)</span>
-        <h3>記録 ─ このタブに入る予定のもの</h3>
-        <div class="plan-item"><b>1. 基本プロフィール</b> ─ アプリ内で使う表示名と、本人・家族の役割を登録します。住所や正確な生年月日は取得しません</div>
-        <div class="plan-item"><b>2. 書類ポケット(検討を凍結)</b> ─ 資格確認書・診察券・お薬手帳・マイナンバーカードなどの画像保存は、現在実装していません。安全性・必要性を検討中です</div>
-        <div class="plan-item"><b>3. 毎日の記録</b> ─ 本人が選んだ体調、家族による服薬確認、様子メモ、予定を1か月単位で確認できます。記録した人と日時を表示します。本人・家族が入力した生活上の記録であり、医療機関が作成した診療記録ではありません。本人の判断で、受診時の参考として画面を見せることができます</div>
-        <div class="plan-item"><b>4. 日々の記録まとめ(AI補助・今後検証予定)</b> ─ 記録を集計し、読みやすい文章にまとめる機能を検討しています。診断や異常の判定は行いません。記録がないことは、未実施や異常を意味しません。医療記録やケア計画に代わるものではありません</div>
-        <div class="plan-item"><b>5. 災害・緊急時カード(今後検証予定)</b> ─ 本人が選んだ緊急連絡先や服薬情報などを、家族がPDFまたは画像のカードに作成し、印刷できる機能を検討しています。本人の了解を大切にし、必要な情報だけを記載します。医療機関の記録、お薬手帳、緊急通報に代わるものではありません</div>
-        <div class="plan-item"><b>6. おまもりタグ(二次元コード・今後検証予定)</b> ─ 外出先などで困ったとき、読み取った方から登録した家族へ知らせることができます。家族の電話番号や住所は表示しません。自宅・コンビニで印刷できるデータを作成できます。本人の尊厳に配慮し、「徘徊」という表現は使用しません</div>
+      <div class="card">
+        <div class="rec-head">
+          <button class="rec-nav" id="rec-prev" onclick="recMove(-1)">◀ 前の月</button>
+          <div class="rec-ttl" id="rec-ttl">─</div>
+          <button class="rec-nav" id="rec-next" onclick="recMove(1)">次の月 ▶</button>
+        </div>
+        <table class="cal cal-rec" id="rec-cal"></table>
+        <div class="rec-legend">
+          <span><b>●</b> 記録があった日</span>
+          <span>オレンジ = 今日</span>
+          <span>太い枠 = 選んでいる日</span>
+          <span>「―」= 記録なし</span>
+        </div>
+        <div class="note">「―」の日は記録がなかった日です。未実施や体調の異常を意味するものではありません。</div>
+      </div>
+
+      <div class="card">
+        <h3 id="rec-day-ttl">その日の記録</h3>
+        <div id="rec-day"><div class="empty">読み込み中…</div></div>
+        <div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div>
+      </div>
+
+      <div class="card">
+        <h3 id="rec-sum-ttl">今月のまとめ</h3>
+        <div class="rec-sum" id="rec-sum"></div>
+        <div class="note">件数を数えたものです。良い・悪いや、健康状態の判断はしていません。この記録は、ご本人とご家族が入力した生活の記録であり、医療機関の診療記録ではありません。</div>
       </div>
     </div>
 
@@ -1195,6 +1261,7 @@ function showTab(t){
   document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
     b.classList.toggle('on', b.dataset.t===t);
   });
+  if(t==='t-kiroku') recOpen();
 }
 document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
   b.addEventListener('click',()=>showTab(b.dataset.t));
@@ -1204,19 +1271,252 @@ document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
 function applySimpleView(){
   const kOnly=isKOnly();
   const showPlans=(!kOnly) && localStorage.getItem('showPlans')==='1';
-  document.getElementById('nav-kiroku').classList.toggle('hidden', !showPlans);
+  /* 「記録」は実際に使える機能なので、構想の表示切替とは関係なく常に出します */
   document.getElementById('nav-soudan').classList.toggle('hidden', !showPlans);
   const bv=document.getElementById('btn-view');
   bv.style.display=kOnly?'none':'block';
   bv.textContent=showPlans?'構想の表示をやめる':'今後の構想を見る';
   if(!showPlans){
     const cur=document.querySelector('#fnav button.on');
-    if(cur && (cur.dataset.t==='t-kiroku'||cur.dataset.t==='t-soudan')) showTab('t-home');
+    if(cur && cur.dataset.t==='t-soudan') showTab('t-home');
   }
 }
 function toggleSimple(){
   localStorage.setItem('showPlans', localStorage.getItem('showPlans')==='1'?'':'1');
   applySimpleView();
+}
+
+/* ===== 記録タブ: 月間記録 =====
+   既存の groups/{gid}/events をそのまま読みます。
+   読み込みは「表示している月」だけに絞り、全履歴は取りません。
+   date は 'YYYY-MM-DD' の文字列なので、1つの項目の範囲検索で足ります
+   (Firestoreの追加インデックスは要りません)。 */
+var recY = 0, recM = 0;        /* 表示中の年・月(0始まり) */
+var recSel = '';               /* 選んでいる日 'YYYY-MM-DD' */
+var recEvents = [];            /* 表示中の月のevents */
+var recLoading = false;
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function recDayStr(y,m,d){ return y+'-'+pad2(m+1)+'-'+pad2(d); }
+
+/* 家族記録モードでは、家族が記録した種類だけを見せます(今日の画面と同じ扱い) */
+var REC_KONLY_OK = {'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1};
+function recVisible(v){ return !isKOnly() || REC_KONLY_OK[v.type]; }
+
+function recOpen(){
+  var now = new Date();
+  if(!recY){ recY = now.getFullYear(); recM = now.getMonth(); recSel = todayStr(); }
+  recLoad();
+}
+function recMove(step){
+  var d = new Date(recY, recM + step, 1);
+  var now = new Date();
+  /* 未来の月へは進みません */
+  if(d.getFullYear() > now.getFullYear() ||
+    (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth())) return;
+  recY = d.getFullYear(); recM = d.getMonth();
+  recSel = '';
+  recLoad();
+}
+
+function recLoad(){
+  if(recLoading) return;
+  recLoading = true;
+  var y = recY, m = recM;
+  var from = recDayStr(y,m,1), to = recDayStr(y,m,new Date(y,m+1,0).getDate());
+  document.getElementById('rec-ttl').textContent = y + '年' + (m+1) + '月';
+  var now = new Date();
+  document.getElementById('rec-next').disabled = (y===now.getFullYear() && m===now.getMonth());
+  document.getElementById('rec-day').innerHTML = '<div class="empty">読み込み中…</div>';
+
+  col('events').where('date','>=',from).where('date','<=',to).get().then(function(snap){
+    var list = [];
+    snap.forEach(function(doc){
+      var v = doc.data(); v._id = doc.id;
+      if(v.at && v.date) list.push(v);
+    });
+    list.sort(function(a,b){ return (a.at.seconds||0) - (b.at.seconds||0); });
+    recEvents = list;
+    recLoading = false;
+    recDrawCal(); recDrawSummary(); recDrawDay();
+  }).catch(function(e){
+    recLoading = false;
+    recEvents = [];
+    recDrawCal(); recDrawSummary();
+    document.getElementById('rec-day').innerHTML =
+      '<div class="empty">記録を読み込めませんでした。通信状態を確かめて、もう一度お試しください。</div>';
+    console.warn('rec', e);
+  });
+}
+
+/* 日ごとの件数 */
+function recCountByDay(){
+  var byDay = {};
+  recEvents.forEach(function(v){
+    if(!recVisible(v)) return;
+    if(v.type === 'member-joined') return;   /* 参加のお知らせは生活の記録と分けます */
+    byDay[v.date] = (byDay[v.date]||0) + 1;
+  });
+  return byDay;
+}
+
+function recDrawCal(){
+  var tbl = document.getElementById('rec-cal');
+  var byDay = recCountByDay();
+  var first = new Date(recY, recM, 1).getDay();
+  var last  = new Date(recY, recM+1, 0).getDate();
+  var today = todayStr();
+
+  var head = ['日','月','火','水','木','金','土'];
+  var html = '<tr>';
+  for(var i=0;i<7;i++) html += '<th'+(i===0?' class="sun"':'')+'>'+head[i]+'</th>';
+  html += '</tr><tr>';
+  for(var j=0;j<first;j++) html += '<td class="pad"></td>';
+  for(var day=1; day<=last; day++){
+    var ds = recDayStr(recY, recM, day);
+    var n  = byDay[ds] || 0;
+    var cls = 'rec-day' + (ds===today ? ' today' : '') + (ds===recSel ? ' sel' : '');
+    var mk  = n ? '<span class="mk">●'+n+'</span>' : '<span class="mk-non">―</span>';
+    var lab = (recM+1)+'月'+day+'日 ' + (n ? ('記録'+n+'件') : '記録なし');
+    html += '<td><div class="'+cls+'" role="button" tabindex="0" data-d="'+ds+'" aria-label="'+esc(lab)+'">'+
+            day + mk + '</div></td>';
+    if((first+day)%7===0 && day<last) html += '</tr><tr>';
+  }
+  html += '</tr>';
+  tbl.innerHTML = html;
+}
+
+/* 日を選ぶ(カレンダー全体で1つだけ受け付けます) */
+document.addEventListener('click', function(e){
+  var t = e.target.closest ? e.target.closest('.rec-day') : null;
+  if(!t || !t.dataset.d) return;
+  recSel = t.dataset.d;
+  recDrawCal(); recDrawDay();
+});
+
+/* その日の記録 */
+var REC_LABEL = {
+  'aisatsu':        function(v){ return ['あいさつ','', 'ご本人から「'+(v.text||'')+'」が届きました']; },
+  'kibun':          function(v){ return ['体調','k-kibun', 'ご本人が選んだ今日の調子: '+(v.text||'')]; },
+  'kusuri':         function(v){ return ['服薬','k-kusuri', 'ご本人が、お薬を飲んだと記録しました'+recSlot(v.slot)]; },
+  'onegai':         function(v){ return ['お願い','k-onegai',
+                        v.text==='今日はそっとしておいて' ? 'ご本人が「今日はそっとしておいて」を選びました'
+                                                        : 'ご本人からのお願い: 「'+(v.text||'')+'」']; },
+  'onegai-back':    function(v){ return ['お願いへの返事','k-onegai', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
+  'aisatsu-back':   function(v){ return ['家族からの挨拶','', (v.name||'家族')+'さんが「'+(v.text||'')+'」を返しました']; },
+  'ask-kusuri':     function(v){ return ['服薬の声かけ','k-kusuri', (v.name||'家族')+'さんが「お薬飲んだ?」を送りました']; },
+  'kibun-kazoku':   function(v){ return ['体調','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
+  'kusuri-kakunin': function(v){ return ['服薬','k-kusuri', (v.name||'家族')+'さんが服薬を確認しました']; },
+  'memo':           function(v){ return ['様子メモ','', (v.name||'家族')+'さん: '+(v.text||'')]; }
+};
+function recSlot(slot){
+  var n = {asa:'朝', hiru:'昼', yoru:'夜'}[slot];
+  return n ? '('+n+')' : '';
+}
+function recTime(v){
+  var t = new Date(v.at.seconds*1000);
+  return t.getHours()+':'+pad2(t.getMinutes());
+}
+/* 文字は textContent で入れます(記録の中身は入力された文章のため) */
+function recRow(v, kind, cls, text, isReply){
+  var row = document.createElement('div');
+  row.className = 'rec-ev' + (isReply ? ' rep' : '');
+  var tm = document.createElement('div');
+  tm.className = 'tm';
+  tm.textContent = recTime(v);
+  row.appendChild(tm);
+  var body = document.createElement('div');
+  var k = document.createElement('span');
+  k.className = 'rec-kind' + (cls ? ' '+cls : '');
+  k.textContent = kind;
+  body.appendChild(k);
+  body.appendChild(document.createTextNode(text));
+  row.appendChild(body);
+  return row;
+}
+
+function recDrawDay(){
+  var box = document.getElementById('rec-day');
+  var ttl = document.getElementById('rec-day-ttl');
+  var note = document.getElementById('rec-day-note');
+  if(!recSel){
+    ttl.textContent = 'その日の記録';
+    box.innerHTML = '<div class="empty">カレンダーの日を押すと、その日の記録が出ます</div>';
+    note.style.display = 'none';
+    return;
+  }
+  var d = new Date(recSel+'T00:00:00');
+  ttl.textContent = dateJp(d) + 'の記録';
+
+  var all = recEvents.filter(function(v){ return v.date===recSel && recVisible(v); });
+  var joined = all.filter(function(v){ return v.type==='member-joined'; });
+  var life   = all.filter(function(v){ return v.type!=='member-joined'; });
+
+  var nodes = [], hasKusuri = false;
+  /* お願いへの返事は、そのお願いのすぐ下に並べます */
+  var replies = {};
+  life.forEach(function(v){
+    if(v.type==='onegai-back' && v.replyTo) (replies[v.replyTo] = replies[v.replyTo]||[]).push(v);
+  });
+  life.forEach(function(v){
+    if(v.type==='onegai-back' && v.replyTo) return;   /* 下で親のお願いと一緒に出します */
+    var f = REC_LABEL[v.type];
+    if(!f) return;
+    var p = f(v);
+    if(p[1]==='k-kusuri') hasKusuri = true;
+    nodes.push(recRow(v, p[0], p[1], p[2], false));
+    (replies[v._id]||[]).forEach(function(r){
+      var rp = REC_LABEL['onegai-back'](r);
+      nodes.push(recRow(r, rp[0], rp[1], rp[2], true));
+    });
+  });
+
+  if(nodes.length === 0){
+    box.innerHTML = '<div class="empty">この日は記録がありません(未実施や異常を意味するものではありません)</div>';
+  }else{
+    box.textContent = '';
+    nodes.forEach(function(n){ box.appendChild(n); });
+  }
+  note.style.display = hasKusuri ? 'block' : 'none';
+
+  /* 参加のお知らせは、生活の記録と分けて最後に出します */
+  if(joined.length){
+    var sep = document.createElement('div');
+    sep.className = 'note';
+    sep.style.marginTop = '10px';
+    sep.textContent = 'そのほかのお知らせ: ' +
+      joined.map(function(v){ return (v.text||'')+'さんが家族として参加しました('+recTime(v)+')'; }).join(' / ');
+    box.appendChild(sep);
+  }
+}
+
+/* 月のまとめ(数えただけ。良し悪しの判断はしません) */
+function recDrawSummary(){
+  document.getElementById('rec-sum-ttl').textContent = (recM+1)+'月のまとめ';
+  var days = {}, aisatsu = 0, kibun = 0, kusuri = 0, onegai = 0;
+  recEvents.forEach(function(v){
+    if(!recVisible(v) || v.type==='member-joined') return;
+    days[v.date] = 1;
+    if(v.type==='aisatsu' || v.type==='aisatsu-back') aisatsu++;
+    if(v.type==='kibun'   || v.type==='kibun-kazoku') kibun++;
+    if(v.type==='kusuri'  || v.type==='kusuri-kakunin' || v.type==='ask-kusuri') kusuri++;
+    if(v.type==='onegai'  || v.type==='onegai-back'    || v.type==='memo') onegai++;
+  });
+  var items = [
+    ['記録があった日', Object.keys(days).length + '日'],
+    ['挨拶', aisatsu + '件'],
+    ['体調の記録', kibun + '件'],
+    ['服薬に関する記録', kusuri + '件'],
+    ['お願い・メモ', onegai + '件']
+  ];
+  var box = document.getElementById('rec-sum');
+  box.textContent = '';
+  items.forEach(function(it){
+    var d = document.createElement('div'); d.className = 'it';
+    var k = document.createElement('div'); k.className = 'k'; k.textContent = it[0];
+    var v = document.createElement('div'); v.className = 'v'; v.textContent = it[1];
+    d.appendChild(k); d.appendChild(v); box.appendChild(d);
+  });
 }
 
 function sendAisatsuBack(){ feedback(); addEvent({type:'aisatsu-back', text:slot().tx, name:myName()}); }
