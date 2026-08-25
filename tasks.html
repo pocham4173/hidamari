@@ -160,10 +160,11 @@ footer a{color:var(--hai);}
   <!-- 1. りえの確認・承認 -->
   <section class="sec" id="s-approval">
     <div class="sec-h"><span class="no">1</span><h2>りえの確認・承認</h2></div>
-    <p class="sec-lead">ここに出ているものだけ、りえの操作が必要です。開くたびにGitHubから最新の状態を取ります。</p>
+    <p class="sec-lead">変更の提案は、まずChatGPTが確認します。ここに出ているものだけ、いずれりえの操作が必要になります。開くたびにGitHubから最新の状態を取ります。</p>
     <div id="approval-box"><div class="card">読み込み中…</div></div>
     <div class="mrg-note">
-      このページはMerge(変更をアプリへ反映すること)を自動では行いません。最終的に反映するかどうかは、必ずりえが決めます。
+      <b>ChatGPTからMerge候補の連絡が来るまで、Mergeしないでください。</b><br>
+      Merge(変更をアプリへ反映すること)は、このページからは自動で行いません。連絡が来たあと、最終的に反映するかどうかを決めるのは必ずりえです。
     </div>
   </section>
 
@@ -268,17 +269,17 @@ function prCard(pr){
 
   var top = el('div','card-top');
   top.appendChild(el('span','badge b-pr', 'PR #' + pr.number));
-  top.appendChild(el('span','badge b-wait', 'りえの承認待ち'));
+  top.appendChild(el('span','badge b-wait', 'ChatGPT確認待ち'));
   var chk = el('span','badge b-run','自動検査: 確認中…');
   top.appendChild(chk);
   card.appendChild(top);
 
   card.appendChild(el('div','card-ttl', pr.title || '(題名なし)'));
-  card.appendChild(el('div','card-note', 'Pull Request(変更の提案)です。中身を見て、よければMergeするとアプリに反映されます。'));
+  card.appendChild(el('div','card-note', 'Pull Request(変更の提案)です。いまはChatGPTが確認している段階です。Merge候補の連絡が来てから、りえが反映するかどうかを決めます。'));
 
   var acts = el('div','acts');
   acts.appendChild(act(pr.html_url, 'PRを開く', '変更の中身を見てMergeする', true));
-  acts.appendChild(act(APP, 'アプリを確認', '実際の画面で確かめる'));
+  acts.appendChild(act(APP, '現在の公開版を開く', 'PR変更は未反映'));
   card.appendChild(acts);
 
   /* 自動検査の結果は、あとから届いたときに書き換えます */
@@ -304,7 +305,7 @@ function prCard(pr){
 function emptyCard(){
   var box = el('div','empty');
   box.appendChild(el('div','big','今、りえが確認するものはありません'));
-  box.appendChild(el('div','sm','承認待ちのPull Request(変更の提案)はありません。新しい提案ができると、ここに出ます。'));
+  box.appendChild(el('div','sm','ChatGPTが確認中のPull Request(変更の提案)はありません。新しい提案ができると、ここに出ます。'));
   return box;
 }
 
