@@ -1294,7 +1294,7 @@ function toggleSimple(){
 var recY = 0, recM = 0;        /* 表示中の年・月(0始まり) */
 var recSel = '';               /* 選んでいる日 'YYYY-MM-DD' */
 var recEvents = [];            /* 表示中の月のevents */
-var recLoading = false;
+var recReq = 0;                /* 読み込みの通し番号。古い結果を捨てるために使います */
 
 function pad2(n){ return String(n).padStart(2,'0'); }
 function recDayStr(y,m,d){ return y+'-'+pad2(m+1)+'-'+pad2(d); }
@@ -1320,8 +1320,9 @@ function recMove(step){
 }
 
 function recLoad(){
-  if(recLoading) return;
-  recLoading = true;
+  /* 読み込み中に月を移動できるようにします。
+     古い月の結果があとから届いても、通し番号が変わっているので捨てます。 */
+  var my = ++recReq;
   var y = recY, m = recM;
   var from = recDayStr(y,m,1), to = recDayStr(y,m,new Date(y,m+1,0).getDate());
   document.getElementById('rec-ttl').textContent = y + '年' + (m+1) + '月';
@@ -1330,6 +1331,7 @@ function recLoad(){
   document.getElementById('rec-day').innerHTML = '<div class="empty">読み込み中…</div>';
 
   col('events').where('date','>=',from).where('date','<=',to).get().then(function(snap){
+    if(my !== recReq) return;   /* もっと新しい月の読み込みが始まっているので、この結果は使いません */
     var list = [];
     snap.forEach(function(doc){
       var v = doc.data(); v._id = doc.id;
@@ -1337,10 +1339,9 @@ function recLoad(){
     });
     list.sort(function(a,b){ return (a.at.seconds||0) - (b.at.seconds||0); });
     recEvents = list;
-    recLoading = false;
     recDrawCal(); recDrawSummary(); recDrawDay();
   }).catch(function(e){
-    recLoading = false;
+    if(my !== recReq) return;   /* 古い月の失敗で、新しい月の表示を消さないようにします */
     recEvents = [];
     recDrawCal(); recDrawSummary();
     document.getElementById('rec-day').innerHTML =
@@ -1409,6 +1410,17 @@ var REC_LABEL = {
   'kusuri-kakunin': function(v){ return ['服薬','k-kusuri', (v.name||'家族')+'さんが服薬を確認しました']; },
   'memo':           function(v){ return ['様子メモ','', (v.name||'家族')+'さん: '+(v.text||'')]; }
 };
+/* 日をまたいだ返事に、どの日のお願いへの返事かを添えます */
+function recReplyFor(v){
+  if(v.type !== 'onegai-back' || !v.replyTo) return '';
+  for(var i=0;i<recEvents.length;i++){
+    if(recEvents[i]._id === v.replyTo && recEvents[i].date){
+      var d = new Date(recEvents[i].date+'T00:00:00');
+      return ' (' + (d.getMonth()+1) + '月' + d.getDate() + '日のお願いへの返事)';
+    }
+  }
+  return ' (前の日のお願いへの返事)';
+}
 function recSlot(slot){
   var n = {asa:'朝', hiru:'昼', yoru:'夜'}[slot];
   return n ? '('+n+')' : '';
@@ -1453,18 +1465,23 @@ function recDrawDay(){
   var life   = all.filter(function(v){ return v.type!=='member-joined'; });
 
   var nodes = [], hasKusuri = false;
-  /* お願いへの返事は、そのお願いのすぐ下に並べます */
+  /* お願いへの返事は、そのお願いが同じ日にあるときだけ、すぐ下に並べます。
+     日をまたいだ返事は、返事をした日の記録として単独で出します。 */
+  var onegaiToday = {};
+  life.forEach(function(v){ if(v.type==='onegai') onegaiToday[v._id] = 1; });
   var replies = {};
   life.forEach(function(v){
-    if(v.type==='onegai-back' && v.replyTo) (replies[v.replyTo] = replies[v.replyTo]||[]).push(v);
+    if(v.type==='onegai-back' && v.replyTo && onegaiToday[v.replyTo]){
+      (replies[v.replyTo] = replies[v.replyTo]||[]).push(v);
+    }
   });
   life.forEach(function(v){
-    if(v.type==='onegai-back' && v.replyTo) return;   /* 下で親のお願いと一緒に出します */
+    if(v.type==='onegai-back' && v.replyTo && onegaiToday[v.replyTo]) return;   /* 下で親のお願いと一緒に出します */
     var f = REC_LABEL[v.type];
     if(!f) return;
     var p = f(v);
     if(p[1]==='k-kusuri') hasKusuri = true;
-    nodes.push(recRow(v, p[0], p[1], p[2], false));
+    nodes.push(recRow(v, p[0], p[1], p[2] + recReplyFor(v), false));
     (replies[v._id]||[]).forEach(function(r){
       var rp = REC_LABEL['onegai-back'](r);
       nodes.push(recRow(r, rp[0], rp[1], rp[2], true));
