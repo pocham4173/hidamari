@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>まいにこ プロジェクトボード</title>
+<title>まいにこ 管理ボード</title>
 <link rel="apple-touch-icon" href="tasks-icon-180.png">
 <link rel="icon" type="image/png" href="tasks-icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
@@ -13,6 +13,7 @@
   --kon-fukai:#111C4B;
   --hi:#F2B705;       /* 陽: アイコンの太陽 */
   --shuniku:#C8452C;  /* 朱肉: 判子の赤 */
+  --midori:#3C6047;   /* 緑: 問題なし */
   --kami:#FAF8F3;     /* 紙 */
   --sumi:#2A2723;     /* 墨 */
   --hai:#8B857B;      /* 灰 */
@@ -21,313 +22,401 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
-  background:var(--kami); color:var(--sumi); line-height:1.6;
+  background:var(--kami); color:var(--sumi); line-height:1.7;
+  -webkit-text-size-adjust:100%;
 }
-.mono{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:.82em;}
+/* 長い題名でも横にはみ出さないようにする */
+h1,h2,h3,p,li,a,span,div{overflow-wrap:anywhere;}
 
-/* ===== ヘッダー: 夜のオフィス ===== */
-header{
-  background:linear-gradient(160deg, var(--kon) 0%, var(--kon-fukai) 100%);
-  color:#fff; padding:26px 20px 22px;
+/* ===== ヘッダー ===== */
+header{background:linear-gradient(160deg,var(--kon) 0%,var(--kon-fukai) 100%);color:#fff;padding:20px 16px 18px;}
+.hd{max-width:720px;margin:0 auto;}
+.hd .brand{font-family:'Zen Maru Gothic',sans-serif;font-weight:900;font-size:1.3rem;letter-spacing:.1em;}
+.hd .brand .sun{color:var(--hi);}
+.hd .sub{font-size:.84rem;color:#B9C1E4;margin-top:4px;}
+.hd .date{font-size:.8rem;color:#B9C1E4;margin-top:6px;}
+
+main{max-width:720px;margin:0 auto;padding:16px 14px 40px;}
+
+/* ===== 見出し ===== */
+.sec{margin-bottom:26px;}
+.sec-h{display:flex;align-items:baseline;gap:9px;border-bottom:2px solid var(--kon);padding-bottom:7px;margin-bottom:10px;}
+.sec-h .no{
+  flex-shrink:0;background:var(--kon);color:#fff;font-weight:900;font-size:.8rem;
+  border-radius:6px;padding:2px 8px;line-height:1.5;
 }
-.hd-in{max-width:980px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;}
-.hd-ttl .brand{font-family:'Zen Maru Gothic',sans-serif;font-weight:900;font-size:1.5rem;letter-spacing:.14em;}
-.hd-ttl .brand .sun{color:var(--hi);}
-.hd-ttl .sub{font-size:.82rem;color:#B9C1E4;letter-spacing:.24em;margin-top:2px;}
-.hd-date{text-align:right;font-size:.85rem;color:#B9C1E4;}
-.hd-date b{display:block;font-size:1.05rem;color:#fff;font-weight:700;}
+.sec-h h2{font-size:1.05rem;font-weight:800;color:var(--kon);}
+.sec-lead{font-size:.86rem;color:#6B6459;margin-bottom:12px;}
 
-main{max-width:980px;margin:0 auto;padding:22px 16px 70px;}
-
-/* ===== 今の一手 ===== */
-.now{
-  background:#fff;border:2px solid var(--kon);border-radius:14px;
-  padding:18px 20px;margin-bottom:26px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;
-  box-shadow:0 3px 0 rgba(27,42,107,.15);
+/* ===== 1. りえの確認・承認 ===== */
+#s-approval{border:2px solid var(--kon);border-radius:14px;padding:14px 13px;background:#fff;}
+#s-approval .sec-h{margin-bottom:8px;}
+.card{
+  border:1px solid var(--usui);border-radius:12px;padding:13px 12px;margin-bottom:11px;background:#FDFCF9;
 }
-.now .lbl{
-  writing-mode:vertical-rl;font-weight:900;letter-spacing:.3em;color:var(--kon);
-  border-right:2px solid var(--usui);padding-right:12px;font-size:.85rem;align-self:stretch;display:flex;align-items:center;
-}
-.now .body{flex:1;min-width:220px;}
-.now .task{font-size:1.12rem;font-weight:700;}
-.now .memo{font-size:.85rem;color:var(--hai);margin-top:4px;}
+.card:last-child{margin-bottom:0;}
+.card-top{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:7px;}
+.card-ttl{font-size:1rem;font-weight:800;line-height:1.55;margin-bottom:6px;}
+.card-note{font-size:.83rem;color:#6B6459;margin-bottom:10px;}
 
-/* ===== よく使う扉 ===== */
-.doors{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;margin-bottom:26px;}
+.badge{flex-shrink:0;font-size:.74rem;font-weight:800;border-radius:5px;padding:3px 8px;line-height:1.5;}
+.b-pr{background:#EAF0FF;color:var(--kon);}
+.b-wait{background:#FFF3D6;color:#8A6A00;border:1px solid #EBD9A6;}
+.b-ok{background:#EDF5EF;color:var(--midori);}
+.b-ng{background:#FBEFEC;color:var(--shuniku);}
+.b-run{background:#F1EDE5;color:#6B6459;}
+
+/* 大きなボタン(押せる高さ 56px以上) */
+.acts{display:flex;flex-direction:column;gap:8px;}
+.act{
+  display:flex;flex-direction:column;justify-content:center;min-height:56px;
+  border:2px solid var(--kon);border-radius:10px;background:#fff;color:var(--kon);
+  text-decoration:none;padding:8px 13px;box-shadow:0 2px 0 rgba(27,42,107,.14);
+}
+.act:active{transform:translateY(2px);box-shadow:none;}
+.act .l{font-size:.97rem;font-weight:800;}
+.act .n{font-size:.78rem;color:var(--hai);font-weight:400;}
+.act.primary{background:var(--kon);color:#fff;border-color:var(--kon);}
+.act.primary .n{color:#C3CBE8;}
+.act.off{border-color:var(--usui);color:var(--hai);box-shadow:none;}
+
+.empty{
+  border:2px dashed #C9D0E6;border-radius:12px;padding:20px 14px;text-align:center;background:#FBFCFF;
+}
+.empty .big{font-size:1.03rem;font-weight:800;color:var(--kon);}
+.empty .sm{font-size:.84rem;color:#6B6459;margin-top:5px;}
+.mrg-note{
+  font-size:.8rem;color:#6B6459;background:#FFF9E8;border:1px solid #EBD9A6;
+  border-radius:8px;padding:8px 10px;margin-top:11px;
+}
+
+/* ===== 2. これから進めること ===== */
+.nx{border:1px solid var(--usui);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff;}
+.nx:last-of-type{margin-bottom:0;}
+.nx-ttl{font-size:.99rem;font-weight:800;line-height:1.55;margin-bottom:7px;}
+.nx-meta{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:7px;}
+.st{flex-shrink:0;font-size:.75rem;font-weight:800;border-radius:5px;padding:3px 9px;line-height:1.5;}
+.st-soudan{background:#F1EDE5;color:#6B6459;}
+.st-sekkei{background:#EAF0FF;color:var(--kon);}
+.st-jissou{background:#FFF3D6;color:#8A6A00;}
+.st-kakunin{background:#EDF5EF;color:var(--midori);}
+.who{flex-shrink:0;font-size:.75rem;font-weight:800;border-radius:999px;padding:3px 10px;line-height:1.5;border:1.5px solid;}
+.w-rie{border-color:var(--hi);color:#8A6A00;background:#FFFBEA;}
+.w-gpt{border-color:#4E7A5A;color:var(--midori);background:#F2F7F3;}
+.w-cc{border-color:var(--kon);color:var(--kon);background:#F4F7FF;}
+.nx-note{font-size:.83rem;color:#6B6459;}
+.nx .act{margin-top:9px;}
+.upd{font-size:.78rem;color:var(--hai);margin-top:10px;}
+
+/* ===== 3. 完了したこと(折りたたみ) ===== */
+details.done{border:1px solid var(--usui);border-radius:12px;background:#fff;overflow:hidden;}
+details.done>summary{
+  display:flex;align-items:center;gap:8px;min-height:56px;padding:10px 13px;
+  cursor:pointer;font-weight:800;color:var(--kon);font-size:.97rem;list-style:none;
+}
+details.done>summary::-webkit-details-marker{display:none;}
+details.done>summary::after{content:'▼ ひらく';margin-left:auto;font-size:.78rem;color:var(--hai);font-weight:400;flex-shrink:0;}
+details.done[open]>summary::after{content:'▲ とじる';}
+.done-body{padding:0 13px 13px;border-top:1px solid var(--usui);}
+.done-row{display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #F3EFE7;font-size:.88rem;}
+.done-row:last-child{border-bottom:none;}
+.done-row a{color:var(--kon);}
+.stamp{
+  flex-shrink:0;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:.74rem;border:2px solid var(--shuniku);color:var(--shuniku);
+  background:radial-gradient(circle,#fff 62%,#FBEFEC 100%);transform:rotate(-6deg);
+}
+
+/* ===== 4. よく使う入口 ===== */
+.doors{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:9px;}
 .door{
-  display:block;text-decoration:none;background:#fff;border:1.5px solid var(--kon);
-  border-radius:10px;padding:11px 12px;color:var(--kon);
-  box-shadow:0 2px 0 rgba(27,42,107,.12);
+  display:flex;flex-direction:column;justify-content:center;min-height:56px;
+  text-decoration:none;background:#fff;border:1.5px solid var(--kon);border-radius:10px;
+  padding:9px 12px;color:var(--kon);box-shadow:0 2px 0 rgba(27,42,107,.12);
 }
 .door:active{transform:translateY(2px);box-shadow:none;}
-.door b{display:block;font-size:.9rem;}
-.door small{display:block;font-size:.72rem;color:var(--hai);margin-top:1px;}
-.door.d-ai{border-color:#4E7A5A;color:#3C6047;box-shadow:0 2px 0 rgba(78,122,90,.15);}
+.door b{font-size:.9rem;}
+.door small{font-size:.74rem;color:var(--hai);}
 .door.d-app{border-color:var(--hi);color:#8A6A00;background:#FFFDF4;box-shadow:0 2px 0 rgba(242,183,5,.25);}
+.door.d-cc{border-color:#4E7A5A;color:var(--midori);box-shadow:0 2px 0 rgba(78,122,90,.15);}
+.door.d-sub{border-color:var(--usui);color:#6B6459;box-shadow:none;}
 
-/* ===== フェーズ帯 ===== */
-.phase{margin-bottom:26px;}
-.ph-head{display:flex;align-items:baseline;gap:10px;border-bottom:2px solid var(--kon);padding-bottom:6px;margin-bottom:2px;}
-.ph-head h2{font-size:1rem;font-weight:700;color:var(--kon);letter-spacing:.06em;}
-.ph-head .cnt{font-size:.78rem;color:var(--hai);}
-.trow{
-  display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid var(--usui);background:#fff;
-}
-.trow:nth-child(odd){background:#FDFCF9;}
-.trow .nm{flex:1;font-size:.95rem;min-width:0;}
-.trow .nm small{display:block;color:var(--hai);font-size:.78rem;font-weight:400;}
-.owner{
-  flex-shrink:0;font-size:.72rem;font-weight:700;color:var(--kon);
-  border:1.5px solid var(--kon);border-radius:4px;padding:2px 8px;letter-spacing:.05em;background:#fff;
-}
-.owner.o-rie{border-color:var(--hi);color:#8A6A00;background:#FFFBEA;}
-.owner.o-gpt{border-color:#4E7A5A;color:#3C6047;background:#F2F7F3;}
-
-/* ===== 判子スタンプ ===== */
-.stamp{
-  flex-shrink:0;width:52px;height:52px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;text-align:center;
-  font-weight:900;font-size:.78rem;line-height:1.15;letter-spacing:.06em;
-  transform:rotate(-6deg);
-}
-.st-done{border:2.5px solid var(--shuniku);color:var(--shuniku);background:radial-gradient(circle,#fff 62%,#FBEFEC 100%);}
-.st-doing{border:2.5px dashed #B8860B;color:#8A6A00;background:#FFFDF4;transform:rotate(4deg);}
-.st-wait{border:2px solid #B9B2A6;color:#8B857B;background:#fff;transform:rotate(0deg);font-weight:700;}
-.st-frozen{border:2.5px double #5A6B99;color:#44528A;background:#F4F6FB;transform:rotate(-3deg);}
-
-/* ===== ライブ状況 ===== */
-.live{background:#fff;border:1px solid var(--usui);border-radius:14px;padding:18px 20px;margin-top:8px;}
-.live h2{font-size:1rem;color:var(--kon);border-bottom:2px solid var(--kon);padding-bottom:6px;margin-bottom:10px;}
-.live .row{padding:8px 2px;border-bottom:1px solid var(--usui);font-size:.9rem;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;}
-.live .row:last-child{border-bottom:none;}
-.live .tag{font-size:.7rem;font-weight:700;border-radius:4px;padding:1px 7px;flex-shrink:0;}
-.tag-pr{background:#EAF0FF;color:var(--kon);}
-.tag-br{background:#F2F7F3;color:#3C6047;}
-.tag-hf{background:#FFFBEA;color:#8A6A00;}
-.live .note{font-size:.78rem;color:var(--hai);margin-top:8px;}
-.live a{color:var(--kon);}
-
-footer{max-width:980px;margin:0 auto;padding:18px 16px 40px;font-size:.76rem;color:var(--hai);}
-@media(max-width:560px){
-  .now{padding:14px;}
-  .now .lbl{writing-mode:horizontal-tb;border-right:none;border-bottom:2px solid var(--usui);padding:0 0 6px;align-self:auto;}
-  .stamp{width:46px;height:46px;font-size:.7rem;}
-}
+footer{max-width:720px;margin:0 auto;padding:0 14px 40px;font-size:.78rem;color:var(--hai);}
+footer a{color:var(--hai);}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="hd-in">
-    <div class="hd-ttl">
-      <div class="brand">まいにこ<span class="sun"> ☀ </span>プロジェクトボード</div>
-      <div class="sub">TEAM RIE ─ 進行状況一覧</div>
-    </div>
-    <div class="hd-date"><b id="today">─</b>盤面の更新: 2026-08-25(Claude)</div>
+  <div class="hd">
+    <div class="brand">まいにこ<span class="sun"> ☀ </span>管理ボード</div>
+    <div class="sub">りえが確認・承認するための画面です</div>
+    <div class="date" id="today">─</div>
   </div>
 </header>
 
 <main>
 
-  <div class="now">
-    <div class="lbl">今の一手</div>
-    <div class="body">
-      <div class="task" id="now-task">─</div>
-      <div class="memo" id="now-memo"></div>
+  <!-- 1. りえの確認・承認 -->
+  <section class="sec" id="s-approval">
+    <div class="sec-h"><span class="no">1</span><h2>りえの確認・承認</h2></div>
+    <p class="sec-lead">ここに出ているものだけ、りえの操作が必要です。開くたびにGitHubから最新の状態を取ります。</p>
+    <div id="approval-box"><div class="card">読み込み中…</div></div>
+    <div class="mrg-note">
+      このページはMerge(変更をアプリへ反映すること)を自動では行いません。最終的に反映するかどうかは、必ずりえが決めます。
     </div>
-  </div>
+  </section>
 
-  <div class="doors">
-    <a class="door d-app" href="https://pocham4173.github.io/hidamari/" target="_blank"><b>☀ まいにこ本体</b><small>アプリを開く</small></a>
-    <a class="door" href="https://github.com/pocham4173/hidamari/pulls" target="_blank"><b>承認待ちの机(PR)</b><small>確認してMerge</small></a>
-    <a class="door" href="https://github.com/pocham4173/hidamari/blob/main/AI_HANDOFF.md" target="_blank"><b>AI連絡帳</b><small>引き継ぎノート</small></a>
-    <a class="door" href="https://console.firebase.google.com/project/hidamari-5f8de/firestore/databases/-default-/security/rules" target="_blank"><b>金庫の鍵(ルール)</b><small>管理者のみ・要ログイン</small></a>
-    <a class="door d-ai" href="https://claude.ai/code" target="_blank"><b>Claude Codeに相談</b><small>実装・PR</small></a>
-    <a class="door d-ai" href="https://chatgpt.com" target="_blank"><b>ChatGPTに相談</b><small>検証・安全・反対役</small></a>
-  </div>
+  <!-- 2. これから進めること -->
+  <section class="sec">
+    <div class="sec-h"><span class="no">2</span><h2>これから進めること</h2></div>
+    <p class="sec-lead">優先順位の高い3件です。「次の番」の人が動くまで、りえの操作は要りません。</p>
+    <div id="next-box"></div>
+    <div class="upd" id="next-upd"></div>
+  </section>
 
-  <div id="board"></div>
+  <!-- 3. 完了したこと -->
+  <section class="sec">
+    <div class="sec-h"><span class="no">3</span><h2>完了したこと</h2></div>
+    <details class="done" id="done">
+      <summary>これまでに終わったこと</summary>
+      <div class="done-body" id="done-box">読み込み中…</div>
+    </details>
+  </section>
 
-  <div class="live">
-    <h2>GitHubのいま(自動取得)</h2>
-    <div id="live-box"><div class="row">読み込み中…</div></div>
-    <div class="note">このページを開くたびに、公開リポジトリから最新の作業状況を取得します。取得できないときは回数制限の可能性があります(1時間ほどおいて再読み込み)。詳しくは <a href="https://github.com/pocham4173/hidamari/pulls" target="_blank">PR一覧ページ</a> へ。</div>
-  </div>
+  <!-- 4. よく使う入口 -->
+  <section class="sec">
+    <div class="sec-h"><span class="no">4</span><h2>よく使う入口</h2></div>
+    <div class="doors">
+      <a class="door d-app" href="https://pocham4173.github.io/hidamari/" target="_blank" rel="noopener noreferrer"><b>☀ まいにこ本体</b><small>アプリを開く</small></a>
+      <a class="door" href="https://github.com/pocham4173/hidamari/pulls" target="_blank" rel="noopener noreferrer"><b>PR一覧</b><small>変更の提案ぜんぶ</small></a>
+      <a class="door" href="https://github.com/pocham4173/hidamari/issues" target="_blank" rel="noopener noreferrer"><b>Issue一覧</b><small>やることの記録</small></a>
+      <a class="door" href="https://github.com/pocham4173/hidamari/blob/main/AI_HANDOFF.md" target="_blank" rel="noopener noreferrer"><b>AI連絡帳</b><small>引き継ぎノート</small></a>
+      <a class="door d-cc" href="https://claude.ai/code" target="_blank" rel="noopener noreferrer"><b>Claude Codeに相談</b><small>実装・PR</small></a>
+      <a class="door" href="https://console.firebase.google.com/project/hidamari-5f8de/firestore/databases/-default-/security/rules" target="_blank" rel="noopener noreferrer"><b>金庫の鍵(ルール)</b><small>管理者のみ・要ログイン</small></a>
+      <a class="door d-sub" href="https://chatgpt.com" target="_blank" rel="noopener noreferrer"><b>ChatGPTに相談</b><small>補助・ふだんは会話から</small></a>
+    </div>
+  </section>
 
 </main>
 
 <footer>
-  盤面(タスクの内容・状態)の更新はClaudeが担当し、Pull Request経由で反映します。判子の見方: 朱=済/黄=進行中/灰=待ち/紺=凍結。
+  「1 りえの確認・承認」と「3 完了したこと」はGitHubの公開情報から自動で取得します。「2 これから進めること」はClaude CodeがPull Request経由で更新します。<br>
+  取得できないときは、GitHubの回数制限の可能性があります(1時間ほどおいて開き直してください)。
 </footer>
 
 <script>
-/* ============ タスク盤面(Claudeが更新) ============ */
-const NOW = {
-  task: '新版アプリの動作確認(スマホで2回開き直し→「ご本人と一緒に初期設定する」が出るか)',
-  memo: '出たら承認フローの実地テストへ。出なければスクショをClaudeへ / このボードを追加するPR#5も承認待ちです'
-};
+/* ============================================================
+   まいにこ 管理ボード
+   GitHubから受け取った文字列(PRの題名など)は、外から来た値です。
+   HTMLとして組み立てず、必ず textContent で「文字」として入れます。
+   ============================================================ */
+var OWNER = 'pocham4173', REPO = 'hidamari';
+var API   = 'https://api.github.com/repos/' + OWNER + '/' + REPO;
+var GH    = 'https://github.com/' + OWNER + '/' + REPO;
+var APP   = 'https://pocham4173.github.io/hidamari/';
 
-const BOARD = [
-  { phase:'① 本気化の仕上げ(今すぐ)', tasks:[
-    ['Firestoreルールの公開(承認制)','りえ','done','isApproved版を8/24公開済み'],
-    ['一括修正版の差分確認→PR→マージ','Claude Code','done','PR#2 マージ済み(不具合3件も修正)'],
-    ['新版の動作確認(スマホ)','りえ','doing','開き直し→入口の文言を確認'],
-    ['承認フローの実地テスト(招待→承認待ち→認める)','りえ','wait','家族の端末2台で'],
-    ['改良版ルールへの貼り替え(コンソール)','りえ','wait','急ぎではない・次にコンソールを開くとき'],
-  ]},
-  { phase:'② 内部テスト(今週)', tasks:[
-    ['分離テスト: 本人Bがグループ作成→家族Bを招待→A/B相互に見えないことを確認','りえ','wait','結果はスクショで記録=市への証拠資料'],
-    ['招待コードの再利用防止・期限切れの確認','りえ','wait',''],
-    ['解除・退会・全データ削除の動作確認','りえ','wait','削除後はFirebaseコンソールでも実削除を目視'],
-    ['テスト結果のスクショ整理','りえ+Claude','wait','Claudeが記録票にまとめます'],
-  ]},
-  { phase:'③ 開発環境の整備(並行)', tasks:[
-    ['自動チェック(GitHub Actions)の導入','Claude Code','done','PR#4 マージ済み・PRごとに基本検査が動きます'],
-    ['チーム状況ボードの本設置(このページをサイトへ)','Claude Code','doing','PR#5 で追加・りえの承認待ち'],
-    ['基本検査にこのページの検査を追加(構文・参照ファイル)','Claude Code','doing','PR#5 に同梱'],
-    ['ブランチ保護の設定(main直接変更の禁止)','りえ','wait','GitHub設定画面・5分'],
-    ['Issues導入(修正リストの引っ越し)','Claude','wait','内部テスト後'],
-    ['ChatGPT側の共有ノート書き込み接続','りえ','wait','残り1つの接続設定'],
-  ]},
-  { phase:'④ 検証フェーズの準備(来週〜)', tasks:[
-    ['検証キット作成(お願い文・同意書・質問票・記録シート)','Claude','wait','内部テスト完了が合図'],
-    ['ご両親テスト(第1段階: 言葉と指の確認)','りえ','wait','「これを押したら何が起きると思う?」方式'],
-    ['小規模検証 4〜6世帯','りえ','wait','4分類から1〜2世帯ずつ'],
-    ['検証結果の集計・グラフ化','Claude','wait',''],
-  ]},
-  { phase:'⑤ 市への準備(検証と並行)', tasks:[
-    ['まいにこ専用Gmailの作成','りえ','wait',''],
-    ['J-PlatPatで「まいにこ」自己検索','りえ','wait','無料・10分'],
-    ['INPIT(知財窓口)相談で名称・区分の確認','りえ','wait','無料・長野県内'],
-    ['競合調査(「そっとしておいて」の独自性判定)','Claude','wait','誇大表現の解禁判定用'],
-    ['初回相談の想定問答練習(Claudeが職員役)','りえ+Claude','wait','検証に手応えが出たら'],
-  ]},
-  { phase:'⑥ 凍結中(本人テスト完了まで触らない)', tasks:[
-    ['書類ポケット','—','frozen',''],
-    ['AI本格接続(日々の記録まとめ)','—','frozen',''],
-    ['災害・緊急時カード','—','frozen',''],
-    ['おまもりタグ(QR)','—','frozen',''],
-  ]},
-];
-
-const ST = {
-  done:  ['st-done','済'],
-  doing: ['st-doing','進行中'],
-  wait:  ['st-wait','待ち'],
-  frozen:['st-frozen','凍結'],
-};
-function ownerClass(o){
-  if(o.includes('りえ')) return 'owner o-rie';
-  if(o.includes('ChatGPT')) return 'owner o-gpt';
-  return 'owner';
-}
-
-/* 文字列を「HTMLではなく、ただの文字」として扱うための部品。
-   < や " などの記号を実体参照に置き換えるので、
-   タグやスクリプトとして解釈されることがありません。 */
-function esc(s){
-  return String(s).replace(/[&<>"']/g, c => ({
-    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
-  })[c]);
-}
-
-document.getElementById('now-task').textContent = NOW.task;
-document.getElementById('now-memo').textContent = NOW.memo;
-document.getElementById('today').textContent = new Date().toLocaleDateString('ja-JP',{month:'long',day:'numeric',weekday:'short'});
-
-document.getElementById('board').innerHTML = BOARD.map(ph=>{
-  const doneN = ph.tasks.filter(t=>t[2]==='done').length;
-  return '<section class="phase">'+
-    '<div class="ph-head"><h2>'+esc(ph.phase)+'</h2><span class="cnt">'+doneN+'/'+ph.tasks.length+' 済</span></div>'+
-    ph.tasks.map(t=>{
-      const [cls,txt]=ST[t[2]]||ST.wait;
-      return '<div class="trow">'+
-        '<span class="stamp '+cls+'">'+txt+'</span>'+
-        '<div class="nm">'+esc(t[0])+(t[3]?'<small>'+esc(t[3])+'</small>':'')+'</div>'+
-        '<span class="'+ownerClass(t[1])+'">'+esc(t[1])+'</span>'+
-      '</div>';
-    }).join('')+
-  '</section>';
-}).join('');
-
-/* ============ GitHubライブ状況 ============ */
-/* ここで扱うのは、GitHubから受け取った「外から来た文字列」です。
-   PRの題名・ブランチ名・連絡帳の抜粋には何が入っているか分からないため、
-   HTMLとして組み立てず、textContent で文字として入れます。
-   題名に < や " が含まれていても、そのまま文字として表示されます。 */
-
+/* ---- 表示の部品 ---- */
 function el(tag, cls, text){
-  const n = document.createElement(tag);
+  var n = document.createElement(tag);
   if(cls) n.className = cls;
-  if(text !== undefined) n.textContent = text;
+  if(text !== undefined && text !== null) n.textContent = text;
   return n;
 }
-
-/* リンク先も外から来た値なので、GitHubのURLのときだけ href に入れます。
-   それ以外(javascript: など)は、リンクにせず文字だけを表示します。 */
-function ghLink(url, text){
-  const a = el('a', null, text);
-  if(/^https:\/\/github\.com\//.test(String(url))){
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-  }
+function setKids(box, nodes){
+  box.textContent = '';
+  for(var i=0;i<nodes.length;i++) box.appendChild(nodes[i]);
+}
+/* リンク先も外から来た値なので、決めた行き先のときだけ href に入れます */
+function okUrl(u){
+  return /^https:\/\/(github\.com\/pocham4173\/hidamari|pocham4173\.github\.io\/hidamari)\//.test(String(u)) ? String(u) : null;
+}
+/* 大きなボタン。押せる高さはCSSで56px以上を確保しています */
+function act(url, label, note, primary){
+  var a = el('a', 'act' + (primary ? ' primary' : ''));
+  var u = okUrl(url);
+  if(u){ a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+  else { a.className += ' off'; }
+  a.appendChild(el('span','l', label));
+  if(note) a.appendChild(el('span','n', note));
   return a;
 }
-
-function row(...parts){
-  const d = el('div','row');
-  parts.forEach(p=>{
-    d.appendChild(typeof p === 'string' ? document.createTextNode(p) : p);
+function getJson(url){
+  return fetch(url).then(function(res){
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
   });
-  return d;
 }
 
-async function loadLive(){
-  const box=document.getElementById('live-box');
-  const rows=[];
-  try{
-    const prs=await (await fetch('https://api.github.com/repos/pocham4173/hidamari/pulls?state=all&per_page=5')).json();
-    if(!Array.isArray(prs)) throw new Error('rate');
-    if(prs.length===0){
-      rows.push(row(el('span','tag tag-pr','PR'), 'まだありません'));
-    }
-    prs.forEach(p=>{
-      const st=p.merged_at?'マージ済み':(p.state==='open'?'確認待ち':'クローズ');
-      rows.push(row(
-        el('span','tag tag-pr','PR#'+p.number),
-        ghLink(p.html_url, p.title),
-        el('span','mono',st)
-      ));
-    });
-    const brs=await (await fetch('https://api.github.com/repos/pocham4173/hidamari/branches')).json();
-    if(Array.isArray(brs)){
-      rows.push(row(
-        el('span','tag tag-br','作業机'),
-        el('span','mono', brs.map(b=>b.name).join(' / '))
-      ));
-    }
-  }catch(e){
-    rows.push(row(
-      'GitHubの取得に失敗しました(回数制限の可能性)。',
-      ghLink('https://github.com/pocham4173/hidamari/pulls','PR一覧を直接開く')
-    ));
+/* ============ 1. りえの確認・承認 ============ */
+/* 自動検査(GitHub Actions)の結果を、短い日本語にします */
+function checkLabel(runs){
+  if(!runs || !runs.length) return ['b-run', '自動検査: まだ結果がありません'];
+  var bad = 0, running = 0;
+  for(var i=0;i<runs.length;i++){
+    var r = runs[i];
+    if(r.status !== 'completed') running++;
+    else if(r.conclusion !== 'success' && r.conclusion !== 'neutral' && r.conclusion !== 'skipped') bad++;
   }
-  try{
-    const md=await (await fetch('https://raw.githubusercontent.com/pocham4173/hidamari/main/AI_HANDOFF.md?t='+Date.now())).text();
-    const states=[...md.matchAll(/##\s*(.+?)\n\*\*状態[：:]\s*(.+?)\*\*/g)];
-    states.forEach(m=>{
-      const name=m[1].trim(), state=m[2].trim();
-      if(name.includes('連絡')||name.includes('回答')||name.includes('決定')){
-        rows.push(row(el('span','tag tag-hf','連絡帳'), name+': ', el('b',null,state)));
-      }
-    });
-  }catch(e){}
-  box.textContent='';
-  (rows.length?rows:[row('表示できる情報がありません')]).forEach(r=>box.appendChild(r));
+  if(bad) return ['b-ng', '自動検査: 赤(要確認)'];
+  if(running) return ['b-run', '自動検査: 実行中'];
+  return ['b-ok', '自動検査: 緑(問題なし)'];
 }
-loadLive();
+
+function prCard(pr){
+  var card = el('div','card');
+
+  var top = el('div','card-top');
+  top.appendChild(el('span','badge b-pr', 'PR #' + pr.number));
+  top.appendChild(el('span','badge b-wait', 'りえの承認待ち'));
+  var chk = el('span','badge b-run','自動検査: 確認中…');
+  top.appendChild(chk);
+  card.appendChild(top);
+
+  card.appendChild(el('div','card-ttl', pr.title || '(題名なし)'));
+  card.appendChild(el('div','card-note', 'Pull Request(変更の提案)です。中身を見て、よければMergeするとアプリに反映されます。'));
+
+  var acts = el('div','acts');
+  acts.appendChild(act(pr.html_url, 'PRを開く', '変更の中身を見てMergeする', true));
+  acts.appendChild(act(APP, 'アプリを確認', '実際の画面で確かめる'));
+  card.appendChild(acts);
+
+  /* 自動検査の結果は、あとから届いたときに書き換えます */
+  var sha = pr.head && pr.head.sha;
+  if(sha){
+    getJson(API + '/commits/' + encodeURIComponent(sha) + '/check-runs')
+      .then(function(d){
+        var s = checkLabel(d && d.check_runs);
+        chk.className = 'badge ' + s[0];
+        chk.textContent = s[1];
+      })
+      .catch(function(){
+        chk.className = 'badge b-run';
+        chk.textContent = '自動検査: 取得できませんでした';
+      });
+  }else{
+    chk.className = 'badge b-run';
+    chk.textContent = '自動検査: 取得できませんでした';
+  }
+  return card;
+}
+
+function emptyCard(){
+  var box = el('div','empty');
+  box.appendChild(el('div','big','今、りえが確認するものはありません'));
+  box.appendChild(el('div','sm','承認待ちのPull Request(変更の提案)はありません。新しい提案ができると、ここに出ます。'));
+  return box;
+}
+
+function loadApproval(){
+  var box = document.getElementById('approval-box');
+  getJson(API + '/pulls?state=open&per_page=5').then(function(prs){
+    if(!Array.isArray(prs)) throw new Error('形式が違います');
+    if(prs.length === 0){ setKids(box, [emptyCard()]); return; }
+    var cards = [];
+    for(var i=0;i<prs.length;i++) cards.push(prCard(prs[i]));
+    setKids(box, cards);
+  }).catch(function(){
+    var c = el('div','card');
+    c.appendChild(el('div','card-ttl','GitHubから取得できませんでした'));
+    c.appendChild(el('div','card-note','回数制限の可能性があります。1時間ほどおいて開き直すか、下のボタンからPR一覧を直接ご覧ください。'));
+    var acts = el('div','acts');
+    acts.appendChild(act(GH + '/pulls', 'PR一覧を開く', 'GitHubで直接見る', true));
+    c.appendChild(acts);
+    setKids(box, [c]);
+  });
+}
+
+/* ============ 2. これから進めること(Claude Codeが更新) ============ */
+var NEXT_UPDATED = '2026-08-25';
+var NEXT = [
+  {
+    title: '「記録」タブを月間記録として実用化する(第1段階)',
+    state: '実装待ち', who: 'Claude Code',
+    note: 'やることはIssue #9にまとまっています。次はClaude Codeが実装してPull Requestを出します。出たら「1」に並びます。',
+    link: GH + '/issues/9', linkLabel: 'Issue #9 を開く', linkNote: 'やることの中身を見る'
+  },
+  {
+    title: '服薬表示をわかりやすくする',
+    state: '相談中', who: 'ChatGPT',
+    note: 'まだIssue(やることの記録)になっていません。使い方の相談がまとまってからIssueにします。'
+  },
+  {
+    title: '家族から先に送る挨拶',
+    state: '相談中', who: 'ChatGPT',
+    note: 'こちらもIssueにする前の相談段階です。服薬表示のあとに整理します。'
+  }
+];
+var ST_CLASS = { '相談中':'st-soudan', '設計中':'st-sekkei', '実装待ち':'st-jissou', '確認待ち':'st-kakunin' };
+var WHO_CLASS = { 'りえ':'w-rie', 'ChatGPT':'w-gpt', 'Claude Code':'w-cc' };
+
+function renderNext(){
+  var box = document.getElementById('next-box'), nodes = [];
+  for(var i=0;i<NEXT.length && i<3;i++){
+    var it = NEXT[i], n = el('div','nx');
+    n.appendChild(el('div','nx-ttl', it.title));
+    var meta = el('div','nx-meta');
+    meta.appendChild(el('span','st ' + (ST_CLASS[it.state] || 'st-soudan'), it.state));
+    meta.appendChild(el('span','who ' + (WHO_CLASS[it.who] || 'w-cc'), '次の番: ' + it.who));
+    n.appendChild(meta);
+    n.appendChild(el('div','nx-note', it.note));
+    if(it.link) n.appendChild(act(it.link, it.linkLabel, it.linkNote));
+    nodes.push(n);
+  }
+  setKids(box, nodes);
+  document.getElementById('next-upd').textContent =
+    'この3件はClaude Codeが更新します(最終更新 ' + NEXT_UPDATED + ')。';
+}
+
+/* ============ 3. 完了したこと(ひらいたときに読み込む) ============ */
+var doneLoaded = false;
+function doneRow(stampText, label, url){
+  var row = el('div','done-row');
+  row.appendChild(el('span','stamp', stampText));
+  var wrap = el('div');
+  var u = okUrl(url);
+  if(u){
+    var a = el('a', null, label);
+    a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    wrap.appendChild(a);
+  }else{
+    wrap.appendChild(el('span', null, label));
+  }
+  row.appendChild(wrap);
+  return row;
+}
+function loadDone(){
+  var box = document.getElementById('done-box');
+  Promise.all([
+    getJson(API + '/pulls?state=closed&per_page=10').catch(function(){ return null; }),
+    getJson(API + '/issues?state=closed&per_page=10').catch(function(){ return null; })
+  ]).then(function(res){
+    var rows = [], prs = res[0], issues = res[1], i;
+    if(Array.isArray(prs)){
+      for(i=0;i<prs.length;i++){
+        if(!prs[i].merged_at) continue;
+        rows.push(doneRow('反映済', 'PR #' + prs[i].number + ' ' + (prs[i].title || ''), prs[i].html_url));
+      }
+    }
+    if(Array.isArray(issues)){
+      for(i=0;i<issues.length;i++){
+        if(issues[i].pull_request) continue;  /* IssueのAPIにはPRも混ざるため除く */
+        rows.push(doneRow('完了', 'Issue #' + issues[i].number + ' ' + (issues[i].title || ''), issues[i].html_url));
+      }
+    }
+    if(!rows.length) rows.push(el('div','done-row','まだ完了したものはありません(または取得できませんでした)。'));
+    setKids(box, rows);
+  });
+}
+
+/* ============ 起動 ============ */
+document.getElementById('today').textContent =
+  '今日: ' + new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+renderNext();
+loadApproval();
+document.getElementById('done').addEventListener('toggle', function(){
+  if(this.open && !doneLoaded){ doneLoaded = true; loadDone(); }
+});
 </script>
 </body>
 </html>
