@@ -1322,15 +1322,45 @@ var SOUDAN_SAKI = {
   houkatsu: {
     name: '地域包括支援センター',
     url:  'https://www.city.ueda.nagano.jp/soshiki/korei/2610.html',
-    desc: '介護や暮らしの困りごとを、はじめに相談できる窓口です。お住まいの地区ごとに担当が決まっています。一覧は公式ページでご確認ください。'
+    desc: '高齢の方の介護や暮らしの困りごとを、はじめに相談できる窓口です。お住まいの地区ごとに担当が決まっています。一覧は公式ページでご確認ください。'
   },
   kaigohoken: {
     name: '介護保険の案内(介護保険のしおり)',
     url:  'https://www.city.ueda.nagano.jp/soshiki/korei/3842.html',
-    desc: '介護保険の使い方や、申請の流れがまとまっています。'
+    desc: '介護保険の使い方や、要介護認定の申請の流れがまとまっています。使えるかどうかの判断は、窓口で行われます。'
+  },
+  seikatsu: {
+    name: '生活支援サービス',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/2770.html',
+    desc: '暮らしを支えるサービスの案内です。利用できるかどうかは、窓口にご相談ください。'
+  },
+  kaigosha: {
+    name: '介護者支援サービス',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/2692.html',
+    desc: '介護をするご家族に向けた支援の案内です。'
+  },
+  carepath: {
+    name: '上田市認知症ケアパス',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/4140.html',
+    desc: '物忘れが気になりはじめたときから、段階ごとの相談先と使えるしくみがまとまっています。'
+  },
+  mimamori: {
+    name: '高齢者の見守り支援',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/127011.html',
+    desc: '上田市が行っている高齢者の見守りのしくみが紹介されています。'
+  },
+  gyakutai: {
+    name: '高齢者虐待の相談窓口',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/71883.html',
+    desc: '高齢の方への虐待が心配なときの相談窓口です。ご本人以外からの相談もできます。'
+  },
+  koken: {
+    name: '成年後見制度',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/1745.html',
+    desc: '判断がむずかしくなったときに、財産の管理や契約を支える制度の案内です。'
   },
   yakan: {
-    name: '夜間・休日の緊急医案内',
+    name: '夜間・休日の救急医療案内',
     url:  'https://www.city.ueda.nagano.jp/soshiki/iryo/4874.html',
     desc: 'その日に診てもらえる当番の医療機関を、上田市が案内しています。当番は日によって変わります。'
   },
@@ -1338,32 +1368,20 @@ var SOUDAN_SAKI = {
     name: '上田市内科・小児科初期救急センター',
     url:  'https://www.city.ueda.nagano.jp/soshiki/iryo/4202.html',
     desc: '夜間の内科・小児科の初期救急を受け付けています。受付の時間は公式ページでご確認ください。'
-  },
-  carepath: {
-    name: '上田市認知症ケアパス',
-    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/4140.html',
-    desc: '物忘れが気になりはじめたときから、段階ごとの相談先と使えるしくみがまとまっています。'
-  },
-  shohi: {
-    name: '上田市消費生活センター',
-    url:  'https://www.city.ueda.nagano.jp/soshiki/shohiseikatu/4629.html',
-    desc: '訪問販売、電話勧誘、契約のトラブルなどについて相談できます。'
-  },
-  mimamori: {
-    name: '高齢者の見守り支援',
-    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/127011.html',
-    desc: '上田市が行っている高齢者の見守りのしくみが紹介されています。'
   }
 };
 
-/* 困りごと。上から順に表示します */
+/* 困りごと。上から順に表示します。
+   いちばん上は「どこに相談すればよいか分からない」ときの入口です。 */
 var SOUDAN_KOMARI = [
-  { label:'介護や暮らしのこと',          sub:'介護保険、暮らしの困りごと',      saki:['houkatsu','kaigohoken'] },
-  { label:'夜間・休日の体調',            sub:'今日診てもらえる医療機関',        saki:['yakan','shokikyukyu'], kyukyu:true },
-  { label:'物忘れ・認知症のこと',        sub:'相談先と、これからの見通し',      saki:['carepath','houkatsu'] },
-  { label:'詐欺・契約トラブル',          sub:'訪問販売、電話勧誘など',          saki:['shohi'],
-    tel:{ num:'188', label:'消費者ホットライン 188 に電話する', note:'お近くの相談窓口につながります' } },
-  { label:'上田市の見守り支援を知りたい', sub:'市が行っているしくみを調べる',    saki:['mimamori'] }
+  { label:'どこに相談すればよいか分からない', sub:'まずはここへ',                  saki:['houkatsu'] },
+  { label:'介護認定・介護サービスのこと',     sub:'介護保険、要介護認定の申請',    saki:['kaigohoken','houkatsu'] },
+  { label:'暮らしの支援のこと',               sub:'日々の暮らしを支えるサービス',  saki:['seikatsu','houkatsu'] },
+  { label:'介護する人の負担のこと',           sub:'介護するご家族への支援',        saki:['kaigosha','houkatsu'] },
+  { label:'物忘れ・認知症のこと',             sub:'相談先と、これからの見通し',    saki:['carepath','houkatsu'] },
+  { label:'見守りのこと',                     sub:'市が行っているしくみを調べる',  saki:['mimamori','houkatsu'] },
+  { label:'高齢者虐待・成年後見のこと',       sub:'虐待が心配、判断がむずかしい',  saki:['gyakutai','koken'] },
+  { label:'急な体調不良・休日の病院',         sub:'今日診てもらえる医療機関',      saki:['yakan','shokikyukyu'], kyukyu:true }
 ];
 
 /* 上田市の公式サイトのときだけ href に入れます */
@@ -1437,15 +1455,6 @@ function soudanShow(i){
     it.appendChild(sdLink(t.url, '公式ページを見る', '上田市のページが新しい画面で開きます'));
     box.appendChild(it);
   });
-
-  /* 番号が変わらない電話だけ、ボタンを出します */
-  if(k.tel){
-    var tw = sdEl('div','sd-item');
-    tw.appendChild(sdEl('div','n', '電話で相談する'));
-    tw.appendChild(sdEl('div','d', k.tel.note));
-    tw.appendChild(sdTel(k.tel.num, k.tel.label, ''));
-    box.appendChild(tw);
-  }
 
   var back = sdEl('button','sd-btn back-pick');
   back.type = 'button';
