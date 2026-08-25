@@ -5,12 +5,13 @@
  * Pull Request ごとに、アプリが「基本的なところで壊れていないか」を機械的に確かめます。
  * 追加のパッケージは使わず、Node.js の標準機能だけで動きます。
  *
- * 確認するのは次の5点です。
+ * 確認するのは次の6点です。
  *   1. index.html の中の JavaScript に構文エラーがない
  *   2. onclick から呼ばれる関数が、すべて定義されている
  *   3. manifest.json が正しい JSON として読める
  *   4. sw.js に構文エラーがない
- *   5. 公開に必要なファイル(アイコンなど)が実際に存在する
+ *   5. tasks.html(チーム状況ボード)の JavaScript に構文エラーがない
+ *   6. 公開に必要なファイル(アイコンなど)が実際に存在する
  *
  * これは「明らかな壊れ方」を見つけるための検査です。
  * 実機での画面確認や、Firestore を使った通し確認の代わりにはなりません。
@@ -63,25 +64,30 @@ function syntaxError(code, filename, lineOffset = 0) {
   }
 }
 
+/** HTML ファイルの中に直接書かれた JavaScript の構文を確かめる */
+function checkHtmlSyntax(html, name) {
+  const blocks = inlineScripts(html);
+  if (blocks.length === 0) {
+    record(`${name} の JavaScript に構文エラーがない`, false, 'スクリプト部分が1つも見つかりませんでした');
+    return;
+  }
+  const errors = blocks
+    .map((b) => syntaxError(b.code, name, b.startLine - 1))
+    .filter(Boolean);
+  record(
+    `${name} の JavaScript に構文エラーがない (${blocks.length}か所を確認)`,
+    errors.length === 0,
+    errors.join('\n')
+  );
+}
+
 /* ---------- 1. index.html の JavaScript 構文 ---------- */
 
 const html = read('index.html');
 if (html === null) {
   record('index.html がある', false, 'index.html が見つかりません');
 } else {
-  const blocks = inlineScripts(html);
-  if (blocks.length === 0) {
-    record('index.html の JavaScript に構文エラーがない', false, 'スクリプト部分が1つも見つかりませんでした');
-  } else {
-    const errors = blocks
-      .map((b) => syntaxError(b.code, 'index.html', b.startLine - 1))
-      .filter(Boolean);
-    record(
-      `index.html の JavaScript に構文エラーがない (${blocks.length}か所を確認)`,
-      errors.length === 0,
-      errors.join('\n')
-    );
-  }
+  checkHtmlSyntax(html, 'index.html');
 }
 
 /* ---------- 2. onclick から呼ばれる関数が定義されている ---------- */
@@ -135,7 +141,18 @@ if (sw === null) {
   record('sw.js に構文エラーがない', err === null, err || '');
 }
 
-/* ---------- 5. 公開に必要なファイルが存在する ---------- */
+/* ---------- 5. tasks.html の JavaScript 構文 ---------- */
+
+/* チーム状況ボード。アプリ本体とは別のページですが、同じ場所に公開するため
+   ここでも「明らかな壊れ方」を確かめます。 */
+const tasksHtml = read('tasks.html');
+if (tasksHtml === null) {
+  record('tasks.html がある', false, 'tasks.html が見つかりません');
+} else {
+  checkHtmlSyntax(tasksHtml, 'tasks.html');
+}
+
+/* ---------- 6. 公開に必要なファイルが存在する ---------- */
 
 const needed = new Map(); // ファイル名 -> どこから参照されているか
 
@@ -162,12 +179,19 @@ if (manifest) {
   need(manifest.start_url === undefined ? './' : manifest.start_url, 'manifest.json の start_url');
   for (const icon of manifest.icons || []) need(icon.src, 'manifest.json のアイコン');
 }
-if (html !== null) {
+/** HTML から、同じ場所に置いたファイルへの参照(href / src)を拾う */
+function collectRefs(html, from) {
   // スクリプト部分を除いた HTML から、href / src の参照を拾う
   const markup = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
-  for (const m of markup.matchAll(/\b(?:href|src)\s*=\s*"([^"]+)"/g)) need(m[1], 'index.html');
+  for (const m of markup.matchAll(/\b(?:href|src)\s*=\s*"([^"]+)"/g)) need(m[1], from);
+}
+
+if (html !== null) {
+  collectRefs(html, 'index.html');
   for (const m of html.matchAll(/serviceWorker\.register\(\s*'([^']+)'/g)) need(m[1], 'index.html の Service Worker 登録');
 }
+/* tasks.html が読み込むアイコンなども、同じように存在を確かめます */
+if (tasksHtml !== null) collectRefs(tasksHtml, 'tasks.html');
 
 const missingFiles = [...needed.entries()].filter(([f]) => !fs.existsSync(path.join(ROOT, f)));
 record(
