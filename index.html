@@ -123,7 +123,6 @@ td.today{background:var(--hi);color:#fff;}
 .f-head{background:var(--hi);padding:14px 16px 12px;color:#fff;position:relative;}
 .f-head .lg{font-weight:700;letter-spacing:.1em;font-size:.85rem;opacity:.9;}
 .f-head .tt{font-size:1.25rem;font-weight:800;margin-top:2px;}
-.f-set{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:999px;font-family:inherit;font-size:.8rem;font-weight:700;padding:7px 13px;cursor:pointer;}
 .f-body{flex:1;padding:13px 13px 96px;overflow-y:auto;}
 .card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid #E5DCCB;}
 .card h3{font-size:.98rem;margin-bottom:10px;color:var(--cha);border-left:4px solid var(--hi);padding-left:8px;font-weight:700;}
@@ -159,9 +158,15 @@ td.today{background:var(--hi);color:#fff;}
 
 .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;display:none;border-top:2px solid #E3D9C8;padding:4px 2px calc(10px + env(safe-area-inset-bottom));font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;}
 .nav.show{display:flex;}
-.nav button{flex:1;background:none;border:none;font-family:inherit;font-size:.92rem;color:var(--usucha);cursor:pointer;padding:14px 0 6px;font-weight:700;}
+.nav button{flex:1;background:none;border:none;font-family:inherit;font-size:.92rem;color:var(--usucha);cursor:pointer;padding:14px 0 6px;font-weight:700;white-space:nowrap;}
 .nav button.on{color:#fff;background:var(--hi);border-radius:10px;margin:4px 3px 0;padding:10px 0 6px;}
 .nav button.hidden{display:none;}
+/* 設定はタブではなく設定画面を開くボタン。細い区切りで、行き先が違うことを示す */
+.nav button.nav-set{border-left:1px solid #EFE8DA;}
+/* 画面が狭いときは文字を少しだけ小さくして、切れずに収まるようにする */
+@media (max-width:360px){
+  .nav button{font-size:.84rem;}
+}
 #loading{position:fixed;inset:0;background:#FFF8EA;display:flex;align-items:center;justify-content:center;z-index:99;font-weight:900;color:var(--usucha);font-size:1rem;}
 </style>
 </head>
@@ -404,7 +409,6 @@ td.today{background:var(--hi);color:#fff;}
   <div class="f-head">
     <div class="lg" id="f-lg">まいにこ ─ 管理</div>
     <div class="tt" id="f-title"></div>
-    <button class="f-set" onclick="openSettings()">設定</button>
   </div>
   <div class="f-body">
 
@@ -512,6 +516,7 @@ td.today{background:var(--hi);color:#fff;}
   <button data-t="t-yotei">予定</button>
   <button data-t="t-kiroku" id="nav-kiroku">記録</button>
   <button data-t="t-soudan" id="nav-soudan">相談</button>
+  <button class="nav-set" id="nav-settings" onclick="openSettings()">⚙️ 設定</button>
 </div>
 
 </div>
@@ -1177,14 +1182,16 @@ function initKazoku(){
     }).join('');
   });
 }
+/* 下部メニューのうち、タブを切り替えるのは data-t を持つボタンだけです。
+   「設定」は行き先がタブではなく設定画面なので、ここでは扱いません。 */
 function showTab(t){
   document.querySelectorAll('.ftab').forEach(x=>x.style.display='none');
   document.getElementById(t).style.display='block';
-  document.querySelectorAll('#fnav button').forEach(b=>{
+  document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
     b.classList.toggle('on', b.dataset.t===t);
   });
 }
-document.querySelectorAll('#fnav button').forEach(b=>{
+document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
   b.addEventListener('click',()=>showTab(b.dataset.t));
 });
 
