@@ -205,13 +205,43 @@ table.cal-rec td.pad{background:none;}
 .krec-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
 .krec-btn{background:#FBF8F2;border:1.5px solid #D8CDBA;border-radius:10px;padding:13px 6px;font-family:inherit;font-size:.93rem;font-weight:700;color:var(--cha);cursor:pointer;}
 .krec-btn:active{background:#F0E7D6;}
-.plan{border:2px dashed #D8CDBA;background:#FBF8F2;}
-.plan h3{border-left-color:#B7A88E;}
-.plan .badge{display:inline-block;background:#B7A88E;color:#fff;font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 10px;margin-bottom:8px;}
-.plan-item{padding:8px 2px;border-bottom:1px solid #EFE8DA;font-size:.9rem;color:#6B5C46;line-height:1.55;}
-.plan-item:last-child{border-bottom:none;}
-.plan-item b{color:#54462F;}
-.view-toggle{display:block;margin:4px auto 0;background:none;border:none;font-family:inherit;color:#B7A88E;font-size:.82rem;text-decoration:underline;cursor:pointer;padding:8px;}
+/* ===== 相談タブ: 困りごとから上田市の公式案内へ ===== */
+.sd-lead{font-size:.9rem;color:#6B5C46;line-height:1.7;margin-bottom:12px;}
+.sd-list{display:flex;flex-direction:column;gap:9px;}
+/* 困りごとを選ぶボタン。押せる高さは56px以上 */
+.sd-pick{
+  display:flex;flex-direction:column;justify-content:center;min-height:56px;width:100%;
+  font-family:inherit;text-align:left;cursor:pointer;
+  background:#fff;border:2px solid var(--hi);border-radius:12px;padding:11px 14px;
+  box-shadow:0 2px 0 rgba(224,113,26,.18);
+}
+.sd-pick:active{transform:translateY(2px);box-shadow:none;}
+.sd-pick .l{font-size:1.02rem;font-weight:900;color:var(--cha);line-height:1.45;}
+.sd-pick .s{font-size:.8rem;color:var(--usucha);font-weight:700;margin-top:2px;}
+/* 相談先の1件 */
+.sd-item{border:1px solid #EFE8DA;border-radius:12px;padding:12px;margin-bottom:10px;background:#FBF8F2;}
+.sd-item:last-of-type{margin-bottom:0;}
+.sd-item .n{font-size:1rem;font-weight:900;color:var(--cha);line-height:1.5;}
+.sd-item .d{font-size:.88rem;color:#6B5C46;line-height:1.65;margin:5px 0 10px;}
+/* リンク・電話のボタン。押せる高さは56px以上 */
+.sd-btn{
+  display:flex;flex-direction:column;justify-content:center;min-height:56px;
+  text-decoration:none;font-family:inherit;text-align:left;cursor:pointer;
+  border:2px solid var(--hi-koi);border-radius:10px;background:#fff;color:var(--hi-koi);
+  padding:8px 13px;margin-top:8px;box-shadow:0 2px 0 rgba(200,96,15,.15);
+}
+.sd-btn:active{transform:translateY(2px);box-shadow:none;}
+.sd-btn .l{font-size:.97rem;font-weight:900;}
+.sd-btn .s{font-size:.78rem;color:var(--usucha);font-weight:400;}
+.sd-btn.tel{border-color:var(--ha-koi);color:var(--ha-koi);box-shadow:0 2px 0 rgba(76,101,65,.15);}
+.sd-btn.back-pick{border-color:#C9B8A0;color:#7A5A34;box-shadow:0 2px 0 rgba(201,184,160,.3);}
+/* 119の案内 */
+.sd-119{
+  border:2px solid var(--hi-koi);border-radius:12px;background:#FFF6EE;
+  padding:11px 12px;margin-bottom:11px;
+}
+.sd-119 b{color:#A34A2E;font-size:.95rem;line-height:1.6;}
+.sd-119 .d{font-size:.85rem;color:#6B5C46;line-height:1.65;margin-top:4px;}
 
 .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;display:none;border-top:2px solid #E3D9C8;padding:4px 2px calc(10px + var(--nav-safe));font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;}
 .nav.show{display:flex;}
@@ -569,19 +599,23 @@ table.cal-rec td.pad{background:none;}
       </div>
     </div>
 
-    <!-- 相談(構想) -->
+    <!-- 相談(上田市の公式案内) -->
     <div class="ftab" id="t-soudan" style="display:none;">
-      <div class="card plan">
-        <span class="badge">今後の構想(まだ使えません)</span>
-        <h3>相談 ─ このタブに入る予定のもの</h3>
-        <div class="plan-item"><b>連絡先(優先順)</b> ─ 家族・緊急連絡先を優先順に登録。タップで発信</div>
-        <div class="plan-item"><b>かかりつけ・夜間救急</b> ─ 病院の連絡先を登録してすぐ電話</div>
-        <div class="plan-item"><b>上田市の相談窓口</b> ─ 地域包括支援センターなど、困りごと別の窓口案内。「介護について相談したい」(地域包括支援センター・介護保険のしおり・認定申請・高齢者介護課)、「移動・外出について相談したい」(公共交通・タクシー利用補助の公式ページ・交通政策課)を含みます。公式情報への案内に限定し、アプリ内で対象者の判定・申請可否の判断・予約・補助金額の保証は行いません</div>
-        <div class="plan-item" style="border-bottom:none;color:#8A7A62;">※アプリの記録や個人情報が上田市へ自動送信されることはありません</div>
+      <div class="card" id="sd-pick-card">
+        <h3>どんなことで困っていますか?</h3>
+        <p class="sd-lead">当てはまるものを選んでください。上田市の公式なご案内へ進めます。<br>このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。</p>
+        <div class="sd-list" id="sd-list"></div>
+      </div>
+      <div class="card" id="sd-detail-card" style="display:none;">
+        <h3 id="sd-detail-ttl">ここへ相談できます</h3>
+        <div id="sd-detail"></div>
+      </div>
+      <div class="card">
+        <div class="note">当番の医療機関や電話番号は変わることがあります。最新の内容は、それぞれの公式ページでお確かめください。</div>
+        <div class="note" id="sd-checked">公式情報の確認日: ─</div>
       </div>
     </div>
 
-    <button class="view-toggle" id="btn-view" onclick="toggleSimple()">今後の構想を見る</button>
     <button class="back" onclick="openBackConfirm()" style="display:block;width:calc(100% - 28px);">入口に戻る</button>
   </div>
 </div>
@@ -1164,7 +1198,6 @@ function initKazoku(){
   document.getElementById('yt-note').textContent=kOnly
     ?'登録した予定は、ホームとカレンダーに表示されます。'
     :'本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。';
-  applySimpleView();
   showTab('t-home');
   if(memWatchUnsub) memWatchUnsub();
   memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
@@ -1267,28 +1300,163 @@ function showTab(t){
     b.classList.toggle('on', b.dataset.t===t);
   });
   if(t==='t-kiroku') recOpen();
+  if(t==='t-soudan') soudanReset();
 }
 document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
   b.addEventListener('click',()=>showTab(b.dataset.t));
 });
 
-/* 初期は4+1のみ表示(構想は見たい人だけ) */
-function applySimpleView(){
-  const kOnly=isKOnly();
-  const showPlans=(!kOnly) && localStorage.getItem('showPlans')==='1';
-  /* 「記録」は実際に使える機能なので、構想の表示切替とは関係なく常に出します */
-  document.getElementById('nav-soudan').classList.toggle('hidden', !showPlans);
-  const bv=document.getElementById('btn-view');
-  bv.style.display=kOnly?'none':'block';
-  bv.textContent=showPlans?'構想の表示をやめる':'今後の構想を見る';
-  if(!showPlans){
-    const cur=document.querySelector('#fnav button.on');
-    if(cur && cur.dataset.t==='t-soudan') showTab('t-home');
+/* 下部メニューの4つ(ホーム・予定・記録・相談)は、どちらの家族モードでも
+   すべて実際に使える機能なので、表示の出し分けはしません。
+   以前あった「今後の構想を見る」の切り替えは、構想タブがなくなったため取り除きました。
+   localStorage の showPlans は読み書きしません(消しもしません)。 */
+
+/* ===== 相談タブ: 困りごとから上田市の公式案内へ =====
+   このアプリは、病気の判断・緊急度の判定・制度の該当判定を行いません。
+   上田市が出している公式ページへの入口だけを用意します。
+   リンクと文言はこの1か所にまとめてあるので、あとから差し替えられます。 */
+var SOUDAN_CHECKED = '2026年8月25日';
+
+/* 相談先(窓口)。名前・説明・公式ページ */
+var SOUDAN_SAKI = {
+  houkatsu: {
+    name: '地域包括支援センター',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/2610.html',
+    desc: '介護や暮らしの困りごとを、はじめに相談できる窓口です。お住まいの地区ごとに担当が決まっています。一覧は公式ページでご確認ください。'
+  },
+  kaigohoken: {
+    name: '介護保険の案内(介護保険のしおり)',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/3842.html',
+    desc: '介護保険の使い方や、申請の流れがまとまっています。'
+  },
+  yakan: {
+    name: '夜間・休日の緊急医案内',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/iryo/4874.html',
+    desc: 'その日に診てもらえる当番の医療機関を、上田市が案内しています。当番は日によって変わります。'
+  },
+  shokikyukyu: {
+    name: '上田市内科・小児科初期救急センター',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/iryo/4202.html',
+    desc: '夜間の内科・小児科の初期救急を受け付けています。受付の時間は公式ページでご確認ください。'
+  },
+  carepath: {
+    name: '上田市認知症ケアパス',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/4140.html',
+    desc: '物忘れが気になりはじめたときから、段階ごとの相談先と使えるしくみがまとまっています。'
+  },
+  shohi: {
+    name: '上田市消費生活センター',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/shohiseikatu/4050.html',
+    desc: '訪問販売、電話勧誘、契約のトラブルなどについて相談できます。'
+  },
+  mimamori: {
+    name: '高齢者の見守り支援',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/korei/127011.html',
+    desc: '上田市が行っている高齢者の見守りのしくみが紹介されています。'
   }
+};
+
+/* 困りごと。上から順に表示します */
+var SOUDAN_KOMARI = [
+  { label:'介護や暮らしのこと',          sub:'介護保険、暮らしの困りごと',      saki:['houkatsu','kaigohoken'] },
+  { label:'夜間・休日の体調',            sub:'今日診てもらえる医療機関',        saki:['yakan','shokikyukyu'], kyukyu:true },
+  { label:'物忘れ・認知症のこと',        sub:'相談先と、これからの見通し',      saki:['carepath','houkatsu'] },
+  { label:'詐欺・契約トラブル',          sub:'訪問販売、電話勧誘など',          saki:['shohi'],
+    tel:{ num:'188', label:'消費者ホットライン 188 に電話する', note:'お近くの相談窓口につながります' } },
+  { label:'上田市の見守り支援を知りたい', sub:'市が行っているしくみを調べる',    saki:['mimamori'] }
+];
+
+/* 上田市の公式サイトのときだけ href に入れます */
+function soudanUrl(u){
+  return /^https:\/\/www\.city\.ueda\.nagano\.jp\//.test(String(u)) ? String(u) : null;
 }
-function toggleSimple(){
-  localStorage.setItem('showPlans', localStorage.getItem('showPlans')==='1'?'':'1');
-  applySimpleView();
+function sdEl(tag, cls, text){
+  var n = document.createElement(tag);
+  if(cls) n.className = cls;
+  if(text !== undefined) n.textContent = text;
+  return n;
+}
+/* 公式ページを開くボタン。新しい画面で開きます */
+function sdLink(url, label, note){
+  var a = sdEl('a','sd-btn');
+  var u = soudanUrl(url);
+  if(u){ a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+  a.appendChild(sdEl('span','l', label));
+  if(note) a.appendChild(sdEl('span','s', note));
+  return a;
+}
+/* 電話するボタン。番号が変わらない119と188だけに使います */
+function sdTel(num, label, note){
+  var a = sdEl('a','sd-btn tel');
+  a.href = 'tel:' + num;
+  a.appendChild(sdEl('span','l', label));
+  if(note) a.appendChild(sdEl('span','s', note));
+  return a;
+}
+
+/* 最初の画面(困りごとを選ぶ) */
+function soudanReset(){
+  document.getElementById('sd-checked').textContent = '公式情報の確認日: ' + SOUDAN_CHECKED;
+  document.getElementById('sd-detail-card').style.display = 'none';
+  document.getElementById('sd-pick-card').style.display = 'block';
+  var list = document.getElementById('sd-list');
+  if(list.childNodes.length) return;   /* 一度作れば作り直しません */
+  SOUDAN_KOMARI.forEach(function(k, i){
+    var b = sdEl('button','sd-pick');
+    b.type = 'button';
+    b.appendChild(sdEl('span','l', k.label));
+    b.appendChild(sdEl('span','s', k.sub));
+    b.addEventListener('click', function(){ soudanShow(i); });
+    list.appendChild(b);
+  });
+}
+
+/* 選んだあとの画面(相談できる先) */
+function soudanShow(i){
+  var k = SOUDAN_KOMARI[i];
+  if(!k) return;
+  var box = document.getElementById('sd-detail');
+  box.textContent = '';
+  document.getElementById('sd-detail-ttl').textContent = k.label + ' ─ ここへ相談できます';
+
+  /* 命にかかわるときの案内は、いちばん上に出します */
+  if(k.kyukyu){
+    var w = sdEl('div','sd-119');
+    w.appendChild(sdEl('b','','命にかかわるようなとき、強い症状のときは、迷わず119番へ電話してください。'));
+    w.appendChild(sdEl('div','d','どこに相談してよいか分からないほど急なときも、119番で構いません。'));
+    w.appendChild(sdTel('119','119番に電話する','救急車を呼ぶときの番号です'));
+    box.appendChild(w);
+  }
+
+  k.saki.forEach(function(key){
+    var t = SOUDAN_SAKI[key];
+    if(!t) return;
+    var it = sdEl('div','sd-item');
+    it.appendChild(sdEl('div','n', t.name));
+    it.appendChild(sdEl('div','d', t.desc));
+    it.appendChild(sdLink(t.url, '公式ページを見る', '上田市のページが新しい画面で開きます'));
+    box.appendChild(it);
+  });
+
+  /* 番号が変わらない電話だけ、ボタンを出します */
+  if(k.tel){
+    var tw = sdEl('div','sd-item');
+    tw.appendChild(sdEl('div','n', '電話で相談する'));
+    tw.appendChild(sdEl('div','d', k.tel.note));
+    tw.appendChild(sdTel(k.tel.num, k.tel.label, ''));
+    box.appendChild(tw);
+  }
+
+  var back = sdEl('button','sd-btn back-pick');
+  back.type = 'button';
+  back.appendChild(sdEl('span','l','困りごとを選び直す'));
+  back.addEventListener('click', soudanReset);
+  box.appendChild(back);
+
+  box.appendChild(sdEl('div','note','このアプリから記録や個人情報が上田市へ送られることはありません。相談するかどうかは、ご家族で決めてください。'));
+
+  document.getElementById('sd-pick-card').style.display = 'none';
+  document.getElementById('sd-detail-card').style.display = 'block';
 }
 
 /* ===== 記録タブ: 月間記録 =====
