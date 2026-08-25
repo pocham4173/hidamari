@@ -124,7 +124,7 @@ footer{max-width:980px;margin:0 auto;padding:18px 16px 40px;font-size:.76rem;col
       <div class="brand">まいにこ<span class="sun"> ☀ </span>プロジェクトボード</div>
       <div class="sub">TEAM RIE ─ 進行状況一覧</div>
     </div>
-    <div class="hd-date"><b id="today">─</b>盤面の更新: 2026-08-24(Claude)</div>
+    <div class="hd-date"><b id="today">─</b>盤面の更新: 2026-08-25(Claude)</div>
   </div>
 </header>
 
@@ -165,7 +165,7 @@ footer{max-width:980px;margin:0 auto;padding:18px 16px 40px;font-size:.76rem;col
 /* ============ タスク盤面(Claudeが更新) ============ */
 const NOW = {
   task: '新版アプリの動作確認(スマホで2回開き直し→「ご本人と一緒に初期設定する」が出るか)',
-  memo: '出たら承認フローの実地テストへ。出なければスクショをClaudeへ'
+  memo: '出たら承認フローの実地テストへ。出なければスクショをClaudeへ / このボードを追加するPR#5も承認待ちです'
 };
 
 const BOARD = [
@@ -183,10 +183,11 @@ const BOARD = [
     ['テスト結果のスクショ整理','りえ+Claude','wait','Claudeが記録票にまとめます'],
   ]},
   { phase:'③ 開発環境の整備(並行)', tasks:[
-    ['自動チェック(GitHub Actions)の導入','Claude Code','doing','claude/pr-basic-checks ブランチ作成済み'],
+    ['自動チェック(GitHub Actions)の導入','Claude Code','done','PR#4 マージ済み・PRごとに基本検査が動きます'],
+    ['チーム状況ボードの本設置(このページをサイトへ)','Claude Code','doing','PR#5 で追加・りえの承認待ち'],
+    ['基本検査にこのページの検査を追加(構文・参照ファイル)','Claude Code','doing','PR#5 に同梱'],
     ['ブランチ保護の設定(main直接変更の禁止)','りえ','wait','GitHub設定画面・5分'],
     ['Issues導入(修正リストの引っ越し)','Claude','wait','内部テスト後'],
-    ['チーム状況ボードの本設置(このページをサイトへ)','Claude','doing','tasks.html をPRで追加予定'],
     ['ChatGPT側の共有ノート書き込み接続','りえ','wait','残り1つの接続設定'],
   ]},
   { phase:'④ 検証フェーズの準備(来週〜)', tasks:[
@@ -221,6 +222,16 @@ function ownerClass(o){
   if(o.includes('ChatGPT')) return 'owner o-gpt';
   return 'owner';
 }
+
+/* 文字列を「HTMLではなく、ただの文字」として扱うための部品。
+   < や " などの記号を実体参照に置き換えるので、
+   タグやスクリプトとして解釈されることがありません。 */
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[c]);
+}
+
 document.getElementById('now-task').textContent = NOW.task;
 document.getElementById('now-memo').textContent = NOW.memo;
 document.getElementById('today').textContent = new Date().toLocaleDateString('ja-JP',{month:'long',day:'numeric',weekday:'short'});
@@ -228,50 +239,93 @@ document.getElementById('today').textContent = new Date().toLocaleDateString('ja
 document.getElementById('board').innerHTML = BOARD.map(ph=>{
   const doneN = ph.tasks.filter(t=>t[2]==='done').length;
   return '<section class="phase">'+
-    '<div class="ph-head"><h2>'+ph.phase+'</h2><span class="cnt">'+doneN+'/'+ph.tasks.length+' 済</span></div>'+
+    '<div class="ph-head"><h2>'+esc(ph.phase)+'</h2><span class="cnt">'+doneN+'/'+ph.tasks.length+' 済</span></div>'+
     ph.tasks.map(t=>{
       const [cls,txt]=ST[t[2]]||ST.wait;
       return '<div class="trow">'+
         '<span class="stamp '+cls+'">'+txt+'</span>'+
-        '<div class="nm">'+t[0]+(t[3]?'<small>'+t[3]+'</small>':'')+'</div>'+
-        '<span class="'+ownerClass(t[1])+'">'+t[1]+'</span>'+
+        '<div class="nm">'+esc(t[0])+(t[3]?'<small>'+esc(t[3])+'</small>':'')+'</div>'+
+        '<span class="'+ownerClass(t[1])+'">'+esc(t[1])+'</span>'+
       '</div>';
     }).join('')+
   '</section>';
 }).join('');
 
 /* ============ GitHubライブ状況 ============ */
+/* ここで扱うのは、GitHubから受け取った「外から来た文字列」です。
+   PRの題名・ブランチ名・連絡帳の抜粋には何が入っているか分からないため、
+   HTMLとして組み立てず、textContent で文字として入れます。
+   題名に < や " が含まれていても、そのまま文字として表示されます。 */
+
+function el(tag, cls, text){
+  const n = document.createElement(tag);
+  if(cls) n.className = cls;
+  if(text !== undefined) n.textContent = text;
+  return n;
+}
+
+/* リンク先も外から来た値なので、GitHubのURLのときだけ href に入れます。
+   それ以外(javascript: など)は、リンクにせず文字だけを表示します。 */
+function ghLink(url, text){
+  const a = el('a', null, text);
+  if(/^https:\/\/github\.com\//.test(String(url))){
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+  }
+  return a;
+}
+
+function row(...parts){
+  const d = el('div','row');
+  parts.forEach(p=>{
+    d.appendChild(typeof p === 'string' ? document.createTextNode(p) : p);
+  });
+  return d;
+}
+
 async function loadLive(){
   const box=document.getElementById('live-box');
   const rows=[];
   try{
     const prs=await (await fetch('https://api.github.com/repos/pocham4173/hidamari/pulls?state=all&per_page=5')).json();
-    if(Array.isArray(prs)){
-      if(prs.length===0) rows.push('<div class="row"><span class="tag tag-pr">PR</span>まだありません</div>');
-      prs.forEach(p=>{
-        const st=p.merged_at?'マージ済み':(p.state==='open'?'確認待ち':'クローズ');
-        rows.push('<div class="row"><span class="tag tag-pr">PR#'+p.number+'</span>'+
-          '<a href="'+p.html_url+'" target="_blank">'+p.title+'</a>'+
-          '<span class="mono">'+st+'</span></div>');
-      });
-    } else { throw new Error('rate'); }
+    if(!Array.isArray(prs)) throw new Error('rate');
+    if(prs.length===0){
+      rows.push(row(el('span','tag tag-pr','PR'), 'まだありません'));
+    }
+    prs.forEach(p=>{
+      const st=p.merged_at?'マージ済み':(p.state==='open'?'確認待ち':'クローズ');
+      rows.push(row(
+        el('span','tag tag-pr','PR#'+p.number),
+        ghLink(p.html_url, p.title),
+        el('span','mono',st)
+      ));
+    });
     const brs=await (await fetch('https://api.github.com/repos/pocham4173/hidamari/branches')).json();
     if(Array.isArray(brs)){
-      rows.push('<div class="row"><span class="tag tag-br">作業机</span><span class="mono">'+
-        brs.map(b=>b.name).join(' / ')+'</span></div>');
+      rows.push(row(
+        el('span','tag tag-br','作業机'),
+        el('span','mono', brs.map(b=>b.name).join(' / '))
+      ));
     }
   }catch(e){
-    rows.push('<div class="row">GitHubの取得に失敗しました(回数制限の可能性)。<a href="https://github.com/pocham4173/hidamari/pulls" target="_blank">PR一覧を直接開く</a></div>');
+    rows.push(row(
+      'GitHubの取得に失敗しました(回数制限の可能性)。',
+      ghLink('https://github.com/pocham4173/hidamari/pulls','PR一覧を直接開く')
+    ));
   }
   try{
     const md=await (await fetch('https://raw.githubusercontent.com/pocham4173/hidamari/main/AI_HANDOFF.md?t='+Date.now())).text();
     const states=[...md.matchAll(/##\s*(.+?)\n\*\*状態[：:]\s*(.+?)\*\*/g)];
     states.forEach(m=>{
-      if(m[1].includes('連絡')||m[1].includes('回答')||m[1].includes('決定'))
-        rows.push('<div class="row"><span class="tag tag-hf">連絡帳</span>'+m[1].trim()+': <b>'+m[2].trim()+'</b></div>');
+      const name=m[1].trim(), state=m[2].trim();
+      if(name.includes('連絡')||name.includes('回答')||name.includes('決定')){
+        rows.push(row(el('span','tag tag-hf','連絡帳'), name+': ', el('b',null,state)));
+      }
     });
   }catch(e){}
-  box.innerHTML=rows.join('')||'<div class="row">表示できる情報がありません</div>';
+  box.textContent='';
+  (rows.length?rows:[row('表示できる情報がありません')]).forEach(r=>box.appendChild(r));
 }
 loadLive();
 </script>
