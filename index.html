@@ -1375,13 +1375,13 @@ var SOUDAN_SAKI = {
    いちばん上は「どこに相談すればよいか分からない」ときの入口です。 */
 var SOUDAN_KOMARI = [
   { label:'どこに相談すればよいか分からない', sub:'まずはここへ',                  saki:['houkatsu'] },
+  { label:'急な体調不良・休日の病院',         sub:'今日診てもらえる医療機関',      saki:['yakan','shokikyukyu'], kyukyu:true },
   { label:'介護認定・介護サービスのこと',     sub:'介護保険、要介護認定の申請',    saki:['kaigohoken','houkatsu'] },
   { label:'暮らしの支援のこと',               sub:'日々の暮らしを支えるサービス',  saki:['seikatsu','houkatsu'] },
   { label:'介護する人の負担のこと',           sub:'介護するご家族への支援',        saki:['kaigosha','houkatsu'] },
   { label:'物忘れ・認知症のこと',             sub:'相談先と、これからの見通し',    saki:['carepath','houkatsu'] },
   { label:'見守りのこと',                     sub:'市が行っているしくみを調べる',  saki:['mimamori','houkatsu'] },
-  { label:'高齢者虐待・成年後見のこと',       sub:'虐待が心配、判断がむずかしい',  saki:['gyakutai','koken'] },
-  { label:'急な体調不良・休日の病院',         sub:'今日診てもらえる医療機関',      saki:['yakan','shokikyukyu'], kyukyu:true }
+  { label:'高齢者虐待・成年後見のこと',       sub:'虐待が心配、判断がむずかしい',  saki:['gyakutai','koken'] }
 ];
 
 /* 上田市の公式サイトのときだけ href に入れます */
@@ -1403,7 +1403,7 @@ function sdLink(url, label, note){
   if(note) a.appendChild(sdEl('span','s', note));
   return a;
 }
-/* 電話するボタン。番号が変わらない119と188だけに使います */
+/* 電話するボタン。番号が変わらない119だけに使います */
 function sdTel(num, label, note){
   var a = sdEl('a','sd-btn tel');
   a.href = 'tel:' + num;
