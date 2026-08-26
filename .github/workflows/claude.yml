@@ -1,0 +1,61 @@
+# まいにこ Claude アシスタント
+#
+# Issue や Pull Request のコメントに「@claude」と書いたときだけ、Claude が動きます。
+# それ以外（コードの push、Issue を作っただけ、など）では動きません。
+#
+# 使い方：Issue か Pull Request のコメント欄に「@claude 〇〇してください」と書くだけです。
+# Claude は main を直接書き換えず、作業用ブランチを作って Pull Request にまとめます。
+#
+# 準備：リポジトリの Settings → Secrets and variables → Actions に
+# 「CLAUDETOKEN」という名前でトークンを登録しておきます。
+
+name: Claude アシスタント
+
+on:
+  # Issue のコメント、および Pull Request の会話コメント
+  issue_comment:
+    types: [created]
+  # Pull Request のコード行につけたコメント
+  pull_request_review_comment:
+    types: [created]
+  # Pull Request レビューの本文
+  pull_request_review:
+    types: [submitted]
+
+# 既定では何も許可せず、必要な権限は下のジョブにだけ与えます。
+permissions: {}
+
+jobs:
+  claude:
+    name: Claude アシスタント
+    # コメント本文に「@claude」が含まれるときだけ実行します。
+    # （これがないと、無関係なコメントでも毎回起動してしまいます）
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # 必要最小限の権限だけを与えます。
+    permissions:
+      contents: write # 作業用ブランチを作り、変更をそこへ push するため
+      pull-requests: write # Pull Request の作成と、コメントでの返事のため
+      issues: write # Issue でのコメントでの返事のため
+      id-token: write # Anthropic への認証（OIDC トークンの取得）のため
+
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Claude を実行
+        uses: anthropics/claude-code-action@v1
+        with:
+          # 認証には GitHub Secret「CLAUDETOKEN」を使います。
+          # API キー（sk-ant-api… で始まる）でも、Claude Code の
+          # OAuth トークン（sk-ant-oat… で始まる）でも、どちらでもそのまま使えるよう、
+          # 値の種類を見て渡し先を切り替えています。使わない側は空になります。
+          anthropic_api_key: ${{ startsWith(secrets.CLAUDETOKEN, 'sk-ant-api') && secrets.CLAUDETOKEN || '' }}
+          claude_code_oauth_token: ${{ !startsWith(secrets.CLAUDETOKEN, 'sk-ant-api') && secrets.CLAUDETOKEN || '' }}

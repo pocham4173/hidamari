@@ -49,6 +49,12 @@
 - 変更したのは AI_HANDOFF.md のこの欄のみで、絶対ルール3にもとづき main へ直接コミットしています。
 - 次の依頼をお待ちしています。
 
+- 2026-08-26：GitHub 上で Claude を呼び出せるようにする設定（GitHub Actions）を追加しました。
+- 変更ファイル：`.github/workflows/claude.yml`（新規）、`AI_HANDOFF.md`（この欄のみ）。アプリ本体（index.html / manifest.json / sw.js / 画像）は変更していません。
+- ブランチ：`claude/hidamari-github-actions-uo2fyp` / Pull Request：あり（絶対ルール3にもとづき main へ直接コミットしていません）。
+- 動く条件：Issue か Pull Request のコメントに「@claude」と書いたときだけです。コードの push などでは動きません。
+- 認証は GitHub Secret「CLAUDETOKEN」を使います。トークンの値はこのノートには書きません。
+
 ## りえの最終決定
 **状態：確認待ち**
 
