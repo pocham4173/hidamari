@@ -533,6 +533,19 @@ function renderBanner(){
       a.className += ' b-act';
       box.appendChild(a);
     }
+  }else if(!APPROVAL_STATE.loaded){
+    /* GitHub取得の完了前は、まだ誰の番か判断できません。断定せず「確認中」と表示します。 */
+    box.className = 'banner ai';
+    box.appendChild(el('div','b-big','最新の状況を確認中です'));
+    box.appendChild(el('div','b-row','GitHubから現在の担当と待ち状態を読み込んでいます。'));
+  }else if(APPROVAL_STATE.error){
+    /* 取得に失敗した場合も同様に、断定せず再確認を促します。 */
+    box.className = 'banner ai';
+    box.appendChild(el('div','b-big','最新の状況を確認できません'));
+    box.appendChild(el('div','b-row','誰の番か判断できないため、操作せず再読み込みするかPR一覧を確認してください。'));
+    var ea = act(GH + '/pulls', 'PR一覧を開く', 'GitHubで直接見る', true);
+    ea.className += ' b-act';
+    box.appendChild(ea);
   }else if(APPROVAL_STATE.hasMergeCandidate){
     /* merge-candidateラベル付きOpen PRがあるときは、NEXTに利用者待ちがなくても最上部を「りえの番です」にします */
     box.className = 'banner rie';
@@ -598,9 +611,13 @@ var TODAY_PLAN = {
 /* 今日の状態は「Claude実装中」のまま固定せず、Open PRの取得結果に合わせて決めます。
    取得前・取得失敗時は安全側("確認中")のままにし、根拠のない時刻や状態は作りません。 */
 function todayStage(){
-  if(!APPROVAL_STATE.loaded || APPROVAL_STATE.error){
+  if(!APPROVAL_STATE.loaded){
     return { status:'確認中', cls:'tp-ontime', who:'ChatGPT', userActionNeeded:false,
       nextStep:'GitHubから最新の状態を取得しています。' };
+  }
+  if(APPROVAL_STATE.error){
+    return { status:'確認できません', cls:'tp-delay', who:'-', userActionNeeded:false,
+      nextStep:'GitHubから最新状態を取得できません。再読み込みまたはPR一覧で確認してください。' };
   }
   if(APPROVAL_STATE.hasMergeCandidate){
     return { status:'りえの承認待ち', cls:'tp-ontime', who:'りえ', userActionNeeded:true,
