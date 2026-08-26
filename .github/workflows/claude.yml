@@ -1,0 +1,64 @@
+# まいにこ Claude アシスタント
+#
+# pocham4173（りえ）が Issue や Pull Request のコメントに「@claude」と書いたときだけ、
+# Claude が動きます。それ以外（他の人のコメント、コードの push、Issue を作っただけ、など）
+# では動きません。
+#
+# 使い方：Issue か Pull Request のコメント欄に「@claude 〇〇してください」と書くだけです。
+# Claude は main を直接書き換えず、作業用ブランチを作って Pull Request にまとめます。
+#
+# 準備：リポジトリの Settings → Secrets and variables → Actions に
+# 「CLAUDETOKEN」という名前で、claude setup-token で発行した
+# Claude Code の OAuth トークンを登録しておきます。
+
+name: Claude アシスタント
+
+on:
+  # Issue のコメント、および Pull Request の会話コメント
+  issue_comment:
+    types: [created]
+  # Pull Request のコード行につけたコメント
+  pull_request_review_comment:
+    types: [created]
+  # Pull Request レビューの本文
+  pull_request_review:
+    types: [submitted]
+
+# 既定では何も許可せず、必要な権限は下のジョブにだけ与えます。
+permissions: {}
+
+jobs:
+  claude:
+    name: Claude アシスタント
+    # 次の2つを両方みたすときだけ実行します。
+    #   1. コメントを書いたのが pocham4173（りえ）本人であること
+    #   2. コメント本文に「@claude」が含まれていること
+    # （これがないと、他の人のコメントや無関係なコメントでも起動してしまいます）
+    if: |
+      github.actor == 'pocham4173' && (
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # 必要最小限の権限だけを与えます。
+    permissions:
+      contents: write # 作業用ブランチを作り、変更をそこへ push するため
+      pull-requests: write # Pull Request の作成と、コメントでの返事のため
+      issues: write # Issue でのコメントでの返事のため
+      id-token: write # Anthropic への認証（OIDC トークンの取得）のため
+
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Claude を実行
+        uses: anthropics/claude-code-action@v1
+        with:
+          # 認証には GitHub Secret「CLAUDETOKEN」を使います。
+          # 中身は claude setup-token で発行した Claude Code の OAuth トークンです。
+          claude_code_oauth_token: ${{ secrets.CLAUDETOKEN }}
