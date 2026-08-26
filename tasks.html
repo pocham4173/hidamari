@@ -90,6 +90,48 @@ main{max-width:720px;margin:0 auto;padding:16px 14px 40px;}
   border-radius:8px;padding:8px 10px;margin-top:11px;
 }
 
+/* ===== 0. 今日は誰の番？ ===== */
+.banner{border-radius:14px;padding:16px 14px;border:2px solid;}
+.banner.rie{background:#FBEFEC;border-color:var(--shuniku);}
+.banner.ai{background:#EAF0FF;border-color:var(--kon);}
+.banner .b-big{font-size:1.12rem;font-weight:900;}
+.banner.rie .b-big{color:var(--shuniku);}
+.banner.ai .b-big{color:var(--kon);}
+.banner .b-row{font-size:.85rem;color:#4A453C;margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;}
+.banner .b-row .k{flex-shrink:0;font-weight:800;color:#6B6459;}
+.banner .b-act{margin-top:10px;}
+
+/* ===== 今日の予定 ===== */
+.today-plan{border:1px solid var(--usui);border-radius:12px;padding:13px 12px;background:#fff;}
+.today-plan .tp-h{font-size:.92rem;font-weight:800;color:var(--kon);margin-bottom:8px;}
+.today-plan .tp-row{font-size:.85rem;color:#4A453C;margin-bottom:5px;display:flex;flex-wrap:wrap;gap:6px;}
+.today-plan .tp-row .k{flex-shrink:0;font-weight:800;color:#6B6459;min-width:5.4em;}
+.today-plan .tp-note{font-size:.78rem;color:var(--hai);margin-top:8px;}
+.today-plan .tp-status{display:inline-block;font-size:.74rem;font-weight:800;border-radius:5px;padding:2px 8px;}
+.tp-ontime{background:#EDF5EF;color:var(--midori);}
+.tp-delay{background:#FBEFEC;color:var(--shuniku);}
+.tp-done{background:#F1EDE5;color:#6B6459;}
+
+/* 利用者待ち状態(赤系:りえの操作が必要) */
+.st-user{background:#FBEFEC;color:var(--shuniku);border:1px solid #F0C9BE;}
+.st-run{background:#FFF3D6;color:#8A6A00;}
+.st-hold{background:#F1EDE5;color:#6B6459;}
+.st-queue{background:#F1EDE5;color:#6B6459;}
+
+/* ===== 5. 過去の要望を探す ===== */
+.search-box{margin-bottom:12px;}
+.search-box input{
+  width:100%;min-height:48px;border:1.5px solid var(--usui);border-radius:10px;
+  padding:0 12px;font-size:.95rem;color:var(--sumi);background:#fff;
+}
+.search-box input:focus{outline:2px solid var(--kon);outline-offset:1px;}
+.arc-row{border:1px solid var(--usui);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:#fff;}
+.arc-row:last-child{margin-bottom:0;}
+.arc-ttl{font-size:.92rem;font-weight:700;line-height:1.5;margin-bottom:5px;}
+.arc-ttl a{color:var(--kon);}
+.arc-meta{display:flex;flex-wrap:wrap;gap:7px;align-items:center;font-size:.76rem;color:var(--hai);}
+.arc-empty{font-size:.85rem;color:#6B6459;padding:8px 2px;}
+
 /* ===== 2. これから進めること ===== */
 .nx{border:1px solid var(--usui);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff;}
 .nx:last-of-type{margin-bottom:0;}
@@ -157,6 +199,16 @@ footer a{color:var(--hai);}
 
 <main>
 
+  <!-- 0. 今日は誰の番？ -->
+  <section class="sec" id="s-banner">
+    <div id="banner-box" class="banner ai"><div class="b-big">読み込み中…</div></div>
+  </section>
+
+  <!-- 今日の予定 -->
+  <section class="sec" id="s-today-plan">
+    <div id="today-plan-box"></div>
+  </section>
+
   <!-- 1. りえの確認・承認 -->
   <section class="sec" id="s-approval">
     <div class="sec-h"><span class="no">1</span><h2>りえの確認・承認</h2></div>
@@ -199,10 +251,19 @@ footer a{color:var(--hai);}
     </div>
   </section>
 
+  <!-- 5. 過去の要望を探す -->
+  <section class="sec">
+    <div class="sec-h"><span class="no">5</span><h2>過去の要望を探す</h2></div>
+    <p class="sec-lead">これまでの相談・やることの記録(Issue)を、新しい順に一覧できます。題名のキーワードで絞り込めます。</p>
+    <div class="search-box"><input type="text" id="arc-kw" placeholder="キーワードで探す(例: 服薬)" autocomplete="off"></div>
+    <div id="arc-box"><div class="arc-empty">読み込み中…</div></div>
+  </section>
+
 </main>
 
 <footer>
-  「1 りえの確認・承認」と「3 完了したこと」はGitHubの公開情報から自動で取得します。「2 これから進めること」はClaude CodeがPull Request経由で更新します。<br>
+  最上部の「今日は誰の番」「今日の予定」と「2 これから進めること」はClaude CodeがPull Request経由で更新します。<br>
+  「1 りえの確認・承認」「3 完了したこと」「5 過去の要望を探す」はGitHubの公開情報から自動で取得します。<br>
   取得できないときは、GitHubの回数制限の可能性があります(1時間ほどおいて開き直してください)。
 </footer>
 
@@ -329,44 +390,194 @@ function loadApproval(){
 }
 
 /* ============ 2. これから進めること(Claude Codeが更新) ============ */
-var NEXT_UPDATED = '2026-08-25';
+var NEXT_UPDATED = '2026-08-27';
+/* りえの操作が必要な状態。この状態の項目があるときだけ「りえの番です」を表示します */
+var USER_WAIT_STATES = ['指示待ち', '判断待ち', '承認待ち', '公開版確認待ち'];
 var NEXT = [
   {
+    title: '管理アプリを「りえが今すること1つ」だけ分かる承認画面にする(第1段階)',
+    state: '実装中', who: 'Claude Code', updated: '2026-08-27',
+    note: 'Issue #17の第1段階仕様(今日は誰の番バナー・今日の予定・過去の要望検索)を実装しています。終わり次第Pull Requestを出します。出たら「1」に並びます。',
+    link: GH + '/issues/17', linkLabel: 'Issue #17 を開く', linkNote: 'やることの中身を見る'
+  },
+  {
     title: '「記録」タブを月間記録として実用化する(第1段階)',
-    state: '実装待ち', who: 'Claude Code',
-    note: 'やることはIssue #9にまとまっています。次はClaude Codeが実装してPull Requestを出します。出たら「1」に並びます。',
+    state: '実装待ち', who: 'Claude Code', updated: '2026-08-25',
+    note: 'やることはIssue #9にまとまっています。上の作業が終わり次第、着手します。',
     link: GH + '/issues/9', linkLabel: 'Issue #9 を開く', linkNote: 'やることの中身を見る'
   },
   {
     title: '服薬表示をわかりやすくする',
-    state: '相談中', who: 'ChatGPT',
+    state: '相談中', who: 'ChatGPT', updated: '2026-08-24',
     note: 'まだIssue(やることの記録)になっていません。使い方の相談がまとまってからIssueにします。'
   },
   {
     title: '家族から先に送る挨拶',
-    state: '相談中', who: 'ChatGPT',
+    state: '相談中', who: 'ChatGPT', updated: '2026-08-24',
     note: 'こちらもIssueにする前の相談段階です。服薬表示のあとに整理します。'
   }
 ];
-var ST_CLASS = { '相談中':'st-soudan', '設計中':'st-sekkei', '実装待ち':'st-jissou', '確認待ち':'st-kakunin' };
+var ST_CLASS = {
+  '相談中':'st-soudan', '設計中':'st-sekkei', '実装待ち':'st-jissou', '実装中':'st-run',
+  '確認待ち':'st-kakunin', '保留中':'st-hold', '順番待ち':'st-queue',
+  '指示待ち':'st-user', '判断待ち':'st-user', '承認待ち':'st-user', '公開版確認待ち':'st-user'
+};
 var WHO_CLASS = { 'りえ':'w-rie', 'ChatGPT':'w-gpt', 'Claude Code':'w-cc' };
+
+function isUserWait(it){ return USER_WAIT_STATES.indexOf(it.state) !== -1; }
 
 function renderNext(){
   var box = document.getElementById('next-box'), nodes = [];
-  for(var i=0;i<NEXT.length && i<3;i++){
-    var it = NEXT[i], n = el('div','nx');
+  /* りえの操作が必要な項目を常に上へ並べる(元の並び順はそれぞれ保つ) */
+  var sorted = NEXT.slice().sort(function(a, b){
+    return (isUserWait(a) ? 0 : 1) - (isUserWait(b) ? 0 : 1);
+  });
+  for(var i=0;i<sorted.length && i<3;i++){
+    var it = sorted[i], n = el('div','nx');
     n.appendChild(el('div','nx-ttl', it.title));
     var meta = el('div','nx-meta');
     meta.appendChild(el('span','st ' + (ST_CLASS[it.state] || 'st-soudan'), it.state));
     meta.appendChild(el('span','who ' + (WHO_CLASS[it.who] || 'w-cc'), '次の番: ' + it.who));
     n.appendChild(meta);
     n.appendChild(el('div','nx-note', it.note));
+    if(it.updated) n.appendChild(el('div','upd', '最終更新: ' + it.updated));
     if(it.link) n.appendChild(act(it.link, it.linkLabel, it.linkNote));
     nodes.push(n);
   }
   setKids(box, nodes);
   document.getElementById('next-upd').textContent =
-    'この3件はClaude Codeが更新します(最終更新 ' + NEXT_UPDATED + ')。';
+    'この一覧はClaude Codeが更新します(最終更新 ' + NEXT_UPDATED + ')。りえの操作が必要な項目は上に表示します。';
+}
+
+/* ============ 0. 今日は誰の番？ ============ */
+function findUserWaitItems(){
+  return NEXT.filter(isUserWait);
+}
+function findActiveItem(){
+  for(var i=0;i<NEXT.length;i++){ if(!isUserWait(NEXT[i])) return NEXT[i]; }
+  return null;
+}
+function renderBanner(){
+  var box = document.getElementById('banner-box');
+  var waits = findUserWaitItems();
+  box.textContent = '';
+
+  if(waits.length){
+    box.className = 'banner rie';
+    var it = waits[0];
+    box.appendChild(el('div','b-big','りえの番です'));
+
+    var r1 = el('div','b-row');
+    r1.appendChild(el('span','k','内容:'));
+    r1.appendChild(el('span', null, it.title));
+    box.appendChild(r1);
+
+    var r2 = el('div','b-row');
+    r2.appendChild(el('span','k','状態:'));
+    r2.appendChild(el('span', null, it.state + (waits.length > 1 ? '(他に' + (waits.length - 1) + '件あります)' : '')));
+    box.appendChild(r2);
+
+    var r3 = el('div','b-row');
+    r3.appendChild(el('span','k','最終更新:'));
+    r3.appendChild(el('span', null, it.updated || '不明'));
+    box.appendChild(r3);
+
+    if(it.nextCondition){
+      var r4 = el('div','b-row');
+      r4.appendChild(el('span','k','次に変わる条件:'));
+      r4.appendChild(el('span', null, it.nextCondition));
+      box.appendChild(r4);
+    }
+    if(it.link){
+      var a = act(it.link, it.linkLabel || '詳しく見る', it.linkNote, true);
+      a.className += ' b-act';
+      box.appendChild(a);
+    }
+  }else{
+    box.className = 'banner ai';
+    var active = findActiveItem();
+    box.appendChild(el('div','b-big','今は何もしなくて大丈夫です'));
+    if(active){
+      var s1 = el('div','b-row');
+      s1.appendChild(el('span','k','担当:'));
+      s1.appendChild(el('span', null, active.who + 'が作業中です'));
+      box.appendChild(s1);
+
+      var s2 = el('div','b-row');
+      s2.appendChild(el('span','k','内容:'));
+      s2.appendChild(el('span', null, active.title));
+      box.appendChild(s2);
+
+      var s3 = el('div','b-row');
+      s3.appendChild(el('span','k','最終更新:'));
+      s3.appendChild(el('span', null, active.updated || '不明'));
+      box.appendChild(s3);
+    }else{
+      box.appendChild(el('div','b-row','次の作業を待っています。新しい相談や要望があるまで動きはありません。'));
+    }
+  }
+}
+
+/* ============ 今日の予定(当日だけ表示) ============ */
+function jstTodayStr(){
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+}
+var TODAY_PLAN = {
+  date: '2026-08-27',
+  goal: '管理アプリ(tasks.html)第1段階の実装・Pull Request作成・自動検査まで',
+  who: 'Claude Code',
+  status: '進行中',
+  userActionNeeded: false,
+  delay: '',
+  nextStep: '実装が終わり次第Pull Requestを作成し、ChatGPTが内容を確認します。'
+};
+function renderTodayPlan(){
+  var box = document.getElementById('today-plan-box');
+  var today = jstTodayStr();
+  var wrap = el('div','today-plan');
+  wrap.appendChild(el('div','tp-h','今日の予定(' + today + ')'));
+
+  if(TODAY_PLAN.date !== today){
+    wrap.appendChild(el('div','tp-row','今日の予定はまだ更新されていません。'));
+    setKids(box, [wrap]);
+    return;
+  }
+
+  var r1 = el('div','tp-row');
+  r1.appendChild(el('span','k','今日の目標:'));
+  r1.appendChild(el('span', null, TODAY_PLAN.goal));
+  wrap.appendChild(r1);
+
+  var r2 = el('div','tp-row');
+  r2.appendChild(el('span','k','担当:'));
+  r2.appendChild(el('span', null, TODAY_PLAN.who));
+  wrap.appendChild(r2);
+
+  var r3 = el('div','tp-row');
+  r3.appendChild(el('span','k','現在の状態:'));
+  var stClass = TODAY_PLAN.status === '完了' ? 'tp-done' : (TODAY_PLAN.delay ? 'tp-delay' : 'tp-ontime');
+  r3.appendChild(el('span','tp-status ' + stClass, TODAY_PLAN.status));
+  wrap.appendChild(r3);
+
+  var r4 = el('div','tp-row');
+  r4.appendChild(el('span','k','りえの操作:'));
+  r4.appendChild(el('span', null, TODAY_PLAN.userActionNeeded ? '必要です' : '不要です'));
+  wrap.appendChild(r4);
+
+  if(TODAY_PLAN.delay){
+    var r5 = el('div','tp-row');
+    r5.appendChild(el('span','k','持ち越し理由:'));
+    r5.appendChild(el('span', null, TODAY_PLAN.delay));
+    wrap.appendChild(r5);
+  }
+  if(TODAY_PLAN.nextStep){
+    var r6 = el('div','tp-row');
+    r6.appendChild(el('span','k','次に必要なこと:'));
+    r6.appendChild(el('span', null, TODAY_PLAN.nextStep));
+    wrap.appendChild(r6);
+  }
+  wrap.appendChild(el('div','tp-note','現時点の予定であり確約ではありません。まいにこ全体の完成予定とは異なります。'));
+  setKids(box, [wrap]);
 }
 
 /* ============ 3. 完了したこと(ひらいたときに読み込む) ============ */
@@ -410,11 +621,74 @@ function loadDone(){
   });
 }
 
+/* ============ 5. 過去の要望を探す(Issueを新しい順に取得) ============ */
+var ARCHIVE = { items: null, error: false };
+function issueStateLabel(issue){
+  return issue.state === 'closed' ? '完了' : '相談・未完了';
+}
+function loadArchive(){
+  getJson(API + '/issues?state=all&per_page=30&sort=updated&direction=desc').then(function(issues){
+    if(!Array.isArray(issues)) throw new Error('形式が違います');
+    /* IssueのAPIにはPRも混ざるため除く */
+    ARCHIVE.items = issues.filter(function(i){ return !i.pull_request; });
+    ARCHIVE.error = false;
+    renderArchive();
+  }).catch(function(){
+    ARCHIVE.error = true;
+    renderArchive();
+  });
+}
+function renderArchive(){
+  var box = document.getElementById('arc-box');
+  if(ARCHIVE.error){
+    setKids(box, [el('div','arc-empty','GitHubから取得できませんでした(回数制限の可能性があります)。')]);
+    return;
+  }
+  if(!ARCHIVE.items){
+    setKids(box, [el('div','arc-empty','読み込み中…')]);
+    return;
+  }
+  var kw = (document.getElementById('arc-kw').value || '').trim();
+  var list = ARCHIVE.items;
+  if(kw){
+    list = list.filter(function(i){ return (i.title || '').indexOf(kw) !== -1; });
+  }
+  if(!list.length){
+    setKids(box, [el('div','arc-empty', kw ? '「' + kw + '」に一致する記録はありません。' : '記録がありません。')]);
+    return;
+  }
+  var nodes = [];
+  for(var i=0;i<list.length;i++){
+    var issue = list[i], row = el('div','arc-row');
+    var ttlBox = el('div','arc-ttl');
+    var u = okUrl(issue.html_url);
+    if(u){
+      var a = el('a', null, issue.title || '(題名なし)');
+      a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      ttlBox.appendChild(a);
+    }else{
+      ttlBox.appendChild(el('span', null, issue.title || '(題名なし)'));
+    }
+    row.appendChild(ttlBox);
+    var meta = el('div','arc-meta');
+    meta.appendChild(el('span', null, issueStateLabel(issue)));
+    meta.appendChild(el('span', null, '最終更新: ' + (issue.updated_at ? issue.updated_at.slice(0,10) : '不明')));
+    meta.appendChild(el('span', null, 'Issue #' + issue.number));
+    row.appendChild(meta);
+    nodes.push(row);
+  }
+  setKids(box, nodes);
+}
+
 /* ============ 起動 ============ */
 document.getElementById('today').textContent =
   '今日: ' + new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+renderBanner();
+renderTodayPlan();
 renderNext();
 loadApproval();
+loadArchive();
+document.getElementById('arc-kw').addEventListener('input', renderArchive);
 document.getElementById('done').addEventListener('toggle', function(){
   if(this.open && !doneLoaded){ doneLoaded = true; loadDone(); }
 });
