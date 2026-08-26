@@ -53,7 +53,8 @@
 - 変更ファイル：`.github/workflows/claude.yml`（新規）、`AI_HANDOFF.md`（この欄のみ）。アプリ本体（index.html / manifest.json / sw.js / 画像）は変更していません。
 - ブランチ：`claude/hidamari-github-actions-uo2fyp` / Pull Request：あり（絶対ルール3にもとづき main へ直接コミットしていません）。
 - 動く条件：Issue か Pull Request のコメントに「@claude」と書いたときだけです。コードの push などでは動きません。
-- 認証は GitHub Secret「CLAUDETOKEN」を使います。トークンの値はこのノートには書きません。
+- 認証は GitHub Secret「CLAUDETOKEN」（claude setup-token で発行した Claude Code の OAuth トークン）を使います。トークンの値はこのノートには書きません。
+- 2026-08-26（追記）：りえの指示で、認証を OAuth トークン1本に整理し、さらに「コメントを書いたのが pocham4173 本人のときだけ動く」制限を追加しました。同じ Pull Request（#21）に反映しています。
 
 ## りえの最終決定
 **状態：確認待ち**

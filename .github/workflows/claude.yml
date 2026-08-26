@@ -1,13 +1,15 @@
 # まいにこ Claude アシスタント
 #
-# Issue や Pull Request のコメントに「@claude」と書いたときだけ、Claude が動きます。
-# それ以外（コードの push、Issue を作っただけ、など）では動きません。
+# pocham4173（りえ）が Issue や Pull Request のコメントに「@claude」と書いたときだけ、
+# Claude が動きます。それ以外（他の人のコメント、コードの push、Issue を作っただけ、など）
+# では動きません。
 #
 # 使い方：Issue か Pull Request のコメント欄に「@claude 〇〇してください」と書くだけです。
 # Claude は main を直接書き換えず、作業用ブランチを作って Pull Request にまとめます。
 #
 # 準備：リポジトリの Settings → Secrets and variables → Actions に
-# 「CLAUDETOKEN」という名前でトークンを登録しておきます。
+# 「CLAUDETOKEN」という名前で、claude setup-token で発行した
+# Claude Code の OAuth トークンを登録しておきます。
 
 name: Claude アシスタント
 
@@ -28,12 +30,16 @@ permissions: {}
 jobs:
   claude:
     name: Claude アシスタント
-    # コメント本文に「@claude」が含まれるときだけ実行します。
-    # （これがないと、無関係なコメントでも毎回起動してしまいます）
+    # 次の2つを両方みたすときだけ実行します。
+    #   1. コメントを書いたのが pocham4173（りえ）本人であること
+    #   2. コメント本文に「@claude」が含まれていること
+    # （これがないと、他の人のコメントや無関係なコメントでも起動してしまいます）
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      github.actor == 'pocham4173' && (
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -54,8 +60,5 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           # 認証には GitHub Secret「CLAUDETOKEN」を使います。
-          # API キー（sk-ant-api… で始まる）でも、Claude Code の
-          # OAuth トークン（sk-ant-oat… で始まる）でも、どちらでもそのまま使えるよう、
-          # 値の種類を見て渡し先を切り替えています。使わない側は空になります。
-          anthropic_api_key: ${{ startsWith(secrets.CLAUDETOKEN, 'sk-ant-api') && secrets.CLAUDETOKEN || '' }}
-          claude_code_oauth_token: ${{ !startsWith(secrets.CLAUDETOKEN, 'sk-ant-api') && secrets.CLAUDETOKEN || '' }}
+          # 中身は claude setup-token で発行した Claude Code の OAuth トークンです。
+          claude_code_oauth_token: ${{ secrets.CLAUDETOKEN }}
