@@ -205,6 +205,14 @@ table.cal-rec td.pad{background:none;}
 .krec-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
 .krec-btn{background:#FBF8F2;border:1.5px solid #D8CDBA;border-radius:10px;padding:13px 6px;font-family:inherit;font-size:.93rem;font-weight:700;color:var(--cha);cursor:pointer;}
 .krec-btn:active{background:#F0E7D6;}
+.ab-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.ab-btn{background:#fff;border:2px solid var(--hi);border-radius:12px;font-family:inherit;padding:10px 4px;min-height:48px;cursor:pointer;text-align:center;}
+.ab-btn .ic{font-size:1.3rem;line-height:1.2;display:block;}
+.ab-btn .tx{font-size:.85rem;font-weight:700;color:var(--hi-koi);display:block;margin-top:2px;}
+.ab-btn:active{background:var(--hi-usui);}
+.ab-btn.suggested{background:var(--hi-usui);border-color:var(--hi-koi);}
+.ab-btn:disabled{opacity:.5;cursor:default;}
+.sent-note.err{color:#B0492F;}
 /* ===== 相談タブ: 困りごとから上田市の公式案内へ ===== */
 .sd-lead{font-size:.9rem;color:#6B5C46;line-height:1.7;margin-bottom:12px;}
 .sd-list{display:flex;flex-direction:column;gap:9px;}
@@ -515,9 +523,14 @@ table.cal-rec td.pad{background:none;}
       </div>
 
       <div class="card" id="card-actions">
-        <button class="big-btn" id="btn-back-aisatsu" onclick="sendAisatsuBack()" style="margin-top:0;">「おはよう」を返す</button>
+        <h3>先に挨拶を送る</h3>
+        <div class="ab-grid">
+          <button class="ab-btn" id="btn-ab-asa" onclick="sendAisatsuBack('asa')"><span class="ic">☀️</span><span class="tx">おはよう</span></button>
+          <button class="ab-btn" id="btn-ab-hiru" onclick="sendAisatsuBack('hiru')"><span class="ic">🌤</span><span class="tx">こんにちは</span></button>
+          <button class="ab-btn" id="btn-ab-yoru" onclick="sendAisatsuBack('yoru')"><span class="ic">🌙</span><span class="tx">おやすみ</span></button>
+        </div>
         <div class="sent-note" id="note-aisatsu-back" style="display:none;"></div>
-        <button class="big-btn or" onclick="askKusuri()">「お薬飲んだ?」を送る</button>
+        <button class="big-btn or" onclick="askKusuri()" style="margin-top:14px;">「お薬飲んだ?」を送る</button>
         <div class="sent-note" id="note-ask" style="display:none;"></div>
       </div>
 
@@ -1183,14 +1196,16 @@ async function honninRemove(mid, isMe){
 function closeMembers(){ document.getElementById('members-modal').classList.remove('show'); }
 
 /* ===== 家族 ===== */
-let evUnsub=null, ytListUnsub=null;
+let evUnsub=null, ytListUnsub=null, aisatsuBackSending=false;
 function initKazoku(){
   const d=new Date();
   const kOnly=isKOnly();
   document.getElementById('f-lg').textContent=kOnly?'まいにこ ─ 家族のみで記録中':'まいにこ ─ 管理';
   document.getElementById('f-title').textContent=dateJp(d);
   document.getElementById('home-date-h3').textContent=dateJp(d)+' の記録';
-  document.getElementById('btn-back-aisatsu').textContent='「'+slot().tx+'」を返す';
+  document.querySelectorAll('.ab-btn').forEach(b=>b.classList.remove('suggested'));
+  const curAb=document.getElementById('btn-ab-'+slot().key);
+  if(curAb) curAb.classList.add('suggested');
   document.getElementById('ev-empty').textContent=kOnly?'今日の様子はまだ記録されていません':'まだ届いていません';
   document.getElementById('card-actions').style.display=kOnly?'none':'block';
   document.getElementById('card-krec').style.display=kOnly?'block':'none';
@@ -1207,16 +1222,21 @@ function initKazoku(){
   evUnsub=col('events').where('date','==',todayStr())
     .onSnapshot(snap=>{
       const items=[];
-      let sentBack=null, sentAsk=null;
+      let sentBack=null, sentBackAt=0, sentAsk=null;
       snap.forEach(doc=>{
         const v=doc.data(); v._id=doc.id;
         if(v.at)items.push(v);
-        if(v.type==='aisatsu-back') sentBack=v.name||'家族';
+        if(v.type==='aisatsu-back' && v.at && v.at.seconds>sentBackAt){
+          sentBack={name:v.name||'家族', text:v.text||''};
+          sentBackAt=v.at.seconds;
+        }
         if(v.type==='ask-kusuri') sentAsk=v.name||'家族';
       });
       const nb=document.getElementById('note-aisatsu-back');
       const na=document.getElementById('note-ask');
-      if(sentBack){nb.textContent='本日 '+sentBack+'さんが送信済み';nb.style.display='block';}else{nb.style.display='none';}
+      if(!aisatsuBackSending){
+        if(sentBack){nb.classList.remove('err');nb.textContent='本日 '+sentBack.name+'さんが「'+sentBack.text+'」を送信済み';nb.style.display='block';}else{nb.style.display='none';}
+      }
       if(sentAsk){na.textContent='本日 '+sentAsk+'さんが送信済み';na.style.display='block';}else{na.style.display='none';}
       items.sort((a,b)=>a.at.seconds-b.at.seconds);
       const box=document.getElementById('ev-list');
@@ -1239,7 +1259,7 @@ function initKazoku(){
         'aisatsu':v=>'「'+v.text+'」が届きました',
         'kibun':v=>'今日の調子: '+v.text,
         'kusuri':v=>'服薬について記録がありました('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')',
-        'aisatsu-back':v=>(v.name||'家族')+'さんが「'+(v.text||'')+'」を返しました',
+        'aisatsu-back':v=>(v.name||'家族')+'さんから「'+(v.text||'')+'」の挨拶が届きました',
         'ask-kusuri':v=>(v.name||'家族')+'さんが「お薬飲んだ?」を送りました',
         'kibun-kazoku':v=>(v.name||'家族')+'さんが体調を記録: '+v.text,
         'kusuri-kakunin':v=>(v.name||'家族')+'さんが服薬を確認しました',
@@ -1588,7 +1608,7 @@ var REC_LABEL = {
                         v.text==='今日はそっとしておいて' ? 'ご本人が「今日はそっとしておいて」を選びました'
                                                         : 'ご本人からのお願い: 「'+(v.text||'')+'」']; },
   'onegai-back':    function(v){ return ['お願いへの返事','k-onegai', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
-  'aisatsu-back':   function(v){ return ['家族からの挨拶','', (v.name||'家族')+'さんが「'+(v.text||'')+'」を返しました']; },
+  'aisatsu-back':   function(v){ return ['家族からの挨拶','', (v.name||'家族')+'さんから「'+(v.text||'')+'」の挨拶が届きました']; },
   'ask-kusuri':     function(v){ return ['服薬の声かけ','k-kusuri', (v.name||'家族')+'さんが「お薬飲んだ?」を送りました']; },
   'kibun-kazoku':   function(v){ return ['体調','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
   'kusuri-kakunin': function(v){ return ['服薬','k-kusuri', (v.name||'家族')+'さんが服薬を確認しました']; },
@@ -1720,7 +1740,28 @@ function recDrawSummary(){
   });
 }
 
-function sendAisatsuBack(){ feedback(); addEvent({type:'aisatsu-back', text:slot().tx, name:myName()}); }
+const AISATSU_BACK_WORDS={asa:'おはよう', hiru:'こんにちは', yoru:'おやすみ'};
+function sendAisatsuBack(key){
+  const tx=AISATSU_BACK_WORDS[key];
+  if(!tx || aisatsuBackSending) return;
+  aisatsuBackSending=true;
+  document.querySelectorAll('.ab-btn').forEach(b=>b.disabled=true);
+  const nb=document.getElementById('note-aisatsu-back');
+  nb.classList.remove('err');
+  nb.textContent='送信しています…';
+  nb.style.display='block';
+  feedback();
+  addEvent({type:'aisatsu-back', text:tx, name:myName()}).then(()=>{
+    nb.classList.remove('err');
+    nb.textContent='「'+tx+'」を送信しました';
+  }).catch(()=>{
+    nb.classList.add('err');
+    nb.textContent='送信できませんでした。電波状況を確認してもう一度押してください';
+  }).finally(()=>{
+    aisatsuBackSending=false;
+    document.querySelectorAll('.ab-btn').forEach(b=>b.disabled=false);
+  });
+}
 function askKusuri(){ feedback(); addEvent({type:'ask-kusuri', name:myName()}); }
 function sendOnegaiBack(onegaiId,text){ feedback(); addEvent({type:'onegai-back', text:text, name:myName(), replyTo:onegaiId}); }
 function recKibun(text){ feedback(); addEvent({type:'kibun-kazoku', text:text, name:myName()}); }
