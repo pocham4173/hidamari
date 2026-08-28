@@ -33,6 +33,9 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .entry-btn small{display:block;font-size:.85rem;font-weight:400;color:#FFE9CF;margin-top:3px;}
 .entry-btn:active{transform:translateY(3px);box-shadow:none;}
 .entry-btn.sub{background:#fff;color:var(--hi-koi);border:2px solid var(--hi);box-shadow:0 4px 0 #E3CFA8;}
+.entry-btn.sub small{color:var(--usucha);}
+.entry-sub-ttl{color:#B7A88E;font-weight:700;font-size:.85rem;margin:22px 0 10px;}
+#join-role-choice{width:100%;max-width:320px;margin:0 auto;}
 .install-mini{position:absolute;top:14px;right:14px;background:#fff;border:1px solid #D8CDBA;color:var(--usucha);border-radius:999px;font-family:inherit;font-size:.78rem;font-weight:700;padding:7px 12px;cursor:pointer;}
 .setup-input{width:100%;max-width:320px;font-family:inherit;font-size:1.15rem;padding:14px;border:2px solid var(--hi-usui);border-radius:16px;text-align:center;margin:0 auto 12px;background:var(--asa);display:block;letter-spacing:.08em;}
 .setup-wrap{flex:1;overflow-y:auto;padding:26px 20px;text-align:center;background:#fff;}
@@ -282,6 +285,13 @@ table.cal-rec td.pad{background:none;}
     <button class="entry-btn" onclick="pickMode('kazoku')">ご家族が使う<small>本人もアプリを使う世帯</small></button>
     <button class="entry-btn" onclick="pickMode('konly')">ご家族が記録して使う<small>本人は操作しません</small></button>
   </div>
+  <div class="entry-sub-ttl">招待された方</div>
+  <button class="entry-btn sub" id="btn-join-entry" onclick="showJoinRoleChoice()">招待コードを入力して参加する<small>ここから家族とつながれます</small></button>
+  <div id="join-role-choice" style="display:none;">
+    <div class="q" style="font-size:1rem;margin:6px 0 10px;">参加されるのはどちらですか?</div>
+    <button class="entry-btn sub" onclick="pickMode('honnin')">ご本人として参加する</button>
+    <button class="entry-btn sub" onclick="pickMode('kazoku')">ご家族として参加する</button>
+  </div>
 </div>
 
 <!-- ===== 同意(共用) ===== -->
@@ -478,7 +488,7 @@ table.cal-rec td.pad{background:none;}
       <div class="note">解除すると、その人はこの家族の記録を見られなくなります(過去の記録も含む)。端末を紛失した場合も、ここで解除すれば停止できます。</div>
     </div>
 
-    <div class="set-sec">
+    <div class="set-sec" id="invite-section">
       <h4>家族・本人を招待する</h4>
       <button class="set-btn" onclick="makeInvite()">招待コードを発行する</button>
       <div id="invite-area"></div>
@@ -511,6 +521,11 @@ table.cal-rec td.pad{background:none;}
 
     <!-- ホーム -->
     <div class="ftab" id="t-home">
+      <div class="card" id="card-invite-shortcut">
+        <h3>家族を招待する</h3>
+        <button class="big-btn or" onclick="openInviteFromHome()">家族を招待する</button>
+        <div class="note">ここから家族とつながれます。招待コードを発行して、参加する方にお伝えください。</div>
+      </div>
       <div id="card-pending"></div>
       <div class="card" id="card-next-yotei" style="display:none;">
         <h3>次の予定</h3>
@@ -740,6 +755,10 @@ function showPage(id){
 
 /* ===== モード選択→同意→名前→接続 ===== */
 let pendingMode=null;
+function showJoinRoleChoice(){
+  document.getElementById('btn-join-entry').style.display='none';
+  document.getElementById('join-role-choice').style.display='block';
+}
 function pickMode(m){
   pendingMode=m;
   const ckey='mainicoConsent-'+(m==='konly'?'b':'a');
@@ -1788,6 +1807,11 @@ function delYotei(id){
 }
 
 /* ===== 設定(家族) ===== */
+function openInviteFromHome(){
+  openSettings();
+  const sec=document.getElementById('invite-section');
+  if(sec) sec.scrollIntoView({behavior:'smooth', block:'start'});
+}
 function openSettings(){
   document.getElementById('settings-modal').classList.add('show');
   renderSetMembers();
