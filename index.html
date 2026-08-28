@@ -10,8 +10,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 :root{
-  --asa:#FFF8EA; --hi:#E0711A; --hi-koi:#C8600F; --hi-usui:#FDE3BC;
-  --cha:#3D2E1B; --ha:#5F7D52; --ha-koi:#4C6541; --usucha:#7A6A55;
+  --asa:#FFFFFF; --hi:#E0711A; --hi-koi:#C8600F; --hi-usui:#FDE3BC;
+  --cha:#3D2E1B; --ha:#5F7D52; --ha-koi:#4C6541; --ha-usui:#DDE6D7; --usucha:#7A6A55;
+  /* 用途別カラー: 予定=青, 相談=紫, 家族・招待=青緑, 注意=赤(既存の赤系と揃える) */
+  --ao:#3D6FB4; --ao-koi:#2C5690; --ao-usui:#D9E6F5;
+  --murasaki:#7A5FA6; --murasaki-koi:#5F4785; --murasaki-usui:#E7DFF2;
+  --aomidori:#1F8A82; --aomidori-koi:#166863; --aomidori-usui:#D7F0ED;
+  --aka:#B0492F; --aka-koi:#963C29; --aka-usui:#FBE5DF;
 
   --nav-safe:env(safe-area-inset-bottom, 0px); /* iPhoneのホームバーの高さ。0のときもある */
 }
@@ -38,7 +43,7 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .setup-wrap{flex:1;overflow-y:auto;padding:26px 20px;text-align:center;background:#fff;}
 .setup-ttl{font-size:1.35rem;font-weight:900;color:var(--hi-koi);margin-bottom:8px;}
 .setup-lead{font-size:.95rem;line-height:1.8;color:#5C4E3A;margin-bottom:16px;}
-.setup-or{color:#B7A88E;font-weight:700;margin:14px 0;font-size:.9rem;}
+.setup-or{color:var(--usucha);font-weight:700;margin:14px 0;font-size:.9rem;}
 .consent-item{display:flex;gap:10px;align-items:flex-start;background:var(--asa);border:2px solid var(--hi-usui);border-radius:14px;padding:12px;margin-bottom:9px;font-size:.98rem;font-weight:700;line-height:1.6;cursor:pointer;text-align:left;}
 .consent-item .ck{width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:#E0711A;}
 .consent-page{background:#FFFFFF;}
@@ -53,9 +58,9 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .h-date{font-size:1.75rem;font-weight:900;line-height:1.3;}
 .h-time{font-size:1.3rem;font-weight:700;margin-top:2px;}
 .h-body{flex:1;padding:16px 14px;display:flex;flex-direction:column;gap:13px;}
-.yotei-card{background:#fff;border:2px solid var(--hi-usui);border-radius:20px;padding:14px;text-align:center;}
+.yotei-card{background:#fff;border:2px solid var(--ao-usui);border-radius:20px;padding:14px;text-align:center;}
 .yotei-card .lb{font-size:1.05rem;color:var(--usucha);font-weight:700;}
-.yotei-card .days{font-size:2.5rem;font-weight:900;color:var(--hi);line-height:1.2;}
+.yotei-card .days{font-size:2.5rem;font-weight:900;color:var(--ao);line-height:1.2;}
 .yotei-card .pl{font-size:1rem;font-weight:700;line-height:1.5;}
 .aisatsu{background:#fff;border:3px solid var(--hi);border-radius:26px;padding:24px 18px;font-family:inherit;cursor:pointer;box-shadow:0 8px 0 var(--hi-koi);text-align:center;transition:transform .08s;}
 .aisatsu .ic{font-size:3rem;line-height:1.1;}
@@ -65,38 +70,39 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .aisatsu.done{background:#FFFDF6;box-shadow:none;pointer-events:none;border-color:var(--hi-usui);}
 .aisatsu.done .ic{font-size:3.6rem;}
 .aisatsu.done .tx{color:var(--ha-koi);font-size:1.35rem;}
-.kibun{background:#fff;border:2px solid var(--hi-usui);border-radius:22px;padding:15px;}
+.kibun{background:#fff;border:2px solid var(--ha-usui);border-radius:22px;padding:15px;}
 .kibun .q{font-size:1.1rem;font-weight:900;text-align:center;margin-bottom:10px;}
 .kibun-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.kibun-btn{background:var(--asa);border:2px solid var(--hi-usui);border-radius:16px;padding:15px 6px;font-family:inherit;font-size:1.05rem;font-weight:900;color:var(--cha);cursor:pointer;transition:transform .08s;}
-.kibun-btn:active{transform:scale(.94);background:var(--hi-usui);}
+.kibun-btn{background:#fff;border:2px solid var(--ha-usui);border-radius:16px;padding:15px 6px;font-family:inherit;font-size:1.05rem;font-weight:900;color:var(--cha);cursor:pointer;transition:transform .08s;}
+.kibun-btn:active{transform:scale(.94);background:var(--ha-usui);}
 .kibun .skip{display:block;margin:10px auto 0;background:none;border:none;font-family:inherit;color:var(--usucha);font-size:.95rem;text-decoration:underline;cursor:pointer;}
 .kusuri-btn{background:var(--ha);color:#fff;border:none;border-radius:22px;padding:20px;font-family:inherit;font-size:1.35rem;font-weight:900;cursor:pointer;box-shadow:0 6px 0 var(--ha-koi);transition:transform .08s;}
 .kusuri-btn:active{transform:translateY(5px);box-shadow:0 1px 0 var(--ha-koi);}
-.kusuri-btn.done{background:#F2F5EF;color:var(--ha-koi);box-shadow:none;pointer-events:none;font-size:1.1rem;border:2px solid #DDE6D7;}
+.kusuri-btn.done{background:#F2F5EF;color:var(--ha-koi);box-shadow:none;pointer-events:none;font-size:1.1rem;border:2px solid var(--ha-usui);}
 .onegai-btn{background:#fff;border:3px solid var(--ha);border-radius:22px;padding:18px;font-family:inherit;font-size:1.3rem;font-weight:900;color:var(--ha-koi);cursor:pointer;box-shadow:0 6px 0 #D9E2D3;transition:transform .08s;}
 .onegai-btn:active{transform:translateY(5px);box-shadow:0 1px 0 #D9E2D3;}
 .pop{background:#FFF3E2;border:3px solid var(--hi);border-radius:20px;padding:16px;text-align:center;font-size:1.15rem;font-weight:900;display:none;line-height:1.6;color:var(--cha);}
 .pop.show{display:block;animation:pop .4s;}
 @keyframes pop{from{transform:scale(.85);opacity:0;}to{transform:scale(1);opacity:1;}}
-.cal-open{background:#fff;border:2px solid var(--hi);border-radius:20px;padding:16px;font-family:inherit;font-size:1.2rem;font-weight:900;color:var(--hi-koi);cursor:pointer;}
-.cal-open:active{background:var(--hi-usui);}
+.cal-open{background:#fff;border:2px solid var(--ao);border-radius:20px;padding:16px;font-family:inherit;font-size:1.2rem;font-weight:900;color:var(--ao-koi);cursor:pointer;}
+.cal-open:active{background:var(--ao-usui);}
 .back{background:none;border:2px solid #D8CDBA;border-radius:12px;font-family:inherit;color:var(--usucha);font-size:.9rem;font-weight:700;cursor:pointer;padding:10px;margin:6px 14px 14px;}
 .back:active{background:#F0EAE0;}
 .h-links{display:flex;justify-content:center;gap:14px;}
-.h-links button{background:none;border:none;font-family:inherit;color:#B7A88E;font-size:.82rem;text-decoration:underline;cursor:pointer;padding:8px 2px;}
+.h-links button{background:none;border:none;font-family:inherit;color:var(--usucha);font-size:.82rem;text-decoration:underline;cursor:pointer;padding:8px 2px;}
 
 /* ===== モーダル共通 ===== */
 .modal{position:fixed;inset:0;background:rgba(61,46,27,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:16px;}
 .modal.show{display:flex;}
 .modal-box{background:#fff;border-radius:24px;padding:18px;width:100%;max-width:400px;max-height:88vh;overflow-y:auto;}
 .modal-box .ttl{text-align:center;font-size:1.3rem;font-weight:900;margin-bottom:12px;}
-.modal-close{display:block;width:100%;background:var(--hi);color:#fff;border:none;border-radius:16px;font-family:inherit;font-size:1.2rem;font-weight:900;padding:16px;margin-top:12px;cursor:pointer;box-shadow:0 4px 0 var(--hi-koi);}
-.modal-close:active{transform:translateY(3px);box-shadow:none;}
+/* 閉じる・やめるは補助操作。白背景+濃い文字+枠線にして、主要操作(オレンジ)と区別する */
+.modal-close{display:block;width:100%;background:#fff;color:var(--cha);border:2px solid #D8CDBA;border-radius:16px;font-family:inherit;font-size:1.2rem;font-weight:900;padding:16px;margin-top:12px;cursor:pointer;}
+.modal-close:active{background:#F0EAE0;}
 .back-choice{display:flex;gap:10px;margin-top:6px;}
-.back-choice button{flex:1;font-family:inherit;font-size:1.2rem;font-weight:900;padding:16px;border:none;border-radius:16px;cursor:pointer;}
-.back-yes{background:var(--hi);color:#fff;box-shadow:0 4px 0 var(--hi-koi);}
-.back-no{background:#EFE8DA;color:var(--cha);box-shadow:0 4px 0 #D8CDBA;}
+.back-choice button{flex:1;font-family:inherit;font-size:1.2rem;font-weight:900;padding:16px;border-radius:16px;cursor:pointer;}
+.back-yes{background:var(--hi);color:#fff;border:none;box-shadow:0 4px 0 var(--hi-koi);}
+.back-no{background:#fff;color:var(--cha);border:2px solid #D8CDBA;}
 .back-choice button:active{transform:translateY(3px);box-shadow:none;}
 table.cal{width:100%;border-collapse:separate;border-spacing:3px;text-align:center;}
 table.cal th{font-size:.95rem;color:var(--usucha);padding-bottom:4px;font-weight:700;}
@@ -124,7 +130,7 @@ table.cal-rec td.pad{background:none;}
   background:#FBF8F2;border:2px solid transparent;border-radius:12px;padding:5px 0 4px;cursor:pointer;
 }
 .rec-day .mk{font-size:.68rem;font-weight:700;color:var(--ha-koi);margin-top:1px;}
-.rec-day .mk-non{font-size:.68rem;color:#C4BCAE;margin-top:1px;}
+.rec-day .mk-non{font-size:.68rem;color:var(--usucha);margin-top:1px;}
 .rec-day.today{background:var(--hi);color:#fff;}
 .rec-day.today .mk{color:#fff;}
 .rec-day.today .mk-non{color:#FFF0D6;}
@@ -172,7 +178,7 @@ table.cal-rec td.pad{background:none;}
 .set-btn{display:block;width:100%;background:#fff;border:2px solid #D8CDBA;border-radius:12px;font-family:inherit;font-size:.95rem;font-weight:700;color:var(--cha);padding:12px;margin-top:8px;cursor:pointer;text-align:center;}
 .set-btn.warn{border-color:#C97A6A;color:#A8422E;}
 .set-btn:active{background:#F5EFE4;}
-.code-show{background:#FFF3E2;border:2px dashed var(--hi);border-radius:14px;padding:14px;text-align:center;font-size:1.7rem;font-weight:900;letter-spacing:.18em;color:var(--hi-koi);margin-top:10px;}
+.code-show{background:var(--aomidori-usui);border:2px dashed var(--aomidori);border-radius:14px;padding:14px;text-align:center;font-size:1.7rem;font-weight:900;letter-spacing:.18em;color:var(--aomidori-koi);margin-top:10px;}
 .code-exp{font-size:.8rem;color:var(--usucha);text-align:center;margin-top:6px;line-height:1.6;}
 
 /* ===== 家族 ===== */
@@ -182,7 +188,12 @@ table.cal-rec td.pad{background:none;}
 /* 下部メニュー(48px+余白)より広くとって、いちばん下の操作が隠れないようにする */
 .f-body{flex:1;padding:13px 13px calc(106px + var(--nav-safe));overflow-y:auto;}
 .card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid #E5DCCB;}
-.card h3{font-size:.98rem;margin-bottom:10px;color:var(--cha);border-left:4px solid var(--hi);padding-left:8px;font-weight:700;}
+.card h3{font-size:.98rem;margin-bottom:10px;color:var(--cha);border-left:4px solid #D8CDBA;padding-left:8px;font-weight:700;}
+/* カードの左枠は用途別の色にする(記録=緑, 予定=青, 相談=紫, 家族・招待=青緑) */
+.card.dom-record h3{border-left-color:var(--ha-koi);}
+.card.dom-yotei h3{border-left-color:var(--ao);}
+.card.dom-soudan h3{border-left-color:var(--murasaki);}
+.card.dom-family h3{border-left-color:var(--aomidori);}
 .ev{padding:9px 2px;border-bottom:1px solid #F0EAE0;font-size:.95rem;line-height:1.55;}
 .ev:last-child{border-bottom:none;}
 .ev .tm{font-size:.74rem;color:var(--usucha);}
@@ -191,11 +202,14 @@ table.cal-rec td.pad{background:none;}
 .reply-btn{background:#fff;color:#7A5A34;border:1.5px solid #C9B8A0;border-radius:10px;font-family:inherit;font-weight:700;font-size:.85rem;padding:9px 12px;cursor:pointer;}
 .reply-btn:active{background:#F5EFE4;}
 .reply-log{font-size:.88rem;color:var(--ha-koi);font-weight:700;margin-top:6px;line-height:1.6;}
-.big-btn{display:block;width:100%;background:#fff;color:var(--hi-koi);border:2px solid var(--hi);border-radius:10px;font-family:inherit;font-weight:700;font-size:.98rem;padding:13px;margin-top:8px;cursor:pointer;}
-.big-btn.or{background:var(--hi);color:#fff;border:none;}
+.big-btn{display:flex;align-items:center;justify-content:center;text-align:center;width:100%;min-height:48px;background:#fff;color:var(--hi-koi);border:2px solid var(--hi);border-radius:10px;font-family:inherit;font-weight:700;font-size:.98rem;padding:13px;margin-top:8px;cursor:pointer;}
+/* 用途別の塗りボタン(記録=緑, 予定=青, 家族・招待=青緑) */
+.big-btn.record{background:var(--ha);color:#fff;border:none;}
+.big-btn.yotei{background:var(--ao);color:#fff;border:none;}
+.big-btn.family{background:var(--aomidori);color:#fff;border:none;}
 .big-btn:active{opacity:.85;}
 .sent-note{font-size:.8rem;color:var(--ha-koi);font-weight:700;margin-top:4px;text-align:center;}
-.empty{color:#BFB29C;font-size:.84rem;text-align:center;padding:10px 0;}
+.empty{color:var(--usucha);font-size:.84rem;text-align:center;padding:10px 0;}
 .note{font-size:.76rem;color:var(--usucha);line-height:1.6;margin-top:6px;}
 .in-row{display:flex;gap:8px;margin-top:8px;}
 .in-row input,.in-row select{flex:1;font-family:inherit;font-size:.95rem;padding:11px;border:1px solid #D8CDBA;border-radius:8px;background:#FBF8F2;color:var(--cha);min-width:0;}
@@ -206,11 +220,11 @@ table.cal-rec td.pad{background:none;}
 .krec-btn{background:#FBF8F2;border:1.5px solid #D8CDBA;border-radius:10px;padding:13px 6px;font-family:inherit;font-size:.93rem;font-weight:700;color:var(--cha);cursor:pointer;}
 .krec-btn:active{background:#F0E7D6;}
 .ab-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-.ab-btn{background:#fff;border:2px solid var(--hi);border-radius:12px;font-family:inherit;padding:10px 4px;min-height:48px;cursor:pointer;text-align:center;}
+.ab-btn{background:#fff;border:2px solid var(--ha);border-radius:12px;font-family:inherit;padding:10px 4px;min-height:48px;cursor:pointer;text-align:center;}
 .ab-btn .ic{font-size:1.3rem;line-height:1.2;display:block;}
-.ab-btn .tx{font-size:.85rem;font-weight:700;color:var(--hi-koi);display:block;margin-top:2px;}
-.ab-btn:active{background:var(--hi-usui);}
-.ab-btn.suggested{background:var(--hi-usui);border-color:var(--hi-koi);}
+.ab-btn .tx{font-size:.85rem;font-weight:700;color:var(--ha-koi);display:block;margin-top:2px;}
+.ab-btn:active{background:var(--ha-usui);}
+.ab-btn.suggested{background:var(--ha-usui);border-color:var(--ha-koi);}
 .ab-btn:disabled{opacity:.5;cursor:default;}
 .sent-note.err{color:#B0492F;}
 /* ===== 相談タブ: 困りごとから上田市の公式案内へ ===== */
@@ -220,8 +234,8 @@ table.cal-rec td.pad{background:none;}
 .sd-pick{
   display:flex;flex-direction:column;justify-content:center;min-height:56px;width:100%;
   font-family:inherit;text-align:left;cursor:pointer;
-  background:#fff;border:2px solid var(--hi);border-radius:12px;padding:11px 14px;
-  box-shadow:0 2px 0 rgba(224,113,26,.18);
+  background:#fff;border:2px solid var(--murasaki);border-radius:12px;padding:11px 14px;
+  box-shadow:0 2px 0 rgba(122,95,166,.18);
 }
 .sd-pick:active{transform:translateY(2px);box-shadow:none;}
 .sd-pick .l{font-size:1.02rem;font-weight:900;color:var(--cha);line-height:1.45;}
@@ -235,8 +249,8 @@ table.cal-rec td.pad{background:none;}
 .sd-btn{
   display:flex;flex-direction:column;justify-content:center;min-height:56px;
   text-decoration:none;font-family:inherit;text-align:left;cursor:pointer;
-  border:2px solid var(--hi-koi);border-radius:10px;background:#fff;color:var(--hi-koi);
-  padding:8px 13px;margin-top:8px;box-shadow:0 2px 0 rgba(200,96,15,.15);
+  border:2px solid var(--murasaki-koi);border-radius:10px;background:#fff;color:var(--murasaki-koi);
+  padding:8px 13px;margin-top:8px;box-shadow:0 2px 0 rgba(95,71,133,.15);
 }
 .sd-btn:active{transform:translateY(2px);box-shadow:none;}
 .sd-btn .l{font-size:.97rem;font-weight:900;}
@@ -245,10 +259,10 @@ table.cal-rec td.pad{background:none;}
 .sd-btn.back-pick{border-color:#C9B8A0;color:#7A5A34;box-shadow:0 2px 0 rgba(201,184,160,.3);}
 /* 119の案内 */
 .sd-119{
-  border:2px solid var(--hi-koi);border-radius:12px;background:#FFF6EE;
+  border:2px solid var(--aka);border-radius:12px;background:var(--aka-usui);
   padding:11px 12px;margin-bottom:11px;
 }
-.sd-119 b{color:#A34A2E;font-size:.95rem;line-height:1.6;}
+.sd-119 b{color:var(--aka-koi);font-size:.95rem;line-height:1.6;}
 .sd-119 .d{font-size:.85rem;color:#6B5C46;line-height:1.65;margin-top:4px;}
 
 .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;display:none;border-top:2px solid #E3D9C8;padding:4px 2px calc(10px + var(--nav-safe));font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;}
@@ -257,6 +271,10 @@ table.cal-rec td.pad{background:none;}
    選択中のボタンも同じ高さになるよう、上下の余白は付けず左右だけにする。 */
 .nav button{flex:1;display:flex;align-items:center;justify-content:center;min-height:48px;background:none;border:none;font-family:inherit;font-size:.92rem;color:var(--usucha);cursor:pointer;padding:4px 2px;font-weight:700;white-space:nowrap;}
 .nav button.on{color:#fff;background:var(--hi);border-radius:10px;margin:0 3px;}
+/* タブごとに用途別の色にする(ホームは主要操作のオレンジのまま) */
+.nav button[data-t="t-yotei"].on{background:var(--ao);}
+.nav button[data-t="t-kiroku"].on{background:var(--ha-koi);}
+.nav button[data-t="t-soudan"].on{background:var(--murasaki);}
 .nav button.hidden{display:none;}
 /* 設定はタブではなく設定画面を開くボタン。細い区切りで、行き先が違うことを示す */
 .nav button.nav-set{border-left:1px solid #EFE8DA;}
@@ -264,7 +282,7 @@ table.cal-rec td.pad{background:none;}
 @media (max-width:360px){
   .nav button{font-size:.84rem;}
 }
-#loading{position:fixed;inset:0;background:#FFF8EA;display:flex;align-items:center;justify-content:center;z-index:99;font-weight:900;color:var(--usucha);font-size:1rem;}
+#loading{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:99;font-weight:900;color:var(--usucha);font-size:1rem;}
 </style>
 </head>
 <body>
@@ -446,7 +464,7 @@ table.cal-rec td.pad{background:none;}
       <button class="onegai-item" onclick="sendOnegai('今日はそっとしておいて')">今日はそっとしておいて</button>
     </div>
     <div class="onegai-note">緊急時に使うボタンではありません。<br>急ぐときは電話や119番を使ってください。</div>
-    <button class="modal-close" style="background:#B7A88E;box-shadow:0 4px 0 #9A8B70;" onclick="closeOnegai()">やめる</button>
+    <button class="modal-close" onclick="closeOnegai()">やめる</button>
   </div>
 </div>
 
@@ -479,13 +497,7 @@ table.cal-rec td.pad{background:none;}
       <h4>つながっている人</h4>
       <div id="set-members"><div class="empty">読み込み中…</div></div>
       <div class="note">解除すると、その人はこの家族の記録を見られなくなります(過去の記録も含む)。端末を紛失した場合も、ここで解除すれば停止できます。</div>
-    </div>
-
-    <div class="set-sec">
-      <h4>家族・本人を招待する</h4>
-      <div class="note" style="margin-top:0;margin-bottom:8px;">ここから家族とつながれます</div>
-      <button class="set-btn" onclick="makeInvite()">招待コードを発行する</button>
-      <div id="invite-area"></div>
+      <button class="consent-back" style="margin:10px auto 0;display:block;" onclick="closeSettings()">新しく招待するときは、ホーム画面の「家族を招待する」から進めます</button>
     </div>
 
     <div class="set-sec">
@@ -515,23 +527,24 @@ table.cal-rec td.pad{background:none;}
 
     <!-- ホーム -->
     <div class="ftab" id="t-home">
-      <div class="card" id="card-invite" style="border:2px solid var(--hi);">
+      <div class="card dom-family" id="card-invite" style="border:2px solid var(--aomidori);">
         <h3>家族を招待する</h3>
         <div class="note" style="margin-top:0;margin-bottom:10px;">ここから家族とつながれます</div>
-        <button class="big-btn or" onclick="openInviteFromHome()">招待する</button>
+        <button class="big-btn family" id="btn-home-invite" onclick="makeInvite('home-invite-area')">招待コードを発行する</button>
+        <div id="home-invite-area"></div>
       </div>
       <div id="card-pending"></div>
-      <div class="card" id="card-next-yotei" style="display:none;">
+      <div class="card dom-yotei" id="card-next-yotei" style="display:none;">
         <h3>次の予定</h3>
         <div id="f-next-yotei" style="font-size:1.02rem;font-weight:700;">まだ登録がありません</div>
       </div>
 
-      <div class="card">
+      <div class="card dom-record">
         <h3 id="home-date-h3">今日の記録</h3>
         <div id="ev-list"><div class="empty" id="ev-empty">まだ届いていません</div></div>
       </div>
 
-      <div class="card" id="card-actions">
+      <div class="card dom-record" id="card-actions">
         <h3>先に挨拶を送る</h3>
         <div class="ab-grid">
           <button class="ab-btn" id="btn-ab-asa" onclick="sendAisatsuBack('asa')"><span class="ic">☀️</span><span class="tx">おはよう</span></button>
@@ -539,11 +552,11 @@ table.cal-rec td.pad{background:none;}
           <button class="ab-btn" id="btn-ab-yoru" onclick="sendAisatsuBack('yoru')"><span class="ic">🌙</span><span class="tx">おやすみ</span></button>
         </div>
         <div class="sent-note" id="note-aisatsu-back" style="display:none;"></div>
-        <button class="big-btn or" onclick="askKusuri()" style="margin-top:14px;">「お薬飲んだ?」を送る</button>
+        <button class="big-btn record" onclick="askKusuri()" style="margin-top:14px;">「お薬飲んだ?」を送る</button>
         <div class="sent-note" id="note-ask" style="display:none;"></div>
       </div>
 
-      <div class="card" id="card-krec" style="display:none;">
+      <div class="card dom-record" id="card-krec" style="display:none;">
         <h3>今日の体調を記録する</h3>
         <div class="krec-grid">
           <button class="krec-btn" onclick="recKibun('よく眠れた')">よく眠れた</button>
@@ -552,20 +565,20 @@ table.cal-rec td.pad{background:none;}
           <button class="krec-btn" onclick="recKibun('疲れた')">疲れた</button>
           <button class="krec-btn" onclick="recKibun('どこか痛い')">どこか痛い</button>
         </div>
-        <button class="big-btn or" onclick="recKusuri()">本人に薬を飲んだか確認しました</button>
+        <button class="big-btn record" onclick="recKusuri()">本人に薬を飲んだか確認しました</button>
         <div class="note">記録した人の名前と時刻が残ります。服薬の証明にはなりません。</div>
       </div>
 
-      <div class="card">
+      <div class="card dom-record">
         <h3>様子メモ</h3>
         <div class="in-row"><input type="text" id="in-memo" placeholder="例: 電話した。声が元気だった"></div>
-        <button class="big-btn or" onclick="sendMemo()">メモを残す</button>
+        <button class="big-btn record" onclick="sendMemo()">メモを残す</button>
       </div>
     </div>
 
     <!-- 予定 -->
     <div class="ftab" id="t-yotei" style="display:none;">
-      <div class="card">
+      <div class="card dom-yotei">
         <h3>予定の登録</h3>
         <div class="in-row">
           <select id="yt-kind">
@@ -577,14 +590,14 @@ table.cal-rec td.pad{background:none;}
           <input type="date" id="yt-date">
         </div>
         <div class="in-row"><input type="text" id="yt-label" placeholder="例: 通院 10時"></div>
-        <button class="big-btn or" onclick="saveYotei()">保存する</button>
+        <button class="big-btn yotei" onclick="saveYotei()">保存する</button>
         <div class="note" id="yt-note">本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。</div>
       </div>
-      <div class="card">
+      <div class="card dom-yotei">
         <h3>これからの予定</h3>
         <div id="yt-list"><div class="empty">まだ登録がありません</div></div>
       </div>
-      <div class="card">
+      <div class="card dom-yotei">
         <h3 id="f-cal-ttl">今月のカレンダー</h3>
         <table class="cal" id="f-cal-table"></table>
       </div>
@@ -592,7 +605,7 @@ table.cal-rec td.pad{background:none;}
 
     <!-- 記録(月間記録) -->
     <div class="ftab" id="t-kiroku" style="display:none;">
-      <div class="card">
+      <div class="card dom-record">
         <div class="rec-head">
           <button class="rec-nav" id="rec-prev" onclick="recMove(-1)">◀ 前の月</button>
           <div class="rec-ttl" id="rec-ttl">─</div>
@@ -608,13 +621,13 @@ table.cal-rec td.pad{background:none;}
         <div class="note">「―」の日は記録がなかった日です。未実施や体調の異常を意味するものではありません。</div>
       </div>
 
-      <div class="card">
+      <div class="card dom-record">
         <h3 id="rec-day-ttl">その日の記録</h3>
         <div id="rec-day"><div class="empty">読み込み中…</div></div>
         <div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div>
       </div>
 
-      <div class="card">
+      <div class="card dom-record">
         <h3 id="rec-sum-ttl">今月のまとめ</h3>
         <div class="rec-sum" id="rec-sum"></div>
         <div class="note">件数を数えたものです。良い・悪いや、健康状態の判断はしていません。この記録は、ご本人とご家族が入力した生活の記録であり、医療機関の診療記録ではありません。</div>
@@ -623,16 +636,16 @@ table.cal-rec td.pad{background:none;}
 
     <!-- 相談(上田市の公式案内) -->
     <div class="ftab" id="t-soudan" style="display:none;">
-      <div class="card" id="sd-pick-card">
+      <div class="card dom-soudan" id="sd-pick-card">
         <h3>どんなことで困っていますか?</h3>
         <p class="sd-lead">当てはまるものを選んでください。上田市の公式なご案内へ進めます。<br>このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。</p>
         <div class="sd-list" id="sd-list"></div>
       </div>
-      <div class="card" id="sd-detail-card" style="display:none;">
+      <div class="card dom-soudan" id="sd-detail-card" style="display:none;">
         <h3 id="sd-detail-ttl">ここへ相談できます</h3>
         <div id="sd-detail"></div>
       </div>
-      <div class="card">
+      <div class="card dom-soudan">
         <div class="note">当番の医療機関や電話番号は変わることがあります。最新の内容は、それぞれの公式ページでお確かめください。</div>
         <div class="note" id="sd-checked">公式情報の確認日: ─</div>
       </div>
@@ -1080,7 +1093,7 @@ function renderPendingCard(elId, snap){
   snap.forEach(doc=>{
     const v=doc.data();
     const id=rememberMember(doc.id, v.name);
-    html+='<div style="background:#fff;border:3px solid #E0711A;border-radius:18px;padding:15px;margin-bottom:12px;">'+
+    html+='<div style="background:#fff;border:3px solid var(--aomidori);border-radius:18px;padding:15px;margin-bottom:12px;">'+
       '<div style="font-size:1.05rem;font-weight:900;line-height:1.6;margin-bottom:10px;">'+esc(v.name)+'さんを家族として参加させますか?</div>'+
       '<div style="display:flex;gap:8px;">'+
       '<button style="flex:1;font-family:inherit;font-size:1rem;font-weight:900;padding:13px;border:none;border-radius:12px;background:#5F7D52;color:#fff;cursor:pointer;" onclick="approveMember(\''+id+'\')">参加を認める</button>'+
@@ -1807,14 +1820,6 @@ function openSettings(){
   document.getElementById('consent-info').textContent=info.length?info.join(' / '):'この端末での同意記録はありません';
 }
 function closeSettings(){ document.getElementById('settings-modal').classList.remove('show'); }
-function openInviteFromHome(){
-  openSettings();
-  setTimeout(function(){
-    const area=document.getElementById('invite-area');
-    const sec=area && area.closest('.set-sec');
-    if(sec) sec.scrollIntoView({block:'center'});
-  }, 50);
-}
 async function renderSetMembers(){
   const box=document.getElementById('set-members');
   try{
@@ -1875,7 +1880,9 @@ async function removeMember(mid, isMe){
     renderSetMembers();
   }catch(e){ alert('解除できませんでした: '+e.message); }
 }
-async function makeInvite(){
+async function makeInvite(targetId){
+  targetId = targetId || 'home-invite-area';
+  const area=document.getElementById(targetId);
   try{
     const code=randCode();
     await db.collection('invites').doc(code).set({
@@ -1885,7 +1892,7 @@ async function makeInvite(){
       expiresAt: firebase.firestore.Timestamp.fromMillis(Date.now()+24*60*60*1000),
       used: false
     });
-    document.getElementById('invite-area').innerHTML=
+    if(area) area.innerHTML=
       '<div class="code-show">'+code+'</div>'+
       '<div class="code-exp">有効期限24時間・一度だけ使えます。<br>参加する人の端末で、入口→モードを選ぶ→このコードを入力してください。</div>';
   }catch(e){ alert('発行できませんでした: '+e.message); }
