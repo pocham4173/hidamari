@@ -282,6 +282,9 @@ table.cal-rec td.pad{background:none;}
     <button class="entry-btn" onclick="pickMode('kazoku')">ご家族が使う<small>本人もアプリを使う世帯</small></button>
     <button class="entry-btn" onclick="pickMode('konly')">ご家族が記録して使う<small>本人は操作しません</small></button>
   </div>
+  <div class="setup-or">─ または ─</div>
+  <button class="entry-btn sub" onclick="pickMode('kazoku')">招待された方<small>招待コードを入力して参加する</small></button>
+  <div class="note" style="max-width:320px;margin:6px auto 0;">ここから家族とつながれます。ご本人がこの端末を使う場合は、上の「ご本人が使う」を選んでください。</div>
 </div>
 
 <!-- ===== 同意(共用) ===== -->
@@ -480,6 +483,7 @@ table.cal-rec td.pad{background:none;}
 
     <div class="set-sec">
       <h4>家族・本人を招待する</h4>
+      <div class="note" style="margin-top:0;margin-bottom:8px;">ここから家族とつながれます</div>
       <button class="set-btn" onclick="makeInvite()">招待コードを発行する</button>
       <div id="invite-area"></div>
     </div>
@@ -511,6 +515,11 @@ table.cal-rec td.pad{background:none;}
 
     <!-- ホーム -->
     <div class="ftab" id="t-home">
+      <div class="card" id="card-invite" style="border:2px solid var(--hi);">
+        <h3>家族を招待する</h3>
+        <div class="note" style="margin-top:0;margin-bottom:10px;">ここから家族とつながれます</div>
+        <button class="big-btn or" onclick="openInviteFromHome()">招待する</button>
+      </div>
       <div id="card-pending"></div>
       <div class="card" id="card-next-yotei" style="display:none;">
         <h3>次の予定</h3>
@@ -1798,6 +1807,14 @@ function openSettings(){
   document.getElementById('consent-info').textContent=info.length?info.join(' / '):'この端末での同意記録はありません';
 }
 function closeSettings(){ document.getElementById('settings-modal').classList.remove('show'); }
+function openInviteFromHome(){
+  openSettings();
+  setTimeout(function(){
+    const area=document.getElementById('invite-area');
+    const sec=area && area.closest('.set-sec');
+    if(sec) sec.scrollIntoView({block:'center'});
+  }, 50);
+}
 async function renderSetMembers(){
   const box=document.getElementById('set-members');
   try{
