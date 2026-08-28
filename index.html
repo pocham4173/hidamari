@@ -311,7 +311,7 @@ table.cal-rec td.pad{background:none;}
     <label class="consent-item"><input type="checkbox" class="ck-b"> 記録は医療判断や服薬の証明にならないことを理解しました</label>
     <div class="consent-note">
       <b>大切な注意</b><br>
-      ・「服薬を確認しました」は家族による確認の記録です。服用そのものを証明しません<br>
+      ・「本人に薬を飲んだか確認しました」は家族による確認の記録です。服用そのものを証明しません<br>
       ・記録がないことは、未実施や異常を意味しません<br>
       ・まいにこは24時間の監視、救急通報、医師の診断や治療の代わりではありません<br>
       ・体調の異常時や緊急時は、医療機関または119番へ連絡してください<br>
@@ -390,7 +390,7 @@ table.cal-rec td.pad{background:none;}
       </div>
       <button class="skip" onclick="skipKibun()">今日は答えない</button>
     </div>
-    <button class="kusuri-btn" id="btn-k" onclick="sendKusuri()">お薬を飲んだら押してください</button>
+    <button class="kusuri-btn" id="btn-k" onclick="sendKusuri()">薬を飲みました</button>
     <button class="onegai-btn" onclick="openOnegai()">ちょっとお願い</button>
     <button class="cal-open" onclick="openCal()">カレンダーを見る</button>
     <div class="h-links">
@@ -530,8 +530,8 @@ table.cal-rec td.pad{background:none;}
           <button class="krec-btn" onclick="recKibun('疲れた')">疲れた</button>
           <button class="krec-btn" onclick="recKibun('どこか痛い')">どこか痛い</button>
         </div>
-        <button class="big-btn or" onclick="recKusuri()">服薬を確認しました</button>
-        <div class="note">記録には、記録した人の名前と時刻が残ります。服薬の記録は家族による確認であり、服用そのものを証明するものではありません。</div>
+        <button class="big-btn or" onclick="recKusuri()">本人に薬を飲んだか確認しました</button>
+        <div class="note">記録した人の名前と時刻が残ります。服薬の証明にはなりません。</div>
       </div>
 
       <div class="card">
@@ -975,7 +975,7 @@ function markAisatsuDone(){
 function markKusuriDone(){
   const b=document.getElementById('btn-k');
   b.classList.add('done');
-  b.textContent='服薬について記録しました';
+  b.textContent='薬を飲んだと記録しました';
 }
 function sendAisatsu(){
   const s=slot();
