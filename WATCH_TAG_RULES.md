@@ -1,71 +1,21 @@
-# QRおまもりタグ用 Firestore Rules
+# QRおまもりタグの安全ルール
 
-このPRは、現在Firebase Consoleに設定されているRulesを推測で上書きしません。
-本番へ反映する前に、既存Rulesの `match /databases/{database}/documents` 内へ以下を統合し、Rules Simulatorで確認してください。
+`firestore.rules` は、2026年8月29日にFirebase Consoleから確認した既存ルールへ、QRおまもりタグ専用ルールを統合した完全版です。
 
-前提として、既存Rules内に次の判定関数が必要です。
+既存の認証・家族・記録・予定・招待コードの権限は変えていません。追加した対象は次だけです。
 
-```text
-function signedIn() {
-  return request.auth != null;
-}
+- `groups/{groupId}/settings/watchTag`
+- `watchTags/{tagId}`
+- `watchTags/{tagId}/alerts/{alertId}`
 
-function approvedMember(groupId) {
-  return signedIn()
-    && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid))
-    && get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.status == "approved";
-}
-```
+## 保護する条件
 
-統合するルール:
+- QRには32文字のランダムIDだけを入れる
+- タグ本文と家族情報は、承認済み家族以外には読ませない
+- 承認済み家族だけがタグを発行・停止・通知閲覧できる
+- 読み取った人は匿名ログイン後、「見つけた」という通知だけを1回作成できる
+- 通知から氏名、住所、電話番号、病歴、家族情報、位置情報を送れない
+- 停止済みタグには通知できない
+- 通知は変更・削除できない
 
-```text
-match /groups/{groupId}/settings/watchTag {
-  allow read, create, update: if approvedMember(groupId);
-  allow delete: if false;
-}
-
-match /watchTags/{tagId} {
-  allow create: if signedIn()
-    && request.resource.data.keys().hasOnly(["groupId", "active", "createdBy", "createdAt"])
-    && request.resource.data.groupId is string
-    && request.resource.data.active == true
-    && request.resource.data.createdBy == request.auth.uid
-    && approvedMember(request.resource.data.groupId);
-
-  allow read: if approvedMember(resource.data.groupId);
-
-  allow update: if approvedMember(resource.data.groupId)
-    && request.resource.data.groupId == resource.data.groupId
-    && request.resource.data.createdBy == resource.data.createdBy
-    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["active", "stoppedAt"]);
-
-  allow delete: if approvedMember(resource.data.groupId);
-
-  match /alerts/{alertId} {
-    allow create: if signedIn()
-      && alertId == request.auth.uid
-      && exists(/databases/$(database)/documents/watchTags/$(tagId))
-      && get(/databases/$(database)/documents/watchTags/$(tagId)).data.active == true
-      && request.resource.data.keys().hasOnly(["type", "senderUid", "createdAt"])
-      && request.resource.data.type == "found"
-      && request.resource.data.senderUid == request.auth.uid;
-
-    allow read: if approvedMember(
-      get(/databases/$(database)/documents/watchTags/$(tagId)).data.groupId
-    );
-
-    allow update, delete: if false;
-  }
-}
-```
-
-## 必須確認
-
-- 未ログインでは通知を書けない
-- 匿名ログインした第三者はタグ本文と家族情報を読めない
-- 承認済み家族だけがタグ発行・停止・通知閲覧できる
-- 同じ匿名利用者は同じタグへ1回しか通知できない
-- 停止済みタグには通知を書けない
-- QRと読み取り画面に氏名、住所、電話番号、病歴、家族情報、位置情報が出ない
-
+Firebaseへ公開する前に、`firestore.rules` のテスト成功を確認します。
