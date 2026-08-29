@@ -1,0 +1,38 @@
+name: Firebaseルール検査
+
+on:
+  pull_request:
+    paths:
+      - 'firestore.rules'
+      - 'firebase.json'
+      - '.github/workflows/firebase-rules-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firestore-rules:
+    name: Firestoreルール構文検査
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: コードを取得
+        uses: actions/checkout@v4
+
+      - name: Java 21を準備
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Node.jsを準備
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Firebase CLIを準備
+        run: npm install --global firebase-tools
+
+      - name: Firestore Emulatorでルールを読み込む
+        run: firebase emulators:exec --only firestore --project demo-mainico "echo Firestore rules loaded successfully"

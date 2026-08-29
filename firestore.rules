@@ -1,0 +1,179 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isApproved(groupId) {
+      return signedIn()
+        && exists(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid))
+        && get(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid))
+          .data.get('status', 'approved') == 'approved';
+    }
+
+    match /groups/{groupId} {
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid;
+
+      allow get: if isApproved(groupId);
+      allow list: if false;
+      allow update: if false;
+      allow delete: if isApproved(groupId);
+
+      match /members/{uid} {
+        allow get: if isApproved(groupId)
+          || (signedIn() && request.auth.uid == uid);
+        allow list: if isApproved(groupId);
+
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && (
+            (
+              get(/databases/$(db)/documents/groups/$(groupId)).data.createdBy
+                == request.auth.uid
+              && request.resource.data.get('status', 'approved') == 'approved'
+            )
+            ||
+            (
+              request.resource.data.status == 'pending'
+              && request.resource.data.inviteCode is string
+              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode))
+                .data.groupId == groupId
+              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode))
+                .data.used == false
+              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode))
+                .data.expiresAt > request.time
+            )
+          );
+
+        allow update: if isApproved(groupId)
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'approved'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+
+        allow delete: if isApproved(groupId)
+          || (signedIn() && request.auth.uid == uid);
+      }
+
+      match /events/{eventId} {
+        allow read: if isApproved(groupId);
+        allow create: if isApproved(groupId)
+          && request.resource.data.uid == request.auth.uid;
+        allow update: if false;
+        allow delete: if isApproved(groupId)
+          && resource.data.uid == request.auth.uid;
+      }
+
+      match /yotei/{yoteiId} {
+        allow read: if isApproved(groupId);
+        allow create: if isApproved(groupId);
+        allow update: if false;
+        allow delete: if isApproved(groupId);
+      }
+
+      // QRおまもりタグの家族側設定
+      match /settings/watchTag {
+        allow get: if isApproved(groupId);
+        allow list: if false;
+
+        allow create: if isApproved(groupId)
+          && request.resource.data.keys().hasOnly([
+            'watchTagId', 'watchTagActive', 'watchTagUpdatedAt'
+          ])
+          && request.resource.data.watchTagId is string
+          && request.resource.data.watchTagId.matches('^[A-Za-z0-9_-]{32}$')
+          && request.resource.data.watchTagActive == true
+          && request.resource.data.watchTagUpdatedAt == request.time
+          && get(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
+            .data.groupId == groupId
+          && get(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
+            .data.active == true;
+
+        allow update: if isApproved(groupId)
+          && request.resource.data.keys().hasOnly([
+            'watchTagId', 'watchTagActive', 'watchTagUpdatedAt'
+          ])
+          && request.resource.data.watchTagId is string
+          && request.resource.data.watchTagId.matches('^[A-Za-z0-9_-]{32}$')
+          && request.resource.data.watchTagActive is bool
+          && request.resource.data.watchTagUpdatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'watchTagId', 'watchTagActive', 'watchTagUpdatedAt'
+          ])
+          && get(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
+            .data.groupId == groupId
+          && get(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
+            .data.active == request.resource.data.watchTagActive;
+
+        allow delete: if false;
+      }
+    }
+
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && isApproved(request.resource.data.groupId);
+      allow update: if signedIn()
+        && resource.data.used == false
+        && request.resource.data.used == true
+        && request.resource.data.groupId == resource.data.groupId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used']);
+      allow delete: if signedIn()
+        && isApproved(resource.data.groupId);
+    }
+
+    // QRおまもりタグ本体
+    match /watchTags/{tagId} {
+      allow get: if isApproved(resource.data.groupId);
+      allow list: if false;
+
+      allow create: if signedIn()
+        && tagId.matches('^[A-Za-z0-9_-]{32}$')
+        && request.resource.data.keys().hasOnly([
+          'groupId', 'active', 'createdBy', 'createdAt'
+        ])
+        && request.resource.data.groupId is string
+        && request.resource.data.active == true
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && isApproved(request.resource.data.groupId);
+
+      allow update: if isApproved(resource.data.groupId)
+        && request.resource.data.groupId == resource.data.groupId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.active == false
+        && request.resource.data.stoppedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'active', 'stoppedAt'
+        ]);
+
+      allow delete: if isApproved(resource.data.groupId);
+
+      match /alerts/{alertId} {
+        allow create: if signedIn()
+          && alertId == request.auth.uid
+          && exists(/databases/$(db)/documents/watchTags/$(tagId))
+          && get(/databases/$(db)/documents/watchTags/$(tagId)).data.active == true
+          && request.resource.data.keys().hasOnly([
+            'type', 'senderUid', 'createdAt'
+          ])
+          && request.resource.data.type == 'found'
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.createdAt == request.time;
+
+        allow read: if isApproved(
+          get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId
+        );
+        allow update, delete: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

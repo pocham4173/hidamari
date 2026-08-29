@@ -178,6 +178,19 @@ table.cal-rec td.pad{background:none;}
 .set-btn{display:block;width:100%;background:#fff;border:2px solid #D8CDBA;border-radius:12px;font-family:inherit;font-size:.95rem;font-weight:700;color:var(--cha);padding:12px;margin-top:8px;cursor:pointer;text-align:center;}
 .set-btn.warn{border-color:#C97A6A;color:#A8422E;}
 .set-btn:active{background:#F5EFE4;}
+.tag-card{border:2px solid var(--aomidori);background:linear-gradient(180deg,#fff 0%,var(--aomidori-usui) 100%);}
+.tag-lead{font-size:.92rem;line-height:1.75;color:#4F5D59;margin:4px 0 12px;}
+.tag-state{background:#fff;border:1px solid #B8D9D5;border-radius:14px;padding:12px;margin-top:12px;text-align:center;}
+.tag-state strong{display:block;color:var(--aomidori-koi);font-size:1rem;margin-bottom:5px;}
+.tag-state p{font-size:.82rem;line-height:1.6;color:var(--usucha);}
+.tag-qr{display:flex;justify-content:center;margin:12px auto;padding:10px;background:#fff;width:max-content;max-width:100%;border-radius:10px;}
+.tag-qr img{width:190px;height:190px;max-width:100%;}
+.tag-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.tag-actions button{font-family:inherit;border-radius:12px;padding:12px 8px;font-weight:900;cursor:pointer;}
+.tag-copy{background:#fff;border:2px solid var(--aomidori);color:var(--aomidori-koi);}
+.tag-stop{background:#fff;border:2px solid #C97A6A;color:#A8422E;}
+.tag-alert{background:#FFF7E8;border-left:4px solid var(--hi);padding:10px 12px;margin-top:8px;font-size:.9rem;line-height:1.55;}
+.tag-alert time{display:block;color:var(--usucha);font-size:.74rem;margin-top:3px;}
 .code-show{background:var(--aomidori-usui);border:2px dashed var(--aomidori);border-radius:14px;padding:14px;text-align:center;font-size:1.7rem;font-weight:900;letter-spacing:.18em;color:var(--aomidori-koi);margin-top:10px;}
 .code-exp{font-size:.8rem;color:var(--usucha);text-align:center;margin-top:6px;line-height:1.6;}
 
@@ -533,6 +546,12 @@ table.cal-rec td.pad{background:none;}
         <button class="big-btn family" id="btn-home-invite" onclick="makeInvite('home-invite-area')">招待コードを発行する</button>
         <div id="home-invite-area"></div>
       </div>
+      <div class="card tag-card dom-family" id="card-watch-tag">
+        <h3>おまもりタグ</h3>
+        <p class="tag-lead">持ち物につけるQRです。読み取った方は、個人情報を見ることなく、ご家族へ知らせることだけができます。</p>
+        <div id="watch-tag-area"><div class="empty">状態を確認しています…</div></div>
+        <div id="watch-tag-alerts"></div>
+      </div>
       <div id="card-pending"></div>
       <div class="card dom-yotei" id="card-next-yotei" style="display:none;">
         <h3>次の予定</h3>
@@ -669,6 +688,7 @@ table.cal-rec td.pad{background:none;}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script>
 firebase.initializeApp({
   apiKey: "AIzaSyA3bGGlSk_btdBP5i0XWg0VidskwviHR3A",
@@ -1236,6 +1256,7 @@ function initKazoku(){
     ?'登録した予定は、ホームとカレンダーに表示されます。'
     :'本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。';
   showTab('t-home');
+  loadWatchTag();
   if(memWatchUnsub) memWatchUnsub();
   memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
     renderPendingCard('card-pending', snap);
@@ -1896,6 +1917,101 @@ async function makeInvite(targetId){
       '<div class="code-show">'+code+'</div>'+
       '<div class="code-exp">有効期限24時間・一度だけ使えます。<br>参加する人の端末で、入口→モードを選ぶ→このコードを入力してください。</div>';
   }catch(e){ alert('発行できませんでした: '+e.message); }
+}
+
+/* ===== QRおまもりタグ(試作品) =====
+   QRには推測しにくいランダムIDだけを入れます。
+   氏名・住所・電話番号・病歴・家族情報・位置情報は入れません。 */
+let watchTagUnsub=null;
+let currentWatchTagId='';
+function randWatchTagId(){
+  const a=new Uint8Array(24); crypto.getRandomValues(a);
+  let raw=''; a.forEach(v=>raw+=String.fromCharCode(v));
+  return btoa(raw).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function watchTagUrl(id){
+  const u=new URL('tag.html', location.href);
+  u.searchParams.set('id',id);
+  return u.toString();
+}
+function watchTagQr(url){
+  if(typeof qrcode!=='function') return '<div class="note">QRを表示できません。下の「リンクをコピー」をお使いください。</div>';
+  const qr=qrcode(0,'M');
+  qr.addData(url); qr.make();
+  return qr.createImgTag(6,8,'まいにこ おまもりタグ');
+}
+async function loadWatchTag(){
+  const area=document.getElementById('watch-tag-area');
+  const alerts=document.getElementById('watch-tag-alerts');
+  if(!area || !gid()) return;
+  if(watchTagUnsub){watchTagUnsub();watchTagUnsub=null;}
+  alerts.innerHTML='';
+  try{
+    const g=await col('settings').doc('watchTag').get();
+    const v=g.exists?g.data():{};
+    currentWatchTagId=(v.watchTagActive && v.watchTagId)?v.watchTagId:'';
+    if(!currentWatchTagId){
+      area.innerHTML='<button class="big-btn family" onclick="createWatchTag()">おまもりタグを作る</button>'+
+        '<div class="note">試作品です。作成後も、いつでも停止・再発行できます。</div>';
+      return;
+    }
+    renderWatchTag(currentWatchTagId);
+    watchTagUnsub=db.collection('watchTags').doc(currentWatchTagId).collection('alerts')
+      .orderBy('createdAt','desc').limit(5).onSnapshot(snap=>{
+        const rows=[];
+        snap.forEach(doc=>{
+          const x=doc.data();
+          const d=x.createdAt&&x.createdAt.toDate?x.createdAt.toDate():null;
+          rows.push('<div class="tag-alert">おまもりタグが読み取られ、ご家族へのお知らせが届きました'+
+            (d?'<time>'+esc(dateJp(d))+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+'</time>':'')+'</div>');
+        });
+        alerts.innerHTML=rows.join('') || '<div class="note">まだ読み取りのお知らせはありません。</div>';
+      },()=>{ alerts.innerHTML='<div class="note">お知らせを読み込めませんでした。</div>'; });
+  }catch(e){
+    area.innerHTML='<div class="empty">おまもりタグを確認できませんでした。通信状態を確かめてください。</div>';
+  }
+}
+function renderWatchTag(id){
+  const area=document.getElementById('watch-tag-area');
+  const url=watchTagUrl(id);
+  area.innerHTML='<div class="tag-state"><strong>使用中</strong><p>QRに個人情報は入っていません</p>'+
+    '<div class="tag-qr">'+watchTagQr(url)+'</div>'+
+    '<div class="tag-actions"><button class="tag-copy" onclick="copyWatchTagLink()">リンクをコピー</button>'+
+    '<button class="tag-stop" onclick="stopWatchTag()">このタグを停止</button></div></div>';
+}
+async function createWatchTag(){
+  const area=document.getElementById('watch-tag-area');
+  area.innerHTML='<div class="empty">安全なタグを作っています…</div>';
+  const id=randWatchTagId();
+  try{
+    await db.collection('watchTags').doc(id).set({
+      groupId:gid(), active:true, createdBy:uid(),
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await col('settings').doc('watchTag').set({watchTagId:id,watchTagActive:true,watchTagUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    currentWatchTagId=id;
+    loadWatchTag();
+  }catch(e){
+    db.collection('watchTags').doc(id).delete().catch(()=>{});
+    area.innerHTML='<button class="big-btn family" onclick="createWatchTag()">もう一度作る</button><div class="note">作成できませんでした。設定を確認してください。</div>';
+  }
+}
+async function copyWatchTagLink(){
+  if(!currentWatchTagId) return;
+  try{
+    await navigator.clipboard.writeText(watchTagUrl(currentWatchTagId));
+    alert('おまもりタグのリンクをコピーしました');
+  }catch(e){ alert('コピーできませんでした。QRを画像として保存してお使いください。'); }
+}
+async function stopWatchTag(){
+  if(!currentWatchTagId || !confirm('このおまもりタグを停止しますか?\n停止後は、読み取っても家族へお知らせできなくなります。')) return;
+  try{
+    await db.collection('watchTags').doc(currentWatchTagId).update({active:false,stoppedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    await col('settings').doc('watchTag').set({watchTagActive:false,watchTagUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    currentWatchTagId='';
+    loadWatchTag();
+    alert('おまもりタグを停止しました');
+  }catch(e){ alert('停止できませんでした。通信状態を確認してください。'); }
 }
 function revokeConsent(){
   if(!confirm('同意を取り消して、この端末での利用をやめますか?\nこの家族との接続も解除されます。')) return;
