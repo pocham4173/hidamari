@@ -71,6 +71,15 @@ test('使用中タグへ最初の通知を1回作成できる', async () => {
   }));
 });
 
+test('移行期間中は公開中の旧QRからも最初の通知を作成できる', async () => {
+  await seedTag();
+  await assertSucceeds(setDoc(readerAlert(), {
+    type: 'found',
+    senderUid: uid,
+    createdAt: serverTimestamp()
+  }));
+});
+
 test('10分以内の連打を拒否する', async () => {
   await seedTag({
     alert: {
