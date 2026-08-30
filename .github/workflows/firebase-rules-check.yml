@@ -5,6 +5,7 @@ on:
     paths:
       - 'firestore.rules'
       - 'firebase.json'
+      - 'tests/firestore.rules.test.mjs'
       - '.github/workflows/firebase-rules-check.yml'
   workflow_dispatch:
 
@@ -34,5 +35,8 @@ jobs:
       - name: Firebase CLIを準備
         run: npm install --global firebase-tools
 
-      - name: Firestore Emulatorでルールを読み込む
-        run: firebase emulators:exec --only firestore --project demo-mainico "echo Firestore rules loaded successfully"
+      - name: ルール動作検査の依存関係を準備
+        run: npm install --no-save firebase@11.10.0 @firebase/rules-unit-testing@4.0.1
+
+      - name: Firestoreルールの構文と動作を検査
+        run: firebase emulators:exec --only firestore --project demo-mainico "node --test tests/firestore.rules.test.mjs"

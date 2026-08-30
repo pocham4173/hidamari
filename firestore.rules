@@ -186,7 +186,8 @@ service cloud.firestore {
           ]
           && request.resource.data.senderUid == resource.data.senderUid
           && request.resource.data.senderUid == request.auth.uid
-          && request.resource.data.count == resource.data.count + 1
+          // PR #31以前の通知には count がないため、未設定は0回として扱う。
+          && request.resource.data.count == resource.data.get('count', 0) + 1
           && request.resource.data.createdAt == request.time
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'situation', 'count', 'createdAt'
