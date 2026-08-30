@@ -159,16 +159,43 @@ service cloud.firestore {
           && exists(/databases/$(db)/documents/watchTags/$(tagId))
           && get(/databases/$(db)/documents/watchTags/$(tagId)).data.active == true
           && request.resource.data.keys().hasOnly([
-            'type', 'senderUid', 'createdAt'
+            'type', 'situation', 'senderUid', 'count', 'createdAt'
           ])
           && request.resource.data.type == 'found'
+          && request.resource.data.situation in [
+            'lost', 'unwell', 'safe', 'called'
+          ]
           && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.count == 1
           && request.resource.data.createdAt == request.time;
+
+        // 同じ端末からの連打は拒否し、10分後から新しい状況だけ再通知可能。
+        // 本格公開前には、匿名認証を作り直す攻撃も含む大量通知対策を追加する。
+        allow update: if signedIn()
+          && alertId == request.auth.uid
+          && exists(/databases/$(db)/documents/watchTags/$(tagId))
+          && get(/databases/$(db)/documents/watchTags/$(tagId)).data.active == true
+          && request.time >= resource.data.createdAt + duration.value(10, 'm')
+          && request.resource.data.keys().hasOnly([
+            'type', 'situation', 'senderUid', 'count', 'createdAt'
+          ])
+          && request.resource.data.type == resource.data.type
+          && request.resource.data.type == 'found'
+          && request.resource.data.situation in [
+            'lost', 'unwell', 'safe', 'called'
+          ]
+          && request.resource.data.senderUid == resource.data.senderUid
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.count == resource.data.count + 1
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'situation', 'count', 'createdAt'
+          ]);
 
         allow read: if isApproved(
           get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId
         );
-        allow update, delete: if false;
+        allow delete: if false;
       }
     }
 

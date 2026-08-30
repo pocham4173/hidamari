@@ -547,8 +547,8 @@ table.cal-rec td.pad{background:none;}
         <div id="home-invite-area"></div>
       </div>
       <div class="card tag-card dom-family" id="card-watch-tag">
-        <h3>おまもりタグ</h3>
-        <p class="tag-lead">持ち物につけるQRです。読み取った方は、個人情報を見ることなく、ご家族へ知らせることだけができます。</p>
+        <h3>おまもりタグ（内部試作品）</h3>
+        <p class="tag-lead">持ち物につけるQRの試作品です。読み取った方は個人情報を見ることなく、選んだ状況を家族画面の履歴へ記録できます。プッシュ通知・電話・メールは届きません。</p>
         <div id="watch-tag-area"><div class="empty">状態を確認しています…</div></div>
         <div id="watch-tag-alerts"></div>
       </div>
@@ -1952,17 +1952,22 @@ async function loadWatchTag(){
     currentWatchTagId=(v.watchTagActive && v.watchTagId)?v.watchTagId:'';
     if(!currentWatchTagId){
       area.innerHTML='<button class="big-btn family" onclick="createWatchTag()">おまもりタグを作る</button>'+
-        '<div class="note">試作品です。作成後も、いつでも停止・再発行できます。</div>';
+        '<div class="note">内部確認用の試作品です。本人の同意、実通知、乱用防止、削除機能が完成するまで販売・配布には使いません。作成後も、いつでも停止・再発行できます。</div>';
       return;
     }
     renderWatchTag(currentWatchTagId);
     watchTagUnsub=db.collection('watchTags').doc(currentWatchTagId).collection('alerts')
       .orderBy('createdAt','desc').limit(5).onSnapshot(snap=>{
         const rows=[];
+        const situationLabels={
+          lost:'道に迷っているようです',unwell:'体調が心配です',
+          safe:'安全な場所にいます',called:'警察・救急へ連絡しました'
+        };
         snap.forEach(doc=>{
           const x=doc.data();
           const d=x.createdAt&&x.createdAt.toDate?x.createdAt.toDate():null;
-          rows.push('<div class="tag-alert">おまもりタグが読み取られ、ご家族へのお知らせが届きました'+
+          const situation=situationLabels[x.situation]||'おまもりタグが読み取られました';
+          rows.push('<div class="tag-alert"><strong>'+esc(situation)+'</strong><br>読み取った方の入力が履歴に記録されました'+
             (d?'<time>'+esc(dateJp(d))+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+'</time>':'')+'</div>');
         });
         alerts.innerHTML=rows.join('') || '<div class="note">まだ読み取りのお知らせはありません。</div>';
