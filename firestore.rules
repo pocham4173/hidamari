@@ -70,7 +70,10 @@ service cloud.firestore {
       match /yotei/{yoteiId} {
         allow read: if isApproved(groupId);
         allow create: if isApproved(groupId);
-        allow update: if false;
+        // 予定の日時・場所・付き添いなどを家族で修正できます。
+        // もともと承認済みメンバーは作成と削除ができるため、同じ範囲に限定します。
+        allow update: if isApproved(groupId)
+          && request.resource.data.uid == resource.data.uid;
         allow delete: if isApproved(groupId);
       }
 
