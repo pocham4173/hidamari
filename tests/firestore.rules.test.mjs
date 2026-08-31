@@ -9,7 +9,8 @@ import {
   doc,
   serverTimestamp,
   setDoc,
-  Timestamp
+  Timestamp,
+  updateDoc
 } from 'firebase/firestore';
 
 const projectId = 'demo-mainico';
@@ -33,6 +34,21 @@ async function seedTag({ active = true, alert = null } = {}) {
     if (alert) {
       await setDoc(doc(db, 'watchTags', tagId, 'alerts', uid), alert);
     }
+  });
+}
+
+async function seedSchedule() {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    await setDoc(doc(db, 'groups', 'family-1'), {
+      createdBy: 'family-owner'
+    });
+    await setDoc(doc(db, 'groups', 'family-1', 'members', 'family-owner'), {
+      status: 'approved', role: 'kazoku'
+    });
+    await setDoc(doc(db, 'groups', 'family-1', 'yotei', 'plan-1'), {
+      kind: '🏥', date: '2026-09-01', label: '通院', uid: 'family-owner'
+    });
   });
 }
 
@@ -143,4 +159,24 @@ test('停止済みタグへの新規通知と再通知を拒否する', async ()
     count: 2,
     createdAt: serverTimestamp()
   }, { merge: true }));
+});
+
+test('承認済み家族は予定の内容を修正できる', async () => {
+  await seedSchedule();
+  const plan = doc(
+    testEnv.authenticatedContext('family-owner').firestore(),
+    'groups', 'family-1', 'yotei', 'plan-1'
+  );
+  await assertSucceeds(updateDoc(plan, {
+    time: '10:00', place: '上田市内の医院', updatedAt: serverTimestamp()
+  }));
+});
+
+test('予定を修正するとき作成者uidは変更できない', async () => {
+  await seedSchedule();
+  const plan = doc(
+    testEnv.authenticatedContext('family-owner').firestore(),
+    'groups', 'family-1', 'yotei', 'plan-1'
+  );
+  await assertFails(updateDoc(plan, { uid: 'other-user' }));
 });
