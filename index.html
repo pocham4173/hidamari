@@ -1485,10 +1485,12 @@ function initKazoku(){
     box.innerHTML=future.map(v=>{
       const dd=new Date(v._nextDate+'T00:00:00');
       const detail=yoteiDetail(v);
+      const actions=v.uid===uid()
+        ? '<span><button class="yt-del" style="margin-right:10px;" onclick="editYotei(\''+jsArg(v._id)+'\')">修正</button>'+
+          '<button class="yt-del" onclick="delYotei(\''+jsArg(v._id)+'\')">削除</button></span>'
+        : '<small>ほかの家族が登録</small>';
       return '<div class="yt-item"><span>'+esc(v.kind)+' '+dateJp(dd)+' '+esc(v.label)+
-        (detail?'<br><small>'+esc(detail)+'</small>':'')+'</span><span>'+
-        '<button class="yt-del" style="margin-right:10px;" onclick="editYotei(\''+jsArg(v._id)+'\')">修正</button>'+
-        '<button class="yt-del" onclick="delYotei(\''+jsArg(v._id)+'\')">削除</button></span></div>';
+        (detail?'<br><small>'+esc(detail)+'</small>':'')+'</span>'+actions+'</div>';
     }).join('');
   });
 }
