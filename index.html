@@ -191,6 +191,12 @@ table.cal-rec td.pad{background:none;}
 .tag-stop{background:#fff;border:2px solid #C97A6A;color:#A8422E;}
 .tag-alert{background:#FFF7E8;border-left:4px solid var(--hi);padding:10px 12px;margin-top:8px;font-size:.9rem;line-height:1.55;}
 .tag-alert time{display:block;color:var(--usucha);font-size:.74rem;margin-top:3px;}
+.tag-home{border:2px solid var(--hi);background:#FFF9ED;}
+.tag-home .tag-home-head{display:flex;align-items:center;gap:9px;font-size:1rem;font-weight:900;color:var(--cha);}
+.tag-home .tag-home-head .ic{font-size:1.45rem;}
+.tag-home .tag-home-status{font-size:.82rem;color:var(--usucha);line-height:1.6;margin-top:5px;}
+.tag-home .tag-alert{border:0;border-radius:10px;background:#fff;margin-top:10px;padding:12px;}
+.tag-home .tag-alert strong{font-size:1rem;color:var(--aka-koi);}
 .code-show{background:var(--aomidori-usui);border:2px dashed var(--aomidori);border-radius:14px;padding:14px;text-align:center;font-size:1.7rem;font-weight:900;letter-spacing:.18em;color:var(--aomidori-koi);margin-top:10px;}
 .code-exp{font-size:.8rem;color:var(--usucha);text-align:center;margin-top:6px;line-height:1.6;}
 
@@ -240,6 +246,27 @@ table.cal-rec td.pad{background:none;}
 .ab-btn.suggested{background:var(--ha-usui);border-color:var(--ha-koi);}
 .ab-btn:disabled{opacity:.5;cursor:default;}
 .sent-note.err{color:#B0492F;}
+.save-state{min-height:1.3em;font-size:.8rem;font-weight:700;color:var(--ha-koi);margin-top:7px;text-align:center;}
+.save-state.err{color:var(--aka-koi);}
+.record-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.record-tools button{min-height:48px;background:#fff;border:2px solid var(--ha);border-radius:10px;color:var(--ha-koi);font-family:inherit;font-weight:700;cursor:pointer;}
+.disaster-card{border:2px solid #D58B2B;background:#FFFAEF;}
+.disaster-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px;}
+.disaster-grid button{min-height:56px;border-radius:10px;border:2px solid #D58B2B;background:#fff;color:var(--cha);font-family:inherit;font-size:.82rem;font-weight:900;cursor:pointer;padding:7px 3px;}
+.disaster-grid button.help{border-color:var(--aka);color:var(--aka-koi);}
+.prep-list{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-top:10px;font-size:.85rem;}
+.prep-list label{display:flex;align-items:center;gap:6px;min-height:38px;}
+.prep-list input{width:20px;height:20px;}
+@media print{
+  body.print-records{background:#fff;display:block;}
+  body.print-records .phone{max-width:none;}
+  body.print-records .f-head,body.print-records .nav,body.print-records #t-home,
+  body.print-records #t-yotei,body.print-records #t-soudan,body.print-records .back,
+  body.print-records .record-tools{display:none!important;}
+  body.print-records #kazoku,body.print-records #t-kiroku{display:block!important;}
+  body.print-records .f-body{padding:0;overflow:visible;}
+  body.print-records .card{break-inside:avoid;border:1px solid #bbb;}
+}
 /* ===== 相談タブ: 困りごとから上田市の公式案内へ ===== */
 .sd-lead{font-size:.9rem;color:#6B5C46;line-height:1.7;margin-bottom:12px;}
 .sd-list{display:flex;flex-direction:column;gap:9px;}
@@ -507,10 +534,32 @@ table.cal-rec td.pad{background:none;}
     <div class="ttl">設定</div>
 
     <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;">
+      <h4>家族・本人を招待する</h4>
+      <div class="note" style="margin-top:0;">新しくつながる方へ、24時間・1回限りの招待コードを渡します。</div>
+      <button class="set-btn" onclick="makeInvite('settings-invite-area')">招待コードを発行する</button>
+      <div id="settings-invite-area"></div>
+    </div>
+
+    <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;">
       <h4>つながっている人</h4>
       <div id="set-members"><div class="empty">読み込み中…</div></div>
       <div class="note">解除すると、その人はこの家族の記録を見られなくなります(過去の記録も含む)。端末を紛失した場合も、ここで解除すれば停止できます。</div>
-      <button class="consent-back" style="margin:10px auto 0;display:block;" onclick="closeSettings()">新しく招待するときは、ホーム画面の「家族を招待する」から進めます</button>
+    </div>
+
+    <div class="set-sec">
+      <h4>おまもりタグ（内部試作品）</h4>
+      <p class="tag-lead">QRの作成・表示・停止はここで管理します。QRには氏名・住所・電話番号・病歴・位置情報を入れません。</p>
+      <div id="watch-tag-area"><div class="empty">状態を確認しています…</div></div>
+      <div class="note">現在はアプリ内の履歴だけです。プッシュ通知・電話・メールは届きません。販売・配布にはまだ使いません。</div>
+    </div>
+
+    <div class="set-sec">
+      <h4>相談先・防災情報の地域</h4>
+      <select id="region-select" class="set-btn" onchange="saveRegion()">
+        <option value="ueda">長野県 上田市</option>
+        <option value="nagano">長野県（市町村未選択）</option>
+      </select>
+      <div class="note">現在は上田市版を先行して整備しています。全国版は、市町村ごとの公式情報を確認してから追加します。</div>
     </div>
 
     <div class="set-sec">
@@ -540,22 +589,16 @@ table.cal-rec td.pad{background:none;}
 
     <!-- ホーム -->
     <div class="ftab" id="t-home">
-      <div class="card dom-family" id="card-invite" style="border:2px solid var(--aomidori);">
-        <h3>家族を招待する</h3>
-        <div class="note" style="margin-top:0;margin-bottom:10px;">ここから家族とつながれます</div>
-        <button class="big-btn family" id="btn-home-invite" onclick="makeInvite('home-invite-area')">招待コードを発行する</button>
-        <div id="home-invite-area"></div>
-      </div>
-      <div class="card tag-card dom-family" id="card-watch-tag">
-        <h3>おまもりタグ（内部試作品）</h3>
-        <p class="tag-lead">持ち物につけるQRの試作品です。読み取った方は個人情報を見ることなく、選んだ状況を家族画面の履歴へ記録できます。プッシュ通知・電話・メールは届きません。</p>
-        <div id="watch-tag-area"><div class="empty">状態を確認しています…</div></div>
-        <div id="watch-tag-alerts"></div>
-      </div>
       <div id="card-pending"></div>
       <div class="card dom-yotei" id="card-next-yotei" style="display:none;">
         <h3>次の予定</h3>
         <div id="f-next-yotei" style="font-size:1.02rem;font-weight:700;">まだ登録がありません</div>
+      </div>
+
+      <div class="card tag-home" id="watch-tag-home" style="display:none;">
+        <div class="tag-home-head"><span class="ic">🔔</span><span>おまもりタグからのお知らせ</span></div>
+        <div class="tag-home-status" id="home-watch-tag-status"></div>
+        <div id="watch-tag-alerts"></div>
       </div>
 
       <div class="card dom-record">
@@ -593,12 +636,37 @@ table.cal-rec td.pad{background:none;}
         <div class="in-row"><input type="text" id="in-memo" placeholder="例: 電話した。声が元気だった"></div>
         <button class="big-btn record" onclick="sendMemo()">メモを残す</button>
       </div>
+
+      <div class="card disaster-card">
+        <h3>もしもの時に備える</h3>
+        <div class="note" style="margin-top:0;">この3つは家族画面への記録です。消防・警察への通報ではありません。命にかかわるときは119番へ電話してください。</div>
+        <div class="disaster-grid">
+          <button onclick="sendDisasterStatus('disaster-safe')">無事です</button>
+          <button onclick="sendDisasterStatus('disaster-evacuating')">避難中です</button>
+          <button class="help" onclick="sendDisasterStatus('disaster-help')">助けが必要です</button>
+        </div>
+        <div class="save-state" id="disaster-state" aria-live="polite"></div>
+        <details style="margin-top:10px;">
+          <summary style="font-weight:900;cursor:pointer;">毎月の備えを確認する</summary>
+          <div class="prep-list" id="prep-list">
+            <label><input type="checkbox" value="water">水・食べ物</label>
+            <label><input type="checkbox" value="medicine">必要な薬</label>
+            <label><input type="checkbox" value="glasses">眼鏡・補聴器</label>
+            <label><input type="checkbox" value="battery">充電・電池</label>
+            <label><input type="checkbox" value="bag">持出し袋</label>
+            <label><input type="checkbox" value="place">避難先</label>
+            <label><input type="checkbox" value="contact">家族の連絡方法</label>
+            <label><input type="checkbox" value="pickup">迎えに行く人</label>
+          </div>
+        </details>
+        <a class="sd-btn" href="https://www.city.ueda.nagano.jp/soshiki/kiki/46316.html" target="_blank" rel="noopener noreferrer"><span class="l">上田市防災ポータルを見る</span><span class="s">避難情報・避難所・ハザードマップ（公式）</span></a>
+      </div>
     </div>
 
     <!-- 予定 -->
     <div class="ftab" id="t-yotei" style="display:none;">
       <div class="card dom-yotei">
-        <h3>予定の登録</h3>
+        <h3 id="yt-form-title">予定の登録</h3>
         <div class="in-row">
           <select id="yt-kind">
             <option value="🏥">🏥 病院</option>
@@ -608,8 +676,22 @@ table.cal-rec td.pad{background:none;}
           </select>
           <input type="date" id="yt-date">
         </div>
-        <div class="in-row"><input type="text" id="yt-label" placeholder="例: 通院 10時"></div>
-        <button class="big-btn yotei" onclick="saveYotei()">保存する</button>
+        <div class="in-row">
+          <input type="time" id="yt-time" aria-label="時刻">
+          <input type="text" id="yt-label" placeholder="予定名 例: 定期通院">
+        </div>
+        <div class="in-row"><input type="text" id="yt-place" placeholder="場所 例: ○○医院"></div>
+        <div class="in-row">
+          <input type="text" id="yt-companion" placeholder="付き添い 例: 理絵">
+          <select id="yt-repeat" aria-label="繰り返し">
+            <option value="none">今回だけ</option>
+            <option value="weekly">毎週</option>
+            <option value="monthly">毎月</option>
+          </select>
+        </div>
+        <button class="big-btn yotei" id="yt-save-btn" onclick="saveYotei()">保存する</button>
+        <button class="set-btn" id="yt-cancel-edit" style="display:none;" onclick="clearYoteiForm()">修正をやめる</button>
+        <div class="save-state" id="yt-save-state" aria-live="polite"></div>
         <div class="note" id="yt-note">本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。</div>
       </div>
       <div class="card dom-yotei">
@@ -625,6 +707,11 @@ table.cal-rec td.pad{background:none;}
     <!-- 記録(月間記録) -->
     <div class="ftab" id="t-kiroku" style="display:none;">
       <div class="card dom-record">
+        <h3>過去の記録を振り返る</h3>
+        <div class="record-tools">
+          <button onclick="recToday()">今日を見る</button>
+          <button onclick="printRecords()">印刷・PDF保存</button>
+        </div>
         <div class="rec-head">
           <button class="rec-nav" id="rec-prev" onclick="recMove(-1)">◀ 前の月</button>
           <div class="rec-ttl" id="rec-ttl">─</div>
@@ -657,7 +744,8 @@ table.cal-rec td.pad{background:none;}
     <div class="ftab" id="t-soudan" style="display:none;">
       <div class="card dom-soudan" id="sd-pick-card">
         <h3>どんなことで困っていますか?</h3>
-        <p class="sd-lead">当てはまるものを選んでください。上田市の公式なご案内へ進めます。<br>このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。</p>
+        <div class="note" id="sd-region-label" style="margin:0 0 8px;font-weight:700;">現在の地域: 長野県 上田市</div>
+        <p class="sd-lead" id="sd-lead">当てはまるものを選んでください。上田市の公式なご案内へ進めます。<br>このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。</p>
         <div class="sd-list" id="sd-list"></div>
       </div>
       <div class="card dom-soudan" id="sd-detail-card" style="display:none;">
@@ -940,9 +1028,54 @@ function subscribeYotei(cb){
     if(cb) cb(list);
   }, err=>console.warn('yotei', err));
 }
+function dateOnly(s){ return new Date(s+'T00:00:00'); }
+function dateString(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function yoteiOccursOn(v,ds){
+  if(!v.date || ds<v.date) return false;
+  if(!v.repeat || v.repeat==='none') return ds===v.date;
+  const start=dateOnly(v.date), day=dateOnly(ds);
+  if(v.repeat==='weekly') return Math.round((day-start)/86400000)%7===0;
+  if(v.repeat==='monthly'){
+    const wanted=start.getDate();
+    const actual=Math.min(wanted,new Date(day.getFullYear(),day.getMonth()+1,0).getDate());
+    return day.getDate()===actual;
+  }
+  return false;
+}
+function yoteiNextDate(v,from){
+  if(!v.date) return '';
+  from=from||todayStr();
+  if(!v.repeat || v.repeat==='none') return v.date>=from?v.date:'';
+  const start=dateOnly(v.date), base=dateOnly(from);
+  if(base<=start) return v.date;
+  if(v.repeat==='weekly'){
+    const diff=Math.ceil((base-start)/86400000);
+    const d=new Date(start); d.setDate(d.getDate()+Math.ceil(diff/7)*7);
+    return dateString(d);
+  }
+  if(v.repeat==='monthly'){
+    const wanted=start.getDate();
+    let y=base.getFullYear(),m=base.getMonth();
+    let d=new Date(y,m,Math.min(wanted,new Date(y,m+1,0).getDate()));
+    if(d<base){ m++; d=new Date(y,m,Math.min(wanted,new Date(y,m+1,0).getDate())); }
+    return dateString(d);
+  }
+  return '';
+}
 function nextYotei(){
   const t=todayStr();
-  return yoteiCache.find(v=>v.date>=t)||null;
+  const list=yoteiCache.map(v=>Object.assign({},v,{_nextDate:yoteiNextDate(v,t)})).filter(v=>v._nextDate);
+  list.sort((a,b)=>a._nextDate<b._nextDate?-1:1);
+  return list[0]||null;
+}
+function yoteiDetail(v){
+  const parts=[];
+  if(v.time) parts.push(v.time);
+  if(v.place) parts.push(v.place);
+  if(v.companion) parts.push('付き添い: '+v.companion);
+  if(v.repeat==='weekly') parts.push('毎週');
+  if(v.repeat==='monthly') parts.push('毎月');
+  return parts.join(' / ');
 }
 
 /* ===== 花の成長 ===== */
@@ -1015,10 +1148,11 @@ function initHonnin(){
     const elD=document.getElementById('y-days');
     const elL=document.getElementById('y-label');
     if(!n){elD.textContent='-';elL.textContent='ご家族が登録すると表示されます';return;}
-    const diff=Math.ceil((new Date(n.date+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
+    const showDate=n._nextDate||n.date;
+    const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
     elD.textContent=diff===0?'今日です':'あと '+diff+'日';
-    const dd=new Date(n.date+'T00:00:00');
-    elL.textContent=(n.kind||'')+' '+dateJp(dd)+' '+(n.label||'');
+    const dd=new Date(showDate+'T00:00:00');
+    elL.textContent=(n.kind||'')+' '+dateJp(dd)+' '+(n.label||'')+(yoteiDetail(n)?' '+yoteiDetail(n):'');
   });
 }
 function markAisatsuDone(){
@@ -1082,12 +1216,10 @@ function openCal(){
   const y=d.getFullYear(), m=d.getMonth();
   document.getElementById('cal-ttl').textContent=(m+1)+'月のカレンダー';
   const marks={};
-  yoteiCache.forEach(v=>{
-    const dd=new Date(v.date+'T00:00:00');
-    if(dd.getFullYear()===y && dd.getMonth()===m){
-      marks[dd.getDate()]=(marks[dd.getDate()]||'')+esc(v.kind||'📌');
-    }
-  });
+  for(let day=1;day<=new Date(y,m+1,0).getDate();day++){
+    const ds=dateString(new Date(y,m,day));
+    yoteiCache.forEach(v=>{ if(yoteiOccursOn(v,ds)) marks[day]=(marks[day]||'')+esc(v.kind||'📌'); });
+  }
   const first=new Date(y,m,1).getDay();
   const last=new Date(y,m+1,0).getDate();
   let html='<tr><th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr><tr>';
@@ -1131,12 +1263,10 @@ function renderFamilyCal(){
   const y=d.getFullYear(), m=d.getMonth();
   document.getElementById('f-cal-ttl').textContent=(m+1)+'月のカレンダー';
   const marks={};
-  yoteiCache.forEach(v=>{
-    const dd=new Date(v.date+'T00:00:00');
-    if(dd.getFullYear()===y && dd.getMonth()===m){
-      marks[dd.getDate()]=(marks[dd.getDate()]||'')+esc(v.kind||'📌');
-    }
-  });
+  for(let day=1;day<=new Date(y,m+1,0).getDate();day++){
+    const ds=dateString(new Date(y,m,day));
+    yoteiCache.forEach(v=>{ if(yoteiOccursOn(v,ds)) marks[day]=(marks[day]||'')+esc(v.kind||'📌'); });
+  }
   const first=new Date(y,m,1).getDay();
   const last=new Date(y,m+1,0).getDate();
   let html='<tr><th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr><tr>';
@@ -1256,6 +1386,7 @@ function initKazoku(){
     ?'登録した予定は、ホームとカレンダーに表示されます。'
     :'本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。';
   showTab('t-home');
+  initDisaster();
   loadWatchTag();
   if(memWatchUnsub) memWatchUnsub();
   memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
@@ -1307,7 +1438,10 @@ function initKazoku(){
         'kibun-kazoku':v=>(v.name||'家族')+'さんが体調を記録: '+v.text,
         'kusuri-kakunin':v=>(v.name||'家族')+'さんが服薬を確認しました',
         'member-joined':v=>(v.text||'')+'さんが家族として参加しました',
-        'memo':v=>(v.name||'家族')+': '+v.text
+        'memo':v=>(v.name||'家族')+': '+v.text,
+        'disaster-safe':v=>(v.name||'家族')+'さんが「無事です」と記録しました',
+        'disaster-evacuating':v=>(v.name||'家族')+'さんが「避難中です」と記録しました',
+        'disaster-help':v=>(v.name||'家族')+'さんが「助けが必要です」と記録しました（緊急通報ではありません）'
       };
       box.innerHTML=vis.map(v=>{
         const t=new Date(v.at.seconds*1000);
@@ -1334,23 +1468,27 @@ function initKazoku(){
   if(ytListUnsub) ytListUnsub();
   ytListUnsub=subscribeYotei(list=>{
     const t=todayStr();
-    const future=list.filter(v=>v.date>=t);
+    const future=list.map(v=>Object.assign({},v,{_nextDate:yoteiNextDate(v,t)})).filter(v=>v._nextDate);
+    future.sort((a,b)=>a._nextDate<b._nextDate?-1:1);
     const box=document.getElementById('yt-list');
     const n=future[0];
     const fEl=document.getElementById('f-next-yotei');
     if(n){
-      const dd=new Date(n.date+'T00:00:00');
-      const diff=Math.ceil((new Date(n.date+'T00:00:00')-new Date(t+'T00:00:00'))/86400000);
-      fEl.textContent=(n.kind||'')+' '+dateJp(dd)+' '+(n.label||'')+' ('+(diff===0?'今日':'あと'+diff+'日')+')';
+      const dd=new Date(n._nextDate+'T00:00:00');
+      const diff=Math.ceil((new Date(n._nextDate+'T00:00:00')-new Date(t+'T00:00:00'))/86400000);
+      fEl.textContent=(n.kind||'')+' '+dateJp(dd)+' '+(n.label||'')+(yoteiDetail(n)?' / '+yoteiDetail(n):'')+' ('+(diff===0?'今日':'あと'+diff+'日')+')';
     }else{
       fEl.textContent='まだ登録がありません';
     }
     renderFamilyCal();
     if(future.length===0){box.innerHTML='<div class="empty">まだ登録がありません</div>';return;}
     box.innerHTML=future.map(v=>{
-      const dd=new Date(v.date+'T00:00:00');
+      const dd=new Date(v._nextDate+'T00:00:00');
+      const detail=yoteiDetail(v);
       return '<div class="yt-item"><span>'+esc(v.kind)+' '+dateJp(dd)+' '+esc(v.label)+
-        '</span><button class="yt-del" onclick="delYotei(\''+jsArg(v._id)+'\')">削除</button></div>';
+        (detail?'<br><small>'+esc(detail)+'</small>':'')+'</span><span>'+
+        '<button class="yt-del" style="margin-right:10px;" onclick="editYotei(\''+jsArg(v._id)+'\')">修正</button>'+
+        '<button class="yt-del" onclick="delYotei(\''+jsArg(v._id)+'\')">削除</button></span></div>';
     }).join('');
   });
 }
@@ -1378,7 +1516,7 @@ document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
    このアプリは、病気の判断・緊急度の判定・制度の該当判定を行いません。
    上田市が出している公式ページへの入口だけを用意します。
    リンクと文言はこの1か所にまとめてあるので、あとから差し替えられます。 */
-var SOUDAN_CHECKED = '2026年8月25日';
+var SOUDAN_CHECKED = '2026年8月31日';
 
 /* 相談先(窓口)。名前・説明・公式ページ */
 var SOUDAN_SAKI = {
@@ -1421,6 +1559,16 @@ var SOUDAN_SAKI = {
     name: '上田市内科・小児科初期救急センター',
     url:  'https://www.city.ueda.nagano.jp/soshiki/iryo/4202.html',
     desc: '夜間の内科・小児科の初期救急を受け付けています。受付の時間は公式ページでご確認ください。'
+  },
+  prefHoukatsu: {
+    name: '長野県 地域包括支援センターの案内',
+    url: 'https://www.pref.nagano.lg.jp/kaigo-shien/kenko/koureisha/kaigo/chiikihokatsu.html',
+    desc: '高齢者の生活・介護の困りごとは、お住まいの市町村の地域包括支援センターへ相談できます。'
+  },
+  prefFamily: {
+    name: '長野県 家族の福祉・看護等に関する相談',
+    url: 'https://www.pref.nagano.lg.jp/kenko-fukushi/kazoku-sodan.html',
+    desc: '介護、障がい、健康など、家族の困りごとに応じた県の相談先一覧です。'
   }
 };
 
@@ -1436,9 +1584,9 @@ var SOUDAN_KOMARI = [
   { label:'見守りのこと',                     sub:'市が行っているしくみを調べる',  saki:['mimamori','houkatsu'] }
 ];
 
-/* 上田市の公式サイトのときだけ href に入れます */
+/* 上田市・長野県の公式サイトのときだけ href に入れます */
 function soudanUrl(u){
-  return /^https:\/\/www\.city\.ueda\.nagano\.jp\//.test(String(u)) ? String(u) : null;
+  return /^https:\/\/www\.(?:city\.ueda\.nagano|pref\.nagano)\.jp\//.test(String(u)) ? String(u) : null;
 }
 function sdEl(tag, cls, text){
   var n = document.createElement(tag);
@@ -1466,6 +1614,10 @@ function sdTel(num, label, note){
 
 /* 最初の画面(困りごとを選ぶ) */
 function soudanReset(){
+  var region=localStorage.getItem('mainicoRegion')||'ueda';
+  var regionName=region==='nagano'?'長野県（市町村未選択）':'長野県 上田市';
+  document.getElementById('sd-region-label').textContent='現在の地域: '+regionName+'（変更は設定から）';
+  document.getElementById('sd-lead').innerHTML='当てはまるものを選んでください。'+(region==='nagano'?'長野県':'上田市')+'の公式なご案内へ進めます。<br>このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。';
   document.getElementById('sd-checked').textContent = '公式情報の確認日: ' + SOUDAN_CHECKED;
   document.getElementById('sd-detail-card').style.display = 'none';
   document.getElementById('sd-pick-card').style.display = 'block';
@@ -1498,13 +1650,15 @@ function soudanShow(i){
     box.appendChild(w);
   }
 
-  k.saki.forEach(function(key){
+  var region=localStorage.getItem('mainicoRegion')||'ueda';
+  var keys=region==='nagano'?['prefHoukatsu','prefFamily']:k.saki;
+  keys.forEach(function(key){
     var t = SOUDAN_SAKI[key];
     if(!t) return;
     var it = sdEl('div','sd-item');
     it.appendChild(sdEl('div','n', t.name));
     it.appendChild(sdEl('div','d', t.desc));
-    it.appendChild(sdLink(t.url, '公式ページを見る', '上田市のページが新しい画面で開きます'));
+    it.appendChild(sdLink(t.url, '公式ページを見る', (region==='nagano'?'長野県':'上田市')+'のページが新しい画面で開きます'));
     box.appendChild(it);
   });
 
@@ -1514,7 +1668,7 @@ function soudanShow(i){
   back.addEventListener('click', soudanReset);
   box.appendChild(back);
 
-  box.appendChild(sdEl('div','note','このアプリから記録や個人情報が上田市へ送られることはありません。相談するかどうかは、ご家族で決めてください。'));
+  box.appendChild(sdEl('div','note','このアプリから記録や個人情報が自治体へ送られることはありません。相談するかどうかは、ご本人とご家族で決めてください。'));
 
   document.getElementById('sd-pick-card').style.display = 'none';
   document.getElementById('sd-detail-card').style.display = 'block';
@@ -1534,13 +1688,26 @@ function pad2(n){ return String(n).padStart(2,'0'); }
 function recDayStr(y,m,d){ return y+'-'+pad2(m+1)+'-'+pad2(d); }
 
 /* 家族記録モードでは、家族が記録した種類だけを見せます(今日の画面と同じ扱い) */
-var REC_KONLY_OK = {'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1};
+var REC_KONLY_OK = {
+  'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1,
+  'disaster-safe':1,'disaster-evacuating':1,'disaster-help':1
+};
 function recVisible(v){ return !isKOnly() || REC_KONLY_OK[v.type]; }
 
 function recOpen(){
   var now = new Date();
   if(!recY){ recY = now.getFullYear(); recM = now.getMonth(); recSel = todayStr(); }
   recLoad();
+}
+function recToday(){
+  var now=new Date();
+  recY=now.getFullYear(); recM=now.getMonth(); recSel=todayStr();
+  recLoad();
+}
+function printRecords(){
+  document.body.classList.add('print-records');
+  window.print();
+  setTimeout(function(){ document.body.classList.remove('print-records'); },500);
 }
 function recMove(step){
   var d = new Date(recY, recM + step, 1);
@@ -1655,7 +1822,10 @@ var REC_LABEL = {
   'ask-kusuri':     function(v){ return ['服薬の声かけ','k-kusuri', (v.name||'家族')+'さんが「お薬飲んだ?」を送りました']; },
   'kibun-kazoku':   function(v){ return ['体調','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
   'kusuri-kakunin': function(v){ return ['服薬','k-kusuri', (v.name||'家族')+'さんが服薬を確認しました']; },
-  'memo':           function(v){ return ['様子メモ','', (v.name||'家族')+'さん: '+(v.text||'')]; }
+  'memo':           function(v){ return ['様子メモ','', (v.name||'家族')+'さん: '+(v.text||'')]; },
+  'disaster-safe':  function(v){ return ['防災','', (v.name||'家族')+'さんが「無事です」と記録しました']; },
+  'disaster-evacuating': function(v){ return ['防災','', (v.name||'家族')+'さんが「避難中です」と記録しました']; },
+  'disaster-help':  function(v){ return ['防災','k-onegai', (v.name||'家族')+'さんが「助けが必要です」と記録しました（緊急通報ではありません）']; }
 };
 /* 日をまたいだ返事に、どの日のお願いへの返事かを添えます */
 function recReplyFor(v){
@@ -1757,7 +1927,7 @@ function recDrawDay(){
 /* 月のまとめ(数えただけ。良し悪しの判断はしません) */
 function recDrawSummary(){
   document.getElementById('rec-sum-ttl').textContent = (recM+1)+'月のまとめ';
-  var days = {}, aisatsu = 0, kibun = 0, kusuri = 0, onegai = 0;
+  var days = {}, aisatsu = 0, kibun = 0, kusuri = 0, onegai = 0, disaster = 0;
   recEvents.forEach(function(v){
     if(!recVisible(v) || v.type==='member-joined') return;
     days[v.date] = 1;
@@ -1765,13 +1935,15 @@ function recDrawSummary(){
     if(v.type==='kibun'   || v.type==='kibun-kazoku') kibun++;
     if(v.type==='kusuri'  || v.type==='kusuri-kakunin' || v.type==='ask-kusuri') kusuri++;
     if(v.type==='onegai'  || v.type==='onegai-back'    || v.type==='memo') onegai++;
+    if(/^disaster-/.test(v.type||'')) disaster++;
   });
   var items = [
     ['記録があった日', Object.keys(days).length + '日'],
     ['挨拶', aisatsu + '件'],
     ['体調の記録', kibun + '件'],
     ['服薬に関する記録', kusuri + '件'],
-    ['お願い・メモ', onegai + '件']
+    ['お願い・メモ', onegai + '件'],
+    ['防災の記録', disaster + '件']
   ];
   var box = document.getElementById('rec-sum');
   box.textContent = '';
@@ -1817,23 +1989,108 @@ function sendMemo(){
   addEvent({type:'memo', text:t, name:myName()});
   el.value='';
 }
-function saveYotei(){
+function initDisaster(){
+  const month=todayStr().slice(0,7);
+  let saved={};
+  try{ saved=JSON.parse(localStorage.getItem('mainicoPrep-'+month)||'{}'); }catch(e){}
+  document.querySelectorAll('#prep-list input').forEach(function(c){
+    c.checked=!!saved[c.value];
+    c.onchange=function(){
+      saved[c.value]=c.checked;
+      localStorage.setItem('mainicoPrep-'+month,JSON.stringify(saved));
+    };
+  });
+}
+async function sendDisasterStatus(type){
+  const names={
+    'disaster-safe':'無事です','disaster-evacuating':'避難中です','disaster-help':'助けが必要です'
+  };
+  const text=names[type];
+  if(!text) return;
+  const warning=type==='disaster-help'?'\nこれは119番への通報ではありません。命にかかわるときは、先に119番へ電話してください。':'';
+  if(!confirm('家族の記録へ「'+text+'」を残しますか?'+warning)) return;
+  const state=document.getElementById('disaster-state');
+  state.classList.remove('err'); state.textContent='記録中…';
+  try{
+    await addEvent({type:type,text:text,name:myName()});
+    state.textContent='「'+text+'」を家族の記録へ保存しました';
+  }catch(e){
+    state.classList.add('err');
+    state.textContent='保存できませんでした。通信状態を確認してください';
+  }
+}
+let editingYoteiId='';
+function setYoteiSaveState(text,isError){
+  const el=document.getElementById('yt-save-state');
+  el.textContent=text||'';
+  el.classList.toggle('err',!!isError);
+}
+function clearYoteiForm(){
+  editingYoteiId='';
+  ['yt-date','yt-time','yt-label','yt-place','yt-companion'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('yt-repeat').value='none';
+  document.getElementById('yt-kind').value='🏥';
+  document.getElementById('yt-form-title').textContent='予定の登録';
+  document.getElementById('yt-save-btn').textContent='保存する';
+  document.getElementById('yt-cancel-edit').style.display='none';
+  setYoteiSaveState('');
+}
+function editYotei(id){
+  const v=yoteiCache.find(x=>x._id===id);
+  if(!v) return;
+  editingYoteiId=id;
+  document.getElementById('yt-kind').value=v.kind||'📌';
+  document.getElementById('yt-date').value=v.date||'';
+  document.getElementById('yt-time').value=v.time||'';
+  document.getElementById('yt-label').value=v.label||'';
+  document.getElementById('yt-place').value=v.place||'';
+  document.getElementById('yt-companion').value=v.companion||'';
+  document.getElementById('yt-repeat').value=v.repeat||'none';
+  document.getElementById('yt-form-title').textContent='予定を修正する';
+  document.getElementById('yt-save-btn').textContent='修正を保存する';
+  document.getElementById('yt-cancel-edit').style.display='block';
+  setYoteiSaveState('修正する内容を確認してください');
+  document.getElementById('yt-form-title').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function saveYotei(){
   const kind=document.getElementById('yt-kind').value;
   const date=document.getElementById('yt-date').value;
+  const time=document.getElementById('yt-time').value;
   const label=document.getElementById('yt-label').value.trim();
+  const place=document.getElementById('yt-place').value.trim();
+  const companion=document.getElementById('yt-companion').value.trim();
+  const repeat=document.getElementById('yt-repeat').value;
   if(!date){alert('日付を選んでください');return;}
-  col('yotei').add({kind:kind, date:date, label:label, uid:uid()});
-  document.getElementById('yt-label').value='';
-  alert('保存しました');
+  if(!label){alert('予定名を入力してください');return;}
+  const data={kind,date,time,label,place,companion,repeat,uid:uid(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const btn=document.getElementById('yt-save-btn');
+  btn.disabled=true;
+  setYoteiSaveState('保存中…');
+  try{
+    if(editingYoteiId) await col('yotei').doc(editingYoteiId).update(data);
+    else await col('yotei').add({...data,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    clearYoteiForm();
+    setYoteiSaveState('クラウドに保存しました');
+  }catch(e){
+    setYoteiSaveState('保存できませんでした。通信状態を確認して、もう一度押してください',true);
+  }finally{ btn.disabled=false; }
 }
-function delYotei(id){
-  if(confirm('この予定を削除しますか?')) col('yotei').doc(id).delete();
+async function delYotei(id){
+  if(!confirm('この予定を削除しますか?')) return;
+  setYoteiSaveState('削除中…');
+  try{
+    await col('yotei').doc(id).delete();
+    if(editingYoteiId===id) clearYoteiForm();
+    setYoteiSaveState('削除しました');
+  }catch(e){ setYoteiSaveState('削除できませんでした',true); }
 }
 
 /* ===== 設定(家族) ===== */
 function openSettings(){
   document.getElementById('settings-modal').classList.add('show');
   renderSetMembers();
+  loadWatchTag();
+  document.getElementById('region-select').value=localStorage.getItem('mainicoRegion')||'ueda';
   const ca=localStorage.getItem('mainicoConsent-a'), cb=localStorage.getItem('mainicoConsent-b');
   const info=[];
   if(ca){ const v=JSON.parse(ca); info.push('共用モード同意: '+v.ver+' ('+v.at.slice(0,10)+')'); }
@@ -1841,6 +2098,12 @@ function openSettings(){
   document.getElementById('consent-info').textContent=info.length?info.join(' / '):'この端末での同意記録はありません';
 }
 function closeSettings(){ document.getElementById('settings-modal').classList.remove('show'); }
+function saveRegion(){
+  const v=document.getElementById('region-select').value;
+  localStorage.setItem('mainicoRegion',v);
+  document.getElementById('sd-list').textContent='';
+  soudanReset();
+}
 async function renderSetMembers(){
   const box=document.getElementById('set-members');
   try{
@@ -1943,9 +2206,12 @@ function watchTagQr(url){
 async function loadWatchTag(){
   const area=document.getElementById('watch-tag-area');
   const alerts=document.getElementById('watch-tag-alerts');
+  const home=document.getElementById('watch-tag-home');
+  const homeStatus=document.getElementById('home-watch-tag-status');
   if(!area || !gid()) return;
   if(watchTagUnsub){watchTagUnsub();watchTagUnsub=null;}
   alerts.innerHTML='';
+  if(home){ home.style.display='none'; }
   try{
     const g=await col('settings').doc('watchTag').get();
     const v=g.exists?g.data():{};
@@ -1956,6 +2222,8 @@ async function loadWatchTag(){
       return;
     }
     renderWatchTag(currentWatchTagId);
+    if(home){ home.style.display='block'; }
+    if(homeStatus){ homeStatus.textContent='おまもりタグは使用中です。QRの表示・停止は「設定」から行えます。'; }
     watchTagUnsub=db.collection('watchTags').doc(currentWatchTagId).collection('alerts')
       .orderBy('createdAt','desc').limit(5).onSnapshot(snap=>{
         const rows=[];
@@ -1970,7 +2238,7 @@ async function loadWatchTag(){
           rows.push('<div class="tag-alert"><strong>'+esc(situation)+'</strong><br>読み取った方の入力が履歴に記録されました'+
             (d?'<time>'+esc(dateJp(d))+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+'</time>':'')+'</div>');
         });
-        alerts.innerHTML=rows.join('') || '<div class="note">まだ読み取りのお知らせはありません。</div>';
+        alerts.innerHTML=rows.join('');
       },()=>{ alerts.innerHTML='<div class="note">お知らせを読み込めませんでした。</div>'; });
   }catch(e){
     area.innerHTML='<div class="empty">おまもりタグを確認できませんでした。通信状態を確かめてください。</div>';
