@@ -46,6 +46,9 @@ async function seedSchedule() {
     await setDoc(doc(db, 'groups', 'family-1', 'members', 'family-owner'), {
       status: 'approved', role: 'kazoku'
     });
+    await setDoc(doc(db, 'groups', 'family-1', 'members', 'family-viewer'), {
+      status: 'approved', role: 'kazoku'
+    });
     await setDoc(doc(db, 'groups', 'family-1', 'yotei', 'plan-1'), {
       kind: '🏥', date: '2026-09-01', label: '通院', uid: 'family-owner'
     });
@@ -179,4 +182,13 @@ test('予定を修正するとき作成者uidは変更できない', async () =>
     'groups', 'family-1', 'yotei', 'plan-1'
   );
   await assertFails(updateDoc(plan, { uid: 'other-user' }));
+});
+
+test('別の承認済み家族は他人が登録した予定を修正できない', async () => {
+  await seedSchedule();
+  const plan = doc(
+    testEnv.authenticatedContext('family-viewer').firestore(),
+    'groups', 'family-1', 'yotei', 'plan-1'
+  );
+  await assertFails(updateDoc(plan, { time: '11:00' }));
 });
