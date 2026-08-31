@@ -49,6 +49,9 @@ async function seedSchedule() {
     await setDoc(doc(db, 'groups', 'family-1', 'members', 'family-viewer'), {
       status: 'approved', role: 'kazoku'
     });
+    await setDoc(doc(db, 'groups', 'family-1', 'members', 'watcher-1'), {
+      status: 'approved', role: 'mimamori'
+    });
     await setDoc(doc(db, 'groups', 'family-1', 'yotei', 'plan-1'), {
       kind: '🏥', date: '2026-09-01', label: '通院', uid: 'family-owner'
     });
@@ -191,4 +194,62 @@ test('別の承認済み家族は他人が登録した予定を修正できな�
     'groups', 'family-1', 'yotei', 'plan-1'
   );
   await assertFails(updateDoc(plan, { time: '11:00' }));
+});
+
+
+test('見守る人は予定を作成できない', async () => {
+  await seedSchedule();
+  const plan = doc(
+    testEnv.authenticatedContext('watcher-1').firestore(),
+    'groups', 'family-1', 'yotei', 'watcher-plan'
+  );
+  await assertFails(setDoc(plan, {
+    kind: '📅', date: '2026-09-02', label: '見守り予定', uid: 'watcher-1'
+  }));
+});
+
+test('見守る人は招待を発行できない', async () => {
+  await seedSchedule();
+  const invite = doc(
+    testEnv.authenticatedContext('watcher-1').firestore(),
+    'invites', 'watcher-invite'
+  );
+  await assertFails(setDoc(invite, {
+    groupId: 'family-1', role: 'mimamori', used: false,
+    expiresAt: Timestamp.fromMillis(Date.now() + 60 * 60 * 1000)
+  }));
+});
+
+test('既存の家族役割は管理者として招待を発行できる', async () => {
+  await seedSchedule();
+  const invite = doc(
+    testEnv.authenticatedContext('family-owner').firestore(),
+    'invites', 'manager-invite'
+  );
+  await assertSucceeds(setDoc(invite, {
+    groupId: 'family-1', role: 'mimamori', used: false,
+    expiresAt: Timestamp.fromMillis(Date.now() + 60 * 60 * 1000)
+  }));
+});
+
+test('招待で指定した役割と異なる役割では参加できない', async () => {
+  await seedSchedule();
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'invites', 'role-invite'), {
+      groupId: 'family-1', role: 'mimamori', used: false,
+      expiresAt: Timestamp.fromMillis(Date.now() + 60 * 60 * 1000)
+    });
+  });
+  const member = doc(
+    testEnv.authenticatedContext('new-watcher').firestore(),
+    'groups', 'family-1', 'members', 'new-watcher'
+  );
+  await assertFails(setDoc(member, {
+    name: '見守る人', status: 'pending', role: 'kazoku',
+    inviteCode: 'role-invite'
+  }));
+  await assertSucceeds(setDoc(member, {
+    name: '見守る人', status: 'pending', role: 'mimamori',
+    inviteCode: 'role-invite'
+  }));
 });
