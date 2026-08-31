@@ -69,12 +69,14 @@ service cloud.firestore {
 
       match /yotei/{yoteiId} {
         allow read: if isApproved(groupId);
-        allow create: if isApproved(groupId);
-        // 予定の日時・場所・付き添いなどを家族で修正できます。
-        // もともと承認済みメンバーは作成と削除ができるため、同じ範囲に限定します。
+        allow create: if isApproved(groupId)
+          && request.resource.data.uid == request.auth.uid;
+        // 役割権限が完成するまでは、登録した本人だけが修正・削除できます。
         allow update: if isApproved(groupId)
+          && resource.data.uid == request.auth.uid
           && request.resource.data.uid == resource.data.uid;
-        allow delete: if isApproved(groupId);
+        allow delete: if isApproved(groupId)
+          && resource.data.uid == request.auth.uid;
       }
 
       // QRおまもりタグの家族側設定
