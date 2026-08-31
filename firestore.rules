@@ -14,19 +14,37 @@ service cloud.firestore {
           .data.get('status', 'approved') == 'approved';
     }
 
+    // 旧データの role 未設定は従来の家族として扱い、移行中も利用を止めない。
+    function memberRole(groupId) {
+      return get(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid))
+        .data.get('role', 'kazoku');
+    }
+
+    function isManager(groupId) {
+      return isApproved(groupId)
+        && memberRole(groupId) in ['honnin', 'kazoku', 'kanri-kazoku'];
+    }
+
+    // 見守る人は許可された記録を読む・返事する役割。
+    // 招待、予定、タグ、メンバー管理は行えない。
+    function canWriteDaily(groupId) {
+      return isApproved(groupId)
+        && memberRole(groupId) != 'mimamori';
+    }
+
     match /groups/{groupId} {
       allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid;
 
-      allow get: if isApproved(groupId);
+      allow get: if isManager(groupId);
       allow list: if false;
       allow update: if false;
-      allow delete: if isApproved(groupId);
+      allow delete: if isManager(groupId);
 
       match /members/{uid} {
         allow get: if isApproved(groupId)
           || (signedIn() && request.auth.uid == uid);
-        allow list: if isApproved(groupId);
+        allow list: if isManager(groupId);
 
         allow create: if signedIn()
           && request.auth.uid == uid
@@ -46,45 +64,48 @@ service cloud.firestore {
                 .data.used == false
               && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode))
                 .data.expiresAt > request.time
+              && request.resource.data.get('role', 'kazoku')
+                == get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode))
+                  .data.get('role', 'kazoku')
             )
           );
 
-        allow update: if isApproved(groupId)
+        allow update: if isManager(groupId)
           && resource.data.status == 'pending'
           && request.resource.data.status == 'approved'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
 
-        allow delete: if isApproved(groupId)
+        allow delete: if isManager(groupId)
           || (signedIn() && request.auth.uid == uid);
       }
 
       match /events/{eventId} {
         allow read: if isApproved(groupId);
-        allow create: if isApproved(groupId)
+        allow create: if canWriteDaily(groupId)
           && request.resource.data.uid == request.auth.uid;
         allow update: if false;
-        allow delete: if isApproved(groupId)
+        allow delete: if canWriteDaily(groupId)
           && resource.data.uid == request.auth.uid;
       }
 
       match /yotei/{yoteiId} {
         allow read: if isApproved(groupId);
-        allow create: if isApproved(groupId)
+        allow create: if canWriteDaily(groupId)
           && request.resource.data.uid == request.auth.uid;
         // 役割権限が完成するまでは、登録した本人だけが修正・削除できます。
-        allow update: if isApproved(groupId)
+        allow update: if canWriteDaily(groupId)
           && resource.data.uid == request.auth.uid
           && request.resource.data.uid == resource.data.uid;
-        allow delete: if isApproved(groupId)
+        allow delete: if canWriteDaily(groupId)
           && resource.data.uid == request.auth.uid;
       }
 
       // QRおまもりタグの家族側設定
       match /settings/watchTag {
-        allow get: if isApproved(groupId);
+        allow get: if isManager(groupId);
         allow list: if false;
 
-        allow create: if isApproved(groupId)
+        allow create: if isManager(groupId)
           && request.resource.data.keys().hasOnly([
             'watchTagId', 'watchTagActive', 'watchTagUpdatedAt'
           ])
@@ -97,7 +118,7 @@ service cloud.firestore {
           && get(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
             .data.active == true;
 
-        allow update: if isApproved(groupId)
+        allow update: if isManager(groupId)
           && request.resource.data.keys().hasOnly([
             'watchTagId', 'watchTagActive', 'watchTagUpdatedAt'
           ])
@@ -121,14 +142,16 @@ service cloud.firestore {
       allow get: if signedIn();
       allow list: if false;
       allow create: if signedIn()
-        && isApproved(request.resource.data.groupId);
+        && isManager(request.resource.data.groupId)
+        && request.resource.data.get('role', 'kazoku')
+          in ['honnin', 'kazoku', 'kanri-kazoku', 'mimamori'];
       allow update: if signedIn()
         && resource.data.used == false
         && request.resource.data.used == true
         && request.resource.data.groupId == resource.data.groupId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used']);
       allow delete: if signedIn()
-        && isApproved(resource.data.groupId);
+        && isManager(resource.data.groupId);
     }
 
     // QRおまもりタグ本体
@@ -145,9 +168,9 @@ service cloud.firestore {
         && request.resource.data.active == true
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
-        && isApproved(request.resource.data.groupId);
+        && isManager(request.resource.data.groupId);
 
-      allow update: if isApproved(resource.data.groupId)
+      allow update: if isManager(resource.data.groupId)
         && request.resource.data.groupId == resource.data.groupId
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.active == false
@@ -156,7 +179,7 @@ service cloud.firestore {
           'active', 'stoppedAt'
         ]);
 
-      allow delete: if isApproved(resource.data.groupId);
+      allow delete: if isManager(resource.data.groupId);
 
       match /alerts/{alertId} {
         allow create: if signedIn()
