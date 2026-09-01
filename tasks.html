@@ -249,12 +249,12 @@ footer a{color:var(--hai);}
   <section class="sec" id="s-command">
     <div class="command-card">
       <div class="command-label">TODAY'S COMMAND</div>
-      <div class="command-title">安全な同意・解除・完全削除を前へ進める</div>
+      <div class="command-title">まいにこ本体を直し、実際に使えるか確かめる</div>
       <div class="command-grid">
-        <div class="command-box"><b>現在</b><span>安全権限の第1段階 完了</span></div>
+        <div class="command-box"><b>現在</b><span>PR #32の画面確認を最優先</span></div>
         <div class="command-box"><b>今の担当</b><span>ChatGPT／Codex</span></div>
-        <div class="command-box full"><b>今日の完了条件</b><span>同意の保存方法を決め、検査できる形にする</span></div>
-        <div class="command-box"><b>次に起きること</b><span>解除後の閲覧拒否</span></div>
+        <div class="command-box full"><b>今日の完了条件</b><span>本人・家族・設定・予定・記録を通して試せる状態にする</span></div>
+        <div class="command-box"><b>次に起きること</b><span>試験版で操作→不具合を一括修正</span></div>
         <div class="command-box"><b>りえがすること</b><span>今はありません</span></div>
       </div>
       <div class="progress-head"><div><div class="kind">9月15日 試用版までの全体進捗（推定）</div><div class="pct">55%</div></div><div class="kind">安全検査済みの事実を優先表示</div></div>
@@ -303,7 +303,7 @@ footer a{color:var(--hai);}
     <div class="sec-h"><span class="no">2</span><h2>確定したやることリスト</h2></div>
     <p class="sec-lead">会議で採用された内容を期限別に整理します。安全・データ消失・使用不能だけが今日へ割り込みます。</p>
     <div class="lanes">
-      <div class="lane"><b>🔄 今日やる</b><span>同意の記録 → 解除後の閲覧禁止 → 完全削除の設計</span></div>
+      <div class="lane"><b>🔄 今日やる</b><span>本人画面 → 家族画面 → 設定 → 予定 → 過去記録を通して確認</span></div>
       <div class="lane"><b>📅 9月15日まで</b><span>PR #32、本人・家族・見守る人、予定・過去記録、相談・防災、実機確認</span></div>
       <div class="lane"><b>💡 完成後</b><span>全国市町村版、QRタグ販売、商標・ライセンス、事業化</span></div>
     </div>
@@ -511,16 +511,16 @@ var NEXT_UPDATED = '2026-09-01';
 var USER_WAIT_STATES = ['指示待ち', '判断待ち', '承認待ち', '公開版確認待ち'];
 var NEXT = [
   {
-    title: '本人・管理家族・見守る人の権限と完全削除',
+    title: 'まいにこ本体を直し、本人・家族で通して試す',
     state: '実装中', who: 'ChatGPT', updated: '2026-09-01',
-    note: '安全権限の第1段階と自動検査は成功。次は同意の記録、解除後の閲覧禁止、完全削除です。',
-    link: GH + '/pull/35', linkLabel: '現在の作業を見る', linkNote: 'Draft PR #35・まだ公開しません'
+    note: 'PR #32の本人画面、家族画面、設定、予定、過去記録、相談、防災、QRタグを実際に触れる順で確認します。',
+    link: GH + '/pull/32', linkLabel: '最優先の作業を見る', linkNote: 'Draft PR #32・まだ公開しません'
   },
   {
-    title: '生活中心の画面とQRおまもりタグを仕上げる',
-    state: '確認待ち', who: 'ChatGPT', updated: '2026-09-01',
-    note: '招待とQR管理は設定へ統一。予定、過去記録、相談、防災を含むDraft PRです。',
-    link: GH + '/pull/32', linkLabel: '作業中の変更を見る', linkNote: 'Draft PR #32・まだ公開しません'
+    title: '本人・管理家族・見守る人の権限と完全削除',
+    state: '並行作業', who: 'ChatGPT', updated: '2026-09-01',
+    note: '安全権限の第1段階と自動検査は成功。本体の操作確認を止めず、別PRで同意・解除・完全削除を進めます。',
+    link: GH + '/pull/35', linkLabel: '安全の並行作業を見る', linkNote: 'Draft PR #35・まだ公開しません'
   },
   {
     title: '全国展開できる市町村別の相談・防災情報',
@@ -532,7 +532,7 @@ var NEXT = [
 ];
 var ST_CLASS = {
   '相談中':'st-soudan', '設計中':'st-sekkei', '実装待ち':'st-jissou', '実装中':'st-run',
-  '確認待ち':'st-kakunin', '保留中':'st-hold', '順番待ち':'st-queue',
+  '確認待ち':'st-kakunin', '並行作業':'st-sekkei', '保留中':'st-hold', '順番待ち':'st-queue',
   '指示待ち':'st-user', '判断待ち':'st-user', '承認待ち':'st-user', '公開版確認待ち':'st-user'
 };
 var WHO_CLASS = { 'りえ':'w-rie', 'ChatGPT':'w-gpt', 'Claude Code':'w-cc' };
@@ -723,7 +723,7 @@ function jstTodayStr(){
 }
 var TODAY_PLAN = {
   date: '2026-09-01',
-  goal: '同意の版・日時・取消日時を保存する方法を決め、解除後に読めない安全検査へ進む'
+  goal: 'PR #32の本人・家族・設定・予定・過去記録を通して、実際に使える試験版へ近づける'
 };
 /* 今日の状態は「Claude実装中」のまま固定せず、Open PRの取得結果に合わせて決めます。
    取得前・取得失敗時は安全側("確認中")のままにし、根拠のない時刻や状態は作りません。 */
