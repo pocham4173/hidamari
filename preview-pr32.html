@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>まいにこ｜PR #32 試験版</title>
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#E0711A">
@@ -228,23 +228,26 @@ table.cal-rec td.pad{background:none;}
 .big-btn:active{opacity:.85;}
 .sent-note{font-size:.8rem;color:var(--ha-koi);font-weight:700;margin-top:4px;text-align:center;}
 .empty{color:var(--usucha);font-size:.84rem;text-align:center;padding:10px 0;}
-.note{font-size:.76rem;color:var(--usucha);line-height:1.6;margin-top:6px;}
+.note{font-size:.88rem;color:var(--usucha);line-height:1.65;margin-top:6px;}
 .in-row{display:flex;gap:8px;margin-top:8px;}
 .in-row input,.in-row select{flex:1;font-family:inherit;font-size:.95rem;padding:11px;border:1px solid #D8CDBA;border-radius:8px;background:#FBF8F2;color:var(--cha);min-width:0;}
 .yt-simple{display:flex;flex-direction:column;gap:10px;}
-.yt-simple label{font-size:.83rem;font-weight:900;color:var(--cha);}
+.yt-simple label{font-size:1rem;font-weight:900;color:var(--cha);}
 .yt-simple input{width:100%;min-height:48px;margin-top:5px;font-family:inherit;font-size:1rem;padding:11px;border:1px solid #D8CDBA;border-radius:8px;background:#FBF8F2;color:var(--cha);}
 .yt-colors{display:flex;gap:10px;flex-wrap:wrap;margin-top:7px;}
-.yt-color{width:42px;height:42px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #B7AA96;cursor:pointer;position:relative;}
+.yt-color{width:48px;height:48px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #B7AA96;cursor:pointer;position:relative;}
 .yt-color.on{box-shadow:0 0 0 3px #222;}
 .yt-color.on::after{content:'✓';position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:900;text-shadow:0 1px 3px #000;}
 .anshin-choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .anshin-choices button{min-height:78px;border:2px solid var(--murasaki);border-radius:12px;background:#fff;color:var(--cha);font-family:inherit;font-size:1rem;font-weight:900;padding:10px;cursor:pointer;}
 .region-step{display:flex;flex-direction:column;gap:10px;margin:10px 0;}
 .region-step select{min-height:50px;width:100%;font-family:inherit;font-size:1rem;padding:10px;border:1px solid #D8CDBA;border-radius:8px;background:#fff;}
-.yt-item{display:flex;justify-content:space-between;align-items:center;padding:9px 2px;border-bottom:1px solid #F0EAE0;font-size:.93rem;}
+.yt-item{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:11px 2px;border-bottom:1px solid #F0EAE0;font-size:1rem;}
 .yt-item:last-child{border-bottom:none;}
-.yt-del{background:none;border:none;color:#B0492F;font-family:inherit;font-size:.83rem;cursor:pointer;text-decoration:underline;}
+.yt-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.yt-del{min-height:46px;background:#fff;border:2px solid #C9B8A0;border-radius:9px;color:#7A5A34;font-family:inherit;font-size:.95rem;font-weight:900;cursor:pointer;}
+.yt-del.danger{border-color:#C97A6A;color:#A8422E;}
+.cal-event{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:10px;color:#fff;font-size:.72rem;margin:1px;text-shadow:0 1px 2px #333;}
 .krec-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
 .krec-btn{background:#FBF8F2;border:1.5px solid #D8CDBA;border-radius:10px;padding:13px 6px;font-family:inherit;font-size:.93rem;font-weight:700;color:var(--cha);cursor:pointer;}
 .krec-btn:active{background:#F0E7D6;}
@@ -330,16 +333,15 @@ table.cal-rec td.pad{background:none;}
 .nav button.nav-set{border-left:1px solid #EFE8DA;}
 /* 画面が狭いときは文字を少しだけ小さくして、切れずに収まるようにする */
 @media (max-width:360px){
-  .nav button{font-size:.84rem;}
+  .nav button{font-size:.88rem;white-space:normal;line-height:1.15;}
 }
 #loading{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:99;font-weight:900;color:var(--usucha);font-size:1rem;}
 </style>
 </head>
 <body>
-<div role="status" style="position:fixed;z-index:99999;left:0;right:0;top:0;background:#111;color:#fff;text-align:center;padding:8px 12px;font:700 13px/1.45 sans-serif">PR #32 試験版｜実名・住所・電話・病歴は入力しないでください</div>
-<div style="height:48px" aria-hidden="true"></div>
 <div id="loading">読み込み中…</div>
 <div class="phone">
+<div role="status" style="position:sticky;top:0;z-index:99999;background:#111;color:#fff;text-align:center;padding:calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;font:700 13px/1.45 sans-serif">PR #32 試験版｜実名・住所・電話・病歴は入力しないでください</div>
 
 <!-- ===== 入口 ===== -->
 <div class="page" id="entry">
@@ -373,7 +375,7 @@ table.cal-rec td.pad{background:none;}
       ・記録の表示は通信状態や端末の設定により、遅れたり届かなかったりする場合があります。記録がないことは、未実施や異常を意味しません<br>
       ・まいにこは24時間の監視、救急通報、医師の診断や治療の代わりではありません<br>
       ・体調の異常時や緊急時は、医療機関または119番へ連絡してください<br>
-      ・共有する情報は、あとから変えたり、同意を取り消したりできます(設定から)<br>
+      ・同意は設定から取り消して、利用をやめることができます<br>
       ・現在は試作品です。病名・保険証の写真・位置情報などは扱いません
     </div>
     <button class="entry-btn" style="margin-top:16px;" onclick="agreeConsent('a')">同意してはじめる</button>
@@ -498,7 +500,7 @@ table.cal-rec td.pad{background:none;}
   <div class="modal-box">
     <div class="ttl" id="cal-ttl"></div>
     <table class="cal" id="cal-table"></table>
-    <div class="cal-legend"><span>🏥 病院</span><span>🚌 デイサービス</span><span>🏠 家族</span><span>📌 その他</span></div>
+    <div class="cal-legend"><span>絵文字と色は、登録した予定ごとに変わります</span></div>
     <button class="modal-close" onclick="closeCal()">とじる</button>
   </div>
 </div>
@@ -543,7 +545,10 @@ table.cal-rec td.pad{background:none;}
 <!-- 設定(家族) -->
 <div class="modal" id="settings-modal">
   <div class="modal-box adult-font">
-    <div class="ttl">設定</div>
+    <div style="position:sticky;top:-18px;z-index:3;background:#fff;padding:12px 0 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E3D9C8;margin-bottom:10px;">
+      <div class="ttl" style="margin:0;">設定</div>
+      <button class="set-btn" style="width:auto;margin:0;padding:9px 15px;" onclick="closeSettings()">閉じる</button>
+    </div>
 
     <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;">
       <h4>家族・本人を招待する</h4>
@@ -574,8 +579,8 @@ table.cal-rec td.pad{background:none;}
 
     <div class="set-sec">
       <h4>すべてのデータの削除</h4>
-      <button class="set-btn warn" onclick="deleteAllData()">この家族の全データを削除する</button>
-      <div class="note">挨拶・体調・服薬・予定・お願い・メモ・家族の接続をすべて削除します。元に戻せません。現在バックアップは設定していないため、削除後にデータは残りません。</div>
+      <button class="set-btn warn" disabled aria-disabled="true">完全削除は準備中です</button>
+      <div class="note">QR通知や招待を含め、安全にすべて消せる仕組みを確認してから使えるようにします。現在このボタンから削除は実行できません。</div>
     </div>
 
     <button class="modal-close" onclick="closeSettings()">とじる</button>
@@ -662,6 +667,7 @@ table.cal-rec td.pad{background:none;}
           </div>
           <input type="hidden" id="yt-color" value="#3D6FB4">
         </div>
+        <div class="note">試験中は、予定名に実名・住所・電話番号・病名を書かないでください。</div>
         <button class="big-btn yotei" id="yt-save-btn" onclick="saveYotei()">保存する</button>
         <button class="set-btn" id="yt-cancel-edit" style="display:none;" onclick="clearYoteiForm()">修正をやめる</button>
         <div class="save-state" id="yt-save-state" aria-live="polite"></div>
@@ -685,11 +691,7 @@ table.cal-rec td.pad{background:none;}
           <button onclick="recToday()">今日を見る</button>
           <button onclick="printRecords()">印刷・PDF保存</button>
         </div>
-        <div class="rec-head">
-          <button class="rec-nav" id="rec-prev" onclick="recMove(-1)">◀ 前の月</button>
-          <div class="rec-ttl" id="rec-ttl">─</div>
-          <button class="rec-nav" id="rec-next" onclick="recMove(1)">次の月 ▶</button>
-        </div>
+        <div class="rec-ttl" id="rec-ttl" style="margin-top:10px;">─</div>
         <label style="display:block;font-weight:900;font-size:.85rem;margin-top:10px;">見たい日を選ぶ
           <input type="date" id="rec-date" onchange="recChooseDate()" style="display:block;width:100%;min-height:50px;margin-top:6px;font:inherit;padding:10px;border:1px solid #D8CDBA;border-radius:8px;background:#fff;">
         </label>
@@ -726,7 +728,7 @@ table.cal-rec td.pad{background:none;}
           <select id="region-city" disabled><option value="">市区町村を選ぶ</option></select>
           <button class="big-btn" type="button" onclick="confirmRegion()">この地域の相談先を見る</button>
         </div>
-        <div class="note">全国の市町村を順次追加します。確認済みの公式情報だけを表示します。</div>
+        <div class="note">現在利用できる地域は長野県上田市です。全国の市町村を順次追加し、確認済みの公式情報だけを表示します。</div>
         <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
       </div>
       <div class="card dom-soudan" id="sd-pick-card" style="display:none;">
@@ -746,13 +748,7 @@ table.cal-rec td.pad{background:none;}
       </div>
       <div class="card disaster-card" id="bousai-card" style="display:none;">
         <h3>もしもの備え</h3>
-        <div class="note" style="margin-top:0;">これは平時の準備と家族内の記録です。緊急通報ではありません。今すぐ危険なときは110番・119番へ電話してください。</div>
-        <div class="disaster-grid">
-          <button onclick="sendDisasterStatus('disaster-safe')">無事です</button>
-          <button onclick="sendDisasterStatus('disaster-evacuating')">避難中です</button>
-          <button class="help" onclick="sendDisasterStatus('disaster-help')">助けが必要です</button>
-        </div>
-        <div class="save-state" id="disaster-state" aria-live="polite"></div>
+        <div class="note" style="margin-top:0;">これは、この端末で平時の備えを確認する画面です。緊急通報や家族への通知は行いません。今すぐ危険なときは110番・119番へ電話してください。</div>
         <details style="margin-top:10px;"><summary style="font-weight:900;cursor:pointer;">備えを確認する</summary>
           <div class="prep-list" id="prep-list">
             <label><input type="checkbox" value="water">水・食べ物</label><label><input type="checkbox" value="medicine">必要な薬</label>
@@ -761,6 +757,7 @@ table.cal-rec td.pad{background:none;}
             <label><input type="checkbox" value="contact">家族の連絡方法</label><label><input type="checkbox" value="pickup">迎えに行く人</label>
           </div>
         </details>
+        <div class="note">チェックはこの端末だけに保存され、家族には送信されません。</div>
         <a class="sd-btn" href="https://www.city.ueda.nagano.jp/soshiki/kiki/46316.html" target="_blank" rel="noopener noreferrer"><span class="l">上田市防災ポータルを見る</span><span class="s">避難情報・避難所・ハザードマップ（公式）</span></a>
         <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
       </div>
@@ -774,7 +771,7 @@ table.cal-rec td.pad{background:none;}
 <div class="nav" id="fnav">
   <button class="on" data-t="t-home">ホーム</button>
   <button data-t="t-yotei">予定</button>
-  <button data-t="t-kiroku" id="nav-kiroku">記録</button>
+  <button data-t="t-kiroku" id="nav-kiroku">ふり返り</button>
   <button data-t="t-soudan" id="nav-soudan">安心</button>
   <button class="nav-set" id="nav-settings" onclick="openSettings()">⚙️ 設定</button>
 </div>
@@ -787,10 +784,9 @@ table.cal-rec td.pad{background:none;}
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script>
 const previewStorage={
-  prefix:'preview-pr32:',
-  getItem(key){ return window.localStorage.getItem(this.prefix+key); },
-  setItem(key,value){ return window.localStorage.setItem(this.prefix+key,value); },
-  removeItem(key){ return window.localStorage.removeItem(this.prefix+key); }
+  getItem:k=>localStorage.getItem('preview-pr32-'+k),
+  setItem:(k,v)=>localStorage.setItem('preview-pr32-'+k,v),
+  removeItem:k=>localStorage.removeItem('preview-pr32-'+k)
 };
 const previewApp=firebase.initializeApp({
   apiKey: "AIzaSyA3bGGlSk_btdBP5i0XWg0VidskwviHR3A",
@@ -799,10 +795,9 @@ const previewApp=firebase.initializeApp({
   storageBucket: "hidamari-5f8de.firebasestorage.app",
   messagingSenderId: "565713968884",
   appId: "1:565713968884:web:0a9665d1fe5e0fa161c8a1"
-}, 'preview-pr32');
+});
 const db = previewApp.firestore();
 const auth = previewApp.auth();
-// 試験ページから公開版PWAのキャッシュを変更しないためService Workerは登録しません。
 
 /* ===== ユーティリティ ===== */
 function todayStr(){
@@ -1037,7 +1032,10 @@ function subscribeYotei(cb){
   return col('yotei').onSnapshot(snap=>{
     const list=[];
     snap.forEach(doc=>{ const v=doc.data(); v._id=doc.id; list.push(v); });
-    list.sort((a,b)=>a.date<b.date?-1:1);
+    list.sort((a,b)=>{
+      if(a.date!==b.date) return a.date<b.date?-1:1;
+      return String(a.time||'').localeCompare(String(b.time||''));
+    });
     yoteiCache=list;
     if(cb) cb(list);
   }, err=>console.warn('yotei', err));
@@ -1085,6 +1083,8 @@ function nextYotei(){
 function yoteiDetail(v){
   const parts=[];
   if(v.time) parts.push(v.time);
+  if(v.repeat==='weekly') parts.push('以前の繰り返し予定（毎週）・修正保存で1回だけになります');
+  if(v.repeat==='monthly') parts.push('以前の繰り返し予定（毎月）・修正保存で1回だけになります');
   return parts.join(' / ');
 }
 function yoteiColor(v){ return /^#[0-9A-Fa-f]{6}$/.test(v&&v.color||'')?v.color:'#3D6FB4'; }
@@ -1229,7 +1229,12 @@ function openCal(){
   const marks={};
   for(let day=1;day<=new Date(y,m+1,0).getDate();day++){
     const ds=dateString(new Date(y,m,day));
-    yoteiCache.forEach(v=>{ if(yoteiOccursOn(v,ds)) marks[day]=(marks[day]||'')+esc(v.kind||'📌'); });
+    yoteiCache.forEach(v=>{
+      if(yoteiOccursOn(v,ds)){
+        marks[day]=marks[day]||[];
+        marks[day].push('<span class="cal-event" style="background:'+yoteiColor(v)+'">'+esc(v.kind||'📌')+'</span>');
+      }
+    });
   }
   const first=new Date(y,m,1).getDay();
   const last=new Date(y,m+1,0).getDate();
@@ -1237,7 +1242,7 @@ function openCal(){
   for(let i=0;i<first;i++) html+='<td></td>';
   for(let day=1;day<=last;day++){
     const cls=(day===d.getDate())?' class="today"':'';
-    html+='<td'+cls+'>'+day+(marks[day]?'<span class="mk">'+marks[day]+'</span>':'')+'</td>';
+    html+='<td'+cls+'>'+day+(marks[day]?'<span class="mk">'+marks[day].join('')+'</span>':'')+'</td>';
     if((first+day)%7===0) html+='</tr><tr>';
   }
   html+='</tr>';
@@ -1276,7 +1281,12 @@ function renderFamilyCal(){
   const marks={};
   for(let day=1;day<=new Date(y,m+1,0).getDate();day++){
     const ds=dateString(new Date(y,m,day));
-    yoteiCache.forEach(v=>{ if(yoteiOccursOn(v,ds)) marks[day]=(marks[day]||'')+esc(v.kind||'📌'); });
+    yoteiCache.forEach(v=>{
+      if(yoteiOccursOn(v,ds)){
+        marks[day]=marks[day]||[];
+        marks[day].push('<span class="cal-event" style="background:'+yoteiColor(v)+'">'+esc(v.kind||'📌')+'</span>');
+      }
+    });
   }
   const first=new Date(y,m,1).getDay();
   const last=new Date(y,m+1,0).getDate();
@@ -1284,7 +1294,7 @@ function renderFamilyCal(){
   for(let i=0;i<first;i++) html+='<td></td>';
   for(let day=1;day<=last;day++){
     const cls=(day===d.getDate())?' class="today"':'';
-    html+='<td'+cls+'>'+day+(marks[day]?'<span class="mk">'+marks[day]+'</span>':'')+'</td>';
+    html+='<td'+cls+'>'+day+(marks[day]?'<span class="mk">'+marks[day].join('')+'</span>':'')+'</td>';
     if((first+day)%7===0) html+='</tr><tr>';
   }
   html+='</tr>';
@@ -1498,9 +1508,9 @@ function initKazoku(){
       const dd=new Date(v._nextDate+'T00:00:00');
       const detail=yoteiDetail(v);
       const actions=v.uid===uid()
-        ? '<span><button class="yt-del" style="margin-right:10px;" onclick="editYotei(\''+jsArg(v._id)+'\')">修正</button>'+
-          '<button class="yt-del" onclick="delYotei(\''+jsArg(v._id)+'\')">削除</button></span>'
-        : '<small>ほかの家族が登録</small>';
+        ? '<span class="yt-actions"><button class="yt-del" onclick="editYotei(\''+jsArg(v._id)+'\')">修正する</button>'+
+          '<button class="yt-del danger" onclick="delYotei(\''+jsArg(v._id)+'\')">削除する</button></span>'
+        : '<small>'+(v.uid?'ほかの家族が登録':'以前の予定（修正できる人を確認中）')+'</small>';
       return '<div class="yt-item" style="border-left:6px solid '+yoteiColor(v)+';padding-left:8px"><span>'+esc(v.kind||'📌')+' '+dateJp(dd)+' '+esc(v.label)+
         (detail?'<br><small>'+esc(detail)+'</small>':'')+'</span>'+actions+'</div>';
     }).join('');
@@ -1686,7 +1696,7 @@ function soudanShow(i){
   if(k.kyukyu){
     var w = sdEl('div','sd-119');
     w.appendChild(sdEl('b','','命にかかわるようなとき、強い症状のときは、迷わず119番へ電話してください。'));
-    w.appendChild(sdEl('div','d','どこに相談してよいか分からないほど急なときも、119番で構いません。'));
+    w.appendChild(sdEl('div','d','命にかかわる症状や強い症状があるときの案内です。'));
     w.appendChild(sdTel('119','119番に電話する','救急車を呼ぶときの番号です'));
     box.appendChild(w);
   }
@@ -1792,7 +1802,6 @@ function recLoad(){
   var from = recDayStr(y,m,1), to = recDayStr(y,m,new Date(y,m+1,0).getDate());
   document.getElementById('rec-ttl').textContent = y + '年' + (m+1) + '月';
   var now = new Date();
-  document.getElementById('rec-next').disabled = (y===now.getFullYear() && m===now.getMonth());
   recShowLoading(m);
 
   col('events').where('date','>=',from).where('date','<=',to).get().then(function(snap){
@@ -2331,16 +2340,19 @@ async function stopWatchTag(){
     alert('おまもりタグを停止しました');
   }catch(e){ alert('停止できませんでした。通信状態を確認してください。'); }
 }
-function revokeConsent(){
+async function revokeConsent(){
   if(!confirm('同意を取り消して、この端末での利用をやめますか?\nこの家族との接続も解除されます。')) return;
-  const mid=uid();
-  col('members').doc(mid).delete().catch(()=>{});
-  previewStorage.removeItem('mainicoConsent-a');
-  previewStorage.removeItem('mainicoConsent-b');
-  previewStorage.removeItem('mainicoGid');
-  previewStorage.removeItem('mainicoMode');
-  alert('同意を取り消しました。ご利用ありがとうございました。');
-  location.reload();
+  try{
+    await col('members').doc(uid()).delete();
+    previewStorage.removeItem('mainicoConsent-a');
+    previewStorage.removeItem('mainicoConsent-b');
+    previewStorage.removeItem('mainicoGid');
+    previewStorage.removeItem('mainicoMode');
+    alert('同意を取り消し、この端末の接続を解除しました。');
+    location.reload();
+  }catch(e){
+    alert('同意の取り消しを完了できませんでした。通信状態を確認して、もう一度お試しください。');
+  }
 }
 async function deleteAllData(){
   if(!confirm('この家族の全データ(挨拶・体調・服薬・予定・お願い・メモ・家族の接続)を削除しますか?\nこの操作は元に戻せません。')) return;
