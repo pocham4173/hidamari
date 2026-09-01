@@ -231,6 +231,17 @@ table.cal-rec td.pad{background:none;}
 .note{font-size:.76rem;color:var(--usucha);line-height:1.6;margin-top:6px;}
 .in-row{display:flex;gap:8px;margin-top:8px;}
 .in-row input,.in-row select{flex:1;font-family:inherit;font-size:.95rem;padding:11px;border:1px solid #D8CDBA;border-radius:8px;background:#FBF8F2;color:var(--cha);min-width:0;}
+.yt-simple{display:flex;flex-direction:column;gap:10px;}
+.yt-simple label{font-size:.83rem;font-weight:900;color:var(--cha);}
+.yt-simple input{width:100%;min-height:48px;margin-top:5px;font-family:inherit;font-size:1rem;padding:11px;border:1px solid #D8CDBA;border-radius:8px;background:#FBF8F2;color:var(--cha);}
+.yt-colors{display:flex;gap:10px;flex-wrap:wrap;margin-top:7px;}
+.yt-color{width:42px;height:42px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #B7AA96;cursor:pointer;position:relative;}
+.yt-color.on{box-shadow:0 0 0 3px #222;}
+.yt-color.on::after{content:'✓';position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:900;text-shadow:0 1px 3px #000;}
+.anshin-choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.anshin-choices button{min-height:78px;border:2px solid var(--murasaki);border-radius:12px;background:#fff;color:var(--cha);font-family:inherit;font-size:1rem;font-weight:900;padding:10px;cursor:pointer;}
+.region-step{display:flex;flex-direction:column;gap:10px;margin:10px 0;}
+.region-step select{min-height:50px;width:100%;font-family:inherit;font-size:1rem;padding:10px;border:1px solid #D8CDBA;border-radius:8px;background:#fff;}
 .yt-item{display:flex;justify-content:space-between;align-items:center;padding:9px 2px;border-bottom:1px solid #F0EAE0;font-size:.93rem;}
 .yt-item:last-child{border-bottom:none;}
 .yt-del{background:none;border:none;color:#B0492F;font-family:inherit;font-size:.83rem;cursor:pointer;text-decoration:underline;}
@@ -555,15 +566,6 @@ table.cal-rec td.pad{background:none;}
     </div>
 
     <div class="set-sec">
-      <h4>相談先・防災情報の地域</h4>
-      <select id="region-select" class="set-btn" onchange="saveRegion()">
-        <option value="ueda">長野県 上田市</option>
-        <option value="nagano">長野県（市町村未選択）</option>
-      </select>
-      <div class="note">現在は上田市版を先行して整備しています。全国版は、市町村ごとの公式情報を確認してから追加します。</div>
-    </div>
-
-    <div class="set-sec">
       <h4>同意の記録</h4>
       <div class="note" id="consent-info">─</div>
       <button class="set-btn warn" onclick="revokeConsent()">同意を取り消して利用をやめる</button>
@@ -638,57 +640,27 @@ table.cal-rec td.pad{background:none;}
         <button class="big-btn record" onclick="sendMemo()">メモを残す</button>
       </div>
 
-      <div class="card disaster-card">
-        <h3>もしもの時に備える</h3>
-        <div class="note" style="margin-top:0;">この3つは家族画面への記録です。消防・警察への通報ではありません。命にかかわるときは119番へ電話してください。</div>
-        <div class="disaster-grid">
-          <button onclick="sendDisasterStatus('disaster-safe')">無事です</button>
-          <button onclick="sendDisasterStatus('disaster-evacuating')">避難中です</button>
-          <button class="help" onclick="sendDisasterStatus('disaster-help')">助けが必要です</button>
-        </div>
-        <div class="save-state" id="disaster-state" aria-live="polite"></div>
-        <details style="margin-top:10px;">
-          <summary style="font-weight:900;cursor:pointer;">毎月の備えを確認する</summary>
-          <div class="prep-list" id="prep-list">
-            <label><input type="checkbox" value="water">水・食べ物</label>
-            <label><input type="checkbox" value="medicine">必要な薬</label>
-            <label><input type="checkbox" value="glasses">眼鏡・補聴器</label>
-            <label><input type="checkbox" value="battery">充電・電池</label>
-            <label><input type="checkbox" value="bag">持出し袋</label>
-            <label><input type="checkbox" value="place">避難先</label>
-            <label><input type="checkbox" value="contact">家族の連絡方法</label>
-            <label><input type="checkbox" value="pickup">迎えに行く人</label>
-          </div>
-        </details>
-        <a class="sd-btn" href="https://www.city.ueda.nagano.jp/soshiki/kiki/46316.html" target="_blank" rel="noopener noreferrer"><span class="l">上田市防災ポータルを見る</span><span class="s">避難情報・避難所・ハザードマップ（公式）</span></a>
-      </div>
     </div>
 
     <!-- 予定 -->
     <div class="ftab" id="t-yotei" style="display:none;">
       <div class="card dom-yotei">
         <h3 id="yt-form-title">予定の登録</h3>
-        <div class="in-row">
-          <select id="yt-kind">
-            <option value="🏥">🏥 病院</option>
-            <option value="🚌">🚌 デイサービス</option>
-            <option value="🏠">🏠 家族が行く日</option>
-            <option value="📌">📌 その他</option>
-          </select>
-          <input type="date" id="yt-date">
-        </div>
-        <div class="in-row">
-          <input type="time" id="yt-time" aria-label="時刻">
-          <input type="text" id="yt-label" placeholder="予定名 例: 定期通院">
-        </div>
-        <div class="in-row"><input type="text" id="yt-place" placeholder="場所 例: ○○医院"></div>
-        <div class="in-row">
-          <input type="text" id="yt-companion" placeholder="付き添い 例: 理絵">
-          <select id="yt-repeat" aria-label="繰り返し">
-            <option value="none">今回だけ</option>
-            <option value="weekly">毎週</option>
-            <option value="monthly">毎月</option>
-          </select>
+        <div class="yt-simple">
+          <label>予定名<input type="text" id="yt-label" placeholder="自由に入力 例: 美容院、買い物"></label>
+          <label>日付<input type="date" id="yt-date"></label>
+          <label>時間（わかるときだけ）<input type="time" id="yt-time"></label>
+          <label>絵文字<input type="text" id="yt-kind" value="📌" maxlength="8" placeholder="好きな絵文字"></label>
+          <label>色</label>
+          <div class="yt-colors" id="yt-colors" aria-label="予定の色">
+            <button type="button" class="yt-color on" data-color="#3D6FB4" style="background:#3D6FB4" onclick="chooseYoteiColor(this)" aria-label="青"></button>
+            <button type="button" class="yt-color" data-color="#E0711A" style="background:#E0711A" onclick="chooseYoteiColor(this)" aria-label="オレンジ"></button>
+            <button type="button" class="yt-color" data-color="#5F7D52" style="background:#5F7D52" onclick="chooseYoteiColor(this)" aria-label="緑"></button>
+            <button type="button" class="yt-color" data-color="#7A5FA6" style="background:#7A5FA6" onclick="chooseYoteiColor(this)" aria-label="紫"></button>
+            <button type="button" class="yt-color" data-color="#C74B6C" style="background:#C74B6C" onclick="chooseYoteiColor(this)" aria-label="ピンク"></button>
+            <button type="button" class="yt-color" data-color="#6B5C46" style="background:#6B5C46" onclick="chooseYoteiColor(this)" aria-label="茶"></button>
+          </div>
+          <input type="hidden" id="yt-color" value="#3D6FB4">
         </div>
         <button class="big-btn yotei" id="yt-save-btn" onclick="saveYotei()">保存する</button>
         <button class="set-btn" id="yt-cancel-edit" style="display:none;" onclick="clearYoteiForm()">修正をやめる</button>
@@ -718,14 +690,11 @@ table.cal-rec td.pad{background:none;}
           <div class="rec-ttl" id="rec-ttl">─</div>
           <button class="rec-nav" id="rec-next" onclick="recMove(1)">次の月 ▶</button>
         </div>
-        <table class="cal cal-rec" id="rec-cal"></table>
-        <div class="rec-legend">
-          <span><b>●</b> 記録があった日</span>
-          <span>オレンジ = 今日</span>
-          <span>太い枠 = 選んでいる日</span>
-          <span>「―」= 記録なし</span>
-        </div>
-        <div class="note">「―」の日は記録がなかった日です。未実施や体調の異常を意味するものではありません。</div>
+        <label style="display:block;font-weight:900;font-size:.85rem;margin-top:10px;">見たい日を選ぶ
+          <input type="date" id="rec-date" onchange="recChooseDate()" style="display:block;width:100%;min-height:50px;margin-top:6px;font:inherit;padding:10px;border:1px solid #D8CDBA;border-radius:8px;background:#fff;">
+        </label>
+        <table class="cal cal-rec" id="rec-cal" style="display:none;"></table>
+        <div class="note">予定は「予定」タブ、実際に起きた挨拶・体調・服薬・お願いはここで振り返ります。</div>
       </div>
 
       <div class="card dom-record">
@@ -741,21 +710,59 @@ table.cal-rec td.pad{background:none;}
       </div>
     </div>
 
-    <!-- 相談(上田市の公式案内) -->
+    <!-- 安心: 相談と、もしもの備えへの入口 -->
     <div class="ftab" id="t-soudan" style="display:none;">
-      <div class="card dom-soudan" id="sd-pick-card">
+      <div class="card dom-soudan" id="anshin-home">
+        <h3>安心</h3>
+        <div class="anshin-choices">
+          <button type="button" onclick="openAnshin('soudan')">💬<br>相談先を探す</button>
+          <button type="button" onclick="openAnshin('bousai')">🎒<br>もしもの備え</button>
+        </div>
+      </div>
+      <div class="card dom-soudan" id="sd-region-card" style="display:none;">
+        <h3>地域を選ぶ</h3>
+        <div class="region-step">
+          <select id="region-pref" onchange="updateCityChoices()"><option value="">都道府県を選ぶ</option><option value="nagano">長野県</option></select>
+          <select id="region-city" disabled><option value="">市区町村を選ぶ</option></select>
+          <button class="big-btn" type="button" onclick="confirmRegion()">この地域の相談先を見る</button>
+        </div>
+        <div class="note">全国の市町村を順次追加します。確認済みの公式情報だけを表示します。</div>
+        <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
+      </div>
+      <div class="card dom-soudan" id="sd-pick-card" style="display:none;">
         <h3>どんなことで困っていますか?</h3>
-        <div class="note" id="sd-region-label" style="margin:0 0 8px;font-weight:700;">現在の地域: 長野県 上田市</div>
-        <p class="sd-lead" id="sd-lead">当てはまるものを選んでください。上田市の公式なご案内へ進めます。<br>このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。</p>
+        <div class="note" id="sd-region-label" style="margin:0 0 8px;font-weight:700;"></div>
+        <p class="sd-lead" id="sd-lead">当てはまるものを選んでください。このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。</p>
+        <button class="set-btn" onclick="openAnshin('soudan')">地域を変更する</button>
         <div class="sd-list" id="sd-list"></div>
       </div>
       <div class="card dom-soudan" id="sd-detail-card" style="display:none;">
         <h3 id="sd-detail-ttl">ここへ相談できます</h3>
         <div id="sd-detail"></div>
       </div>
-      <div class="card dom-soudan">
+      <div class="card dom-soudan" id="sd-note-card" style="display:none;">
         <div class="note">当番の医療機関や電話番号は変わることがあります。最新の内容は、それぞれの公式ページでお確かめください。</div>
         <div class="note" id="sd-checked">公式情報の確認日: ─</div>
+      </div>
+      <div class="card disaster-card" id="bousai-card" style="display:none;">
+        <h3>もしもの備え</h3>
+        <div class="note" style="margin-top:0;">これは平時の準備と家族内の記録です。緊急通報ではありません。今すぐ危険なときは110番・119番へ電話してください。</div>
+        <div class="disaster-grid">
+          <button onclick="sendDisasterStatus('disaster-safe')">無事です</button>
+          <button onclick="sendDisasterStatus('disaster-evacuating')">避難中です</button>
+          <button class="help" onclick="sendDisasterStatus('disaster-help')">助けが必要です</button>
+        </div>
+        <div class="save-state" id="disaster-state" aria-live="polite"></div>
+        <details style="margin-top:10px;"><summary style="font-weight:900;cursor:pointer;">備えを確認する</summary>
+          <div class="prep-list" id="prep-list">
+            <label><input type="checkbox" value="water">水・食べ物</label><label><input type="checkbox" value="medicine">必要な薬</label>
+            <label><input type="checkbox" value="glasses">眼鏡・補聴器</label><label><input type="checkbox" value="battery">充電・電池</label>
+            <label><input type="checkbox" value="bag">持出し袋</label><label><input type="checkbox" value="place">避難先</label>
+            <label><input type="checkbox" value="contact">家族の連絡方法</label><label><input type="checkbox" value="pickup">迎えに行く人</label>
+          </div>
+        </details>
+        <a class="sd-btn" href="https://www.city.ueda.nagano.jp/soshiki/kiki/46316.html" target="_blank" rel="noopener noreferrer"><span class="l">上田市防災ポータルを見る</span><span class="s">避難情報・避難所・ハザードマップ（公式）</span></a>
+        <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
       </div>
     </div>
 
@@ -768,7 +775,7 @@ table.cal-rec td.pad{background:none;}
   <button class="on" data-t="t-home">ホーム</button>
   <button data-t="t-yotei">予定</button>
   <button data-t="t-kiroku" id="nav-kiroku">記録</button>
-  <button data-t="t-soudan" id="nav-soudan">相談</button>
+  <button data-t="t-soudan" id="nav-soudan">安心</button>
   <button class="nav-set" id="nav-settings" onclick="openSettings()">⚙️ 設定</button>
 </div>
 
@@ -1078,12 +1085,9 @@ function nextYotei(){
 function yoteiDetail(v){
   const parts=[];
   if(v.time) parts.push(v.time);
-  if(v.place) parts.push(v.place);
-  if(v.companion) parts.push('付き添い: '+v.companion);
-  if(v.repeat==='weekly') parts.push('毎週');
-  if(v.repeat==='monthly') parts.push('毎月');
   return parts.join(' / ');
 }
+function yoteiColor(v){ return /^#[0-9A-Fa-f]{6}$/.test(v&&v.color||'')?v.color:'#3D6FB4'; }
 
 /* ===== 花の成長 ===== */
 const STAGES=['🌱','🌱','🌿','🌿','🌷','🌷','🌸','🌸','🌺'];
@@ -1483,7 +1487,8 @@ function initKazoku(){
     if(n){
       const dd=new Date(n._nextDate+'T00:00:00');
       const diff=Math.ceil((new Date(n._nextDate+'T00:00:00')-new Date(t+'T00:00:00'))/86400000);
-      fEl.textContent=(n.kind||'')+' '+dateJp(dd)+' '+(n.label||'')+(yoteiDetail(n)?' / '+yoteiDetail(n):'')+' ('+(diff===0?'今日':'あと'+diff+'日')+')';
+      fEl.textContent=(n.kind||'📌')+' '+dateJp(dd)+' '+(n.label||'')+(yoteiDetail(n)?' / '+yoteiDetail(n):'')+' ('+(diff===0?'今日':'あと'+diff+'日')+')';
+      fEl.style.borderLeft='6px solid '+yoteiColor(n); fEl.style.paddingLeft='8px';
     }else{
       fEl.textContent='まだ登録がありません';
     }
@@ -1496,7 +1501,7 @@ function initKazoku(){
         ? '<span><button class="yt-del" style="margin-right:10px;" onclick="editYotei(\''+jsArg(v._id)+'\')">修正</button>'+
           '<button class="yt-del" onclick="delYotei(\''+jsArg(v._id)+'\')">削除</button></span>'
         : '<small>ほかの家族が登録</small>';
-      return '<div class="yt-item"><span>'+esc(v.kind)+' '+dateJp(dd)+' '+esc(v.label)+
+      return '<div class="yt-item" style="border-left:6px solid '+yoteiColor(v)+';padding-left:8px"><span>'+esc(v.kind||'📌')+' '+dateJp(dd)+' '+esc(v.label)+
         (detail?'<br><small>'+esc(detail)+'</small>':'')+'</span>'+actions+'</div>';
     }).join('');
   });
@@ -1510,7 +1515,7 @@ function showTab(t){
     b.classList.toggle('on', b.dataset.t===t);
   });
   if(t==='t-kiroku') recOpen();
-  if(t==='t-soudan') soudanReset();
+  if(t==='t-soudan') openAnshin('home');
 }
 document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
   b.addEventListener('click',()=>showTab(b.dataset.t));
@@ -1622,14 +1627,41 @@ function sdTel(num, label, note){
 }
 
 /* 最初の画面(困りごとを選ぶ) */
+function openAnshin(which){
+  ['anshin-home','sd-region-card','sd-pick-card','sd-detail-card','sd-note-card','bousai-card'].forEach(function(id){
+    document.getElementById(id).style.display='none';
+  });
+  if(which==='soudan') document.getElementById('sd-region-card').style.display='block';
+  else if(which==='bousai') document.getElementById('bousai-card').style.display='block';
+  else document.getElementById('anshin-home').style.display='block';
+}
+function updateCityChoices(){
+  var pref=document.getElementById('region-pref').value;
+  var city=document.getElementById('region-city');
+  city.innerHTML='<option value="">市区町村を選ぶ</option>';
+  city.disabled=!pref;
+  if(pref==='nagano') city.innerHTML+='<option value="ueda">上田市</option>';
+}
+function confirmRegion(){
+  var pref=document.getElementById('region-pref').value;
+  var city=document.getElementById('region-city').value;
+  if(!pref){ alert('都道府県を選んでください'); return; }
+  if(!city){ alert('市区町村を選んでください'); return; }
+  previewStorage.setItem('mainicoRegion',city);
+  document.getElementById('sd-list').textContent='';
+  soudanReset();
+}
 function soudanReset(){
-  var region=previewStorage.getItem('mainicoRegion')||'ueda';
-  var regionName=region==='nagano'?'長野県（市町村未選択）':'長野県 上田市';
-  document.getElementById('sd-region-label').textContent='現在の地域: '+regionName+'（変更は設定から）';
-  document.getElementById('sd-lead').innerHTML='当てはまるものを選んでください。'+(region==='nagano'?'長野県':'上田市')+'の公式なご案内へ進めます。<br>このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。';
+  var region=previewStorage.getItem('mainicoRegion')||'';
+  if(region!=='ueda'){ openAnshin('soudan'); return; }
+  document.getElementById('sd-region-label').textContent='上田市の相談先を表示中';
+  document.getElementById('sd-lead').innerHTML='当てはまるものを選んでください。上田市の公式なご案内へ進めます。<br>このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。';
   document.getElementById('sd-checked').textContent = '公式情報の確認日: ' + SOUDAN_CHECKED;
   document.getElementById('sd-detail-card').style.display = 'none';
   document.getElementById('sd-pick-card').style.display = 'block';
+  document.getElementById('sd-note-card').style.display = 'block';
+  document.getElementById('sd-region-card').style.display = 'none';
+  document.getElementById('anshin-home').style.display = 'none';
   var list = document.getElementById('sd-list');
   if(list.childNodes.length) return;   /* 一度作れば作り直しません */
   SOUDAN_KOMARI.forEach(function(k, i){
@@ -1659,15 +1691,14 @@ function soudanShow(i){
     box.appendChild(w);
   }
 
-  var region=previewStorage.getItem('mainicoRegion')||'ueda';
-  var keys=region==='nagano'?['prefHoukatsu','prefFamily']:k.saki;
+  var keys=k.saki;
   keys.forEach(function(key){
     var t = SOUDAN_SAKI[key];
     if(!t) return;
     var it = sdEl('div','sd-item');
     it.appendChild(sdEl('div','n', t.name));
     it.appendChild(sdEl('div','d', t.desc));
-    it.appendChild(sdLink(t.url, '公式ページを見る', (region==='nagano'?'長野県':'上田市')+'のページが新しい画面で開きます'));
+    it.appendChild(sdLink(t.url, '公式ページを見る', '上田市のページが新しい画面で開きます'));
     box.appendChild(it);
   });
 
@@ -1681,6 +1712,7 @@ function soudanShow(i){
 
   document.getElementById('sd-pick-card').style.display = 'none';
   document.getElementById('sd-detail-card').style.display = 'block';
+  document.getElementById('sd-note-card').style.display = 'block';
 }
 
 /* ===== 記録タブ: 月間記録 =====
@@ -1706,12 +1738,21 @@ function recVisible(v){ return !isKOnly() || REC_KONLY_OK[v.type]; }
 function recOpen(){
   var now = new Date();
   if(!recY){ recY = now.getFullYear(); recM = now.getMonth(); recSel = todayStr(); }
+  document.getElementById('rec-date').value=recSel||todayStr();
   recLoad();
 }
 function recToday(){
   var now=new Date();
   recY=now.getFullYear(); recM=now.getMonth(); recSel=todayStr();
+  document.getElementById('rec-date').value=recSel;
   recLoad();
+}
+function recChooseDate(){
+  var value=document.getElementById('rec-date').value;
+  if(!value) return;
+  var d=new Date(value+'T00:00:00');
+  if(d>new Date()){ alert('未来の日付は記録にありません'); document.getElementById('rec-date').value=recSel||todayStr(); return; }
+  recSel=value; recY=d.getFullYear(); recM=d.getMonth(); recLoad();
 }
 function printRecords(){
   document.body.classList.add('print-records');
@@ -1725,7 +1766,8 @@ function recMove(step){
   if(d.getFullYear() > now.getFullYear() ||
     (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth())) return;
   recY = d.getFullYear(); recM = d.getMonth();
-  recSel = '';
+  recSel = recDayStr(recY,recM,1);
+  document.getElementById('rec-date').value=recSel;
   recLoad();
 }
 
@@ -1879,7 +1921,7 @@ function recDrawDay(){
   var note = document.getElementById('rec-day-note');
   if(!recSel){
     ttl.textContent = 'その日の記録';
-    box.innerHTML = '<div class="empty">カレンダーの日を押すと、その日の記録が出ます</div>';
+    box.innerHTML = '<div class="empty">見たい日を選ぶと、その日の記録が出ます</div>';
     note.style.display = 'none';
     return;
   }
@@ -2036,9 +2078,9 @@ function setYoteiSaveState(text,isError){
 }
 function clearYoteiForm(){
   editingYoteiId='';
-  ['yt-date','yt-time','yt-label','yt-place','yt-companion'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('yt-repeat').value='none';
-  document.getElementById('yt-kind').value='🏥';
+  ['yt-date','yt-time','yt-label'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('yt-kind').value='📌';
+  setYoteiColor('#3D6FB4');
   document.getElementById('yt-form-title').textContent='予定の登録';
   document.getElementById('yt-save-btn').textContent='保存する';
   document.getElementById('yt-cancel-edit').style.display='none';
@@ -2052,9 +2094,7 @@ function editYotei(id){
   document.getElementById('yt-date').value=v.date||'';
   document.getElementById('yt-time').value=v.time||'';
   document.getElementById('yt-label').value=v.label||'';
-  document.getElementById('yt-place').value=v.place||'';
-  document.getElementById('yt-companion').value=v.companion||'';
-  document.getElementById('yt-repeat').value=v.repeat||'none';
+  setYoteiColor(yoteiColor(v));
   document.getElementById('yt-form-title').textContent='予定を修正する';
   document.getElementById('yt-save-btn').textContent='修正を保存する';
   document.getElementById('yt-cancel-edit').style.display='block';
@@ -2062,16 +2102,14 @@ function editYotei(id){
   document.getElementById('yt-form-title').scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function saveYotei(){
-  const kind=document.getElementById('yt-kind').value;
+  const kind=document.getElementById('yt-kind').value.trim()||'📌';
   const date=document.getElementById('yt-date').value;
   const time=document.getElementById('yt-time').value;
   const label=document.getElementById('yt-label').value.trim();
-  const place=document.getElementById('yt-place').value.trim();
-  const companion=document.getElementById('yt-companion').value.trim();
-  const repeat=document.getElementById('yt-repeat').value;
+  const color=document.getElementById('yt-color').value;
   if(!date){alert('日付を選んでください');return;}
   if(!label){alert('予定名を入力してください');return;}
-  const data={kind,date,time,label,place,companion,repeat,uid:uid(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const data={kind,date,time,label,color,repeat:'none',uid:uid(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
   const btn=document.getElementById('yt-save-btn');
   btn.disabled=true;
   setYoteiSaveState('保存中…');
@@ -2084,6 +2122,11 @@ async function saveYotei(){
     setYoteiSaveState('保存できませんでした。通信状態を確認して、もう一度押してください',true);
   }finally{ btn.disabled=false; }
 }
+function setYoteiColor(color){
+  document.getElementById('yt-color').value=color;
+  document.querySelectorAll('#yt-colors .yt-color').forEach(b=>b.classList.toggle('on',b.dataset.color===color));
+}
+function chooseYoteiColor(button){ setYoteiColor(button.dataset.color); }
 async function delYotei(id){
   if(!confirm('この予定を削除しますか?')) return;
   setYoteiSaveState('削除中…');
@@ -2099,7 +2142,6 @@ function openSettings(){
   document.getElementById('settings-modal').classList.add('show');
   renderSetMembers();
   loadWatchTag();
-  document.getElementById('region-select').value=previewStorage.getItem('mainicoRegion')||'ueda';
   const ca=previewStorage.getItem('mainicoConsent-a'), cb=previewStorage.getItem('mainicoConsent-b');
   const info=[];
   if(ca){ const v=JSON.parse(ca); info.push('共用モード同意: '+v.ver+' ('+v.at.slice(0,10)+')'); }
@@ -2107,12 +2149,6 @@ function openSettings(){
   document.getElementById('consent-info').textContent=info.length?info.join(' / '):'この端末での同意記録はありません';
 }
 function closeSettings(){ document.getElementById('settings-modal').classList.remove('show'); }
-function saveRegion(){
-  const v=document.getElementById('region-select').value;
-  previewStorage.setItem('mainicoRegion',v);
-  document.getElementById('sd-list').textContent='';
-  soudanReset();
-}
 async function renderSetMembers(){
   const box=document.getElementById('set-members');
   try{
