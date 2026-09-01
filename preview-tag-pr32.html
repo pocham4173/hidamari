@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F8A82">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>PR #32 試験版｜まいにこ おまもりタグ</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#EAF3F1;color:#30291F;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;display:grid;place-items:center;padding:20px}
+.card{width:min(100%,430px);background:#fff;border:2px solid #1F8A82;border-radius:26px;padding:28px 22px;box-shadow:0 14px 40px rgba(24,80,75,.12);text-align:center}
+.mark{display:grid;place-items:center;width:72px;height:72px;margin:0 auto 16px;border-radius:22px;background:#D7F0ED;color:#166863;font-size:34px}
+h1{margin:0;font-size:1.45rem;color:#166863}p{font-size:1rem;line-height:1.8;margin:14px 0}.privacy{background:#F2F8F7;border-radius:15px;padding:13px;margin:18px 0;text-align:left;font-size:.9rem;line-height:1.7}.privacy b{color:#166863}
+fieldset{border:0;padding:0;margin:18px 0;text-align:left}legend{font-weight:800;margin-bottom:10px}.choice{display:flex;align-items:flex-start;gap:10px;border:2px solid #D7E5E2;border-radius:14px;padding:12px;margin-top:8px;font-weight:700;line-height:1.5}.choice:has(input:checked){border-color:#1F8A82;background:#F2F8F7}.choice input{width:20px;height:20px;margin:2px 0 0;accent-color:#1F8A82;flex:none}
+.emergency{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}.emergency a{display:block;border:2px solid #C95843;border-radius:14px;padding:11px 6px;color:#963521;text-decoration:none;font-weight:900;background:#FFF7F4}.emergency a:last-child{border-color:#315C91;color:#244873;background:#F4F8FC}
+button{width:100%;min-height:58px;border:0;border-radius:17px;background:#1F8A82;color:#fff;font:inherit;font-size:1.1rem;font-weight:800;cursor:pointer;box-shadow:0 5px 0 #166863}button:active{transform:translateY(3px);box-shadow:0 2px 0 #166863}button:disabled{background:#A9BDBA;box-shadow:none;cursor:default;transform:none}
+.status{display:none;margin-top:15px;border-radius:14px;padding:13px;font-size:.95rem;line-height:1.65}.status.show{display:block}.status.ok{background:#E6F4DB;color:#2F6425}.status.err{background:#FBE5DF;color:#8D3828}.note{margin-top:18px;color:#6D6458;font-size:.8rem;line-height:1.7}
+</style>
+</head>
+<body>
+<div role="status" style="background:#111;color:#fff;text-align:center;padding:9px 12px;font:700 13px/1.45 sans-serif">PR #32 試験版｜テスト用QRだけを読み取ってください</div>
+<main class="card">
+  <div class="mark" aria-hidden="true">☀️</div>
+  <h1>まいにこ おまもりタグ</h1>
+  <p>このタグの持ち主を心配してくださり、ありがとうございます。</p>
+  <p><b>まず「こんにちは。何かお困りですか？」と、やさしく声をかけてください。</b></p>
+  <div class="emergency"><a href="tel:119">けが・意識障害<br>119</a><a href="tel:110">危険・事件の心配<br>110</a></div>
+  <div class="privacy"><b>この画面に個人情報は表示されません。</b><br>氏名・住所・電話番号・病歴・家族の連絡先・現在地は取得も表示もしません。</div>
+  <fieldset id="situation-group">
+    <legend>いちばん近い状況を選んでください</legend>
+    <label class="choice"><input type="radio" name="situation" value="lost">道に迷っているようです</label>
+    <label class="choice"><input type="radio" name="situation" value="unwell">体調が心配です</label>
+    <label class="choice"><input type="radio" name="situation" value="safe">安全な場所にいます</label>
+    <label class="choice"><input type="radio" name="situation" value="called">警察・救急へ連絡しました</label>
+  </fieldset>
+  <button id="notify" type="button" disabled>状況を選んでください</button>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+  <div class="note"><b>これは内部確認用の試作品です。</b><br>選んだ状況は家族のアプリ内履歴に記録されますが、プッシュ通知・電話・メールは届きません。家族がすぐ気づいたり応答したりすることを保証する機能ではありません。まいにこが、暗証番号・口座・カード情報・支払い・アプリのインストールをお願いすることはありません。</div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const previewStorage={
+  prefix:'preview-pr32:',
+  getItem(key){ return window.localStorage.getItem(this.prefix+key); },
+  setItem(key,value){ return window.localStorage.setItem(this.prefix+key,value); },
+  removeItem(key){ return window.localStorage.removeItem(this.prefix+key); }
+};
+const previewApp=firebase.initializeApp({
+  apiKey:"AIzaSyA3bGGlSk_btdBP5i0XWg0VidskwviHR3A",
+  authDomain:"hidamari-5f8de.firebaseapp.com",
+  projectId:"hidamari-5f8de",
+  storageBucket:"hidamari-5f8de.firebasestorage.app",
+  messagingSenderId:"565713968884",
+  appId:"1:565713968884:web:0a9665d1fe5e0fa161c8a1"
+}, 'preview-pr32-tag');
+const db=previewApp.firestore();
+const auth=previewApp.auth();
+const button=document.getElementById('notify');
+const statusBox=document.getElementById('status');
+const tagId=new URLSearchParams(location.search).get('id')||'';
+const validTag=/^[A-Za-z0-9_-]{32}$/.test(tagId);
+const cooldownMs=10*60*1000;
+
+function showStatus(text,kind){statusBox.textContent=text;statusBox.className='status show '+kind;}
+if(!validTag){button.disabled=true;showStatus('このおまもりタグは正しくありません。','err');}
+document.querySelectorAll('input[name="situation"]').forEach(input=>{
+  input.addEventListener('change',()=>{
+    if(!validTag)return;
+    button.disabled=false;
+    button.textContent='家族の画面に状況を記録する';
+  });
+});
+
+button.addEventListener('click',async()=>{
+  if(!validTag||button.disabled)return;
+  const selected=document.querySelector('input[name="situation"]:checked');
+  if(!selected){showStatus('状況を一つ選んでください。','err');return;}
+  const sentAt=Number(previewStorage.getItem('mainicoTagSent-'+tagId)||0);
+  if(sentAt&&Date.now()-sentAt<cooldownMs){
+    showStatus('ご家族へお知らせ済みです。状況が変わった場合は、10分後にもう一度知らせることができます。','ok');
+    return;
+  }
+  button.disabled=true;button.textContent='記録しています…';showStatus('家族のアプリ内履歴へ記録しています。','');
+  try{
+    let user=auth.currentUser;
+    if(!user){const result=await auth.signInAnonymously();user=result.user;}
+    await db.collection('watchTags').doc(tagId).collection('alerts').doc(user.uid).set({
+      type:'found',situation:selected.value,senderUid:user.uid,
+      count:firebase.firestore.FieldValue.increment(1),
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    previewStorage.setItem('mainicoTagSent-'+tagId,String(Date.now()));
+    button.textContent='履歴に記録しました';
+    showStatus('家族のまいにこのアプリ内履歴へ記録しました。プッシュ通知・電話・メールは届かないため、家族がすぐ気づくとは限りません。ご協力ありがとうございます。','ok');
+  }catch(e){
+    button.textContent='家族の画面に状況を記録する';
+    if(e&&e.code==='permission-denied'){
+      showStatus('このタグは停止済みか、短時間に続けてお知らせされています。','err');
+    }else{
+      button.disabled=false;
+      showStatus('送信できませんでした。通信状態を確認して、もう一度お試しください。','err');
+    }
+  }
+});
+</script>
+</body>
+</html>
