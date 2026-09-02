@@ -141,6 +141,14 @@ table.cal-rec td.pad{background:none;}
 }
 .rec-sum .rec-loading{grid-column:1/-1;}
 .rec-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.76rem;color:var(--usucha);margin-top:9px;}
+.range-picker{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.range-picker label{font-size:.84rem;font-weight:800;color:var(--cha);}
+.range-picker input{display:block;width:100%;min-height:44px;margin-top:5px;font:inherit;padding:8px;border:1px solid #CDD6E1;border-radius:9px;background:#F8FAFC;color:var(--cha);}
+.range-row{display:grid;grid-template-columns:6.5rem 1fr;gap:8px;padding:10px 2px;border-bottom:1px solid #E4EAF0;font-size:.88rem;line-height:1.5;}
+.range-row .date{font-weight:800;color:var(--ha-koi);}
+.range-row .kind{font-size:.75rem;font-weight:800;color:var(--usucha);display:block;}
+.back.back-subtle{background:transparent;color:var(--usucha);border:0;box-shadow:none;font-size:.78rem;font-weight:600;padding:9px;margin:2px 14px 8px;text-decoration:underline;}
+.back.back-subtle:active{background:#F4F7FA;}
 .rec-legend b{color:var(--ha-koi);}
 /* その日の記録 */
 .rec-ev{padding:9px 2px;border-bottom:1px solid #F0EAE0;font-size:.95rem;line-height:1.55;}
@@ -234,9 +242,15 @@ table.cal-rec td.pad{background:none;}
 .in-row input,.in-row select{flex:1;font-family:inherit;font-size:.95rem;padding:11px;border:1px solid #CDD6E1;border-radius:9px;background:#F8FAFC;color:var(--cha);min-width:0;}
 .yt-simple{display:flex;flex-direction:column;gap:10px;}
 .yt-simple label{font-size:1rem;font-weight:900;color:var(--cha);}
-.yt-simple input{width:100%;min-height:46px;margin-top:5px;font-family:inherit;font-size:1rem;padding:10px 11px;border:1px solid #CDD6E1;border-radius:9px;background:#F8FAFC;color:var(--cha);}
-.yt-colors{display:flex;gap:10px;flex-wrap:wrap;margin-top:7px;}
-.yt-color{width:48px;height:48px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #B7AA96;cursor:pointer;position:relative;}
+.yt-simple input{width:100%;min-height:44px;margin-top:5px;font-family:inherit;font-size:.98rem;padding:9px 10px;border:1px solid #CDD6E1;border-radius:9px;background:#F8FAFC;color:var(--cha);}
+.schedule-form-card{padding:14px;}
+.schedule-form-card h3{font-size:.95rem;}
+.yt-form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.yt-form-row label{min-width:0;}
+.yt-color-field{border:0;min-width:0;padding:0;margin:0;}
+.yt-color-field legend{font-size:1rem;font-weight:900;color:var(--cha);}
+.yt-colors{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px;}
+.yt-color{width:40px;height:40px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #AEB8C4;cursor:pointer;position:relative;}
 .yt-color.on{box-shadow:0 0 0 3px #222;}
 .yt-color.on::after{content:'✓';position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:900;text-shadow:0 1px 3px #000;}
 .anshin-choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
@@ -253,6 +267,7 @@ table.cal-rec td.pad{background:none;}
 .krec-btn{background:#FBF8F2;border:1.5px solid #D8CDBA;border-radius:10px;padding:13px 6px;font-family:inherit;font-size:.93rem;font-weight:700;color:var(--cha);cursor:pointer;}
 .krec-btn:active{background:#F0E7D6;}
 .ab-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.ab-grid.single{grid-template-columns:1fr;margin-top:10px;}
 .ab-btn{background:#fff;border:2px solid var(--ha);border-radius:12px;font-family:inherit;padding:10px 4px;min-height:48px;cursor:pointer;text-align:center;}
 .ab-btn .ic{font-size:1.3rem;line-height:1.2;display:block;}
 .ab-btn .tx{font-size:.85rem;font-weight:700;color:var(--ha-koi);display:block;margin-top:2px;}
@@ -481,13 +496,13 @@ table.cal-rec td.pad{background:none;}
       <button onclick="openCancel()">今日の記録をとりけす</button>
     </div>
   </div>
-  <button class="back" onclick="openBackConfirm()">入口に戻る</button>
+  <button class="back back-subtle" onclick="openBackConfirm()">利用方法を選び直す</button>
 </div>
 
 <!-- 入口に戻る確認 -->
 <div class="modal" id="back-modal">
   <div class="modal-box">
-    <div class="ttl">入口に戻りますか?</div>
+    <div class="ttl">利用方法を選び直しますか？</div>
     <div class="back-choice">
       <button class="back-no" onclick="closeBackConfirm()">いいえ</button>
       <button class="back-yes" onclick="resetMode()">はい</button>
@@ -545,9 +560,8 @@ table.cal-rec td.pad{background:none;}
 <!-- 設定(家族) -->
 <div class="modal" id="settings-modal">
   <div class="modal-box adult-font">
-    <div style="position:sticky;top:-18px;z-index:3;background:#fff;padding:12px 0 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E3D9C8;margin-bottom:10px;">
+    <div style="position:sticky;top:-18px;z-index:3;background:#fff;padding:12px 0 8px;border-bottom:1px solid #E4EAF0;margin-bottom:10px;">
       <div class="ttl" style="margin:0;">設定</div>
-      <button class="set-btn" style="width:auto;margin:0;padding:9px 15px;" onclick="closeSettings()">閉じる</button>
     </div>
 
     <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;">
@@ -622,7 +636,9 @@ table.cal-rec td.pad{background:none;}
           <button class="ab-btn" id="btn-ab-yoru" onclick="sendAisatsuBack('yoru')"><span class="ic">🌙</span><span class="tx">おやすみ</span></button>
         </div>
         <div class="sent-note" id="note-aisatsu-back" style="display:none;"></div>
-        <button class="big-btn record" onclick="askKusuri()" style="margin-top:14px;">「お薬飲んだ?」を送る</button>
+        <div class="ab-grid single">
+          <button class="ab-btn" onclick="askKusuri()"><span class="ic">💊</span><span class="tx">お薬飲んだ？</span></button>
+        </div>
         <div class="sent-note" id="note-ask" style="display:none;"></div>
       </div>
 
@@ -650,36 +666,41 @@ table.cal-rec td.pad{background:none;}
     <!-- 予定 -->
     <div class="ftab" id="t-yotei" style="display:none;">
       <div class="card dom-yotei">
-        <h3 id="yt-form-title">予定の登録</h3>
-        <div class="yt-simple">
-          <label>予定名<input type="text" id="yt-label" placeholder="自由に入力 例: 美容院、買い物"></label>
-          <label>日付<input type="date" id="yt-date"></label>
-          <label>時間（わかるときだけ）<input type="time" id="yt-time"></label>
-          <label>絵文字<input type="text" id="yt-kind" value="📌" maxlength="8" placeholder="好きな絵文字"></label>
-          <label>色</label>
-          <div class="yt-colors" id="yt-colors" aria-label="予定の色">
-            <button type="button" class="yt-color on" data-color="#3D6FB4" style="background:#3D6FB4" onclick="chooseYoteiColor(this)" aria-label="青"></button>
-            <button type="button" class="yt-color" data-color="#E0711A" style="background:#E0711A" onclick="chooseYoteiColor(this)" aria-label="オレンジ"></button>
-            <button type="button" class="yt-color" data-color="#5F7D52" style="background:#5F7D52" onclick="chooseYoteiColor(this)" aria-label="緑"></button>
-            <button type="button" class="yt-color" data-color="#7A5FA6" style="background:#7A5FA6" onclick="chooseYoteiColor(this)" aria-label="紫"></button>
-            <button type="button" class="yt-color" data-color="#C74B6C" style="background:#C74B6C" onclick="chooseYoteiColor(this)" aria-label="ピンク"></button>
-            <button type="button" class="yt-color" data-color="#6B5C46" style="background:#6B5C46" onclick="chooseYoteiColor(this)" aria-label="茶"></button>
-          </div>
-          <input type="hidden" id="yt-color" value="#3D6FB4">
-        </div>
-        <div class="note">試験中は、予定名に実名・住所・電話番号・病名を書かないでください。</div>
-        <button class="big-btn yotei" id="yt-save-btn" onclick="saveYotei()">保存する</button>
-        <button class="set-btn" id="yt-cancel-edit" style="display:none;" onclick="clearYoteiForm()">修正をやめる</button>
-        <div class="save-state" id="yt-save-state" aria-live="polite"></div>
-        <div class="note" id="yt-note">本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。</div>
+        <h3 id="f-cal-ttl">今月のカレンダー</h3>
+        <table class="cal" id="f-cal-table"></table>
       </div>
       <div class="card dom-yotei">
         <h3>これからの予定</h3>
         <div id="yt-list"><div class="empty">まだ登録がありません</div></div>
       </div>
-      <div class="card dom-yotei">
-        <h3 id="f-cal-ttl">今月のカレンダー</h3>
-        <table class="cal" id="f-cal-table"></table>
+      <div class="card dom-yotei schedule-form-card">
+        <h3 id="yt-form-title">予定を登録する</h3>
+        <div class="yt-simple">
+          <label>予定名<input type="text" id="yt-label" placeholder="例：美容院、買い物"></label>
+          <div class="yt-form-row">
+            <label>日付<input type="date" id="yt-date"></label>
+            <label>時間<input type="time" id="yt-time"></label>
+          </div>
+          <div class="yt-form-row">
+            <label>絵文字<input type="text" id="yt-kind" value="📌" maxlength="8" placeholder="絵文字"></label>
+            <fieldset class="yt-color-field">
+              <legend>色</legend>
+              <div class="yt-colors" id="yt-colors" aria-label="予定の色">
+                <button type="button" class="yt-color on" data-color="#4F7FD3" style="background:#4F7FD3" onclick="chooseYoteiColor(this)" aria-label="青"></button>
+                <button type="button" class="yt-color" data-color="#F28A42" style="background:#F28A42" onclick="chooseYoteiColor(this)" aria-label="オレンジ"></button>
+                <button type="button" class="yt-color" data-color="#63A57D" style="background:#63A57D" onclick="chooseYoteiColor(this)" aria-label="緑"></button>
+                <button type="button" class="yt-color" data-color="#8B6EC7" style="background:#8B6EC7" onclick="chooseYoteiColor(this)" aria-label="紫"></button>
+                <button type="button" class="yt-color" data-color="#C74B6C" style="background:#C74B6C" onclick="chooseYoteiColor(this)" aria-label="ピンク"></button>
+              </div>
+            </fieldset>
+          </div>
+          <input type="hidden" id="yt-color" value="#4F7FD3">
+        </div>
+        <div class="note">試験中は、予定名に実名・住所・電話番号・病名を書かないでください。</div>
+        <button class="big-btn yotei" id="yt-save-btn" onclick="saveYotei()">保存する</button>
+        <button class="set-btn" id="yt-cancel-edit" style="display:none;" onclick="clearYoteiForm()">修正をやめる</button>
+        <div class="save-state" id="yt-save-state" aria-live="polite"></div>
+        <div class="note" id="yt-note">本人の画面とカレンダーに表示されます。</div>
       </div>
     </div>
 
@@ -688,7 +709,6 @@ table.cal-rec td.pad{background:none;}
       <div class="card dom-record">
         <h3>過去の記録を振り返る</h3>
         <div class="record-tools">
-          <button onclick="recToday()">今日を見る</button>
           <button onclick="printRecords()">印刷・PDF保存</button>
         </div>
         <div class="rec-ttl" id="rec-ttl" style="margin-top:10px;">─</div>
@@ -697,6 +717,18 @@ table.cal-rec td.pad{background:none;}
         </label>
         <table class="cal cal-rec" id="rec-cal" style="display:none;"></table>
         <div class="note">予定は「予定」タブ、実際に起きた挨拶・体調・服薬・お願いはここで振り返ります。</div>
+      </div>
+
+      <div class="card dom-record">
+        <h3>期間を指定して振り返る</h3>
+        <div class="range-picker">
+          <label>開始日<input type="date" id="rec-range-from"></label>
+          <label>終了日<input type="date" id="rec-range-to"></label>
+        </div>
+        <button class="big-btn record" type="button" onclick="recLoadRange()">この期間を表示する</button>
+        <div class="save-state" id="rec-range-state" aria-live="polite"></div>
+        <div id="rec-range-results"><div class="empty">開始日と終了日を選んでください</div></div>
+        <div class="note">この期間の生活記録と、登録されていた予定を日付順に表示します。</div>
       </div>
 
       <div class="card dom-record">
@@ -763,7 +795,7 @@ table.cal-rec td.pad{background:none;}
       </div>
     </div>
 
-    <button class="back" onclick="openBackConfirm()" style="display:block;width:calc(100% - 28px);">入口に戻る</button>
+    <button class="back back-subtle" onclick="openBackConfirm()" style="display:block;width:calc(100% - 28px);">利用方法を選び直す</button>
   </div>
 </div>
 
@@ -1745,6 +1777,10 @@ function recOpen(){
   var now = new Date();
   if(!recY){ recY = now.getFullYear(); recM = now.getMonth(); recSel = todayStr(); }
   document.getElementById('rec-date').value=recSel||todayStr();
+  var rangeFrom=document.getElementById('rec-range-from');
+  var rangeTo=document.getElementById('rec-range-to');
+  if(rangeFrom && !rangeFrom.value) rangeFrom.value=recDayStr(now.getFullYear(),now.getMonth(),1);
+  if(rangeTo && !rangeTo.value) rangeTo.value=todayStr();
   recLoad();
 }
 function recToday(){
@@ -1759,6 +1795,50 @@ function recChooseDate(){
   var d=new Date(value+'T00:00:00');
   if(d>new Date()){ alert('未来の日付は記録にありません'); document.getElementById('rec-date').value=recSel||todayStr(); return; }
   recSel=value; recY=d.getFullYear(); recM=d.getMonth(); recLoad();
+}
+function recLoadRange(){
+  var fromEl=document.getElementById('rec-range-from');
+  var toEl=document.getElementById('rec-range-to');
+  var state=document.getElementById('rec-range-state');
+  var box=document.getElementById('rec-range-results');
+  var from=fromEl.value, to=toEl.value;
+  state.classList.remove('err');
+  if(!from || !to){ state.classList.add('err'); state.textContent='開始日と終了日を選んでください'; return; }
+  if(from>to){ state.classList.add('err'); state.textContent='開始日は終了日より前にしてください'; return; }
+  if(to>todayStr()){ state.classList.add('err'); state.textContent='終了日は今日以前を選んでください'; return; }
+  state.textContent='読み込み中…';
+  box.innerHTML='<div class="rec-loading">読み込み中…</div>';
+  col('events').where('date','>=',from).where('date','<=',to).get().then(function(snap){
+    var rows=[];
+    snap.forEach(function(doc){
+      var v=doc.data(); v._id=doc.id;
+      if(!v.date || !v.at || !recVisible(v) || v.type==='member-joined') return;
+      var label=REC_LABEL[v.type] ? REC_LABEL[v.type](v) : ['記録','',v.text||''];
+      rows.push({date:v.date,time:recTime(v),kind:label[0],text:label[2]+recReplyFor(v)});
+    });
+    yoteiCache.forEach(function(v){
+      if(!v.date || v.date<from || v.date>to) return;
+      rows.push({date:v.date,time:v.time||'',kind:'予定',text:(v.kind||'📌')+' '+(v.label||'予定')});
+    });
+    rows.sort(function(a,b){ return (a.date+' '+a.time).localeCompare(b.date+' '+b.time); });
+    box.innerHTML='';
+    if(!rows.length){ box.innerHTML='<div class="empty">この期間の記録と予定はありません</div>'; }
+    rows.forEach(function(v){
+      var row=document.createElement('div'); row.className='range-row';
+      var date=document.createElement('div'); date.className='date';
+      var d=new Date(v.date+'T00:00:00');
+      date.textContent=d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日';
+      var body=document.createElement('div');
+      var kind=document.createElement('span'); kind.className='kind'; kind.textContent=v.kind+(v.time?' '+v.time:'');
+      body.appendChild(kind); body.appendChild(document.createTextNode(v.text));
+      row.appendChild(date); row.appendChild(body); box.appendChild(row);
+    });
+    state.textContent=from+' から '+to+'：'+rows.length+'件';
+  }).catch(function(e){
+    state.classList.add('err'); state.textContent='読み込めませんでした。通信状態を確認してください';
+    box.innerHTML='<div class="empty">期間の記録を表示できませんでした</div>';
+    console.warn('rec range',e);
+  });
 }
 function printRecords(){
   document.body.classList.add('print-records');
@@ -2085,7 +2165,7 @@ function clearYoteiForm(){
   editingYoteiId='';
   ['yt-date','yt-time','yt-label'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('yt-kind').value='📌';
-  setYoteiColor('#3D6FB4');
+  setYoteiColor('#4F7FD3');
   document.getElementById('yt-form-title').textContent='予定の登録';
   document.getElementById('yt-save-btn').textContent='保存する';
   document.getElementById('yt-cancel-edit').style.display='none';
