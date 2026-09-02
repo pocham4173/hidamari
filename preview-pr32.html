@@ -9,18 +9,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 :root{
-  --asa:#FFFFFF; --hi:#E0711A; --hi-koi:#C8600F; --hi-usui:#FDE3BC;
-  --cha:#3D2E1B; --ha:#5F7D52; --ha-koi:#4C6541; --ha-usui:#DDE6D7; --usucha:#7A6A55;
+  --asa:#FFFFFF; --hi:#F28A42; --hi-koi:#D96B24; --hi-usui:#FFF0E4;
+  --cha:#263342; --ha:#63A57D; --ha-koi:#3F815C; --ha-usui:#E5F4EA; --usucha:#667085;
   /* 用途別カラー: 予定=青, 相談=紫, 家族・招待=青緑, 注意=赤(既存の赤系と揃える) */
-  --ao:#3D6FB4; --ao-koi:#2C5690; --ao-usui:#D9E6F5;
-  --murasaki:#7A5FA6; --murasaki-koi:#5F4785; --murasaki-usui:#E7DFF2;
-  --aomidori:#1F8A82; --aomidori-koi:#166863; --aomidori-usui:#D7F0ED;
+  --ao:#4F7FD3; --ao-koi:#315FAE; --ao-usui:#EAF1FD;
+  --murasaki:#8B6EC7; --murasaki-koi:#6D50AA; --murasaki-usui:#F1ECFB;
+  --aomidori:#2FA89A; --aomidori-koi:#197D73; --aomidori-usui:#E3F6F3;
   --aka:#B0492F; --aka-koi:#963C29; --aka-usui:#FBE5DF;
 
   --nav-safe:env(safe-area-inset-bottom, 0px); /* iPhoneのホームバーの高さ。0のときもある */
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{font-family:'Zen Maru Gothic',sans-serif;background:#EAE3D6;color:var(--cha);display:flex;justify-content:center;min-height:100vh;}
+body{font-family:'Zen Maru Gothic',sans-serif;background:#F4F7FA;color:var(--cha);display:flex;justify-content:center;min-height:100vh;}
 /* 家族側は角ゴシック(大人のデザイン) */
 body.f-adult .phone .adult-font,
 body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;}
@@ -200,12 +200,12 @@ table.cal-rec td.pad{background:none;}
 .code-exp{font-size:.8rem;color:var(--usucha);text-align:center;margin-top:6px;line-height:1.6;}
 
 /* ===== 家族 ===== */
-.f-head{background:var(--hi);padding:14px 16px 12px;color:#fff;position:relative;}
+.f-head{background:linear-gradient(135deg,#F28A42,#F5A15F);padding:14px 16px 12px;color:#fff;position:relative;}
 .f-head .lg{font-weight:700;letter-spacing:.1em;font-size:.85rem;opacity:.9;}
 .f-head .tt{font-size:1.25rem;font-weight:800;margin-top:2px;}
 /* 下部メニュー(48px+余白)より広くとって、いちばん下の操作が隠れないようにする */
 .f-body{flex:1;padding:13px 13px calc(106px + var(--nav-safe));overflow-y:auto;}
-.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid #E5DCCB;}
+.card{background:#fff;border-radius:14px;padding:15px;margin-bottom:12px;border:1px solid #E4EAF0;box-shadow:0 3px 12px rgba(38,51,66,.05);}
 .card h3{font-size:.98rem;margin-bottom:10px;color:var(--cha);border-left:4px solid #D8CDBA;padding-left:8px;font-weight:700;}
 /* カードの左枠は用途別の色にする(記録=緑, 予定=青, 相談=紫, 家族・招待=青緑) */
 .card.dom-record h3{border-left-color:var(--ha-koi);}
@@ -230,10 +230,10 @@ table.cal-rec td.pad{background:none;}
 .empty{color:var(--usucha);font-size:.84rem;text-align:center;padding:10px 0;}
 .note{font-size:.88rem;color:var(--usucha);line-height:1.65;margin-top:6px;}
 .in-row{display:flex;gap:8px;margin-top:8px;}
-.in-row input,.in-row select{flex:1;font-family:inherit;font-size:.95rem;padding:11px;border:1px solid #D8CDBA;border-radius:8px;background:#FBF8F2;color:var(--cha);min-width:0;}
+.in-row input,.in-row select{flex:1;font-family:inherit;font-size:.95rem;padding:11px;border:1px solid #CDD6E1;border-radius:9px;background:#F8FAFC;color:var(--cha);min-width:0;}
 .yt-simple{display:flex;flex-direction:column;gap:10px;}
 .yt-simple label{font-size:1rem;font-weight:900;color:var(--cha);}
-.yt-simple input{width:100%;min-height:48px;margin-top:5px;font-family:inherit;font-size:1rem;padding:11px;border:1px solid #D8CDBA;border-radius:8px;background:#FBF8F2;color:var(--cha);}
+.yt-simple input{width:100%;min-height:46px;margin-top:5px;font-family:inherit;font-size:1rem;padding:10px 11px;border:1px solid #CDD6E1;border-radius:9px;background:#F8FAFC;color:var(--cha);}
 .yt-colors{display:flex;gap:10px;flex-wrap:wrap;margin-top:7px;}
 .yt-color{width:48px;height:48px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #B7AA96;cursor:pointer;position:relative;}
 .yt-color.on{box-shadow:0 0 0 3px #222;}
