@@ -491,7 +491,6 @@ table.cal-rec td.pad{background:none;}
     <button class="kusuri-btn" id="btn-k" onclick="sendKusuri()">薬を飲みました</button>
     <button class="onegai-btn" onclick="openOnegai()">ちょっとお願い</button>
     <button class="cal-open" onclick="openCal()">カレンダーを見る</button>
-    <button class="cal-open" onclick="openPersonYotei()">予定を登録する</button>
     <div class="h-links">
       <button onclick="openMembers()">つながっている家族</button>
       <button onclick="openCancel()">今日の記録をとりけす</button>
@@ -499,19 +498,6 @@ table.cal-rec td.pad{background:none;}
     </div>
   </div>
 </div>
-
-<div class="modal" id="person-yotei-modal"><div class="modal-box adult-font">
-  <div class="ttl">予定を登録する</div>
-  <div class="yt-simple">
-    <label>予定名<input type="text" id="pyt-label" placeholder="例：買い物、美容院"></label>
-    <div class="yt-form-row"><label>日付<input type="date" id="pyt-date"></label><label>時間<input type="time" id="pyt-time"></label></div>
-    <div class="yt-form-row"><label>絵文字<input type="text" id="pyt-kind" value="📌" maxlength="8"></label><label>色<input type="color" id="pyt-color" value="#4F7FD3" style="width:100%;min-height:50px;margin-top:6px;"></label></div>
-  </div>
-  <div class="note">家族と同じカレンダーに表示されます。時間は空欄でも保存できます。</div>
-  <button class="big-btn yotei" id="pyt-save-btn" onclick="savePersonYotei()">保存する</button>
-  <div class="save-state" id="pyt-save-state" aria-live="polite"></div>
-  <button class="modal-close" onclick="closePersonYotei()">とじる</button>
-</div></div>
 
 <div class="modal" id="person-settings-modal"><div class="modal-box adult-font">
   <div class="ttl">その他の設定</div>
@@ -1046,19 +1032,6 @@ function openBackConfirm(){ closePersonSettings(); document.getElementById('back
 function closeBackConfirm(){ document.getElementById('back-modal').classList.remove('show'); }
 function openPersonSettings(){ document.getElementById('person-settings-modal').classList.add('show'); }
 function closePersonSettings(){ document.getElementById('person-settings-modal').classList.remove('show'); }
-function openPersonYotei(){ document.getElementById('pyt-date').value=todayStr(); document.getElementById('pyt-save-state').textContent=''; document.getElementById('person-yotei-modal').classList.add('show'); }
-function closePersonYotei(){ document.getElementById('person-yotei-modal').classList.remove('show'); }
-async function savePersonYotei(){
-  const label=document.getElementById('pyt-label').value.trim(), date=document.getElementById('pyt-date').value, time=document.getElementById('pyt-time').value;
-  const kind=document.getElementById('pyt-kind').value.trim()||'📌', color=document.getElementById('pyt-color').value||'#4F7FD3';
-  const state=document.getElementById('pyt-save-state'), btn=document.getElementById('pyt-save-btn'); state.classList.remove('err');
-  if(!label||!date){ state.classList.add('err'); state.textContent='予定名と日付を入力してください'; return; }
-  btn.disabled=true; state.textContent='保存中…';
-  try{ await col('yotei').add({kind,date,time,label,color,repeat:'none',uid:uid(),enteredBy:'honnin',createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}); document.getElementById('pyt-label').value=''; state.textContent='家族と共有するカレンダーに保存しました'; setTimeout(closePersonYotei,700); }
-  catch(e){ state.classList.add('err'); state.textContent='保存できませんでした。通信状態を確認してください'; }
-  finally{ btn.disabled=false; }
-}
-
 /* ===== 予定 ===== */
 let yoteiCache=[];
 function subscribeYotei(cb){
