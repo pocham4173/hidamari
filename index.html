@@ -491,21 +491,44 @@ table.cal-rec td.pad{background:none;}
     <button class="kusuri-btn" id="btn-k" onclick="sendKusuri()">薬を飲みました</button>
     <button class="onegai-btn" onclick="openOnegai()">ちょっとお願い</button>
     <button class="cal-open" onclick="openCal()">カレンダーを見る</button>
+    <button class="cal-open" onclick="openPersonYotei()">予定を登録する</button>
     <div class="h-links">
       <button onclick="openMembers()">つながっている家族</button>
       <button onclick="openCancel()">今日の記録をとりけす</button>
+      <button onclick="openPersonSettings()">その他の設定</button>
     </div>
   </div>
-  <button class="back back-subtle" onclick="openBackConfirm()">利用方法を選び直す</button>
 </div>
 
-<!-- 入口に戻る確認 -->
+<div class="modal" id="person-yotei-modal"><div class="modal-box adult-font">
+  <div class="ttl">予定を登録する</div>
+  <div class="yt-simple">
+    <label>予定名<input type="text" id="pyt-label" placeholder="例：買い物、美容院"></label>
+    <div class="yt-form-row"><label>日付<input type="date" id="pyt-date"></label><label>時間<input type="time" id="pyt-time"></label></div>
+    <div class="yt-form-row"><label>絵文字<input type="text" id="pyt-kind" value="📌" maxlength="8"></label><label>色<input type="color" id="pyt-color" value="#4F7FD3" style="width:100%;min-height:50px;margin-top:6px;"></label></div>
+  </div>
+  <div class="note">家族と同じカレンダーに表示されます。時間は空欄でも保存できます。</div>
+  <button class="big-btn yotei" id="pyt-save-btn" onclick="savePersonYotei()">保存する</button>
+  <div class="save-state" id="pyt-save-state" aria-live="polite"></div>
+  <button class="modal-close" onclick="closePersonYotei()">とじる</button>
+</div></div>
+
+<div class="modal" id="person-settings-modal"><div class="modal-box adult-font">
+  <div class="ttl">その他の設定</div>
+  <div class="set-sec" style="border-top:none;"><h4>利用方法の変更</h4>
+    <div class="note">利用する人を最初から選び直すときだけ使います。普段は変更する必要はありません。</div>
+    <button class="set-btn warn" onclick="openBackConfirm()">利用方法を変更する</button>
+  </div>
+  <button class="modal-close" onclick="closePersonSettings()">とじる</button>
+</div></div>
+
+<!-- 利用方法変更の確認 -->
 <div class="modal" id="back-modal">
   <div class="modal-box">
-    <div class="ttl">利用方法を選び直しますか？</div>
+    <div class="ttl">利用方法を変更しますか？</div>
     <div class="back-choice">
       <button class="back-no" onclick="closeBackConfirm()">いいえ</button>
-      <button class="back-yes" onclick="resetMode()">はい</button>
+      <button class="back-yes" onclick="resetMode()">変更する</button>
     </div>
   </div>
 </div>
@@ -629,7 +652,7 @@ table.cal-rec td.pad{background:none;}
       </div>
 
       <div class="card dom-record" id="card-actions">
-        <h3>先に挨拶を送る</h3>
+        <h3>挨拶を送る</h3>
         <div class="ab-grid">
           <button class="ab-btn" id="btn-ab-asa" onclick="sendAisatsuBack('asa')"><span class="ic">☀️</span><span class="tx">おはよう</span></button>
           <button class="ab-btn" id="btn-ab-hiru" onclick="sendAisatsuBack('hiru')"><span class="ic">🌤</span><span class="tx">こんにちは</span></button>
@@ -704,44 +727,12 @@ table.cal-rec td.pad{background:none;}
       </div>
     </div>
 
-    <!-- 記録(月間記録) -->
+    <!-- ふり返り -->
     <div class="ftab" id="t-kiroku" style="display:none;">
-      <div class="card dom-record">
-        <h3>過去の記録を振り返る</h3>
-        <div class="record-tools">
-          <button onclick="printRecords()">印刷・PDF保存</button>
-        </div>
-        <div class="rec-ttl" id="rec-ttl" style="margin-top:10px;">─</div>
-        <label style="display:block;font-weight:900;font-size:.85rem;margin-top:10px;">見たい日を選ぶ
-          <input type="date" id="rec-date" onchange="recChooseDate()" style="display:block;width:100%;min-height:50px;margin-top:6px;font:inherit;padding:10px;border:1px solid #D8CDBA;border-radius:8px;background:#fff;">
-        </label>
-        <table class="cal cal-rec" id="rec-cal" style="display:none;"></table>
-        <div class="note">予定は「予定」タブ、実際に起きた挨拶・体調・服薬・お願いはここで振り返ります。</div>
-      </div>
-
-      <div class="card dom-record">
-        <h3>期間を指定して振り返る</h3>
-        <div class="range-picker">
-          <label>開始日<input type="date" id="rec-range-from"></label>
-          <label>終了日<input type="date" id="rec-range-to"></label>
-        </div>
-        <button class="big-btn record" type="button" onclick="recLoadRange()">この期間を表示する</button>
-        <div class="save-state" id="rec-range-state" aria-live="polite"></div>
-        <div id="rec-range-results"><div class="empty">開始日と終了日を選んでください</div></div>
-        <div class="note">この期間の生活記録と、登録されていた予定を日付順に表示します。</div>
-      </div>
-
-      <div class="card dom-record">
-        <h3 id="rec-day-ttl">その日の記録</h3>
-        <div id="rec-day"><div class="empty">読み込み中…</div></div>
-        <div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div>
-      </div>
-
-      <div class="card dom-record">
-        <h3 id="rec-sum-ttl">今月のまとめ</h3>
-        <div class="rec-sum" id="rec-sum"></div>
-        <div class="note">件数を数えたものです。良い・悪いや、健康状態の判断はしていません。この記録は、ご本人とご家族が入力した生活の記録であり、医療機関の診療記録ではありません。</div>
-      </div>
+      <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
+      <div class="card dom-record"><h3 id="rec-sum-ttl">今月のまとめ</h3><div class="rec-sum" id="rec-sum"></div><div class="note">件数を数えたものです。良い・悪いや、健康状態の判断はしていません。この記録は医療機関の診療記録ではありません。</div></div>
+      <div class="card dom-record"><h3>日付を選んで見る</h3><div class="rec-ttl" id="rec-ttl">─</div><label style="display:block;font-weight:900;font-size:.85rem;margin-top:10px;">見たい日<input type="date" id="rec-date" onchange="recChooseDate()" style="display:block;width:100%;min-height:50px;margin-top:6px;font:inherit;padding:10px;border:1px solid #D8CDBA;border-radius:8px;background:#fff;"></label><table class="cal cal-rec" id="rec-cal" style="display:none;"></table></div>
+      <div class="card dom-record"><h3>過去の記録・予定をまとめて見る</h3><div class="range-picker"><label>開始日<input type="date" id="rec-range-from"></label><label>終了日<input type="date" id="rec-range-to"></label></div><button class="big-btn record" type="button" onclick="recLoadRange()">この期間を表示する</button><div class="save-state" id="rec-range-state" aria-live="polite"></div><div id="rec-range-results"><div class="empty">開始日と終了日を選んでください</div></div><div class="record-tools" style="margin-top:12px;"><button onclick="printRecords()">表示中の記録を印刷・PDF保存</button></div><div class="note">生活記録と、登録されていた予定を日付順に一つの一覧で表示します。</div></div>
     </div>
 
     <!-- 安心: 相談と、もしもの備えへの入口 -->
@@ -1051,8 +1042,22 @@ function startMode(){
   else showPage('entry');
 }
 function resetMode(){ localStorage.removeItem('mainicoMode'); location.reload(); }
-function openBackConfirm(){ document.getElementById('back-modal').classList.add('show'); }
+function openBackConfirm(){ closePersonSettings(); document.getElementById('back-modal').classList.add('show'); }
 function closeBackConfirm(){ document.getElementById('back-modal').classList.remove('show'); }
+function openPersonSettings(){ document.getElementById('person-settings-modal').classList.add('show'); }
+function closePersonSettings(){ document.getElementById('person-settings-modal').classList.remove('show'); }
+function openPersonYotei(){ document.getElementById('pyt-date').value=todayStr(); document.getElementById('pyt-save-state').textContent=''; document.getElementById('person-yotei-modal').classList.add('show'); }
+function closePersonYotei(){ document.getElementById('person-yotei-modal').classList.remove('show'); }
+async function savePersonYotei(){
+  const label=document.getElementById('pyt-label').value.trim(), date=document.getElementById('pyt-date').value, time=document.getElementById('pyt-time').value;
+  const kind=document.getElementById('pyt-kind').value.trim()||'📌', color=document.getElementById('pyt-color').value||'#4F7FD3';
+  const state=document.getElementById('pyt-save-state'), btn=document.getElementById('pyt-save-btn'); state.classList.remove('err');
+  if(!label||!date){ state.classList.add('err'); state.textContent='予定名と日付を入力してください'; return; }
+  btn.disabled=true; state.textContent='保存中…';
+  try{ await col('yotei').add({kind,date,time,label,color,repeat:'none',uid:uid(),enteredBy:'honnin',createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()}); document.getElementById('pyt-label').value=''; state.textContent='家族と共有するカレンダーに保存しました'; setTimeout(closePersonYotei,700); }
+  catch(e){ state.classList.add('err'); state.textContent='保存できませんでした。通信状態を確認してください'; }
+  finally{ btn.disabled=false; }
+}
 
 /* ===== 予定 ===== */
 let yoteiCache=[];
@@ -1808,11 +1813,11 @@ function recLoadRange(){
   if(to>todayStr()){ state.classList.add('err'); state.textContent='終了日は今日以前を選んでください'; return; }
   state.textContent='読み込み中…';
   box.innerHTML='<div class="rec-loading">読み込み中…</div>';
-  col('events').where('date','>=',from).where('date','<=',to).get().then(function(snap){
+  col('events').get().then(function(snap){
     var rows=[];
     snap.forEach(function(doc){
       var v=doc.data(); v._id=doc.id;
-      if(!v.date || !v.at || !recVisible(v) || v.type==='member-joined') return;
+      if(!v.date || v.date<from || v.date>to || !v.at || !recVisible(v) || v.type==='member-joined') return;
       var label=REC_LABEL[v.type] ? REC_LABEL[v.type](v) : ['記録','',v.text||''];
       rows.push({date:v.date,time:recTime(v),kind:label[0],text:label[2]+recReplyFor(v)});
     });
