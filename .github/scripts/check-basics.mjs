@@ -12,7 +12,8 @@
  *   4. sw.js に構文エラーがない
  *   5. tasks.html(チーム状況ボード)の JavaScript に構文エラーがない
  *   6. QRおまもりタグ画面の JavaScript に構文エラーがない
- *   7. 公開に必要なファイル(アイコンなど)が実際に存在する
+ *   7. 公開試験ページの JavaScript に構文エラーがない
+ *   8. 公開に必要なファイル(アイコンなど)が実際に存在する
  *
  * これは「明らかな壊れ方」を見つけるための検査です。
  * 実機での画面確認や、Firestore を使った通し確認の代わりにはなりません。
@@ -89,6 +90,15 @@ if (html === null) {
   record('index.html がある', false, 'index.html が見つかりません');
 } else {
   checkHtmlSyntax(html, 'index.html');
+}
+
+/* ---------- 試験ページの JavaScript 構文 ---------- */
+
+const previewHtml = read('preview-pr32.html');
+if (previewHtml === null) {
+  record('preview-pr32.html がある', false, '公開試験ページが見つかりません');
+} else {
+  checkHtmlSyntax(previewHtml, 'preview-pr32.html');
 }
 
 /* ---------- 2. onclick から呼ばれる関数が定義されている ---------- */
@@ -201,6 +211,7 @@ if (html !== null) {
   for (const m of html.matchAll(/serviceWorker\.register\(\s*'([^']+)'/g)) need(m[1], 'index.html の Service Worker 登録');
 }
 if (tagHtml !== null) collectRefs(tagHtml, 'tag.html');
+if (previewHtml !== null) collectRefs(previewHtml, 'preview-pr32.html');
 /* tasks.html が読み込むアイコンなども、同じように存在を確かめます */
 if (tasksHtml !== null) collectRefs(tasksHtml, 'tasks.html');
 
