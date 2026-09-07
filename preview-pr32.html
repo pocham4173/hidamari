@@ -733,11 +733,11 @@ table.cal-rec td.pad{background:none;}
       <div class="card dom-soudan" id="sd-region-card" style="display:none;">
         <h3>地域を選ぶ</h3>
         <div class="region-step">
-          <select id="region-pref" onchange="updateCityChoices()"><option value="">都道府県を選ぶ</option><option value="nagano">長野県</option></select>
-          <select id="region-city" disabled><option value="">市区町村を選ぶ</option></select>
+          <select id="region-pref" onchange="updateCityChoices()"><option value="">都道府県を選ぶ</option><option value="1">北海道</option><option value="2">青森県</option><option value="3">岩手県</option><option value="4">宮城県</option><option value="5">秋田県</option><option value="6">山形県</option><option value="7">福島県</option><option value="8">茨城県</option><option value="9">栃木県</option><option value="10">群馬県</option><option value="11">埼玉県</option><option value="12">千葉県</option><option value="13">東京都</option><option value="14">神奈川県</option><option value="15">新潟県</option><option value="16">富山県</option><option value="17">石川県</option><option value="18">福井県</option><option value="19">山梨県</option><option value="20">長野県</option><option value="21">岐阜県</option><option value="22">静岡県</option><option value="23">愛知県</option><option value="24">三重県</option><option value="25">滋賀県</option><option value="26">京都府</option><option value="27">大阪府</option><option value="28">兵庫県</option><option value="29">奈良県</option><option value="30">和歌山県</option><option value="31">鳥取県</option><option value="32">島根県</option><option value="33">岡山県</option><option value="34">広島県</option><option value="35">山口県</option><option value="36">徳島県</option><option value="37">香川県</option><option value="38">愛媛県</option><option value="39">高知県</option><option value="40">福岡県</option><option value="41">佐賀県</option><option value="42">長崎県</option><option value="43">熊本県</option><option value="44">大分県</option><option value="45">宮崎県</option><option value="46">鹿児島県</option><option value="47">沖縄県</option></select>
+          <input id="region-city" type="text" maxlength="30" autocomplete="address-level2" disabled placeholder="市区町村を入力（例：上田市）">
           <button class="big-btn" type="button" onclick="confirmRegion()">この地域の相談先を見る</button>
         </div>
-        <div class="note">現在利用できる地域は長野県上田市です。全国の市町村を順次追加し、確認済みの公式情報だけを表示します。</div>
+        <div class="note">全国47都道府県に対応しています。都道府県と市区町村を入力すると、国の公式検索へ進めます。上田市は確認済みの詳しい窓口も表示します。</div>
         <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
       </div>
       <div class="card dom-soudan" id="sd-pick-card" style="display:none;">
@@ -1618,9 +1618,10 @@ var SOUDAN_KOMARI = [
   { label:'見守りのこと',                     sub:'市が行っているしくみを調べる',  saki:['mimamori','houkatsu'] }
 ];
 
-/* 上田市・長野県の公式サイトのときだけ href に入れます */
+var NATIONAL_SOUDAN={care:{name:'介護・地域包括支援センターを探す',url:'https://www.kaigokensaku.mhlw.go.jp/',desc:'厚生労働省の公式検索で、お住まいの地域の介護サービスや相談先を確認できます。'},medical:{name:'医療機関を探す',url:'https://www.iryou.teikyouseido.mhlw.go.jp/znk-web/juminkanja/S2300/initialize',desc:'厚生労働省の「医療情報ネット」で、全国の医療機関を検索できます。'}};
+/* 上田市・長野県と厚生労働省の公式サイトだけを開きます */
 function soudanUrl(u){
-  return /^https:\/\/www\.(?:city\.ueda\.nagano|pref\.nagano)\.jp\//.test(String(u)) ? String(u) : null;
+  return /^https:\/\/www\.(?:city\.ueda\.nagano|pref\.nagano)\.jp\//.test(String(u))||/^https:\/\/www\.kaigokensaku\.mhlw\.go\.jp\//.test(String(u))||/^https:\/\/www\.iryou\.teikyouseido\.mhlw\.go\.jp\//.test(String(u))?String(u):null;
 }
 function sdEl(tag, cls, text){
   var n = document.createElement(tag);
@@ -1655,28 +1656,10 @@ function openAnshin(which){
   else if(which==='bousai') document.getElementById('bousai-card').style.display='block';
   else document.getElementById('anshin-home').style.display='block';
 }
-function updateCityChoices(){
-  var pref=document.getElementById('region-pref').value;
-  var city=document.getElementById('region-city');
-  city.innerHTML='<option value="">市区町村を選ぶ</option>';
-  city.disabled=!pref;
-  if(pref==='nagano') city.innerHTML+='<option value="ueda">上田市</option>';
-}
-function confirmRegion(){
-  var pref=document.getElementById('region-pref').value;
-  var city=document.getElementById('region-city').value;
-  if(!pref){ alert('都道府県を選んでください'); return; }
-  if(!city){ alert('市区町村を選んでください'); return; }
-  previewStorage.setItem('mainicoRegion',city);
-  document.getElementById('sd-list').textContent='';
-  soudanReset();
-}
-function soudanReset(){
-  var region=previewStorage.getItem('mainicoRegion')||'';
-  if(region!=='ueda'){ openAnshin('soudan'); return; }
-  document.getElementById('sd-region-label').textContent='上田市の相談先を表示中';
-  document.getElementById('sd-lead').innerHTML='当てはまるものを選んでください。上田市の公式なご案内へ進めます。<br>このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。';
-  document.getElementById('sd-checked').textContent = '公式情報の確認日: ' + SOUDAN_CHECKED;
+function updateCityChoices(){var pref=document.getElementById('region-pref').value,city=document.getElementById('region-city');city.disabled=!pref;if(!pref)city.value='';}
+function selectedRegion(){var raw=localStorage.getItem('mainicoRegion')||'';if(raw==='ueda')return {pref:'20',prefName:'長野県',city:'上田市',ueda:true};try{return JSON.parse(raw);}catch(e){return null;}}
+function confirmRegion(){var p=document.getElementById('region-pref'),pref=p.value,prefName=p.options[p.selectedIndex]?p.options[p.selectedIndex].text:'',city=document.getElementById('region-city').value.trim();if(!pref){alert('都道府県を選んでください');return;}if(!city){alert('市区町村を入力してください');return;}localStorage.setItem('mainicoRegion',JSON.stringify({pref:pref,prefName:prefName,city:city,ueda:prefName==='長野県'&&city.replace(/\\s/g,'')==='上田市'}));document.getElementById('sd-list').textContent='';soudanReset();}
+function soudanReset(){var region=selectedRegion();if(!region||!region.prefName||!region.city){openAnshin('soudan');return;}document.getElementById('sd-region-label').textContent=region.prefName+' '+region.city+'の相談先を表示中';document.getElementById('sd-lead').innerHTML=region.ueda?'当てはまるものを選んでください。上田市の公式なご案内へ進めます。<br>このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。':'当てはまるものを選んでください。全国共通の国の公式検索へ進めます。市区町村名は検索の目安として端末内だけに保存され、外部サイトへ自動送信しません。';document.getElementById('sd-checked').textContent=region.ueda?'公式情報の確認日: '+SOUDAN_CHECKED:'全国共通の厚生労働省公式検索を使用';
   document.getElementById('sd-detail-card').style.display = 'none';
   document.getElementById('sd-pick-card').style.display = 'block';
   document.getElementById('sd-note-card').style.display = 'block';
@@ -1711,14 +1694,15 @@ function soudanShow(i){
     box.appendChild(w);
   }
 
-  var keys=k.saki;
+  var region=selectedRegion();
+  var keys=(region&&region.ueda)?k.saki:(k.kyukyu?['medical']:['care','medical']);
   keys.forEach(function(key){
-    var t = SOUDAN_SAKI[key];
+    var t=(region&&region.ueda)?SOUDAN_SAKI[key]:NATIONAL_SOUDAN[key];
     if(!t) return;
     var it = sdEl('div','sd-item');
     it.appendChild(sdEl('div','n', t.name));
     it.appendChild(sdEl('div','d', t.desc));
-    it.appendChild(sdLink(t.url, '公式ページを見る', '上田市のページが新しい画面で開きます'));
+    it.appendChild(sdLink(t.url,'公式ページを見る',(region&&region.ueda)?'上田市のページが新しい画面で開きます':'厚生労働省のページが新しい画面で開きます'));
     box.appendChild(it);
   });
 
