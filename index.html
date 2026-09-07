@@ -352,6 +352,21 @@ table.cal-rec td.pad{background:none;}
   .nav button{font-size:.88rem;white-space:normal;line-height:1.15;}
 }
 #loading{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:99;font-weight:900;color:var(--usucha);font-size:1rem;}
+
+/* 2026-09-07 完成優先の画面整理 */
+.anshin-choices{grid-template-columns:1fr!important;}
+.disaster-intro{margin-top:14px;padding:16px;border:2px solid var(--murasaki-usui);border-radius:16px;background:#fff;}
+.disaster-intro h4{font-size:1.08rem;margin-bottom:6px;}
+.disaster-form label{display:block;font-size:.9rem;font-weight:800;margin:12px 0 5px;}
+.disaster-form input,.disaster-form select{width:100%;min-height:50px;padding:10px;border:1px solid #CDD6E1;border-radius:10px;background:#fff;font:inherit;}
+.disaster-consent{display:flex!important;gap:10px;align-items:flex-start;margin-top:14px!important;line-height:1.5;}
+.disaster-consent input{width:22px!important;min-height:22px!important;flex:0 0 22px;}
+.disaster-preview{margin-top:14px;text-align:center;}
+.disaster-preview img{max-width:100%;height:auto;}
+@media(max-width:390px){
+  .range-picker{grid-template-columns:1fr;}
+}
+
 </style>
 </head>
 <body>
@@ -566,6 +581,30 @@ table.cal-rec td.pad{background:none;}
   </div>
 </div>
 
+
+<!-- 災害用QR（通常のおまもりタグとは別） -->
+<div class="modal" id="disaster-qr-modal">
+  <div class="modal-box adult-font">
+    <div class="ttl">災害用QRを作る</div>
+    <p class="note">このQRは電波がなくても読めます。その代わり、QRを持つ人は誰でも内容を読めます。</p>
+    <div class="disaster-form">
+      <label for="disaster-name">呼ばれたい名前（名字なし・ニックネーム可）</label>
+      <input id="disaster-name" maxlength="20" autocomplete="off" placeholder="例：りえ">
+      <label for="disaster-relation">緊急連絡先との関係</label>
+      <select id="disaster-relation"><option value="">選んでください</option><option>家族</option><option>娘</option><option>息子</option><option>親族</option><option>支援者</option></select>
+      <label for="disaster-phone">緊急連絡先（1件）</label>
+      <input id="disaster-phone" type="tel" inputmode="tel" maxlength="20" autocomplete="off" placeholder="例：090-0000-0000">
+      <label for="disaster-help">手助けしてほしいこと</label>
+      <select id="disaster-help"><option value="">選んでください</option><option>ゆっくり話してください</option><option>筆談をお願いします</option><option>歩くときに支えが必要です</option><option>家族・支援者へ連絡してください</option><option>日本語での会話が難しいです</option></select>
+      <label class="disaster-consent"><input id="disaster-consent" type="checkbox"><span>この内容は誰でも読み取れることを理解し、QRの作成に同意します</span></label>
+      <button class="big-btn" type="button" onclick="makeDisasterQr()">入力内容を確認してQRを作る</button>
+      <div id="disaster-qr-preview" class="disaster-preview"></div>
+      <button class="set-btn warn" id="disaster-delete" type="button" onclick="deleteDisasterQr()" style="display:none;">災害用QRを削除する</button>
+    </div>
+    <button class="modal-close" onclick="closeDisasterQr()">とじる</button>
+  </div>
+</div>
+
 <!-- 設定(家族) -->
 <div class="modal" id="settings-modal">
   <div class="modal-box adult-font">
@@ -588,22 +627,16 @@ table.cal-rec td.pad{background:none;}
 
     <div class="set-sec">
       <h4>おまもりタグ（内部試作品）</h4>
-      <p class="tag-lead">QRの作成・表示・停止はここで管理します。QRには氏名・住所・電話番号・病歴・位置情報を入れません。</p>
+      <p class="tag-lead">読み取った方が、個人情報を見ずに家族へ知らせるタグです。</p>
       <div id="watch-tag-area"><div class="empty">状態を確認しています…</div></div>
-      <div class="note">現在はアプリ内の履歴だけです。プッシュ通知・電話・メールは届きません。販売・配布にはまだ使いません。</div>
+      <div class="note">読み取られた内容は、家族のまいにこに記録されます。</div>
     </div>
 
     <div class="set-sec">
-      <h4>同意の記録</h4>
-      <div class="note" id="consent-info">─</div>
+      <h4>利用をやめる</h4>
+      <div id="consent-info" style="display:none;">─</div>
       <button class="set-btn warn" onclick="revokeConsent()">同意を取り消して利用をやめる</button>
-      <div class="note">この端末での利用をやめて、家族との接続を解除します。</div>
-    </div>
-
-    <div class="set-sec">
-      <h4>すべてのデータの削除</h4>
-      <button class="set-btn warn" disabled aria-disabled="true">完全削除は準備中です</button>
-      <div class="note">QR通知や招待を含め、安全にすべて消せる仕組みを確認してから使えるようにします。現在このボタンから削除は実行できません。</div>
+      <div class="note">この端末での利用を終了し、家族との接続を解除します。</div>
     </div>
 
     <button class="modal-close" onclick="closeSettings()">とじる</button>
@@ -728,7 +761,9 @@ table.cal-rec td.pad{background:none;}
         <div class="anshin-choices">
           <button type="button" onclick="openAnshin('soudan')">💬<br>相談先を探す</button>
           <button type="button" onclick="openAnshin('bousai')">🎒<br>もしもの備え</button>
+          <button type="button" onclick="openDisasterQr()">🪪<br>災害用QRを作る</button>
         </div>
+        <div class="note">相談先の確認、日頃の備え、災害時に伝える情報をここでまとめられます。</div>
       </div>
       <div class="card dom-soudan" id="sd-region-card" style="display:none;">
         <h3>地域を選ぶ</h3>
@@ -2518,6 +2553,63 @@ auth.onAuthStateChanged(async user=>{
   document.getElementById('loading').style.display='none';
   startMode();
 });
+
+/* ===== 災害用QR（端末内保存・オフライン読取） ===== */
+const DISASTER_QR_KEY='mainico_disaster_qr_v1';
+function openDisasterQr(){
+  const m=document.getElementById('disaster-qr-modal');
+  if(!m)return;
+  m.classList.add('show');
+  try{
+    const v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null');
+    if(v){
+      document.getElementById('disaster-name').value=v.name||'';
+      document.getElementById('disaster-relation').value=v.relation||'';
+      document.getElementById('disaster-phone').value=v.phone||'';
+      document.getElementById('disaster-help').value=v.help||'';
+      renderDisasterQr(v);
+    }
+  }catch(e){}
+}
+function closeDisasterQr(){document.getElementById('disaster-qr-modal')?.classList.remove('show');}
+function disasterUpdatedAt(){
+  const d=new Date();
+  return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日';
+}
+function disasterQrText(v){
+  return ['まいにこ 災害・緊急時支援カード','呼び名：'+v.name,'必要な支援：'+v.help,'緊急連絡先：'+v.relation+' '+v.phone,'更新日：'+v.updatedAt,'命の危険がある場合は119番へ'].join('\n');
+}
+function renderDisasterQr(v){
+  const p=document.getElementById('disaster-qr-preview');
+  if(!p)return;
+  if(typeof qrcode!=='function'){p.innerHTML='<div class="note">QRを表示できませんでした。</div>';return;}
+  const qr=qrcode(0,'M');qr.addData(disasterQrText(v));qr.make();
+  p.innerHTML='<h4>作成した災害用QR</h4><div class="tag-qr">'+qr.createImgTag(6,8,'まいにこ 災害用QR')+'</div><div class="note">更新日：'+esc(v.updatedAt)+'<br>端末内に保存しました。印刷前に別の端末で読み取って確認してください。</div>';
+  const b=document.getElementById('disaster-delete');if(b)b.style.display='block';
+}
+function makeDisasterQr(){
+  const name=document.getElementById('disaster-name').value.trim();
+  const relation=document.getElementById('disaster-relation').value;
+  const phone=document.getElementById('disaster-phone').value.trim();
+  const help=document.getElementById('disaster-help').value;
+  const consent=document.getElementById('disaster-consent').checked;
+  if(!name||!relation||!phone||!help){alert('4項目をすべて入力してください。');return;}
+  if(!/^[0-9+()\-\s]{8,20}$/.test(phone)){alert('緊急連絡先の電話番号を確認してください。');return;}
+  if(!consent){alert('誰でも読み取れることへの同意が必要です。');return;}
+  const v={name,relation,phone,help,updatedAt:disasterUpdatedAt()};
+  localStorage.setItem(DISASTER_QR_KEY,JSON.stringify(v));
+  renderDisasterQr(v);
+}
+function deleteDisasterQr(){
+  if(!confirm('この端末に保存した災害用QRを削除しますか？\n印刷済みのQRは消えません。'))return;
+  localStorage.removeItem(DISASTER_QR_KEY);
+  ['disaster-name','disaster-phone'].forEach(id=>document.getElementById(id).value='');
+  ['disaster-relation','disaster-help'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('disaster-consent').checked=false;
+  document.getElementById('disaster-qr-preview').innerHTML='';
+  document.getElementById('disaster-delete').style.display='none';
+}
+
 </script>
 </body>
 </html>
