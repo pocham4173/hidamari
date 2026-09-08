@@ -10,10 +10,9 @@
  *   2. onclick から呼ばれる関数が、すべて定義されている
  *   3. manifest.json が正しい JSON として読める
  *   4. sw.js に構文エラーがない
- *   5. tasks.html(チーム状況ボード)の JavaScript に構文エラーがない
- *   6. QRおまもりタグ画面の JavaScript に構文エラーがない
- *   7. 公開試験ページの JavaScript に構文エラーがない
- *   8. 公開に必要なファイル(アイコンなど)が実際に存在する
+ *   5. QRおまもりタグ画面の JavaScript に構文エラーがない
+ *   6. 公開試験ページの JavaScript に構文エラーがない
+ *   7. 公開に必要なファイル(アイコンなど)が実際に存在する
  *
  * これは「明らかな壊れ方」を見つけるための検査です。
  * 実機での画面確認や、Firestore を使った通し確認の代わりにはなりません。
@@ -152,18 +151,7 @@ if (sw === null) {
   record('sw.js に構文エラーがない', err === null, err || '');
 }
 
-/* ---------- 5. tasks.html の JavaScript 構文 ---------- */
-
-/* チーム状況ボード。アプリ本体とは別のページですが、同じ場所に公開するため
-   ここでも「明らかな壊れ方」を確かめます。 */
-const tasksHtml = read('tasks.html');
-if (tasksHtml === null) {
-  record('tasks.html がある', false, 'tasks.html が見つかりません');
-} else {
-  checkHtmlSyntax(tasksHtml, 'tasks.html');
-}
-
-/* ---------- 6. tag.html の JavaScript 構文 ---------- */
+/* ---------- 5. tag.html の JavaScript 構文 ---------- */
 
 const tagHtml = read('tag.html');
 if (tagHtml === null) {
@@ -172,7 +160,7 @@ if (tagHtml === null) {
   checkHtmlSyntax(tagHtml, 'tag.html');
 }
 
-/* ---------- 7. 公開に必要なファイルが存在する ---------- */
+/* ---------- 6. 公開に必要なファイルが存在する ---------- */
 
 const needed = new Map(); // ファイル名 -> どこから参照されているか
 
@@ -212,8 +200,6 @@ if (html !== null) {
 }
 if (tagHtml !== null) collectRefs(tagHtml, 'tag.html');
 if (previewHtml !== null) collectRefs(previewHtml, 'preview-pr32.html');
-/* tasks.html が読み込むアイコンなども、同じように存在を確かめます */
-if (tasksHtml !== null) collectRefs(tasksHtml, 'tasks.html');
 
 const missingFiles = [...needed.entries()].filter(([f]) => !fs.existsSync(path.join(ROOT, f)));
 record(
