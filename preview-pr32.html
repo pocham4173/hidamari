@@ -352,6 +352,17 @@ table.cal-rec td.pad{background:none;}
 }
 #loading{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:99;font-weight:900;color:var(--usucha);font-size:1rem;}
 
+/* ふり返り期間グラフ */
+.trend-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 14px;}
+.trend-presets button{min-height:48px;border:2px solid var(--ha);border-radius:10px;background:#fff;color:var(--ha-koi);font:800 .92rem inherit;cursor:pointer;}
+.trend-chart{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+.trend-row{display:grid;grid-template-columns:4.5rem 1fr 2rem;gap:8px;align-items:center;font-size:.82rem;}
+.trend-label{font-weight:800;color:var(--cha);}
+.trend-bar{height:20px;border-radius:999px;background:#EDF1F4;overflow:hidden;display:flex;}
+.trend-seg{height:100%;min-width:0;}
+.trend-n{text-align:right;font-weight:900;color:var(--cha);}
+.trend-legend{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:12px;font-size:.76rem;color:var(--usucha);}
+.trend-dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;}
 /* 2026-09-07 完成優先の画面整理 */
 .anshin-choices{grid-template-columns:1fr!important;gap:12px;}
 .anshin-choices button{width:100%;min-height:84px;font-size:1.08rem;text-align:center;}
@@ -747,7 +758,7 @@ table.cal-rec td.pad{background:none;}
     <!-- ふり返り -->
     <div class="ftab" id="t-kiroku" style="display:none;">
       <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
-      <div class="card dom-record"><h3 id="rec-sum-ttl">今月のまとめ</h3><div class="rec-sum" id="rec-sum"></div><div class="note">件数を数えたものです。良い・悪いや、健康状態の判断はしていません。この記録は医療機関の診療記録ではありません。</div></div>
+      <div class="card dom-record"><h3 id="rec-sum-ttl">今月のまとめ</h3><div class="rec-sum" id="rec-sum"></div><div class="note">件数を数えたものです。良い・悪いや、健康状態の判断はしていません。この記録は医療機関の診療記録ではありません。</div></div>\n      <div class="card dom-record"><h3>生活の変化を見る</h3><div class="trend-presets"><button type="button" onclick="recPreset(1)">1か月</button><button type="button" onclick="recPreset(6)">半年</button><button type="button" onclick="recPreset(12)">1年</button></div><div id="rec-trend"><div class="empty">期間を選ぶと、あいさつ・服薬・体調・お願いの記録をグラフで見られます</div></div><div class="note">記録件数の変化を見る参考表示です。健康状態の診断や服薬の証明ではありません。</div></div>
       <div class="card dom-record"><h3>日付を選んで見る</h3><div class="rec-ttl" id="rec-ttl">─</div><label style="display:block;font-weight:900;font-size:.85rem;margin-top:10px;">見たい日<input type="date" id="rec-date" onchange="recChooseDate()" style="display:block;width:100%;min-height:50px;margin-top:6px;font:inherit;padding:10px;border:1px solid #D8CDBA;border-radius:8px;background:#fff;"></label><table class="cal cal-rec" id="rec-cal" style="display:none;"></table></div>
       <div class="card dom-record"><h3>過去の記録・予定をまとめて見る</h3><div class="range-picker"><label>開始日<input type="date" id="rec-range-from"></label><label>終了日<input type="date" id="rec-range-to"></label></div><button class="big-btn record" type="button" onclick="recLoadRange()">この期間を表示する</button><div class="save-state" id="rec-range-state" aria-live="polite"></div><div id="rec-range-results"><div class="empty">開始日と終了日を選んでください</div></div><div class="record-tools" style="margin-top:12px;"><button onclick="printRecords()">表示中の記録を印刷・PDF保存</button></div><div class="note">生活記録と、登録されていた予定を日付順に一つの一覧で表示します。</div></div>
     </div>
@@ -1841,6 +1852,41 @@ function recChooseDate(){
   if(d>new Date()){ alert('未来の日付は記録にありません'); document.getElementById('rec-date').value=recSel||todayStr(); return; }
   recSel=value; recY=d.getFullYear(); recM=d.getMonth(); recLoad();
 }
+function recDateString(d){return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+function recPreset(months){
+  var to=new Date(), from=new Date(to.getFullYear(),to.getMonth()-months,to.getDate());
+  document.getElementById('rec-range-from').value=recDateString(from);
+  document.getElementById('rec-range-to').value=recDateString(to);
+  recLoadRange();
+}
+function recTrendKind(type){
+  if(type==='aisatsu') return 'aisatsu';
+  if(type==='kusuri'||type==='kusuri-kakunin') return 'kusuri';
+  if(type==='kibun'||type==='kibun-kazoku') return 'kibun';
+  if(type==='onegai') return 'onegai';
+  return '';
+}
+function renderRecTrend(events,from,to){
+  var box=document.getElementById('rec-trend'); if(!box)return;
+  var start=new Date(from+'T00:00:00'), end=new Date(to+'T00:00:00');
+  var days=Math.round((end-start)/86400000)+1, weekly=days<=45, buckets=[], map={};
+  function ensure(key,label){if(!map[key]){map[key]={label:label,aisatsu:0,kusuri:0,kibun:0,onegai:0};buckets.push(map[key]);}return map[key];}
+  for(var d=new Date(start),i=0;d<=end;d.setDate(d.getDate()+1),i++){
+    var key,label;
+    if(weekly){var n=Math.floor(i/7), ws=new Date(start);ws.setDate(ws.getDate()+n*7);key='w'+n;label=(ws.getMonth()+1)+'/'+ws.getDate()+'〜';}
+    else{key=d.getFullYear()+'-'+pad2(d.getMonth()+1);label=(d.getMonth()+1)+'月';}
+    ensure(key,label);
+  }
+  events.forEach(function(v){var kind=recTrendKind(v.type);if(!kind)return;var d=new Date(v.date+'T00:00:00'),key,label;if(weekly){var n=Math.floor((d-start)/86400000/7),ws=new Date(start);ws.setDate(ws.getDate()+n*7);key='w'+n;label=(ws.getMonth()+1)+'/'+ws.getDate()+'〜';}else{key=v.date.slice(0,7);label=(d.getMonth()+1)+'月';}ensure(key,label)[kind]++;});
+  var totals=buckets.map(function(b){return b.aisatsu+b.kusuri+b.kibun+b.onegai;}), max=Math.max.apply(null,totals.concat([1]));
+  box.textContent='';
+  if(!events.length){box.innerHTML='<div class="empty">この期間にはグラフにできる記録がありません</div>';return;}
+  var chart=document.createElement('div');chart.className='trend-chart';
+  var colors={aisatsu:'#4F7FD3',kusuri:'#63A57D',kibun:'#8B6EC7',onegai:'#F28A42'};
+  buckets.forEach(function(b,idx){var row=document.createElement('div');row.className='trend-row';var lab=document.createElement('div');lab.className='trend-label';lab.textContent=b.label;var bar=document.createElement('div');bar.className='trend-bar';['aisatsu','kusuri','kibun','onegai'].forEach(function(k){if(!b[k])return;var seg=document.createElement('span');seg.className='trend-seg';seg.style.width=(b[k]/max*100)+'%';seg.style.background=colors[k];seg.title=k+': '+b[k]+'件';bar.appendChild(seg);});var num=document.createElement('div');num.className='trend-n';num.textContent=totals[idx];row.appendChild(lab);row.appendChild(bar);row.appendChild(num);chart.appendChild(row);});
+  box.appendChild(chart);
+  var legend=document.createElement('div');legend.className='trend-legend';[['aisatsu','あいさつ'],['kusuri','服薬'],['kibun','体調'],['onegai','お願い']].forEach(function(x){var span=document.createElement('span'),dot=document.createElement('i');dot.className='trend-dot';dot.style.background=colors[x[0]];span.appendChild(dot);span.appendChild(document.createTextNode(x[1]));legend.appendChild(span);});box.appendChild(legend);
+}
 function recLoadRange(){
   var fromEl=document.getElementById('rec-range-from');
   var toEl=document.getElementById('rec-range-to');
@@ -1854,10 +1900,11 @@ function recLoadRange(){
   state.textContent='読み込み中…';
   box.innerHTML='<div class="rec-loading">読み込み中…</div>';
   col('events').get().then(function(snap){
-    var rows=[];
+    var rows=[], trendEvents=[];
     snap.forEach(function(doc){
       var v=doc.data(); v._id=doc.id;
       if(!v.date || v.date<from || v.date>to || !v.at || !recVisible(v) || v.type==='member-joined') return;
+      if(recTrendKind(v.type)) trendEvents.push(v);
       var label=REC_LABEL[v.type] ? REC_LABEL[v.type](v) : ['記録','',v.text||''];
       rows.push({date:v.date,time:recTime(v),kind:label[0],text:label[2]+recReplyFor(v)});
     });
@@ -1879,9 +1926,11 @@ function recLoadRange(){
       row.appendChild(date); row.appendChild(body); box.appendChild(row);
     });
     state.textContent=from+' から '+to+'：'+rows.length+'件';
+    renderRecTrend(trendEvents,from,to);
   }).catch(function(e){
     state.classList.add('err'); state.textContent='読み込めませんでした。通信状態を確認してください';
     box.innerHTML='<div class="empty">期間の記録を表示できませんでした</div>';
+    document.getElementById('rec-trend').innerHTML='<div class="empty">グラフも表示できませんでした</div>';
     console.warn('rec range',e);
   });
 }
