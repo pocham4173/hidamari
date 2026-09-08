@@ -606,6 +606,13 @@ table.cal-rec td.pad{background:none;}
   <div class="modal-box adult-font">
     <div class="ttl">災害用QRを作る</div>
     <p class="note">このQRは電波がなくても読めます。その代わり、QRを持つ人は誰でも内容を読めます。</p>
+    <details class="tag-guide" style="margin:0 0 6px;"><summary>災害用QRとは（説明）</summary>
+      <div class="note" style="margin-top:6px;">災害や急な体調不良で、うまく話せない・伝えられないときに、周りの方へ見せるためのカードです。<br>
+      ・おまもりタグと違い、通信がなくても読めます<br>
+      ・その代わり、呼び名や連絡先がそのまま入るため、読んだ人は誰でも内容が分かります<br>
+      ・内容はこの端末の中だけに保存され、家族やサーバーには送信されません<br>
+      ・印刷して、財布・お薬手帳・非常持出し袋に入れて使います</div>
+    </details><p style="display:none;"></p>
     <div class="disaster-form">
       <label for="disaster-name">呼ばれたい名前（名字なし・ニックネーム可）</label>
       <input id="disaster-name" maxlength="20" autocomplete="off" placeholder="例：りえ">
@@ -817,6 +824,13 @@ table.cal-rec td.pad{background:none;}
       <div class="card dom-soudan" id="anshin-tag-card" style="display:none;">
         <h3>おまもりタグ（内部試作品）</h3>
         <p class="tag-lead">読み取った方が、個人情報を見ずに家族へ知らせるタグです。</p>
+        <details class="tag-guide"><summary>おまもりタグとは（説明）</summary>
+          <div class="note" style="margin-top:6px;">外出先で道に迷ったときなどに、周りの方がQRをスマートフォンで読み取ると、家族のまいにこへ「見かけました」と状況が届くタグです。<br>
+          ・QRに名前・住所・電話番号は入っていません<br>
+          ・読み取った方にも、家族の情報は表示されません<br>
+          ・印刷して、バッグ・杖・キーホルダーなど普段の持ち物に付けて使います<br>
+          ・緊急通報ではありません。危険なときは、読み取った方が119番・110番へ連絡します</div>
+        </details>
         <div id="watch-tag-area"><div class="empty">状態を確認しています…</div></div>
         <div class="note">読み取られた内容は、家族のまいにこに記録されます。</div>
         <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
@@ -1539,7 +1553,8 @@ function initKazoku(){
         'memo':v=>(v.name||'家族')+': '+v.text,
         'disaster-safe':v=>(v.name||'家族')+'さんが「無事です」と記録しました',
         'disaster-evacuating':v=>(v.name||'家族')+'さんが「避難中です」と記録しました',
-        'disaster-help':v=>(v.name||'家族')+'さんが「助けが必要です」と記録しました（緊急通報ではありません）'
+        'disaster-help':v=>(v.name||'家族')+'さんが「助けが必要です」と記録しました（緊急通報ではありません）',
+        'tag-alert':v=>'おまもりタグが読み取られました: '+(v.text||'')
       };
       box.innerHTML=vis.map(v=>{
         const t=new Date(v.at.seconds*1000);
@@ -2376,6 +2391,61 @@ async function makeInvite(targetId){
 /* ===== QRおまもりタグ(試作品) =====
    QRには推測しにくいランダムIDだけを入れます。
    氏名・住所・電話番号・病歴・家族情報・位置情報は入れません。 */
+function printDisasterQr(){
+  let v=null; try{ v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null'); }catch(e){}
+  if(!v){ alert('先に災害用QRを作ってください。'); return; }
+  const qr=qrcode(0,'M'); qr.addData(unescape(encodeURIComponent(disasterQrText(v)))); qr.make();
+  const img=qr.createImgTag(6,12,'まいにこ 災害用QR');
+  openPrintWindow('災害・緊急時支援カード',
+    '<h1>災害・緊急時支援カード</h1>'+
+    '<div class="cardbox">呼び名：'+esc(v.name)+'<br>必要な支援：'+esc(v.help)+
+    (v.free?('<br>メモ：'+esc(v.free)):'')+
+    '<br>緊急連絡先：'+esc(v.relation)+' '+esc(v.phone)+'<br>更新日：'+esc(v.updatedAt)+'</div>'+
+    '<div class="qr" style="margin-top:12px;">'+img+'</div>'+
+    '<div class="note">QRにも同じ内容が入っています（通信がなくても読めます）。</div>'+
+    '<div class="warn">命の危険がある場合は119番へ</div>'+
+    '<div class="note">このカードは本人の同意のもとで作成されています。<br>財布・お薬手帳・非常持出し袋に入れてお使いください。</div>');
+}
+function printWatchTag(){
+  if(!currentWatchTagId){ alert('先にタグを作ってください。'); return; }
+  const url=watchTagUrl(currentWatchTagId);
+  const qr=qrcode(0,'M'); qr.addData(url); qr.make();
+  const big=qr.createImgTag(8,16,'まいにこ おまもりタグ');
+  const mini=qr.createImgTag(4,8,'まいにこ おまもりタグ');
+  openPrintWindow('まいにこ おまもりタグ',
+    '<h1>まいにこ おまもりタグ</h1>'+
+    '<div class="qr">'+big+'</div>'+
+    '<h2>このタグを見つけた方へ</h2>'+
+    '<ol><li>スマートフォンのカメラでQRを読み取ってください</li>'+
+    '<li>開いた画面で、いまの様子を選んで送ってください（ご家族に届きます）</li>'+
+    '<li>あなたの個人情報が送られることはありません</li></ol>'+
+    '<div class="warn">けが・急病は119番／事件・保護が必要なときは110番</div>'+
+    '<div class="note">このタグに氏名・住所・連絡先は入っていません。<br>まいにこ（家族の見守りアプリ）のおまもりタグです。</div>'+
+    '<div class="cut">はさみで切って、持ち物に付けられます'+
+    '<div class="minis"><div class="mini">'+mini+'<br>見つけたらQRを読み取ってください（家族に知らせが届きます）</div>'+
+    '<div class="mini">'+mini+'<br>見つけたらQRを読み取ってください（家族に知らせが届きます）</div></div></div>');
+}
+function openPrintWindow(title, body){
+  const w=window.open('','_blank');
+  if(!w){ alert('印刷用の画面を開けませんでした。ブラウザのポップアップ設定を確認してください。'); return; }
+  w.document.write('<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>'+title+'</title>'+
+    '<style>body{font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;color:#3D2E1B;margin:0;padding:24px;text-align:center;}'+
+    'h1{font-size:1.5rem;margin:0 0 4px;}h2{font-size:1.05rem;margin:18px 0 6px;}'+
+    '.qr img{width:200px;height:200px;image-rendering:pixelated;}'+
+    'ol{display:inline-block;text-align:left;margin:4px auto;padding-left:22px;line-height:1.9;font-size:.98rem;}'+
+    '.warn{font-weight:900;border:2px solid #A8422E;color:#A8422E;border-radius:10px;padding:8px;display:inline-block;margin-top:8px;}'+
+    '.note{color:#6B5B44;font-size:.85rem;margin-top:10px;line-height:1.7;}'+
+    '.cardbox{display:inline-block;border:2px solid #3D2E1B;border-radius:14px;padding:18px 22px;margin-top:8px;text-align:left;line-height:2;font-size:1.02rem;}'+
+    '.cut{margin-top:22px;border-top:2px dashed #999;padding-top:14px;}'+
+    '.minis{display:flex;justify-content:center;gap:18px;margin-top:8px;}'+
+    '.mini{border:1.5px dashed #999;border-radius:10px;padding:10px;width:180px;font-size:.75rem;line-height:1.5;}'+
+    '.mini img{width:110px;height:110px;image-rendering:pixelated;}'+
+    '@media print{.noprint{display:none;}}</style></head><body>'+body+
+    '<div class="noprint" style="margin-top:20px;"><button onclick="window.print()" style="font-size:1rem;padding:10px 22px;">印刷する</button></div>'+
+    '</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ try{ w.print(); }catch(e){} }, 500);
+}
 function mirrorTagAlert(senderId, d, label){
   try{
     const id='tag-'+senderId+'-'+d.getTime();
@@ -2521,8 +2591,9 @@ function renderWatchTag(id){
   const notifyBtn=('Notification' in window && Notification.permission==='default')?'<button class="tag-notify-btn" onclick="requestTagNotify()">この端末で通知の表示を許可する</button>':'';
   area.innerHTML='<div class="tag-state"><strong>使用中</strong><p>QRに個人情報は入っていません</p>'+
     '<div class="tag-qr">'+watchTagQr(url)+'</div>'+
-    '<div class="tag-actions"><button class="tag-copy" onclick="copyWatchTagLink()">リンクをコピー</button>'+
-    '<button class="tag-stop" onclick="stopWatchTag()">このタグを停止</button></div>'+
+    '<div class="tag-actions"><button class="tag-copy" onclick="printWatchTag()">タグを印刷する</button>'+
+    '<button class="tag-copy" onclick="copyWatchTagLink()">リンクをコピー</button></div>'+
+    '<div class="tag-actions"><button class="tag-stop" onclick="stopWatchTag()">このタグを停止</button></div>'+
     notifyBtn+
     '<div class="note">おまもりタグは緊急通報ではなく、家族が気づくための補助です。お知らせの音と表示は、アプリを開いている間だけ届きます。緊急の対応は、読み取った方からの119番・110番が基本です。</div></div>';
 }
@@ -2640,7 +2711,7 @@ function openDisasterQr(){const m=document.getElementById('disaster-qr-modal');i
 function closeDisasterQr(){document.getElementById('disaster-qr-modal')?.classList.remove('show');}
 function disasterUpdatedAt(){const d=new Date();return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日';}
 function disasterQrText(v){var L=['まいにこ 災害・緊急時支援カード','呼び名：'+v.name,'必要な支援：'+v.help];if(v.free)L.push('メモ：'+v.free);L.push('緊急連絡先：'+v.relation+' '+v.phone,'更新日：'+v.updatedAt,'命の危険がある場合は119番へ');return L.join('\n');}
-function renderDisasterQr(v){const p=document.getElementById('disaster-qr-preview');if(!p)return;if(typeof qrcode!=='function'){p.innerHTML='<div class="note">QRを表示できませんでした。</div>';return;}const qr=qrcode(0,'M');qr.addData(unescape(encodeURIComponent(disasterQrText(v))));qr.make();p.innerHTML='<h4>作成した災害用QR</h4><div class="tag-qr">'+qr.createImgTag(6,8,'まいにこ 災害用QR')+'</div><div class="note">更新日：'+esc(v.updatedAt)+'<br>端末内に保存しました。印刷前に別の端末で読み取って確認してください。</div>';const b=document.getElementById('disaster-delete');if(b)b.style.display='block';}
+function renderDisasterQr(v){const p=document.getElementById('disaster-qr-preview');if(!p)return;if(typeof qrcode!=='function'){p.innerHTML='<div class="note">QRを表示できませんでした。</div>';return;}const qr=qrcode(0,'M');qr.addData(unescape(encodeURIComponent(disasterQrText(v))));qr.make();p.innerHTML='<h4>作成した災害用QR</h4><div class="tag-qr">'+qr.createImgTag(6,8,'まいにこ 災害用QR')+'</div><button class="set-btn" type="button" onclick="printDisasterQr()">災害用QRを印刷する</button><div class="note">更新日：'+esc(v.updatedAt)+'<br>端末内に保存しました。印刷前に別の端末で読み取って確認してください。</div>';const b=document.getElementById('disaster-delete');if(b)b.style.display='block';}
 function makeDisasterQr(){const name=document.getElementById('disaster-name').value.trim(),relation=document.getElementById('disaster-relation').value,phone=document.getElementById('disaster-phone').value.trim(),help=document.getElementById('disaster-help').value,free=document.getElementById('disaster-free').value.trim(),consent=document.getElementById('disaster-consent').checked;if(!name||!relation||!phone||!help){alert('4項目をすべて入力してください。');return;}if(!/^[0-9+()\-\s]{8,20}$/.test(phone)){alert('緊急連絡先の電話番号を確認してください。');return;}if(help==='その他（下の欄に記入）'&&!free){alert('「その他」を選んだ場合は、自由記入の欄に内容を書いてください。');return;}if(!consent){alert('誰でも読み取れることへの同意が必要です。');return;}const v={name,relation,phone,help,free,updatedAt:disasterUpdatedAt()};localStorage.setItem(DISASTER_QR_KEY,JSON.stringify(v));renderDisasterQr(v);}
 function deleteDisasterQr(){if(!confirm('この端末に保存した災害用QRを削除しますか？\n印刷済みのQRは消えません。'))return;localStorage.removeItem(DISASTER_QR_KEY);['disaster-name','disaster-phone','disaster-free'].forEach(id=>document.getElementById(id).value='');['disaster-relation','disaster-help'].forEach(id=>document.getElementById(id).value='');document.getElementById('disaster-consent').checked=false;document.getElementById('disaster-qr-preview').innerHTML='';document.getElementById('disaster-delete').style.display='none';}
 
