@@ -165,6 +165,19 @@ table.cal-rec td.pad{background:none;}
 .rec-kind.k-kibun{background:#FFF6E2;color:#8A6A00;}
 .rec-kind.k-tag{background:#FFF1EC;color:#963521;}
 .rec-kind.k-onegai{background:#FAF0EC;color:#A34A2E;}
+/* 期間のグラフ */
+.rg-period{display:flex;gap:8px;margin-bottom:4px;}
+.rg-period button{flex:1;min-height:44px;border:2px solid var(--hi);background:#fff;color:var(--hi-koi);border-radius:10px;font-family:inherit;font-size:.95rem;font-weight:900;cursor:pointer;}
+.rg-period button.on{background:var(--hi);color:#fff;}
+.rg-chart{margin-top:16px;}
+.rg-t{font-weight:900;font-size:.95rem;color:var(--cha);}
+.rg-t span{font-weight:700;color:var(--usucha);font-size:.8rem;margin-left:6px;}
+.rg-bars{display:flex;align-items:flex-end;gap:4px;height:104px;margin-top:6px;padding:0 2px;border-bottom:2px solid #E3D9C8;}
+.rg-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;}
+.rg-col i{display:block;width:72%;max-width:26px;border-radius:6px 6px 0 0;}
+.rg-col b{font-size:.68rem;color:var(--cha);line-height:1.4;}
+.rg-labels{display:flex;gap:4px;padding:2px 2px 0;}
+.rg-labels s{flex:1;text-decoration:none;font-size:.6rem;color:var(--usucha);text-align:center;white-space:nowrap;overflow:hidden;}
 /* 月のまとめ */
 .sum-graph{grid-column:1/-1;margin-top:12px;padding-top:10px;border-top:1px dashed #E3D9C8;}
 .sum-graph .g-ttl{font-weight:900;font-size:.92rem;color:var(--cha);margin-bottom:8px;}
@@ -786,6 +799,15 @@ table.cal-rec td.pad{background:none;}
     <div class="ftab" id="t-kiroku" style="display:none;">
       <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
       <div class="card dom-record"><h3 id="rec-sum-ttl">今月のまとめ</h3><div class="rec-sum" id="rec-sum"></div><div class="note">件数を数えたものです。良い・悪いや、健康状態の判断はしていません。この記録は医療機関の診療記録ではありません。</div></div>
+      <div class="card dom-record"><h3>期間のグラフ</h3>
+        <div class="rg-period">
+          <button type="button" id="rg-p1" class="on" onclick="rgSelect(1)">1か月</button>
+          <button type="button" id="rg-p6" onclick="rgSelect(6)">半年</button>
+          <button type="button" id="rg-p12" onclick="rgSelect(12)">1年</button>
+        </div>
+        <div id="rg-body"><div class="empty">読み込み中…</div></div>
+        <div class="note">件数の推移です。良い・悪いや健康状態の判断はしていません（医療の診断ではありません）。記録が始まる前の期間は0件と表示されます。</div>
+      </div>
       <div class="card dom-record"><h3>日付を選んで見る</h3><div class="rec-ttl" id="rec-ttl">─</div><label style="display:block;font-weight:900;font-size:.85rem;margin-top:10px;">見たい日<input type="date" id="rec-date" onchange="recChooseDate()" style="display:block;width:100%;min-height:50px;margin-top:6px;font:inherit;padding:10px;border:1px solid #D8CDBA;border-radius:8px;background:#fff;"></label><table class="cal cal-rec" id="rec-cal" style="display:none;"></table></div>
       <div class="card dom-record"><h3>過去の記録・予定をまとめて見る</h3><div class="range-picker"><label>開始日<input type="date" id="rec-range-from"></label><label>終了日<input type="date" id="rec-range-to"></label></div><button class="big-btn record" type="button" onclick="recLoadRange()">この期間を表示する</button><div class="save-state" id="rec-range-state" aria-live="polite"></div><div id="rec-range-results"><div class="empty">開始日と終了日を選んでください</div></div><div class="record-tools" style="margin-top:12px;"><button onclick="printRecords()">表示中の記録を印刷・PDF保存</button></div><div class="note">生活記録と、登録されていた予定を日付順に一つの一覧で表示します。</div></div>
     </div>
@@ -1819,6 +1841,78 @@ var REC_KONLY_OK = {
 };
 function recVisible(v){ return !isKOnly() || REC_KONLY_OK[v.type]; }
 
+/* 期間のグラフ(1か月=週別 / 半年・1年=月別)。件数の事実のみ */
+var rgCache={}, rgCur=1, rgLoaded=false;
+function rgDs(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function rgSelect(p){
+  rgCur=p;
+  [1,6,12].forEach(function(n){ var b=document.getElementById('rg-p'+n); if(b) b.classList.toggle('on', n===p); });
+  rgLoad(p);
+}
+function rgLoad(p){
+  var body=document.getElementById('rg-body');
+  if(!body) return;
+  if(rgCache[p]){ rgRender(rgCache[p]); return; }
+  body.innerHTML='<div class="empty">読み込み中…</div>';
+  var now=new Date(), buckets=[], start;
+  if(p===1){
+    start=new Date(now); start.setDate(now.getDate()-27);
+    for(var i=0;i<4;i++){
+      var bs=new Date(start); bs.setDate(start.getDate()+i*7);
+      var be=new Date(bs); be.setDate(bs.getDate()+6);
+      buckets.push({label:(bs.getMonth()+1)+'/'+bs.getDate()+'〜', s:rgDs(bs), e:rgDs(be)});
+    }
+  }else{
+    start=new Date(now.getFullYear(), now.getMonth()-(p-1), 1);
+    for(var j=p-1;j>=0;j--){
+      var ms=new Date(now.getFullYear(), now.getMonth()-j, 1);
+      var me=new Date(ms.getFullYear(), ms.getMonth()+1, 0);
+      buckets.push({label:(ms.getMonth()+1)+'月', s:rgDs(ms), e:rgDs(me)});
+    }
+  }
+  col('events').where('date','>=',rgDs(start)).where('date','<=',todayStr()).get().then(function(snap){
+    var n=buckets.length;
+    var M={aisatsu:[], kusuri:[], kibun:[], onegai:[]};
+    Object.keys(M).forEach(function(k){ for(var i=0;i<n;i++) M[k].push(0); });
+    snap.forEach(function(doc){
+      var v=doc.data();
+      if(!recVisible(v)) return;
+      var b=-1;
+      for(var i=0;i<n;i++){ if(v.date>=buckets[i].s && v.date<=buckets[i].e){ b=i; break; } }
+      if(b<0) return;
+      var t=v.type;
+      if(t==='aisatsu'||t==='aisatsu-back') M.aisatsu[b]++;
+      else if(t==='kusuri'||t==='kusuri-kakunin'||t==='ask-kusuri') M.kusuri[b]++;
+      else if(t==='kibun'||t==='kibun-kazoku') M.kibun[b]++;
+      else if(t==='onegai') M.onegai[b]++;
+    });
+    rgCache[p]={buckets:buckets, M:M};
+    rgRender(rgCache[p]);
+  }).catch(function(){
+    body.innerHTML='<div class="empty">読み込めませんでした。通信状態を確認して、もう一度期間のボタンを押してください。</div>';
+  });
+}
+function rgRender(d){
+  var body=document.getElementById('rg-body');
+  var total=0;
+  Object.keys(d.M).forEach(function(k){ d.M[k].forEach(function(v){ total+=v; }); });
+  if(total===0){ body.innerHTML='<div class="empty">この期間の記録はまだありません</div>'; return; }
+  var series=[['挨拶','aisatsu','#D58B2B'],['服薬に関する記録','kusuri','#5B8DC9'],['体調の記録','kibun','#C9A227'],['ちょっとお願い','onegai','#A34A2E']];
+  var html='';
+  series.forEach(function(sc){
+    var vals=d.M[sc[1]];
+    var sum=vals.reduce(function(a,b){return a+b;},0);
+    var mx=Math.max.apply(null, vals.concat([1]));
+    html+='<div class="rg-chart"><div class="rg-t">'+sc[0]+'<span>合計'+sum+'件</span></div><div class="rg-bars">';
+    vals.forEach(function(v){
+      var h=v===0?2:Math.max(8, Math.round(v/mx*100));
+      var color=v===0?'#E9E1D2':sc[2];
+      html+='<div class="rg-col"><b>'+(v||'')+'</b><i style="height:'+h+'%;background:'+color+';"></i></div>';
+    });
+    html+='</div><div class="rg-labels">'+d.buckets.map(function(b){return '<s>'+b.label+'</s>';}).join('')+'</div></div>';
+  });
+  body.innerHTML=html;
+}
 function recOpen(){
   var now = new Date();
   if(!recY){ recY = now.getFullYear(); recM = now.getMonth(); recSel = todayStr(); }
@@ -1827,6 +1921,7 @@ function recOpen(){
   var rangeTo=document.getElementById('rec-range-to');
   if(rangeFrom && !rangeFrom.value) rangeFrom.value=recDayStr(now.getFullYear(),now.getMonth(),1);
   if(rangeTo && !rangeTo.value) rangeTo.value=todayStr();
+  if(!rgLoaded){ rgLoaded=true; rgLoad(rgCur); }
   recLoad();
 }
 function recToday(){
