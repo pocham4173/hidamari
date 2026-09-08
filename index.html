@@ -163,8 +163,16 @@ table.cal-rec td.pad{background:none;}
 }
 .rec-kind.k-kusuri{background:#F2F5EF;color:var(--ha-koi);}
 .rec-kind.k-kibun{background:#FFF6E2;color:#8A6A00;}
+.rec-kind.k-tag{background:#FFF1EC;color:#963521;}
 .rec-kind.k-onegai{background:#FAF0EC;color:#A34A2E;}
 /* 月のまとめ */
+.sum-graph{grid-column:1/-1;margin-top:12px;padding-top:10px;border-top:1px dashed #E3D9C8;}
+.sum-graph .g-ttl{font-weight:900;font-size:.92rem;color:var(--cha);margin-bottom:8px;}
+.sum-graph .g-row{display:grid;grid-template-columns:9em 1fr 3.2em;gap:8px;align-items:center;margin-bottom:6px;font-size:.85rem;}
+.sum-graph .g-l{color:#5C4E3A;font-weight:700;line-height:1.3;}
+.sum-graph .g-bar{background:#F3EDE2;border-radius:999px;height:14px;overflow:hidden;}
+.sum-graph .g-bar i{display:block;height:100%;background:#C95843;border-radius:999px;}
+.sum-graph .g-n{text-align:right;font-weight:900;color:#963521;}
 .rec-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;}
 .rec-sum .it{background:#FBF8F2;border:1px solid #EFE8DA;border-radius:10px;padding:9px 11px;}
 .rec-sum .it .k{font-size:.78rem;color:var(--usucha);}
@@ -269,7 +277,10 @@ table.cal-rec td.pad{background:none;}
 .yt-item{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:11px 2px;border-bottom:1px solid #F0EAE0;font-size:1rem;}
 .yt-item:last-child{border-bottom:none;}
 .yt-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.yt-del{min-height:46px;background:#fff;border:2px solid #C9B8A0;border-radius:9px;color:#7A5A34;font-family:inherit;font-size:.95rem;font-weight:900;cursor:pointer;}
+.yt-del{min-height:36px;background:#fff;border:1px solid #C9B8A0;border-radius:9px;color:#7A5A34;font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;padding:5px 8px;}
+.yt-main .yt-date{display:block;font-size:.82rem;color:var(--usucha);font-weight:700;margin-bottom:2px;}
+.yt-main b{font-size:1.18rem;font-weight:900;color:var(--cha);line-height:1.4;}
+.yt-actions{max-width:230px;margin-left:auto;}
 .yt-del.danger{border-color:#C97A6A;color:#A8422E;}
 .cal-event{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:10px;color:#fff;font-size:.72rem;margin:1px;text-shadow:0 1px 2px #333;}
 .krec-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
@@ -623,9 +634,13 @@ table.cal-rec td.pad{background:none;}
     </div>
 
     <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;">
-      <h4>家族・本人を招待する</h4>
-      <div class="note" style="margin-top:0;">新しくつながる方へ、24時間・1回限りの招待コードを渡します。</div>
-      <button class="set-btn" onclick="makeInvite('settings-invite-area')">招待コードを発行する</button>
+      <h4>家族を追加する</h4>
+      <div class="note" style="margin-top:0;">離れて暮らす家族も、3つの手順でつながれます。<br>
+      ① 下のボタンで6〜8文字のコードを作る<br>
+      ② そのコードを家族に伝える（電話や紙のメモでOK）<br>
+      ③ 家族が自分のスマホでまいにこを開き、入口の「招待された方」にコードを入れる → あなたの画面に出る「参加を認める」を押せば完了<br>
+      <span style="color:#8A6F4D;">コードは24時間・1回だけ使えます。</span></div>
+      <button class="set-btn" onclick="makeInvite('settings-invite-area')">招待コードを作る</button>
       <div id="settings-invite-area"></div>
     </div>
 
@@ -1373,7 +1388,7 @@ async function openCancel(){
     snap.forEach(doc=>{ const v=doc.data(); if(v.uid===uid()) { v._id=doc.id; mine.push(v); } });
     mine.sort((a,b)=>(a.at?a.at.seconds:0)-(b.at?b.at.seconds:0));
     if(mine.length===0){ box.innerHTML='<div class="empty">今日この端末でつけた記録はありません</div>'; return; }
-    const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')','onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':()=>'服薬の確認','memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':()=>'「お薬飲んだ?」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ'};
+    const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')','onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':()=>'服薬の確認','memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':()=>'「お薬飲んだ?」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ','tag-alert':v=>'おまもりタグ「'+(v.text||'読み取り')+'」'};
     box.innerHTML=mine.map(v=>{
       const t=v.at?new Date(v.at.seconds*1000):null;
       const tm=t?(t.getHours()+':'+String(t.getMinutes()).padStart(2,'0')):'';
@@ -1573,7 +1588,7 @@ function initKazoku(){
         ? '<span class="yt-actions"><button class="yt-del" onclick="editYotei(\''+jsArg(v._id)+'\')">修正する</button>'+
           '<button class="yt-del danger" onclick="delYotei(\''+jsArg(v._id)+'\')">削除する</button></span>'
         : '<small>'+(v.uid?'ほかの家族が登録':'以前の予定（修正できる人を確認中）')+'</small>';
-      return '<div class="yt-item" style="border-left:6px solid '+yoteiColor(v)+';padding-left:8px"><span>'+esc(v.kind||'📌')+' '+dateJp(dd)+' '+esc(v.label)+
+      return '<div class="yt-item" style="border-left:6px solid '+yoteiColor(v)+';padding-left:8px"><span class="yt-main"><small class="yt-date">'+esc(v.kind||'📌')+' '+dateJp(dd)+'</small><b>'+esc(v.label)+'</b>'+
         (detail?'<br><small>'+esc(detail)+'</small>':'')+'</span>'+actions+'</div>';
     }).join('');
   });
@@ -1784,7 +1799,7 @@ function recDayStr(y,m,d){ return y+'-'+pad2(m+1)+'-'+pad2(d); }
 
 /* 家族記録モードでは、家族が記録した種類だけを見せます(今日の画面と同じ扱い) */
 var REC_KONLY_OK = {
-  'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1,
+  'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1,'tag-alert':1,
   'disaster-safe':1,'disaster-evacuating':1,'disaster-help':1
 };
 function recVisible(v){ return !isKOnly() || REC_KONLY_OK[v.type]; }
@@ -1973,6 +1988,7 @@ var REC_LABEL = {
   'aisatsu-back':   function(v){ return ['家族からの挨拶','', (v.name||'家族')+'さんから「'+(v.text||'')+'」の挨拶が届きました']; },
   'ask-kusuri':     function(v){ return ['服薬の声かけ','k-kusuri', (v.name||'家族')+'さんが「お薬飲んだ?」を送りました']; },
   'kibun-kazoku':   function(v){ return ['体調','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
+  'tag-alert':      function(v){ return ['タグ','k-tag', 'おまもりタグが読み取られました: '+(v.text||'')]; },
   'kusuri-kakunin': function(v){ return ['服薬','k-kusuri', (v.name||'家族')+'さんが服薬を確認しました']; },
   'memo':           function(v){ return ['様子メモ','', (v.name||'家族')+'さん: '+(v.text||'')]; },
   'disaster-safe':  function(v){ return ['防災','', (v.name||'家族')+'さんが「無事です」と記録しました']; },
@@ -2081,7 +2097,7 @@ function recDrawSummary(){
   document.getElementById('rec-sum-ttl').textContent = (recM+1)+'月のまとめ';
   var now = new Date();
   var elapsed = (recY===now.getFullYear() && recM===now.getMonth()) ? now.getDate() : new Date(recY, recM+1, 0).getDate();
-  var days={}, aisatsuDays={}, aisatsuH=0, aisatsuK=0, kibun=0, kibunBy={}, kusuriH=0, kusuriK=0, onegai=0, henshin=0, memo=0, disaster=0;
+  var days={}, aisatsuDays={}, aisatsuH=0, aisatsuK=0, kibun=0, kibunBy={}, kusuriH=0, kusuriK=0, onegai=0, henshin=0, memo=0, disaster=0, tagN=0, tagBy={};
   recEvents.forEach(function(v){
     if(!recVisible(v) || v.type==='member-joined') return;
     days[v.date]=1;
@@ -2093,6 +2109,7 @@ function recDrawSummary(){
     if(v.type==='onegai') onegai++;
     if(v.type==='onegai-back') henshin++;
     if(v.type==='memo') memo++;
+    if(v.type==='tag-alert'){ tagN++; var tt=(v.text||'読み取り'); tagBy[tt]=(tagBy[tt]||0)+1; }
     if(/^disaster-/.test(v.type||'')) disaster++;
   });
   var items = [
@@ -2107,6 +2124,7 @@ function recDrawSummary(){
     ['ちょっとお願い', onegai + '件'],
     ['お願いへの返信', henshin + '件'],
     ['様子メモ', memo + '件'],
+    ['おまもりタグの読み取り', tagN + '件'],
     ['防災の記録', disaster + '件']
   );
   var box = document.getElementById('rec-sum');
@@ -2117,6 +2135,21 @@ function recDrawSummary(){
     var v = document.createElement('div'); v.className = 'v'; v.textContent = it[1];
     d.appendChild(k); d.appendChild(v); box.appendChild(d);
   });
+  if(tagN>0){
+    var g=document.createElement('div'); g.className='sum-graph';
+    var gt=document.createElement('div'); gt.className='g-ttl'; gt.textContent='おまもりタグの内訳'; g.appendChild(gt);
+    var mx=0; Object.keys(tagBy).forEach(function(t){ if(tagBy[t]>mx) mx=tagBy[t]; });
+    Object.keys(tagBy).forEach(function(t){
+      var row=document.createElement('div'); row.className='g-row';
+      var l=document.createElement('span'); l.className='g-l'; l.textContent=t;
+      var bw=document.createElement('div'); bw.className='g-bar';
+      var bi=document.createElement('i'); bi.style.width=Math.max(8, Math.round(tagBy[t]/mx*100))+'%';
+      bw.appendChild(bi);
+      var n=document.createElement('span'); n.className='g-n'; n.textContent=tagBy[t]+'件';
+      row.appendChild(l); row.appendChild(bw); row.appendChild(n); g.appendChild(row);
+    });
+    box.appendChild(g);
+  }
 }
 
 const AISATSU_BACK_WORDS={asa:'おはよう', hiru:'こんにちは', yoru:'おやすみ'};
@@ -2343,6 +2376,16 @@ async function makeInvite(targetId){
 /* ===== QRおまもりタグ(試作品) =====
    QRには推測しにくいランダムIDだけを入れます。
    氏名・住所・電話番号・病歴・家族情報・位置情報は入れません。 */
+function mirrorTagAlert(senderId, d, label){
+  try{
+    const id='tag-'+senderId+'-'+d.getTime();
+    const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    col('events').doc(id).set({
+      type:'tag-alert', text:label, name:'おまもりタグ', date:ds,
+      at:firebase.firestore.Timestamp.fromDate(d), uid:uid()
+    }).catch(function(){});
+  }catch(e){}
+}
 let tagNotifiedThrough=0;
 function tagLastSeen(){ return Number(previewStorage.getItem('mainicoTagSeen')||0); }
 function tagMarkSeen(){
@@ -2450,6 +2493,8 @@ async function loadWatchTag(){
           const x=doc.data();
           const d=x.createdAt&&x.createdAt.toDate?x.createdAt.toDate():null;
           const situation=situationLabels[x.situation]||'おまもりタグが読み取られました';
+          if(d) mirrorTagAlert(doc.id, d, situation);      /* ふり返り用に記録(重複は自動で防止) */
+          if(d && Date.now()-d.getTime()>86400000) return;  /* お知らせ表示は24時間で消える */
           if(d){
             const t=d.getTime();
             if(t>latest){ latest=t; latestLabel=situation; }
