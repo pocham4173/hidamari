@@ -140,7 +140,7 @@ table.cal-rec td.pad{background:none;}
 }
 .rec-sum .rec-loading{grid-column:1/-1;}
 .rec-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.76rem;color:var(--usucha);margin-top:9px;}
-.range-picker{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.range-picker{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px;}
 .range-picker label{font-size:.84rem;font-weight:800;color:var(--cha);}
 .range-picker input{display:block;width:100%;min-height:44px;margin-top:5px;font:inherit;padding:8px;border:1px solid #CDD6E1;border-radius:9px;background:#F8FAFC;color:var(--cha);}
 .range-row{display:grid;grid-template-columns:6.5rem 1fr;gap:8px;padding:10px 2px;border-bottom:1px solid #E4EAF0;font-size:.88rem;line-height:1.5;}
@@ -353,7 +353,8 @@ table.cal-rec td.pad{background:none;}
 #loading{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:99;font-weight:900;color:var(--usucha);font-size:1rem;}
 
 /* 2026-09-07 完成優先の画面整理 */
-.anshin-choices{grid-template-columns:1fr!important;}
+.anshin-choices{grid-template-columns:1fr!important;gap:12px;}
+.anshin-choices button{width:100%;min-height:84px;font-size:1.08rem;text-align:center;}
 .disaster-intro{margin-top:14px;padding:16px;border:2px solid var(--murasaki-usui);border-radius:16px;background:#fff;}
 .disaster-form label{display:block;font-size:.9rem;font-weight:800;margin:12px 0 5px;}
 .disaster-form input,.disaster-form select{width:100%;min-height:50px;padding:10px;border:1px solid #CDD6E1;border-radius:10px;background:#fff;font:inherit;}
@@ -361,7 +362,7 @@ table.cal-rec td.pad{background:none;}
 .disaster-consent input{width:22px!important;min-height:22px!important;flex:0 0 22px;}
 .disaster-preview{margin-top:14px;text-align:center;}
 .disaster-preview img{max-width:100%;height:auto;}
-@media(max-width:390px){.range-picker{grid-template-columns:1fr;}}
+
 
 </style>
 </head>
