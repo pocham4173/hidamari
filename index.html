@@ -208,6 +208,9 @@ table.cal-rec td.pad{background:none;}
 .tag-home.tag-unread{border-color:#C95843;background:#FFF1EC;animation:tagPulse 1.6s ease-in-out 3;}
 @keyframes tagPulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 5px rgba(201,88,67,.28)}}
 .tag-unread-count{display:inline-block;margin-left:8px;background:#C95843;color:#fff;border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:900;}
+.tag-guide{margin-top:10px;}
+.tag-guide summary{font-weight:900;cursor:pointer;font-size:.95rem;}
+.tag-guide ol{margin:8px 0 0 4px;padding-left:18px;font-size:.92rem;line-height:1.75;}
 .tag-seen-btn{display:block;width:100%;margin-top:10px;padding:12px;border:2px solid #C95843;border-radius:12px;background:#fff;color:#963521;font:inherit;font-weight:900;cursor:pointer;}
 .tag-notify-btn{display:block;width:100%;margin-top:10px;padding:12px;border:2px solid var(--hi);border-radius:12px;background:#fff;color:var(--hi-koi);font:inherit;font-weight:900;cursor:pointer;}
 .tag-home .tag-alert strong{font-size:1rem;color:var(--aka-koi);}
@@ -600,7 +603,9 @@ table.cal-rec td.pad{background:none;}
       <label for="disaster-phone">緊急連絡先（1件）</label>
       <input id="disaster-phone" type="tel" inputmode="tel" maxlength="20" autocomplete="off" placeholder="例：090-0000-0000">
       <label for="disaster-help">手助けしてほしいこと</label>
-      <select id="disaster-help"><option value="">選んでください</option><option>ゆっくり話してください</option><option>筆談をお願いします</option><option>歩くときに支えが必要です</option><option>家族・支援者へ連絡してください</option><option>日本語での会話が難しいです</option></select>
+      <select id="disaster-help"><option value="">選んでください</option><option>ゆっくり話してください</option><option>筆談をお願いします</option><option>歩くときに支えが必要です</option><option>家族・支援者へ連絡してください</option><option>日本語での会話が難しいです</option><option>その他（下の欄に記入）</option></select>
+      <label for="disaster-free">その他・伝えたいこと（任意・60文字まで）</label>
+      <input id="disaster-free" maxlength="60" autocomplete="off" placeholder="例：右耳のほうが聞こえやすいです">
       <label class="disaster-consent"><input id="disaster-consent" type="checkbox"><span>この内容は誰でも読み取れることを理解し、QRの作成に同意します</span></label>
       <button class="big-btn" type="button" onclick="makeDisasterQr()">入力内容を確認してQRを作る</button>
       <div id="disaster-qr-preview" class="disaster-preview"></div>
@@ -628,13 +633,6 @@ table.cal-rec td.pad{background:none;}
       <h4>つながっている人</h4>
       <div id="set-members"><div class="empty">読み込み中…</div></div>
       <div class="note">解除すると、その人はこの家族の記録を見られなくなります(過去の記録も含む)。端末を紛失した場合も、ここで解除すれば停止できます。</div>
-    </div>
-
-    <div class="set-sec">
-      <h4>おまもりタグ（内部試作品）</h4>
-      <p class="tag-lead">読み取った方が、個人情報を見ずに家族へ知らせるタグです。</p>
-      <div id="watch-tag-area"><div class="empty">状態を確認しています…</div></div>
-      <div class="note">読み取られた内容は、家族のまいにこに記録されます。</div>
     </div>
 
     <div class="set-sec">
@@ -669,6 +667,16 @@ table.cal-rec td.pad{background:none;}
         <div class="tag-home-status" id="home-watch-tag-status"></div>
         <div id="watch-tag-alerts"></div>
         <button class="tag-seen-btn" id="tag-seen-btn" style="display:none;" onclick="tagMarkSeen()">お知らせを確認しました</button>
+        <details class="tag-guide"><summary>お知らせが来たら（この後の動き方）</summary>
+          <ol>
+            <li>まず本人に電話などで連絡してみる</li>
+            <li>つながらないときは、家族で手分けして心当たりの場所を確認する（一人で抱え込まない）</li>
+            <li>「道に迷っている様子」で本人と連絡が取れないときは、警察相談専用電話「#9110」または110番へ相談する</li>
+            <li>「体調が悪そう」のときは、様子が分からず心配な場合は119番に相談する</li>
+            <li>「警察・救急へ連絡した」のときは、警察・消防からの連絡に電話で出られるようにしておく</li>
+          </ol>
+          <div class="note">読み取った方と直接やり取りする仕組みはありません（お互いの個人情報を守るためです）。</div>
+        </details>
       </div>
 
       <div class="card dom-record">
@@ -766,6 +774,7 @@ table.cal-rec td.pad{background:none;}
         <h3>安心</h3>
         <div class="anshin-choices">
           <button type="button" onclick="openAnshin('soudan')">💬<br>相談先を探す</button>
+          <button type="button" onclick="openAnshin('tag')">🔔<br>おまもりタグ</button>
           <button type="button" onclick="openAnshin('bousai')">🎒<br>もしもの備え</button>
           <button type="button" onclick="openDisasterQr()">🪪<br>災害用QRを作る</button>
         </div>
@@ -790,6 +799,13 @@ table.cal-rec td.pad{background:none;}
         <div class="note">当番の医療機関や電話番号は変わることがあります。最新の内容は、それぞれの公式ページでお確かめください。</div>
         <div class="note" id="sd-checked">公式情報の確認日: ─</div>
       </div>
+      <div class="card dom-soudan" id="anshin-tag-card" style="display:none;">
+        <h3>おまもりタグ（内部試作品）</h3>
+        <p class="tag-lead">読み取った方が、個人情報を見ずに家族へ知らせるタグです。</p>
+        <div id="watch-tag-area"><div class="empty">状態を確認しています…</div></div>
+        <div class="note">読み取られた内容は、家族のまいにこに記録されます。</div>
+        <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
+      </div>
       <div class="card disaster-card" id="bousai-card" style="display:none;">
         <h3>もしもの備え</h3>
         <div class="note" style="margin-top:0;">これは、この端末で平時の備えを確認する画面です。緊急通報や家族への通知は行いません。今すぐ危険なときは110番・119番へ電話してください。</div>
@@ -802,7 +818,7 @@ table.cal-rec td.pad{background:none;}
           </div>
         </details>
         <div class="note">チェックはこの端末だけに保存され、家族には送信されません。</div>
-        <a class="sd-btn" href="https://www.city.ueda.nagano.jp/soshiki/kiki/46316.html" target="_blank" rel="noopener noreferrer"><span class="l">上田市防災ポータルを見る</span><span class="s">避難情報・避難所・ハザードマップ（公式）</span></a>
+        <a class="sd-btn" href="https://ueda-bosai.jp/bueda20/portal/html/home.html" target="_blank" rel="noopener noreferrer"><span class="l">上田市防災ポータルサイトを開く</span><span class="s">緊急情報・避難情報・気象情報（市の公式サイト）</span></a>
         <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
       </div>
     </div>
@@ -1684,10 +1700,11 @@ function sdTel(num, label, note){
 
 /* 最初の画面(困りごとを選ぶ) */
 function openAnshin(which){
-  ['anshin-home','sd-pick-card','sd-detail-card','sd-note-card','bousai-card'].forEach(function(id){
+  ['anshin-home','sd-pick-card','sd-detail-card','sd-note-card','bousai-card','anshin-tag-card'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   if(which==='soudan'){ soudanReset(); return; }
+  else if(which==='tag'){ document.getElementById('anshin-tag-card').style.display='block'; loadWatchTag(); }
   else if(which==='bousai') document.getElementById('bousai-card').style.display='block';
   else document.getElementById('anshin-home').style.display='block';
 }
@@ -2062,24 +2079,36 @@ function recDrawDay(){
 /* 月のまとめ(数えただけ。良し悪しの判断はしません) */
 function recDrawSummary(){
   document.getElementById('rec-sum-ttl').textContent = (recM+1)+'月のまとめ';
-  var days = {}, aisatsu = 0, kibun = 0, kusuri = 0, onegai = 0, disaster = 0;
+  var now = new Date();
+  var elapsed = (recY===now.getFullYear() && recM===now.getMonth()) ? now.getDate() : new Date(recY, recM+1, 0).getDate();
+  var days={}, aisatsuDays={}, aisatsuH=0, aisatsuK=0, kibun=0, kibunBy={}, kusuriH=0, kusuriK=0, onegai=0, henshin=0, memo=0, disaster=0;
   recEvents.forEach(function(v){
     if(!recVisible(v) || v.type==='member-joined') return;
-    days[v.date] = 1;
-    if(v.type==='aisatsu' || v.type==='aisatsu-back') aisatsu++;
-    if(v.type==='kibun'   || v.type==='kibun-kazoku') kibun++;
-    if(v.type==='kusuri'  || v.type==='kusuri-kakunin' || v.type==='ask-kusuri') kusuri++;
-    if(v.type==='onegai'  || v.type==='onegai-back'    || v.type==='memo') onegai++;
+    days[v.date]=1;
+    if(v.type==='aisatsu'){ aisatsuH++; aisatsuDays[v.date]=1; }
+    if(v.type==='aisatsu-back') aisatsuK++;
+    if(v.type==='kibun' || v.type==='kibun-kazoku'){ kibun++; var t=(v.text||'その他'); kibunBy[t]=(kibunBy[t]||0)+1; }
+    if(v.type==='kusuri') kusuriH++;
+    if(v.type==='kusuri-kakunin' || v.type==='ask-kusuri') kusuriK++;
+    if(v.type==='onegai') onegai++;
+    if(v.type==='onegai-back') henshin++;
+    if(v.type==='memo') memo++;
     if(/^disaster-/.test(v.type||'')) disaster++;
   });
   var items = [
-    ['記録があった日', Object.keys(days).length + '日'],
-    ['挨拶', aisatsu + '件'],
-    ['体調の記録', kibun + '件'],
-    ['服薬に関する記録', kusuri + '件'],
-    ['お願い・メモ', onegai + '件'],
-    ['防災の記録', disaster + '件']
+    ['記録があった日', Object.keys(days).length + '日（' + elapsed + '日中）'],
+    ['本人の挨拶があった日', Object.keys(aisatsuDays).length + '日'],
+    ['挨拶', (aisatsuH+aisatsuK) + '件（本人' + aisatsuH + '・家族' + aisatsuK + '）'],
+    ['体調の記録', kibun + '件']
   ];
+  Object.keys(kibunBy).forEach(function(t){ items.push(['　└ ' + t, kibunBy[t] + '件']); });
+  items.push(
+    ['服薬に関する記録', (kusuriH+kusuriK) + '件（本人' + kusuriH + '・家族' + kusuriK + '）'],
+    ['ちょっとお願い', onegai + '件'],
+    ['お願いへの返信', henshin + '件'],
+    ['様子メモ', memo + '件'],
+    ['防災の記録', disaster + '件']
+  );
   var box = document.getElementById('rec-sum');
   box.textContent = '';
   items.forEach(function(it){
@@ -2335,7 +2364,7 @@ function tagApplyUnread(n){
     home.classList.remove('tag-unread');
     if(cnt) cnt.style.display='none';
     if(seen) seen.style.display='none';
-    if(st) st.textContent='おまもりタグは使用中です。QRの表示・停止は「設定」から行えます。';
+    if(st) st.textContent='おまもりタグは使用中です。QRの表示・停止は「安心」タブから行えます。';
   }
 }
 function tagNotifySound(){
@@ -2407,7 +2436,7 @@ async function loadWatchTag(){
     }
     renderWatchTag(currentWatchTagId);
     if(home){ home.style.display='block'; }
-    if(homeStatus){ homeStatus.textContent='おまもりタグは使用中です。QRの表示・停止は「設定」から行えます。'; }
+    if(homeStatus){ homeStatus.textContent='おまもりタグは使用中です。QRの表示・停止は「安心」タブから行えます。'; }
     watchTagUnsub=db.collection('watchTags').doc(currentWatchTagId).collection('alerts')
       .orderBy('createdAt','desc').limit(5).onSnapshot(snap=>{
         const rows=[];
@@ -2562,13 +2591,13 @@ auth.onAuthStateChanged(async user=>{
 
 /* ===== 災害用QR（端末内保存・オフライン読取） ===== */
 const DISASTER_QR_KEY='mainico_preview_disaster_qr_v1';
-function openDisasterQr(){const m=document.getElementById('disaster-qr-modal');if(!m)return;m.classList.add('show');try{const v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null');if(v){document.getElementById('disaster-name').value=v.name||'';document.getElementById('disaster-relation').value=v.relation||'';document.getElementById('disaster-phone').value=v.phone||'';document.getElementById('disaster-help').value=v.help||'';renderDisasterQr(v);}}catch(e){}}
+function openDisasterQr(){const m=document.getElementById('disaster-qr-modal');if(!m)return;m.classList.add('show');try{const v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null');if(v){document.getElementById('disaster-name').value=v.name||'';document.getElementById('disaster-relation').value=v.relation||'';document.getElementById('disaster-phone').value=v.phone||'';document.getElementById('disaster-help').value=v.help||'';document.getElementById('disaster-free').value=v.free||'';renderDisasterQr(v);}}catch(e){}}
 function closeDisasterQr(){document.getElementById('disaster-qr-modal')?.classList.remove('show');}
 function disasterUpdatedAt(){const d=new Date();return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日';}
-function disasterQrText(v){return ['まいにこ 災害・緊急時支援カード','呼び名：'+v.name,'必要な支援：'+v.help,'緊急連絡先：'+v.relation+' '+v.phone,'更新日：'+v.updatedAt,'命の危険がある場合は119番へ'].join('\n');}
-function renderDisasterQr(v){const p=document.getElementById('disaster-qr-preview');if(!p)return;if(typeof qrcode!=='function'){p.innerHTML='<div class="note">QRを表示できませんでした。</div>';return;}const qr=qrcode(0,'M');qr.addData(disasterQrText(v));qr.make();p.innerHTML='<h4>作成した災害用QR</h4><div class="tag-qr">'+qr.createImgTag(6,8,'まいにこ 災害用QR')+'</div><div class="note">更新日：'+esc(v.updatedAt)+'<br>端末内に保存しました。印刷前に別の端末で読み取って確認してください。</div>';const b=document.getElementById('disaster-delete');if(b)b.style.display='block';}
-function makeDisasterQr(){const name=document.getElementById('disaster-name').value.trim(),relation=document.getElementById('disaster-relation').value,phone=document.getElementById('disaster-phone').value.trim(),help=document.getElementById('disaster-help').value,consent=document.getElementById('disaster-consent').checked;if(!name||!relation||!phone||!help){alert('4項目をすべて入力してください。');return;}if(!/^[0-9+()\-\s]{8,20}$/.test(phone)){alert('緊急連絡先の電話番号を確認してください。');return;}if(!consent){alert('誰でも読み取れることへの同意が必要です。');return;}const v={name,relation,phone,help,updatedAt:disasterUpdatedAt()};localStorage.setItem(DISASTER_QR_KEY,JSON.stringify(v));renderDisasterQr(v);}
-function deleteDisasterQr(){if(!confirm('この端末に保存した災害用QRを削除しますか？\n印刷済みのQRは消えません。'))return;localStorage.removeItem(DISASTER_QR_KEY);['disaster-name','disaster-phone'].forEach(id=>document.getElementById(id).value='');['disaster-relation','disaster-help'].forEach(id=>document.getElementById(id).value='');document.getElementById('disaster-consent').checked=false;document.getElementById('disaster-qr-preview').innerHTML='';document.getElementById('disaster-delete').style.display='none';}
+function disasterQrText(v){var L=['まいにこ 災害・緊急時支援カード','呼び名：'+v.name,'必要な支援：'+v.help];if(v.free)L.push('メモ：'+v.free);L.push('緊急連絡先：'+v.relation+' '+v.phone,'更新日：'+v.updatedAt,'命の危険がある場合は119番へ');return L.join('\n');}
+function renderDisasterQr(v){const p=document.getElementById('disaster-qr-preview');if(!p)return;if(typeof qrcode!=='function'){p.innerHTML='<div class="note">QRを表示できませんでした。</div>';return;}const qr=qrcode(0,'M');qr.addData(unescape(encodeURIComponent(disasterQrText(v))));qr.make();p.innerHTML='<h4>作成した災害用QR</h4><div class="tag-qr">'+qr.createImgTag(6,8,'まいにこ 災害用QR')+'</div><div class="note">更新日：'+esc(v.updatedAt)+'<br>端末内に保存しました。印刷前に別の端末で読み取って確認してください。</div>';const b=document.getElementById('disaster-delete');if(b)b.style.display='block';}
+function makeDisasterQr(){const name=document.getElementById('disaster-name').value.trim(),relation=document.getElementById('disaster-relation').value,phone=document.getElementById('disaster-phone').value.trim(),help=document.getElementById('disaster-help').value,free=document.getElementById('disaster-free').value.trim(),consent=document.getElementById('disaster-consent').checked;if(!name||!relation||!phone||!help){alert('4項目をすべて入力してください。');return;}if(!/^[0-9+()\-\s]{8,20}$/.test(phone)){alert('緊急連絡先の電話番号を確認してください。');return;}if(help==='その他（下の欄に記入）'&&!free){alert('「その他」を選んだ場合は、自由記入の欄に内容を書いてください。');return;}if(!consent){alert('誰でも読み取れることへの同意が必要です。');return;}const v={name,relation,phone,help,free,updatedAt:disasterUpdatedAt()};localStorage.setItem(DISASTER_QR_KEY,JSON.stringify(v));renderDisasterQr(v);}
+function deleteDisasterQr(){if(!confirm('この端末に保存した災害用QRを削除しますか？\n印刷済みのQRは消えません。'))return;localStorage.removeItem(DISASTER_QR_KEY);['disaster-name','disaster-phone','disaster-free'].forEach(id=>document.getElementById(id).value='');['disaster-relation','disaster-help'].forEach(id=>document.getElementById(id).value='');document.getElementById('disaster-consent').checked=false;document.getElementById('disaster-qr-preview').innerHTML='';document.getElementById('disaster-delete').style.display='none';}
 
 </script>
 </body>
