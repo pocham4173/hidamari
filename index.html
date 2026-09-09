@@ -990,13 +990,33 @@ function dateJp(d){
 }
 /* ===== 読み上げ(こえの おへんじ) ===== */
 function speechOn(){ return previewStorage.getItem('mainicoSpeechOn')==='1'; }
+let chosenVoice=null;
+function pickVoice(){
+  try{
+    const vs=speechSynthesis.getVoices().filter(v=>(v.lang||'').indexOf('ja')===0);
+    if(vs.length===0) return null;
+    const like=['kyoko','nanami','o-ren','google 日本語','ayumi','haruka','mizuki'];
+    for(const name of like){
+      const hit=vs.find(v=>v.name.toLowerCase().indexOf(name)>=0);
+      if(hit) return hit;
+    }
+    return vs[0];
+  }catch(e){ return null; }
+}
+if('speechSynthesis' in window){
+  speechSynthesis.onvoiceschanged=function(){ chosenVoice=pickVoice(); };
+}
 function speak(t, force){
   if(!force && !speechOn()) return;
   try{
     if(!('speechSynthesis' in window)) return;
+    if(!chosenVoice) chosenVoice=pickVoice();
     speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(t);
-    u.lang='ja-JP'; u.rate=0.95;
+    u.lang='ja-JP';
+    u.rate=0.82;      /* ゆっくり */
+    u.pitch=1.05;     /* やわらかく */
+    if(chosenVoice) u.voice=chosenVoice;
     speechSynthesis.speak(u);
   }catch(e){}
 }
@@ -1394,6 +1414,7 @@ function initHonnin(){
     renderPendingCard('h-approve', snap);
   }, err=>console.warn('members', err));
   if(honninUnsub) honninUnsub();
+  hMsgSpokenThrough=Math.floor(Date.now()/1000);   /* 開いた後に届いた分だけ声で知らせる */
   honninUnsub=col('events').where('date','==',todayStr())
     .onSnapshot(snap=>{
       const msgs=[];
@@ -1413,12 +1434,15 @@ function initHonnin(){
         const p=document.getElementById('pop-msg');
         p.textContent=msgs[0].text;
         p.classList.add('show');
+        const ts=msgs[0].at?msgs[0].at.seconds:0;
+        if(ts>hMsgSpokenThrough){ hMsgSpokenThrough=ts; speak(msgs[0].text); }
       }
     }, err=>console.warn('events', err));
 
   if(yoteiUnsub) yoteiUnsub();
   yoteiUnsub=subscribeYotei(()=>{
     renderHToday();
+    morningGreet();
     const n=nextYotei();
     const elD=document.getElementById('y-days');
     const elL=document.getElementById('y-label');
@@ -2771,6 +2795,26 @@ function mirrorTagAlert(senderId, d, label){
   }catch(e){}
 }
 let tagNotifiedThrough=0;
+let hMsgSpokenThrough=0;
+const ROKUYO_YOMI={'大安':'たいあん','赤口':'しゃっこう','先勝':'せんしょう','友引':'ともびき','先負':'せんぶ','仏滅':'ぶつめつ'};
+const YOBI_YOMI=['にちようび','げつようび','かようび','すいようび','もくようび','きんようび','どようび'];
+function morningGreet(){
+  if(!speechOn()) return;
+  const key='mainicoGreeted-'+todayStr();
+  if(previewStorage.getItem(key)) return;
+  previewStorage.setItem(key,'1');
+  const d=new Date();
+  const aisatsu=slot().tx==='おはよう'?'おはようございます':(slot().tx==='こんにちは'?'こんにちは':'こんばんは');
+  let t=aisatsu+'。'+(d.getMonth()+1)+'がつ'+d.getDate()+'にち、'+YOBI_YOMI[d.getDay()]+'です。';
+  const r=rokuyoOf(d);
+  if(r) t+='きょうは '+(ROKUYO_YOMI[r]||r)+'です。';
+  if(hTodayItems.length>0){
+    const parts=hTodayItems.map(v=>(v.time?timeYomi(v.time)+'に、':'')+(v.label||'よてい'));
+    t+='きょうの よていは、'+parts.join('。つぎに、')+'、です。';
+  }
+  t+='きょうも いい いちにちに なりますように。';
+  speak(t);
+}
 function tagLastSeen(){ return Number(previewStorage.getItem('mainicoTagSeen')||0); }
 function tagMarkSeen(){
   previewStorage.setItem('mainicoTagSeen', String(Date.now()));
