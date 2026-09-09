@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>まいにこ</title>
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#E0711A">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
@@ -31,8 +31,10 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 
 /* ===== 入口 ===== */
 #entry{align-items:center;justify-content:center;text-align:center;padding:28px;background:#FFFFFF;position:relative;}
-#entry .appicon{width:110px;height:110px;border-radius:26px;box-shadow:0 4px 14px rgba(27,42,107,.25);}
-#entry h1{font-size:2rem;font-weight:900;letter-spacing:.15em;color:var(--hi-koi);margin-top:12px;}
+#entry .appicon{width:124px;height:124px;border-radius:28px;box-shadow:0 6px 18px rgba(29,78,158,.28);background:#FAF7F0;}
+#entry h1{font-size:2.1rem;font-weight:900;letter-spacing:.18em;color:#1D4E9E;margin-top:14px;}
+#entry .entry-catch{color:#1D4E9E;font-size:1.02rem;font-weight:900;margin-top:4px;}
+#entry .entry-catch em{font-style:normal;color:#E8731A;}
 #entry .q{color:var(--cha);margin:14px 0 20px;font-size:1.25rem;font-weight:900;}
 .entry-btn{display:block;width:100%;max-width:320px;margin:0 auto 14px;background:var(--hi);border:none;border-radius:20px;padding:18px;font-family:inherit;font-size:1.2rem;font-weight:900;color:#fff;box-shadow:0 5px 0 var(--hi-koi);cursor:pointer;line-height:1.4;}
 .entry-btn small{display:block;font-size:.85rem;font-weight:400;color:#FFE9CF;margin-top:3px;}
@@ -178,6 +180,21 @@ table.cal-rec td.pad{background:none;}
 .rg-col b{font-size:.68rem;color:var(--cha);line-height:1.4;}
 .rg-labels{display:flex;gap:4px;padding:2px 2px 0;}
 .rg-labels s{flex:1;text-decoration:none;font-size:.6rem;color:var(--usucha);text-align:center;white-space:nowrap;overflow:hidden;}
+/* きょうの予定・声・本人の予定入力 */
+.h-today{background:#fff;border:3px solid var(--hi);border-radius:18px;padding:14px 16px;margin-bottom:12px;}
+.h-today .ht-lb{font-size:1rem;font-weight:900;color:var(--hi-koi);}
+.h-today .ht-item{font-size:1.5rem;font-weight:900;color:var(--cha);line-height:1.6;margin-top:4px;}
+.h-today .ht-item small{font-size:1.1rem;color:var(--hi-koi);margin-right:6px;}
+.ht-yomi{display:block;width:100%;margin-top:10px;min-height:52px;border:2px solid var(--hi);border-radius:12px;background:#FFF6E8;color:var(--hi-koi);font-family:inherit;font-size:1.1rem;font-weight:900;cursor:pointer;}
+.hy-q{font-size:1.15rem;font-weight:900;margin:16px 0 8px;color:var(--cha);}
+.hy-days{display:flex;gap:8px;}
+.hy-days button{flex:1;min-height:58px;border:2px solid var(--hi);border-radius:12px;background:#fff;color:var(--hi-koi);font-family:inherit;font-size:1.05rem;font-weight:900;cursor:pointer;}
+.hy-days button.on{background:var(--hi);color:#fff;}
+#hy-date,#hy-time,#hy-free{width:100%;min-height:56px;border:2px solid #D8CBB4;border-radius:12px;font-family:inherit;font-size:1.15rem;padding:8px 12px;margin-top:8px;background:#fff;color:var(--cha);box-sizing:border-box;}
+.hy-kinds{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.hy-kinds button{min-height:60px;border:2px solid #D8CBB4;border-radius:12px;background:#fff;color:var(--cha);font-family:inherit;font-size:1.05rem;font-weight:900;cursor:pointer;}
+.hy-kinds button.on{border-color:var(--hi);background:#FFF6E8;color:var(--hi-koi);}
+.hy-save{display:block;width:100%;margin-top:18px;min-height:64px;border:none;border-radius:14px;background:var(--hi);color:#fff;font-family:inherit;font-size:1.2rem;font-weight:900;cursor:pointer;box-shadow:0 4px 0 var(--hi-koi);}
 /* 月のまとめ */
 .sum-graph{grid-column:1/-1;margin-top:12px;padding-top:10px;border-top:1px dashed #E3D9C8;}
 .sum-graph .g-ttl{font-weight:900;font-size:.92rem;color:var(--cha);margin-bottom:8px;}
@@ -410,6 +427,7 @@ table.cal-rec td.pad{background:none;}
   <button class="install-mini" onclick="installApp()">ホーム画面に追加</button>
   <img class="appicon" src="icon-192.png" alt="まいにこ">
   <h1>まいにこ</h1>
+  <div class="entry-catch">押すだけで<em>「今日も元気」</em>が家族に届く</div>
   <div class="q">使い方を選んでください</div>
   <div id="select-box">
     <button class="entry-btn" onclick="pickMode('honnin')">ご本人が使う</button>
@@ -512,6 +530,11 @@ table.cal-rec td.pad{background:none;}
     <div class="h-time" id="h-time"></div>
   </div>
   <div class="h-body">
+    <div class="h-today" id="h-today" style="display:none;">
+      <div class="ht-lb">今日の予定</div>
+      <div id="h-today-list"></div>
+      <button class="ht-yomi" type="button" onclick="speakToday()">🔊 音声で聞く</button>
+    </div>
     <div class="yotei-card">
       <div class="lb">予定</div>
       <div class="days" id="y-days">-</div>
@@ -538,6 +561,7 @@ table.cal-rec td.pad{background:none;}
     <button class="kusuri-btn" id="btn-k" onclick="sendKusuri()">薬を飲みました</button>
     <button class="onegai-btn" onclick="openOnegai()">ちょっとお願い</button>
     <button class="cal-open" onclick="openCal()">カレンダーを見る</button>
+    <button class="cal-open" onclick="openHYotei()">予定を入れる</button>
     <div class="h-links">
       <button onclick="openMembers()">つながっている家族</button>
       <button onclick="openCancel()">今日の記録をとりけす</button>
@@ -548,7 +572,11 @@ table.cal-rec td.pad{background:none;}
 
 <div class="modal" id="person-settings-modal"><div class="modal-box adult-font">
   <div class="ttl">その他の設定</div>
-  <div class="set-sec" style="border-top:none;"><h4>利用方法の変更</h4>
+  <div class="set-sec" style="border-top:none;"><h4>声のお返事（読み上げ）</h4>
+    <div class="note">オンにすると、ボタンを押したあとに声でもお知らせします。</div>
+    <button class="set-btn" id="speech-toggle" onclick="toggleSpeech()">声のお返事：オフ（押すとオン）</button>
+  </div>
+  <div class="set-sec"><h4>利用方法の変更</h4>
     <div class="note">利用する人を最初から選び直すときだけ使います。普段は変更する必要はありません。</div>
     <button class="set-btn warn" onclick="openBackConfirm()">利用方法を変更する</button>
   </div>
@@ -567,6 +595,31 @@ table.cal-rec td.pad{background:none;}
 </div>
 
 <!-- カレンダー -->
+<div class="modal" id="h-yotei-modal"><div class="modal-box">
+  <div class="ttl">予定を入れる</div>
+  <div class="hy-q">いつですか？</div>
+  <div class="hy-days">
+    <button type="button" id="hy-d0" class="on" onclick="hySetDay(0)">今日</button>
+    <button type="button" id="hy-d1" onclick="hySetDay(1)">明日</button>
+    <button type="button" id="hy-d2" onclick="hySetDay(2)">別の日</button>
+  </div>
+  <input type="date" id="hy-date" style="display:none;">
+  <div class="hy-q">何の予定ですか？</div>
+  <div class="hy-kinds" id="hy-kinds">
+    <button type="button" data-k="🏥" data-l="病院">🏥 病院</button>
+    <button type="button" data-k="🛒" data-l="買い物">🛒 買い物</button>
+    <button type="button" data-k="🚌" data-l="デイサービス">🚌 デイサービス</button>
+    <button type="button" data-k="🚶" data-l="散歩">🚶 散歩</button>
+    <button type="button" data-k="✏️" data-l="">✏️ 自分で書く</button>
+  </div>
+  <input id="hy-free" maxlength="20" placeholder="予定の名前" style="display:none;">
+  <div class="hy-q">時間（決めなくても大丈夫です）</div>
+  <input type="time" id="hy-time">
+  <button class="hy-save" type="button" onclick="hySave()">この予定を保存する</button>
+  <div class="note" id="hy-note">保存すると、ご家族の画面にも出ます。</div>
+  <button class="modal-close" onclick="closeHYotei()">とじる</button>
+</div></div>
+
 <div class="modal" id="cal-modal">
   <div class="modal-box">
     <div class="ttl" id="cal-ttl"></div>
@@ -909,6 +962,14 @@ const previewApp=firebase.initializeApp({
 });
 const db = previewApp.firestore();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+document.addEventListener('click', function(ev){
+  const b=ev.target.closest('#hy-kinds button');
+  if(!b) return;
+  hyK=b.dataset.k; hyL=b.dataset.l;
+  document.querySelectorAll('#hy-kinds button').forEach(x=>x.classList.toggle('on', x===b));
+  document.getElementById('hy-free').style.display = hyK==='✏️' ? 'block' : 'none';
+  if(hyK==='✏️') document.getElementById('hy-free').focus();
+});
 const auth = previewApp.auth();
 
 /* ===== ユーティリティ ===== */
@@ -919,6 +980,100 @@ function todayStr(){
 function dateJp(d){
   const yobi=['日','月','火','水','木','金','土'][d.getDay()];
   return (d.getMonth()+1)+'月'+d.getDate()+'日('+yobi+')';
+}
+/* ===== 読み上げ(こえの おへんじ) ===== */
+function speechOn(){ return previewStorage.getItem('mainicoSpeechOn')==='1'; }
+function speak(t, force){
+  if(!force && !speechOn()) return;
+  try{
+    if(!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(t);
+    u.lang='ja-JP'; u.rate=0.95;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function toggleSpeech(){
+  const on = !speechOn();
+  previewStorage.setItem('mainicoSpeechOn', on?'1':'0');
+  updateSpeechToggle();
+  if(on) speak('声のお返事を オンにしました', true);
+}
+function updateSpeechToggle(){
+  const b=document.getElementById('speech-toggle');
+  if(b) b.textContent = speechOn() ? '声のお返事：オン（押すとオフ）' : '声のお返事：オフ（押すとオン）';
+}
+function timeYomi(t){
+  if(!t) return '';
+  const m=String(t).match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return t;
+  return Number(m[1])+'じ'+(m[2]==='00'?'':Number(m[2])+'ふん');
+}
+/* ===== きょうの予定 ===== */
+let hTodayItems=[];
+function renderHToday(){
+  const box=document.getElementById('h-today');
+  const list=document.getElementById('h-today-list');
+  if(!box || !list) return;
+  const t=todayStr();
+  hTodayItems=(yoteiCache||[]).filter(v=>v.date===t);
+  if(hTodayItems.length===0){ box.style.display='none'; return; }
+  list.innerHTML=hTodayItems.map(v=>'<div class="ht-item">'+(v.time?'<small>'+esc(v.time)+'</small>':'')+esc((v.kind||'')+' '+(v.label||''))+'</div>').join('');
+  box.style.display='block';
+}
+function speakToday(){
+  if(hTodayItems.length===0){ speak('きょうの よていは ありません', true); return; }
+  const parts=hTodayItems.map(v=>(v.time?timeYomi(v.time)+'に、':'')+(v.label||'よてい'));
+  speak('きょうの よていは、'+parts.join('。つぎに、')+'、です。', true);
+}
+/* ===== 本人の予定入力 ===== */
+let hyDay=0, hyK='', hyL='';
+function openHYotei(){
+  feedback();
+  hyDay=0; hyK=''; hyL='';
+  hySetDay(0);
+  document.querySelectorAll('#hy-kinds button').forEach(b=>b.classList.remove('on'));
+  document.getElementById('hy-free').style.display='none';
+  document.getElementById('hy-free').value='';
+  document.getElementById('hy-time').value='';
+  const n=document.getElementById('hy-note');
+  n.textContent='保存すると、ご家族の画面にも出ます。';
+  document.getElementById('h-yotei-modal').classList.add('show');
+}
+function closeHYotei(){ document.getElementById('h-yotei-modal').classList.remove('show'); }
+function hySetDay(d){
+  hyDay=d;
+  [0,1,2].forEach(i=>document.getElementById('hy-d'+i).classList.toggle('on', i===d));
+  const inp=document.getElementById('hy-date');
+  inp.style.display = d===2 ? 'block' : 'none';
+  if(d===2 && !inp.value) inp.value=todayStr();
+}
+function hyDateStr(){
+  if(hyDay===2) return document.getElementById('hy-date').value || todayStr();
+  const d=new Date(); d.setDate(d.getDate()+hyDay);
+  return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+}
+async function hySave(){
+  const label = hyK==='✏️' ? document.getElementById('hy-free').value.trim() : hyL;
+  const n=document.getElementById('hy-note');
+  if(!hyK){ n.textContent='「何の予定ですか」から選んでください'; return; }
+  if(!label){ n.textContent='予定の名前を書いてください'; return; }
+  feedback();
+  n.textContent='保存しています…';
+  try{
+    await col('yotei').add({
+      kind:hyK, date:hyDateStr(), time:document.getElementById('hy-time').value||'',
+      label:label, color:'#3D6FB4', repeat:'none', uid:uid(),
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    closeHYotei();
+    const p=document.getElementById('pop-msg');
+    if(p){ p.textContent='予定を保存しました'; p.classList.add('show'); }
+    speak('よていを ほぞんしました');
+  }catch(e){
+    n.textContent='保存できませんでした。通信状態を確認して、もう一度押してください';
+  }
 }
 function slot(){
   const h=new Date().getHours();
@@ -1137,7 +1292,7 @@ function startMode(){
 function resetMode(){ previewStorage.removeItem('mainicoMode'); location.reload(); }
 function openBackConfirm(){ closePersonSettings(); document.getElementById('back-modal').classList.add('show'); }
 function closeBackConfirm(){ document.getElementById('back-modal').classList.remove('show'); }
-function openPersonSettings(){ document.getElementById('person-settings-modal').classList.add('show'); }
+function openPersonSettings(){ updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); }
 function closePersonSettings(){ document.getElementById('person-settings-modal').classList.remove('show'); }
 /* ===== 予定 ===== */
 let yoteiCache=[];
@@ -1268,6 +1423,7 @@ function initHonnin(){
 
   if(yoteiUnsub) yoteiUnsub();
   yoteiUnsub=subscribeYotei(()=>{
+    renderHToday();
     const n=nextYotei();
     const elD=document.getElementById('y-days');
     const elL=document.getElementById('y-label');
@@ -1293,6 +1449,7 @@ function markKusuriDone(){
 function sendAisatsu(){
   const s=slot();
   feedback();
+  speak(s.tx+'を おくりました');
   addEvent({type:'aisatsu', text:s.tx, slot:s.key});
   previewStorage.setItem('aisatsu-'+todayStr()+'-'+s.key,'1');
   countGreetDay();
@@ -1302,6 +1459,7 @@ function sendAisatsu(){
 }
 function sendKibun(text,emoji){
   feedback();
+  speak('きょうの ちょうしを おくりました');
   addEvent({type:'kibun', text:text, emoji:emoji});
   previewStorage.setItem('kibun-'+todayStr(),'1');
   document.getElementById('kibun-box').style.display='none';
@@ -1311,6 +1469,7 @@ function skipKibun(){
   document.getElementById('kibun-box').style.display='none';
 }
 function sendKusuri(){
+  speak('おくすりを のんだと きろくしました');
   const s=slot();
   feedback();
   addEvent({type:'kusuri', slot:s.key});
@@ -1322,6 +1481,7 @@ function sendKusuri(){
 function openOnegai(){ document.getElementById('onegai-modal').classList.add('show'); }
 function closeOnegai(){ document.getElementById('onegai-modal').classList.remove('show'); }
 function sendOnegai(text){
+  speak('おねがいを おくりました');
   feedback();
   addEvent({type:'onegai', text:text});
   closeOnegai();
@@ -1654,7 +1814,7 @@ document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
    このアプリは、病気の判断・緊急度の判定・制度の該当判定を行いません。
    上田市が出している公式ページへの入口だけを用意します。
    リンクと文言はこの1か所にまとめてあるので、あとから差し替えられます。 */
-var SOUDAN_CHECKED = '2026年8月31日';
+var SOUDAN_CHECKED = '2026年9月8日';
 
 /* 相談先(窓口)。名前・説明・公式ページ */
 var SOUDAN_SAKI = {
@@ -1682,6 +1842,21 @@ var SOUDAN_SAKI = {
     name: '上田市認知症ケアパス',
     url:  'https://www.city.ueda.nagano.jp/soshiki/korei/4140.html',
     desc: '物忘れが気になりはじめたときから、段階ごとの相談先と使えるしくみがまとまっています。'
+  },
+  shohi: {
+    name: '上田市消費生活センター',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/shohiseikatu/',
+    desc: '悪質商法・不審な電話や請求・契約のトラブルの相談窓口です。電話 0268-75-2535。全国共通の消費者ホットライン「188」でも、お近くの窓口につながります。だまされたかもと思ったら、支払う前にご相談ください。'
+  },
+  demand: {
+    name: '上田市内のデマンド交通',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/kotu/20117.html',
+    desc: '予約すると自宅の近くまで迎えに来てくれる乗り合いの交通です。運行している地域・曜日が決まっています。予約方法は公式ページでご確認ください。'
+  },
+  taxihojo: {
+    name: 'タクシー利用補助券（運転免許の自主返納）',
+    url:  'https://www.city.ueda.nagano.jp/soshiki/kotu/2174.html',
+    desc: '運転免許を自主返納した方への、タクシーなどの利用補助券の案内です。対象や申請方法は公式ページでご確認ください。'
   },
   mimamori: {
     name: '高齢者の見守り支援',
@@ -1719,6 +1894,8 @@ var SOUDAN_KOMARI = [
   { label:'暮らしの支援のこと',               sub:'日々の暮らしを支えるサービス',  saki:['seikatsu','houkatsu'] },
   { label:'介護する人の負担のこと',           sub:'介護するご家族への支援',        saki:['kaigosha','houkatsu'] },
   { label:'物忘れ・認知症のこと',             sub:'相談先と、これからの見通し',    saki:['carepath','houkatsu'] },
+  { label:'移動・買い物の足のこと',           sub:'通院や買い物の交通手段',        saki:['demand','taxihojo'] },
+  { label:'だまされたかも・お金のトラブル',   sub:'訪問販売・不審な電話・ネット詐欺', saki:['shohi'] },
   { label:'見守りのこと',                     sub:'市が行っているしくみを調べる',  saki:['mimamori','houkatsu'] }
 ];
 
