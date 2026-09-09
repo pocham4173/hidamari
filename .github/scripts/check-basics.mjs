@@ -10,7 +10,7 @@
  *   2. onclick から呼ばれる関数が、すべて定義されている
  *   3. manifest.json が正しい JSON として読める
  *   4. sw.js に構文エラーがない
- *   5. tasks.html(チーム状況ボード)の JavaScript に構文エラーがない
+ *   5. tag.html(おまもりタグ読み取りページ)の JavaScript に構文エラーがない
  *   6. 公開に必要なファイル(アイコンなど)が実際に存在する
  *
  * これは「明らかな壊れ方」を見つけるための検査です。
@@ -141,15 +141,15 @@ if (sw === null) {
   record('sw.js に構文エラーがない', err === null, err || '');
 }
 
-/* ---------- 5. tasks.html の JavaScript 構文 ---------- */
+/* ---------- 5. tag.html の JavaScript 構文 ---------- */
 
-/* チーム状況ボード。アプリ本体とは別のページですが、同じ場所に公開するため
-   ここでも「明らかな壊れ方」を確かめます。 */
-const tasksHtml = read('tasks.html');
-if (tasksHtml === null) {
-  record('tasks.html がある', false, 'tasks.html が見つかりません');
+/* おまもりタグの読み取りページ。アプリ本体とは別のページですが、
+   タグ機能の入口なので、ここでも「明らかな壊れ方」を確かめます。 */
+const tagHtml = read('tag.html');
+if (tagHtml === null) {
+  record('tag.html がある', false, 'tag.html が見つかりません');
 } else {
-  checkHtmlSyntax(tasksHtml, 'tasks.html');
+  checkHtmlSyntax(tagHtml, 'tag.html');
 }
 
 /* ---------- 6. 公開に必要なファイルが存在する ---------- */
@@ -190,8 +190,8 @@ if (html !== null) {
   collectRefs(html, 'index.html');
   for (const m of html.matchAll(/serviceWorker\.register\(\s*'([^']+)'/g)) need(m[1], 'index.html の Service Worker 登録');
 }
-/* tasks.html が読み込むアイコンなども、同じように存在を確かめます */
-if (tasksHtml !== null) collectRefs(tasksHtml, 'tasks.html');
+/* tag.html が読み込むファイルも、同じように存在を確かめます */
+if (tagHtml !== null) collectRefs(tagHtml, 'tag.html');
 
 const missingFiles = [...needed.entries()].filter(([f]) => !fs.existsSync(path.join(ROOT, f)));
 record(

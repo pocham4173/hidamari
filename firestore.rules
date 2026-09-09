@@ -69,9 +69,43 @@ service cloud.firestore {
 
       match /yotei/{yoteiId} {
         allow read: if isApproved(groupId);
-        allow create: if isApproved(groupId);
-        allow update: if false;
-        allow delete: if isApproved(groupId);
+
+        /* 新規作成: 自分名義のみ・9項目限定・作成/更新時刻はサーバー時刻 */
+        allow create: if isApproved(groupId)
+          && request.resource.data.get('uid', null) == request.auth.uid
+          && request.resource.data.keys().hasOnly([
+            'kind', 'date', 'time', 'label', 'color', 'repeat',
+            'uid', 'createdAt', 'updatedAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'kind', 'date', 'time', 'label', 'color', 'repeat',
+            'uid', 'createdAt', 'updatedAt'
+          ])
+          && request.resource.data.get('createdAt', null) == request.time
+          && request.resource.data.get('updatedAt', null) == request.time;
+
+        /* 修正: 登録した本人だけ(2026-09-10 理絵さん決定)。
+           旧データに古い項目が残っていても直せるよう、
+           「変更された項目」だけを許可リストで検査する。
+           createdAtはリスト外=書き換え不可。
+           uidの変更は、名義の無い旧予定を家族が引き継ぐ場合のみ許可。 */
+        allow update: if isApproved(groupId)
+          && (resource.data.get('uid', null) == null
+              || resource.data.get('uid', null) == request.auth.uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'kind', 'date', 'time', 'label', 'color', 'repeat', 'uid', 'updatedAt'
+          ])
+          && request.resource.data.get('updatedAt', null) == request.time
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid'])
+            || (resource.data.get('uid', null) == null
+                && request.resource.data.get('uid', null) == request.auth.uid)
+          );
+
+        /* 削除: 登録した本人だけ(名義の無い旧予定は承認済み家族が整理可) */
+        allow delete: if isApproved(groupId)
+          && (resource.data.get('uid', null) == null
+              || resource.data.get('uid', null) == request.auth.uid);
       }
 
       // QRおまもりタグの家族側設定
@@ -159,16 +193,32 @@ service cloud.firestore {
           && exists(/databases/$(db)/documents/watchTags/$(tagId))
           && get(/databases/$(db)/documents/watchTags/$(tagId)).data.active == true
           && request.resource.data.keys().hasOnly([
-            'type', 'senderUid', 'createdAt'
+            'type', 'situation', 'count', 'senderUid', 'createdAt'
           ])
           && request.resource.data.type == 'found'
+          && request.resource.data.situation in ['lost', 'unwell', 'safe', 'called']
+          && request.resource.data.count == 1
           && request.resource.data.senderUid == request.auth.uid
           && request.resource.data.createdAt == request.time;
+
+        allow update: if signedIn()
+          && alertId == request.auth.uid
+          && exists(/databases/$(db)/documents/watchTags/$(tagId))
+          && get(/databases/$(db)/documents/watchTags/$(tagId)).data.active == true
+          && request.resource.data.keys().hasOnly([
+            'type', 'situation', 'count', 'senderUid', 'createdAt'
+          ])
+          && request.resource.data.type == 'found'
+          && request.resource.data.situation in ['lost', 'unwell', 'safe', 'called']
+          && request.resource.data.count == resource.data.get('count', 0) + 1
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.time > resource.data.createdAt + duration.value(10, 'm');
 
         allow read: if isApproved(
           get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId
         );
-        allow update, delete: if false;
+        allow delete: if false;
       }
     }
 
