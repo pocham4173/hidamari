@@ -186,15 +186,15 @@ table.cal-rec td.pad{background:none;}
 .h-today .ht-item{font-size:1.5rem;font-weight:900;color:var(--cha);line-height:1.6;margin-top:4px;}
 .h-today .ht-item small{font-size:1.1rem;color:var(--hi-koi);margin-right:6px;}
 .ht-yomi{display:block;width:100%;margin-top:10px;min-height:52px;border:2px solid var(--hi);border-radius:12px;background:#FFF6E8;color:var(--hi-koi);font-family:inherit;font-size:1.1rem;font-weight:900;cursor:pointer;}
-.go-home{position:fixed;right:10px;top:calc(46px + env(safe-area-inset-top,0px));z-index:45;border:2px solid var(--hi);background:#fff;color:var(--hi-koi);border-radius:999px;padding:7px 14px;font-family:inherit;font-size:.85rem;font-weight:900;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+.go-home{position:fixed;right:10px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:45;border:2px solid var(--hi);background:#fff;color:var(--hi-koi);border-radius:999px;padding:7px 14px;font-family:inherit;font-size:.85rem;font-weight:900;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+.inv-share{display:flex;gap:8px;margin-top:10px;}
+.inv-btn{flex:1;display:block;text-align:center;padding:12px 6px;border:2px solid var(--hi);border-radius:12px;background:#fff;color:var(--hi-koi);font-weight:900;font-size:.95rem;text-decoration:none;}
+.inv-btn.inv-line{background:#06C755;border-color:#06C755;color:#fff;}
 .hy-q{font-size:1.15rem;font-weight:900;margin:16px 0 8px;color:var(--cha);}
 .hy-days{display:flex;gap:8px;}
 .hy-days button{flex:1;min-height:58px;border:2px solid var(--hi);border-radius:12px;background:#fff;color:var(--hi-koi);font-family:inherit;font-size:1.05rem;font-weight:900;cursor:pointer;}
 .hy-days button.on{background:var(--hi);color:#fff;}
 #hy-date,#hy-time,#hy-free{width:100%;min-height:56px;border:2px solid #D8CBB4;border-radius:12px;font-family:inherit;font-size:1.15rem;padding:8px 12px;margin-top:8px;background:#fff;color:var(--cha);box-sizing:border-box;}
-.hy-kinds{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.hy-kinds button{min-height:60px;border:2px solid #D8CBB4;border-radius:12px;background:#fff;color:var(--cha);font-family:inherit;font-size:1.05rem;font-weight:900;cursor:pointer;}
-.hy-kinds button.on{border-color:var(--hi);background:#FFF6E8;color:var(--hi-koi);}
 .hy-save{display:block;width:100%;margin-top:18px;min-height:64px;border:none;border-radius:14px;background:var(--hi);color:#fff;font-family:inherit;font-size:1.2rem;font-weight:900;cursor:pointer;box-shadow:0 4px 0 var(--hi-koi);}
 /* 月のまとめ */
 .sum-graph{grid-column:1/-1;margin-top:12px;padding-top:10px;border-top:1px dashed #E3D9C8;}
@@ -602,13 +602,7 @@ table.cal-rec td.pad{background:none;}
   <div class="hy-q">いつですか？</div>
   <input type="date" id="hy-date">
   <div class="hy-q">何の予定ですか？</div>
-  <div class="hy-kinds" id="hy-kinds">
-    <button type="button" data-k="🏥" data-l="病院">🏥 病院</button>
-    <button type="button" data-k="🛒" data-l="買い物">🛒 買い物</button>
-    <button type="button" data-k="🚌" data-l="デイサービス">🚌 デイサービス</button>
-    <button type="button" data-k="🚶" data-l="散歩">🚶 散歩</button>
-  </div>
-  <input id="hy-free" maxlength="20" placeholder="予定の名前（自由に書けます）">
+  <input id="hy-free" maxlength="20" placeholder="予定の名前を書いてください">
   <div class="hy-q">時間（決めなくても大丈夫です）</div>
   <input type="time" id="hy-time">
   <button class="hy-save" type="button" onclick="hySave()">この予定を保存する</button>
@@ -965,13 +959,6 @@ function goHome(){
   try{ var kz=document.getElementById('kazoku'); if(kz && getComputedStyle(kz).display!=='none' && typeof showTab==='function') showTab('t-home'); }catch(e){}
   window.scrollTo({top:0,behavior:'smooth'});
 }
-document.addEventListener('click', function(ev){
-  const b=ev.target.closest('#hy-kinds button');
-  if(!b) return;
-  hyK=b.dataset.k; hyL=b.dataset.l;
-  document.querySelectorAll('#hy-kinds button').forEach(x=>x.classList.toggle('on', x===b));
-  document.getElementById('hy-free').value=b.dataset.l;
-});
 const auth = previewApp.auth();
 
 /* ===== ユーティリティ ===== */
@@ -1029,11 +1016,8 @@ function speakToday(){
   speak('きょうの よていは、'+parts.join('。つぎに、')+'、です。', true);
 }
 /* ===== 本人の予定入力 ===== */
-let hyK='', hyL='';
 function openHYotei(){
   feedback();
-  hyK=''; hyL='';
-  document.querySelectorAll('#hy-kinds button').forEach(b=>b.classList.remove('on'));
   document.getElementById('hy-date').value=todayStr();
   document.getElementById('hy-free').value='';
   document.getElementById('hy-time').value='';
@@ -1048,12 +1032,12 @@ function hyDateStr(){
 async function hySave(){
   const label = document.getElementById('hy-free').value.trim();
   const n=document.getElementById('hy-note');
-  if(!label){ n.textContent='予定の名前を書いてください（上の候補を押しても入ります）'; return; }
+  if(!label){ n.textContent='予定の名前を書いてください'; return; }
   feedback();
   n.textContent='保存しています…';
   try{
     await col('yotei').add({
-      kind:hyK||'📌', date:hyDateStr(), time:document.getElementById('hy-time').value||'',
+      kind:'📌', date:hyDateStr(), time:document.getElementById('hy-time').value||'',
       label:label, color:'#3D6FB4', repeat:'none', uid:uid(),
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -1701,7 +1685,7 @@ function initKazoku(){
       const box=document.getElementById('ev-list');
       const kOnlyNow=isKOnly();
       /* 家族記録モードでは、家族が記録した種類だけを表示する */
-      const kAllowed={'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1};
+      const kAllowed={'aisatsu':1,'aisatsu-back':1,'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1,'tag-alert':1};
       const vis=items.filter(v=>!kOnlyNow || kAllowed[v.type]);
       if(vis.length===0){
         box.innerHTML='<div class="empty">'+(kOnlyNow?'今日の様子はまだ記録されていません':'まだ届いていません')+'</div>';
@@ -1715,10 +1699,10 @@ function initKazoku(){
         }
       });
       const label={
-        'aisatsu':v=>'「'+v.text+'」が届きました',
+        'aisatsu':v=>(v.uid===uid())?'「'+v.text+'」の挨拶をしました':'「'+v.text+'」が届きました',
         'kibun':v=>'今日の調子: '+v.text,
         'kusuri':v=>'服薬について記録がありました('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')',
-        'aisatsu-back':v=>(v.name||'家族')+'さんから「'+(v.text||'')+'」の挨拶が届きました',
+        'aisatsu-back':v=>(v.uid===uid())?'「'+(v.text||'')+'」の挨拶をしました':(v.name||'家族')+'さんから「'+(v.text||'')+'」の挨拶が届きました',
         'ask-kusuri':v=>(v.name||'家族')+'さんが「お薬飲んだ?」を送りました',
         'kibun-kazoku':v=>(v.name||'家族')+'さんが体調を記録: '+v.text,
         'kusuri-kakunin':v=>(v.name||'家族')+'さんが服薬を確認しました',
@@ -2004,7 +1988,7 @@ function recDayStr(y,m,d){ return y+'-'+pad2(m+1)+'-'+pad2(d); }
 
 /* 家族記録モードでは、家族が記録した種類だけを見せます(今日の画面と同じ扱い) */
 var REC_KONLY_OK = {
-  'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1,'tag-alert':1,
+  'aisatsu':1,'aisatsu-back':1,'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1,'tag-alert':1,
   'disaster-safe':1,'disaster-evacuating':1,'disaster-help':1
 };
 function recVisible(v){ return !isKOnly() || REC_KONLY_OK[v.type]; }
@@ -2256,14 +2240,14 @@ document.addEventListener('click', function(e){
 
 /* その日の記録 */
 var REC_LABEL = {
-  'aisatsu':        function(v){ return ['あいさつ','', 'ご本人から「'+(v.text||'')+'」が届きました']; },
+  'aisatsu':        function(v){ return ['あいさつ','', (v.uid===uid())?'「'+(v.text||'')+'」の挨拶をしました':'ご本人から「'+(v.text||'')+'」が届きました']; },
   'kibun':          function(v){ return ['体調','k-kibun', 'ご本人が選んだ今日の調子: '+(v.text||'')]; },
   'kusuri':         function(v){ return ['服薬','k-kusuri', 'ご本人が、お薬を飲んだと記録しました'+recSlot(v.slot)]; },
   'onegai':         function(v){ return ['お願い','k-onegai',
                         v.text==='今日はそっとしておいて' ? 'ご本人が「今日はそっとしておいて」を選びました'
                                                         : 'ご本人からのお願い: 「'+(v.text||'')+'」']; },
   'onegai-back':    function(v){ return ['お願いへの返事','k-onegai', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
-  'aisatsu-back':   function(v){ return ['家族からの挨拶','', (v.name||'家族')+'さんから「'+(v.text||'')+'」の挨拶が届きました']; },
+  'aisatsu-back':   function(v){ return ['家族からの挨拶','', (v.uid===uid())?'「'+(v.text||'')+'」の挨拶をしました':(v.name||'家族')+'さんから「'+(v.text||'')+'」の挨拶が届きました']; },
   'ask-kusuri':     function(v){ return ['服薬の声かけ','k-kusuri', (v.name||'家族')+'さんが「お薬飲んだ?」を送りました']; },
   'kibun-kazoku':   function(v){ return ['体調','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
   'tag-alert':      function(v){ return ['タグ','k-tag', 'おまもりタグが読み取られました: '+(v.text||'')]; },
@@ -2645,9 +2629,16 @@ async function makeInvite(targetId){
       expiresAt: firebase.firestore.Timestamp.fromMillis(Date.now()+24*60*60*1000),
       used: false
     });
-    if(area) area.innerHTML=
-      '<div class="code-show">'+code+'</div>'+
-      '<div class="code-exp">有効期限24時間・一度だけ使えます。<br>参加する人の端末で、入口→モードを選ぶ→このコードを入力してください。</div>';
+    if(area){
+      const msg='まいにこの招待コードです：'+code+'（24時間・1回有効）\nアプリ：https://pocham4173.github.io/hidamari/\n開いて「招待された方」にこのコードを入れてください。';
+      area.innerHTML=
+        '<div class="code-show">'+code+'</div>'+
+        '<div class="code-exp">有効期限24時間・一度だけ使えます。</div>'+
+        '<div class="inv-share">'+
+        '<a class="inv-btn inv-line" href="https://line.me/R/share?text='+encodeURIComponent(msg)+'" target="_blank" rel="noopener noreferrer">LINEで送る</a>'+
+        '<a class="inv-btn" href="mailto:?subject='+encodeURIComponent('まいにこの招待コード')+'&body='+encodeURIComponent(msg)+'">メールで送る</a>'+
+        '</div>';
+    }
   }catch(e){ alert('発行できませんでした: '+e.message); }
 }
 
