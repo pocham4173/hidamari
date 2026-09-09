@@ -2811,7 +2811,6 @@ async function loadWatchTag(){
       return;
     }
     renderWatchTag(currentWatchTagId);
-    if(home){ home.style.display='block'; }
     if(homeStatus){ homeStatus.textContent='おまもりタグは使用中です。QRの表示・停止は「安心」タブから行えます。'; }
     watchTagUnsub=db.collection('watchTags').doc(currentWatchTagId).collection('alerts')
       .orderBy('createdAt','desc').limit(5).onSnapshot(snap=>{
@@ -2837,6 +2836,7 @@ async function loadWatchTag(){
             (d?'<time>'+esc(dateJp(d))+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+'</time>':'')+'</div>');
         });
         alerts.innerHTML=rows.join('');
+        if(home){ home.style.display = rows.length ? 'block' : 'none'; }  /* お知らせが無い日はカード自体を出さない */
         tagApplyUnread(unread);
         if(unread>0 && latest>tagNotifiedThrough){
           tagNotifiedThrough=latest;
