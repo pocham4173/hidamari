@@ -58,10 +58,10 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 
 /* ===== 本人 ===== */
 .h-date-wrap{background:var(--hi);padding:20px 16px 16px;color:#fff;text-align:center;}
-.h-wareki{font-size:1.05rem;font-weight:900;opacity:.95;letter-spacing:.04em;}
+.h-wareki{font-size:1.3rem;font-weight:900;opacity:.97;letter-spacing:.03em;line-height:1.6;}
 .h-wareki .rokuyo{display:inline-block;margin-left:10px;background:rgba(255,255,255,.22);border-radius:999px;padding:1px 12px;}
-.h-date{font-size:2.1rem;font-weight:900;line-height:1.3;}
-.h-time{font-size:1.7rem;font-weight:900;margin-top:2px;letter-spacing:.05em;}
+.h-date{font-size:2.7rem;font-weight:900;line-height:1.25;}
+.h-time{font-size:2.2rem;font-weight:900;margin-top:2px;letter-spacing:.05em;}
 .h-body{flex:1;padding:16px 14px;display:flex;flex-direction:column;gap:13px;}
 .yotei-card{background:#fff;border:2px solid var(--ao-usui);border-radius:20px;padding:14px;text-align:center;}
 .yotei-card .lb{font-size:1.05rem;color:var(--usucha);font-weight:700;}
@@ -192,13 +192,11 @@ table.cal-rec td.pad{background:none;}
 .inv-share{display:flex;gap:8px;margin-top:10px;}
 .inv-btn{flex:1;display:block;text-align:center;padding:12px 6px;border:2px solid var(--hi);border-radius:12px;background:#fff;color:var(--hi-koi);font-weight:900;font-size:.95rem;text-decoration:none;}
 .inv-btn.inv-line{background:#06C755;border-color:#06C755;color:#fff;}
-.onegai-item.picked{border-color:var(--hi);background:#FFF6E8;color:var(--hi-koi);}
-#onegai-confirm{margin-top:12px;border:2px solid var(--hi);border-radius:14px;padding:12px;background:#FFF9F0;}
-#onegai-confirm .oc-text{font-size:1.1rem;font-weight:900;text-align:center;color:var(--cha);}
-#onegai-confirm .oc-btns{display:flex;gap:10px;margin-top:10px;}
-#onegai-confirm .oc-send{flex:1.4;min-height:58px;border:none;border-radius:12px;background:var(--hi);color:#fff;font-family:inherit;font-size:1.1rem;font-weight:900;cursor:pointer;}
-#onegai-confirm .oc-back{flex:1;min-height:58px;border:2px solid #C9B8A0;border-radius:12px;background:#fff;color:#7A5A34;font-family:inherit;font-size:1rem;font-weight:900;cursor:pointer;}
 #cal-table td.has-yotei{cursor:pointer;background:#FFF6E8;border-radius:8px;}
+#cal-day-detail{margin-top:12px;border:2px solid var(--hi);border-radius:14px;padding:12px 14px;background:#FFF9F0;}
+#cal-day-detail .cdd-date{font-size:1rem;font-weight:900;color:var(--hi-koi);}
+#cal-day-detail .cdd-item{font-size:1.45rem;font-weight:900;color:var(--cha);line-height:1.6;margin-top:4px;}
+#cal-day-detail .cdd-item small{font-size:1.05rem;color:var(--hi-koi);}
 .hy-q{font-size:1.15rem;font-weight:900;margin:16px 0 8px;color:var(--cha);}
 .hy-days{display:flex;gap:8px;}
 .hy-days button{flex:1;min-height:58px;border:2px solid var(--hi);border-radius:12px;background:#fff;color:var(--hi-koi);font-family:inherit;font-size:1.05rem;font-weight:900;cursor:pointer;}
@@ -624,6 +622,7 @@ table.cal-rec td.pad{background:none;}
   <div class="modal-box">
     <div class="ttl" id="cal-ttl"></div>
     <table class="cal" id="cal-table"></table>
+    <div id="cal-day-detail" style="display:none;"></div>
     <div class="cal-legend"><span>絵文字と色は、登録した予定ごとに変わります</span></div>
     <button class="modal-close" onclick="closeCal()">とじる</button>
   </div>
@@ -634,19 +633,12 @@ table.cal-rec td.pad{background:none;}
   <div class="modal-box">
     <div class="ttl">ちょっとお願い</div>
     <div class="onegai-grid">
-      <button class="onegai-item" onclick="pickOnegai('話したい',this)">話したい</button>
-      <button class="onegai-item" onclick="pickOnegai('買い物をお願い',this)">買い物をお願い</button>
-      <button class="onegai-item" onclick="pickOnegai('予定を確認したい',this)">予定を確認したい</button>
-      <button class="onegai-item" onclick="pickOnegai('少し困っている',this)">少し困っている</button>
-      <button class="onegai-item" onclick="pickOnegai('あとで連絡して',this)">あとで連絡して</button>
-      <button class="onegai-item" onclick="pickOnegai('今日はそっとしておいて',this)">今日はそっとしておいて</button>
-    </div>
-    <div id="onegai-confirm" style="display:none;">
-      <div class="oc-text">「<span id="oc-label"></span>」を送りますか？</div>
-      <div class="oc-btns">
-        <button class="oc-send" onclick="confirmOnegai()">送る</button>
-        <button class="oc-back" onclick="cancelPickOnegai()">やめる</button>
-      </div>
+      <button class="onegai-item" onclick="sendOnegai('話したい')">話したい</button>
+      <button class="onegai-item" onclick="sendOnegai('買い物をお願い')">買い物をお願い</button>
+      <button class="onegai-item" onclick="sendOnegai('予定を確認したい')">予定を確認したい</button>
+      <button class="onegai-item" onclick="sendOnegai('少し困っている')">少し困っている</button>
+      <button class="onegai-item" onclick="sendOnegai('あとで連絡して')">あとで連絡して</button>
+      <button class="onegai-item" onclick="sendOnegai('今日はそっとしておいて')">今日はそっとしておいて</button>
     </div>
     <div class="onegai-note">緊急時に使うボタンではありません。<br>急ぐときは電話や119番を使ってください。</div>
     <button class="modal-close" onclick="closeOnegai()">やめる</button>
@@ -1380,7 +1372,7 @@ function initHonnin(){
     document.getElementById('h-date').textContent=dateJp(d);
     document.getElementById('h-time').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
     const wk=document.getElementById('h-wareki');
-    if(wk) wk.innerHTML='令和'+(d.getFullYear()-2018)+'年（昭和'+(d.getFullYear()-1925)+'年）'+(rokuyoOf(d)?'<span class="rokuyo">'+rokuyoOf(d)+'</span>':'');
+    if(wk) wk.innerHTML='令和'+(d.getFullYear()-2018)+'年（昭和'+(d.getFullYear()-1925)+'年・平成'+(d.getFullYear()-1988)+'年）'+(rokuyoOf(d)?'<span class="rokuyo">'+rokuyoOf(d)+'</span>':'');
   };
   upd();
   if(clockTimer) clearInterval(clockTimer);
@@ -1484,27 +1476,8 @@ function sendKusuri(){
 }
 
 /* ちょっとお願い */
-function openOnegai(){ cancelPickOnegai(); document.getElementById('onegai-modal').classList.add('show'); }
+function openOnegai(){ document.getElementById('onegai-modal').classList.add('show'); }
 function closeOnegai(){ document.getElementById('onegai-modal').classList.remove('show'); }
-let pickedOnegai='';
-function pickOnegai(text,btn){
-  feedback();
-  pickedOnegai=text;
-  document.querySelectorAll('.onegai-item').forEach(b=>b.classList.toggle('picked', b===btn));
-  document.getElementById('oc-label').textContent=text;
-  document.getElementById('onegai-confirm').style.display='block';
-}
-function cancelPickOnegai(){
-  pickedOnegai='';
-  document.querySelectorAll('.onegai-item').forEach(b=>b.classList.remove('picked'));
-  document.getElementById('onegai-confirm').style.display='none';
-}
-function confirmOnegai(){
-  if(!pickedOnegai) return;
-  const t=pickedOnegai;
-  cancelPickOnegai();
-  sendOnegai(t);
-}
 function sendOnegai(text){
   speak('おねがいを おくりました');
   feedback();
@@ -1546,6 +1519,7 @@ function openCal(){
   }
   html+='</tr>';
   document.getElementById('cal-table').innerHTML=html;
+  const det=document.getElementById('cal-day-detail'); if(det){det.style.display='none';det.innerHTML='';}
   document.getElementById('cal-modal').classList.add('show');
 }
 function closeCal(){ document.getElementById('cal-modal').classList.remove('show'); }
@@ -1553,6 +1527,12 @@ function speakCalDay(y,m,day){
   const ds=dateString(new Date(y,m,day));
   const items=yoteiCache.filter(v=>yoteiOccursOn(v,ds));
   if(items.length===0) return;
+  const det=document.getElementById('cal-day-detail');
+  if(det){
+    det.innerHTML='<div class="cdd-date">'+(m+1)+'月'+day+'日の予定</div>'+
+      items.map(v=>'<div class="cdd-item">'+(v.time?'<small>'+esc(v.time)+'</small> ':'')+esc((v.kind||'📌')+' '+(v.label||''))+'</div>').join('');
+    det.style.display='block';
+  }
   const parts=items.map(v=>(v.time?timeYomi(v.time)+'に、':'')+(v.label||'よてい'));
   speak((m+1)+'がつ'+day+'にちは、'+parts.join('。つぎに、')+'、です。', true);
 }
