@@ -58,8 +58,10 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 
 /* ===== 本人 ===== */
 .h-date-wrap{background:var(--hi);padding:20px 16px 16px;color:#fff;text-align:center;}
-.h-date{font-size:1.75rem;font-weight:900;line-height:1.3;}
-.h-time{font-size:1.3rem;font-weight:700;margin-top:2px;}
+.h-wareki{font-size:1.05rem;font-weight:900;opacity:.95;letter-spacing:.04em;}
+.h-wareki .rokuyo{display:inline-block;margin-left:10px;background:rgba(255,255,255,.22);border-radius:999px;padding:1px 12px;}
+.h-date{font-size:2.1rem;font-weight:900;line-height:1.3;}
+.h-time{font-size:1.7rem;font-weight:900;margin-top:2px;letter-spacing:.05em;}
 .h-body{flex:1;padding:16px 14px;display:flex;flex-direction:column;gap:13px;}
 .yotei-card{background:#fff;border:2px solid var(--ao-usui);border-radius:20px;padding:14px;text-align:center;}
 .yotei-card .lb{font-size:1.05rem;color:var(--usucha);font-weight:700;}
@@ -190,6 +192,13 @@ table.cal-rec td.pad{background:none;}
 .inv-share{display:flex;gap:8px;margin-top:10px;}
 .inv-btn{flex:1;display:block;text-align:center;padding:12px 6px;border:2px solid var(--hi);border-radius:12px;background:#fff;color:var(--hi-koi);font-weight:900;font-size:.95rem;text-decoration:none;}
 .inv-btn.inv-line{background:#06C755;border-color:#06C755;color:#fff;}
+.onegai-item.picked{border-color:var(--hi);background:#FFF6E8;color:var(--hi-koi);}
+#onegai-confirm{margin-top:12px;border:2px solid var(--hi);border-radius:14px;padding:12px;background:#FFF9F0;}
+#onegai-confirm .oc-text{font-size:1.1rem;font-weight:900;text-align:center;color:var(--cha);}
+#onegai-confirm .oc-btns{display:flex;gap:10px;margin-top:10px;}
+#onegai-confirm .oc-send{flex:1.4;min-height:58px;border:none;border-radius:12px;background:var(--hi);color:#fff;font-family:inherit;font-size:1.1rem;font-weight:900;cursor:pointer;}
+#onegai-confirm .oc-back{flex:1;min-height:58px;border:2px solid #C9B8A0;border-radius:12px;background:#fff;color:#7A5A34;font-family:inherit;font-size:1rem;font-weight:900;cursor:pointer;}
+#cal-table td.has-yotei{cursor:pointer;background:#FFF6E8;border-radius:8px;}
 .hy-q{font-size:1.15rem;font-weight:900;margin:16px 0 8px;color:var(--cha);}
 .hy-days{display:flex;gap:8px;}
 .hy-days button{flex:1;min-height:58px;border:2px solid var(--hi);border-radius:12px;background:#fff;color:var(--hi-koi);font-family:inherit;font-size:1.05rem;font-weight:900;cursor:pointer;}
@@ -528,6 +537,7 @@ table.cal-rec td.pad{background:none;}
 <div class="page" id="honnin">
   <button class="go-home" onclick="goHome()">⌂ ホーム</button>
   <div class="h-date-wrap">
+    <div class="h-wareki" id="h-wareki"></div>
     <div class="h-date" id="h-date"></div>
     <div class="h-time" id="h-time"></div>
   </div>
@@ -624,12 +634,19 @@ table.cal-rec td.pad{background:none;}
   <div class="modal-box">
     <div class="ttl">ちょっとお願い</div>
     <div class="onegai-grid">
-      <button class="onegai-item" onclick="sendOnegai('話したい')">話したい</button>
-      <button class="onegai-item" onclick="sendOnegai('買い物をお願い')">買い物をお願い</button>
-      <button class="onegai-item" onclick="sendOnegai('予定を確認したい')">予定を確認したい</button>
-      <button class="onegai-item" onclick="sendOnegai('少し困っている')">少し困っている</button>
-      <button class="onegai-item" onclick="sendOnegai('あとで連絡して')">あとで連絡して</button>
-      <button class="onegai-item" onclick="sendOnegai('今日はそっとしておいて')">今日はそっとしておいて</button>
+      <button class="onegai-item" onclick="pickOnegai('話したい',this)">話したい</button>
+      <button class="onegai-item" onclick="pickOnegai('買い物をお願い',this)">買い物をお願い</button>
+      <button class="onegai-item" onclick="pickOnegai('予定を確認したい',this)">予定を確認したい</button>
+      <button class="onegai-item" onclick="pickOnegai('少し困っている',this)">少し困っている</button>
+      <button class="onegai-item" onclick="pickOnegai('あとで連絡して',this)">あとで連絡して</button>
+      <button class="onegai-item" onclick="pickOnegai('今日はそっとしておいて',this)">今日はそっとしておいて</button>
+    </div>
+    <div id="onegai-confirm" style="display:none;">
+      <div class="oc-text">「<span id="oc-label"></span>」を送りますか？</div>
+      <div class="oc-btns">
+        <button class="oc-send" onclick="confirmOnegai()">送る</button>
+        <button class="oc-back" onclick="cancelPickOnegai()">やめる</button>
+      </div>
     </div>
     <div class="onegai-note">緊急時に使うボタンではありません。<br>急ぐときは電話や119番を使ってください。</div>
     <button class="modal-close" onclick="closeOnegai()">やめる</button>
@@ -953,6 +970,15 @@ const previewApp=firebase.initializeApp({
 });
 const db = previewApp.firestore();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+/* 六曜(2025〜2030年・旧暦計算に基づく)。0大安1赤口2先勝3友引4先負5仏滅 */
+const ROKUYO_EPOCH=Date.UTC(2025,0,1);
+const ROKUYO_NAMES=['大安','赤口','先勝','友引','先負','仏滅'];
+const ROKUYO_TABLE='2345012345012345012345012345234501234501234501234501234501345012345012345012345012345014501234501234501234501234501235012345012345012345012345012301234501234501234501234501234123450123450123450123450123450123450123450123450123450123452345012345012345012345012345013450123450123450123450123450145012345012345012345012345012350123450123450123450123450123401234501234501234501234501234512345012345012345012345012345234501234501234501234501234501345012345012345012345012345014501234501234501234501234501235012345012345012345012345012301234501234501234501234501234123450123450123450123450123450234501234501234501234501234503450123450123450123450123450145012345012345012345012345012350123450123450123450123450123401234501234501234501234501234512345012345012345012345012345234501234501234501234501234501345012345012345012345012345012450123450123450123450123450125012345012345012345012345012340123450123450123450123450123412345012345012345012345012345234501234501234501234501234501345012345012345012345012345014501234501234501234501234501250123450123450123450123450123401234501234501234501234501234512345012345012345012345012345234501234501234501234501234501345012345012345012345012345012450123450123450123450123450123501234501234501234501234501230123450123450123450123450123450123450123450123450123450123412345012345012345012345012345234501234501234501234501234501345012345012345012345012345014501234501234501234501234501250123450123450123450123450123401234501234501234501234501234512345012345012345012345012345234501234501234501234501234501345012345012345012345012345012450123450123450123450123450125012345012345012345012345012340123450123450123450123450123412345012345012345012345012345023450123450123450123450123450345012345012345012345012345012450123450123450123450123450125012345012345012345012345012301234501234501234501234501234512345012345012345012345012345023450123450123450123450123450345012345012345012345012345012450123450123450123450123450125012345012345012345012345012340123450123450123450123450123451234501234501234501234501234523450123450123450123450123450134501234501234501234501234501450123450123450123450123450123501234501234501234501234501230123450123450123450123450123451234501';
+function rokuyoOf(d){
+  const i=Math.floor((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-ROKUYO_EPOCH)/86400000);
+  if(i<0||i>=ROKUYO_TABLE.length) return '';
+  return ROKUYO_NAMES[Number(ROKUYO_TABLE[i])];
+}
 function goHome(){
   document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show'));
   try{ if(typeof openAnshin==='function' && document.getElementById('anshin-home')) openAnshin('home'); }catch(e){}
@@ -1353,6 +1379,8 @@ function initHonnin(){
     const d=new Date();
     document.getElementById('h-date').textContent=dateJp(d);
     document.getElementById('h-time').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+    const wk=document.getElementById('h-wareki');
+    if(wk) wk.innerHTML='令和'+(d.getFullYear()-2018)+'年（昭和'+(d.getFullYear()-1925)+'年）'+(rokuyoOf(d)?'<span class="rokuyo">'+rokuyoOf(d)+'</span>':'');
   };
   upd();
   if(clockTimer) clearInterval(clockTimer);
@@ -1402,10 +1430,13 @@ function initHonnin(){
     const n=nextYotei();
     const elD=document.getElementById('y-days');
     const elL=document.getElementById('y-label');
-    if(!n){elD.textContent='-';elL.textContent='ご家族が登録すると表示されます';return;}
+    const ycard=elD.closest('.yotei-card');
+    if(!n){if(ycard)ycard.style.display='block';elD.textContent='-';elL.textContent='ご家族が登録すると表示されます';return;}
     const showDate=n._nextDate||n.date;
     const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
-    elD.textContent=diff===0?'今日です':'あと '+diff+'日';
+    if(diff===0){ if(ycard)ycard.style.display='none'; return; }  /* 今日の分は上の「今日の予定」に任せる */
+    if(ycard)ycard.style.display='block';
+    elD.textContent='あと '+diff+'日';
     const dd=new Date(showDate+'T00:00:00');
     elL.textContent=(n.kind||'')+' '+dateJp(dd)+' '+(n.label||'')+(yoteiDetail(n)?' '+yoteiDetail(n):'');
   });
@@ -1453,8 +1484,27 @@ function sendKusuri(){
 }
 
 /* ちょっとお願い */
-function openOnegai(){ document.getElementById('onegai-modal').classList.add('show'); }
+function openOnegai(){ cancelPickOnegai(); document.getElementById('onegai-modal').classList.add('show'); }
 function closeOnegai(){ document.getElementById('onegai-modal').classList.remove('show'); }
+let pickedOnegai='';
+function pickOnegai(text,btn){
+  feedback();
+  pickedOnegai=text;
+  document.querySelectorAll('.onegai-item').forEach(b=>b.classList.toggle('picked', b===btn));
+  document.getElementById('oc-label').textContent=text;
+  document.getElementById('onegai-confirm').style.display='block';
+}
+function cancelPickOnegai(){
+  pickedOnegai='';
+  document.querySelectorAll('.onegai-item').forEach(b=>b.classList.remove('picked'));
+  document.getElementById('onegai-confirm').style.display='none';
+}
+function confirmOnegai(){
+  if(!pickedOnegai) return;
+  const t=pickedOnegai;
+  cancelPickOnegai();
+  sendOnegai(t);
+}
 function sendOnegai(text){
   speak('おねがいを おくりました');
   feedback();
@@ -1489,8 +1539,9 @@ function openCal(){
   let html='<tr><th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr><tr>';
   for(let i=0;i<first;i++) html+='<td></td>';
   for(let day=1;day<=last;day++){
-    const cls=(day===d.getDate())?' class="today"':'';
-    html+='<td'+cls+'>'+day+(marks[day]?'<span class="mk">'+marks[day].join('')+'</span>':'')+'</td>';
+    const cls=(day===d.getDate())?' today':'';
+    const tap=marks[day]?' class="has-yotei'+cls+'" onclick="speakCalDay('+y+','+m+','+day+')"':(cls?' class="today"':'');
+    html+='<td'+tap+'>'+day+(marks[day]?'<span class="mk">'+marks[day].join('')+'</span>':'')+'</td>';
     if((first+day)%7===0) html+='</tr><tr>';
   }
   html+='</tr>';
@@ -1498,6 +1549,13 @@ function openCal(){
   document.getElementById('cal-modal').classList.add('show');
 }
 function closeCal(){ document.getElementById('cal-modal').classList.remove('show'); }
+function speakCalDay(y,m,day){
+  const ds=dateString(new Date(y,m,day));
+  const items=yoteiCache.filter(v=>yoteiOccursOn(v,ds));
+  if(items.length===0) return;
+  const parts=items.map(v=>(v.time?timeYomi(v.time)+'に、':'')+(v.label||'よてい'));
+  speak((m+1)+'がつ'+day+'にちは、'+parts.join('。つぎに、')+'、です。', true);
+}
 
 /* 承認待ちカード(本人・家族共通) */
 let memWatchUnsub=null;
@@ -2359,7 +2417,7 @@ function recDrawSummary(){
   document.getElementById('rec-sum-ttl').textContent = (recM+1)+'月のまとめ';
   var now = new Date();
   var elapsed = (recY===now.getFullYear() && recM===now.getMonth()) ? now.getDate() : new Date(recY, recM+1, 0).getDate();
-  var days={}, aisatsuDays={}, aisatsuH=0, aisatsuK=0, kibun=0, kibunBy={}, kusuriH=0, kusuriK=0, onegai=0, henshin=0, memo=0, disaster=0, tagN=0, tagBy={};
+  var days={}, aisatsuDays={}, aisatsuH=0, aisatsuK=0, kibun=0, kibunBy={}, kusuriH=0, kusuriK=0, kusuriSlot={asa:0,hiru:0,yoru:0}, onegai=0, henshin=0, memo=0, disaster=0, tagN=0, tagBy={};
   recEvents.forEach(function(v){
     if(!recVisible(v) || v.type==='member-joined') return;
     days[v.date]=1;
@@ -2368,6 +2426,7 @@ function recDrawSummary(){
     if(v.type==='kibun' || v.type==='kibun-kazoku'){ kibun++; var t=(v.text||'その他'); kibunBy[t]=(kibunBy[t]||0)+1; }
     if(v.type==='kusuri') kusuriH++;
     if(v.type==='kusuri-kakunin' || v.type==='ask-kusuri') kusuriK++;
+    if((v.type==='kusuri' || v.type==='kusuri-kakunin') && kusuriSlot[v.slot]!==undefined) kusuriSlot[v.slot]++;
     if(v.type==='onegai') onegai++;
     if(v.type==='onegai-back') henshin++;
     if(v.type==='memo') memo++;
@@ -2411,6 +2470,27 @@ function recDrawSummary(){
       row.appendChild(l); row.appendChild(bw); row.appendChild(n); g.appendChild(row);
     });
     box.appendChild(g);
+  }
+  var ksTotal=kusuriSlot.asa+kusuriSlot.hiru+kusuriSlot.yoru;
+  if(ksTotal>0){
+    var kg=document.createElement('div'); kg.className='sum-graph';
+    var kt=document.createElement('div'); kt.className='g-ttl'; kt.textContent='服薬の時間帯（押した記録の内訳）'; kg.appendChild(kt);
+    var slots=[['朝','asa'],['昼','hiru'],['夜','yoru']];
+    var kmx=Math.max(kusuriSlot.asa,kusuriSlot.hiru,kusuriSlot.yoru,1);
+    slots.forEach(function(sl){
+      var v=kusuriSlot[sl[1]];
+      var row=document.createElement('div'); row.className='g-row';
+      var l=document.createElement('span'); l.className='g-l'; l.textContent=sl[0];
+      var bw=document.createElement('div'); bw.className='g-bar';
+      var bi=document.createElement('i'); bi.style.width=(v===0?4:Math.max(8, Math.round(v/kmx*100)))+'%'; bi.style.background=(v===0?'#E3D9C8':'#5B8DC9');
+      bw.appendChild(bi);
+      var n=document.createElement('span'); n.className='g-n'; n.textContent=v+'件'; n.style.color='#2E5B95';
+      row.appendChild(l); row.appendChild(bw); row.appendChild(n); kg.appendChild(row);
+    });
+    var kn=document.createElement('div'); kn.className='note'; kn.style.marginTop='6px';
+    kn.textContent='ボタンが押された時間帯の件数です。飲み忘れの判定ではありません。';
+    kg.appendChild(kn);
+    box.appendChild(kg);
   }
 }
 
