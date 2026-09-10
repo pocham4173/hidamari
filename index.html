@@ -72,7 +72,7 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .aisatsu .tx{font-size:2rem;font-weight:900;color:var(--hi);margin-top:4px;}
 .aisatsu .sb{font-size:.95rem;color:var(--usucha);margin-top:6px;font-weight:700;}
 .aisatsu:active{transform:translateY(6px);box-shadow:0 2px 0 var(--hi-koi);}
-.aisatsu.done{background:#FFFDF6;box-shadow:none;pointer-events:none;border-color:var(--hi-usui);}
+.aisatsu.done{background:#FFFDF6;box-shadow:none;border-color:var(--hi-usui);}
 .aisatsu.done .ic{font-size:3.6rem;}
 .aisatsu.done .tx{color:var(--ha-koi);font-size:1.35rem;}
 .kibun{background:#fff;border:2px solid var(--ha-usui);border-radius:22px;padding:15px;}
@@ -83,7 +83,8 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .kibun .skip{display:block;margin:10px auto 0;background:none;border:none;font-family:inherit;color:var(--usucha);font-size:.95rem;text-decoration:underline;cursor:pointer;}
 .kusuri-btn{background:var(--ha);color:#fff;border:none;border-radius:22px;padding:20px;font-family:inherit;font-size:1.35rem;font-weight:900;cursor:pointer;box-shadow:0 6px 0 var(--ha-koi);transition:transform .08s;}
 .kusuri-btn:active{transform:translateY(5px);box-shadow:0 1px 0 var(--ha-koi);}
-.kusuri-btn.done{background:#F2F5EF;color:var(--ha-koi);box-shadow:none;pointer-events:none;font-size:1.1rem;border:2px solid var(--ha-usui);}
+.kusuri-btn.done{background:#F2F5EF;color:var(--ha-koi);box-shadow:none;font-size:1.1rem;border:2px solid var(--ha-usui);}
+.kusuri-btn.done small{display:block;margin-top:5px;font-size:.78rem;color:var(--usucha);}
 .onegai-btn{background:#fff;border:3px solid var(--ha);border-radius:22px;padding:18px;font-family:inherit;font-size:1.3rem;font-weight:900;color:var(--ha-koi);cursor:pointer;box-shadow:0 6px 0 #D9E2D3;transition:transform .08s;}
 .onegai-btn:active{transform:translateY(5px);box-shadow:0 1px 0 #D9E2D3;}
 .pop{background:#FFF3E2;border:3px solid var(--hi);border-radius:20px;padding:16px;text-align:center;font-size:1.15rem;font-weight:900;display:none;line-height:1.6;color:var(--cha);}
@@ -1472,7 +1473,7 @@ function initHonnin(){
         if(v.type==='aisatsu-back')
           msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+(v.text||'こんにちは')+'」が届きました'});
         if(v.type==='onegai-back')
-          msgs.push({at:v.at, text:(v.name||'家族')+'さん:「'+(v.text||'')+'」'});
+          msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
         if(v.type==='ask-kusuri' && !previewStorage.getItem('kusuri-'+todayStr()+'-'+slot().key))
           msgs.push({at:v.at, text:(v.name||'家族')+'さんから「お薬飲んだ?」'});
         if(v.type==='member-joined')
@@ -1515,12 +1516,12 @@ function markAisatsuDone(){
   document.getElementById('btn-a').classList.add('done');
   document.getElementById('a-ic').textContent=plantNow();
   document.getElementById('a-tx').textContent='家族の画面に記録されました';
-  document.getElementById('a-sb').textContent='挨拶をつづけると、花が育ちます('+greetDays()+'日目)';
+  document.getElementById('a-sb').textContent='挨拶をつづけると、花が育ちます('+greetDays()+'日目)・もう一度押すと声で確認できます';
 }
 function markKusuriDone(){
   const b=document.getElementById('btn-k');
   b.classList.add('done');
-  b.textContent='薬を飲んだと記録しました';
+  b.innerHTML='薬を飲んだと記録しました<small>もう一度押すと声で確認できます</small>';
 }
 let honninSending=false;
 function beginSend(){
@@ -1543,8 +1544,13 @@ function honninSendFail(){
   speak('でんぱが とどきませんでした。もういちど おしてください');
 }
 function sendAisatsu(){
-  if(!beginSend()) return;
   const s=slot();
+  if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)){
+    feedback();
+    speak(s.tx+'は、家族の画面に届けましたよ', true);
+    return;
+  }
+  if(!beginSend()) return;
   feedback();
   addEvent({type:'aisatsu', text:s.tx, slot:s.key}).then(()=>{
     endSend(true);
@@ -1572,8 +1578,13 @@ function skipKibun(){
   document.getElementById('kibun-box').style.display='none';
 }
 function sendKusuri(){
-  if(!beginSend()) return;
   const s=slot();
+  if(previewStorage.getItem('kusuri-'+todayStr()+'-'+s.key)){
+    feedback();
+    speak('薬を飲んだと、家族の画面に届けています', true);
+    return;
+  }
+  if(!beginSend()) return;
   feedback();
   addEvent({type:'kusuri', slot:s.key}).then(()=>{
     endSend(true);
