@@ -41,7 +41,14 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .entry-btn:active{transform:translateY(3px);box-shadow:none;}
 .entry-btn.sub{background:#fff;color:var(--hi-koi);border:2px solid var(--hi);box-shadow:0 4px 0 #E3CFA8;}
 .entry-btn.sub small{color:#B0703A;font-weight:700;}
-.install-mini{position:absolute;top:14px;right:14px;background:#fff;border:1px solid #D8CDBA;color:var(--usucha);border-radius:999px;font-family:inherit;font-size:.78rem;font-weight:700;padding:7px 12px;cursor:pointer;}
+.install-main{display:block;width:100%;max-width:320px;min-height:58px;margin:14px auto 4px;background:#fff;border:3px solid #1D4E9E;border-radius:16px;color:#1D4E9E;font-family:inherit;font-size:1.08rem;font-weight:900;cursor:pointer;box-shadow:0 4px 0 #C8D7EF;}
+.install-main small{display:block;margin-top:2px;font-size:.78rem;font-weight:700;color:var(--usucha);}
+.install-main:active{transform:translateY(3px);box-shadow:0 1px 0 #C8D7EF;}
+.install-guide{display:grid;gap:10px;margin-top:12px;text-align:left;}
+.install-step{display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;min-height:62px;padding:10px 12px;background:#F7F9FC;border:1px solid #DCE4EF;border-radius:14px;}
+.install-step b{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#1D4E9E;color:#fff;font-size:1.15rem;}
+.install-step span{font-size:1rem;font-weight:800;line-height:1.55;}
+.install-safari-note{padding:12px;border:2px solid var(--hi);border-radius:12px;background:#FFF7E8;color:#69472A;font-size:.9rem;font-weight:800;line-height:1.65;text-align:left;}
 .setup-input{width:100%;max-width:320px;font-family:inherit;font-size:1.15rem;padding:14px;border:2px solid var(--hi-usui);border-radius:16px;text-align:center;margin:0 auto 12px;background:var(--asa);display:block;letter-spacing:.08em;}
 .setup-wrap{flex:1;overflow-y:auto;padding:26px 20px;text-align:center;background:#fff;}
 .setup-ttl{font-size:1.35rem;font-weight:900;color:var(--hi-koi);margin-bottom:8px;}
@@ -442,11 +449,11 @@ table.cal-rec td.pad{background:none;}
 
 <!-- ===== 入口 ===== -->
 <div class="page" id="entry">
-  <button class="install-mini" onclick="installApp()">ホーム画面に追加</button>
   <img class="appicon" src="icon-192.png" alt="まいにこ">
   <h1>まいにこ</h1>
   <div class="entry-catch">押すだけで<em>「今日も元気」</em>が家族に届く</div>
   <div class="note" style="max-width:320px;margin:7px auto 0;color:#5C4E3A;font-weight:700;">監視ではなく、ご本人から伝える毎日の安心</div>
+  <button class="install-main" id="install-main" type="button" onclick="installApp()">📲 ホーム画面に追加する<small>次からアプリのようにすぐ開けます</small></button>
   <div class="q">使い方を選んでください</div>
   <div id="select-box">
     <button class="entry-btn" onclick="pickMode('honnin')">ご本人が使う</button>
@@ -456,6 +463,21 @@ table.cal-rec td.pad{background:none;}
   <div class="setup-or">─ または ─</div>
   <button class="entry-btn sub" onclick="pickMode('kazoku')">招待された方<small>招待コードを入力して参加する</small></button>
   <div class="note" style="max-width:320px;margin:6px auto 0;">ここから家族とつながれます。ご本人がこの端末を使う場合は、上の「ご本人が使う」を選んでください。</div>
+</div>
+
+<!-- ホーム画面への追加案内 -->
+<div class="modal" id="install-modal">
+  <div class="modal-box">
+    <div class="ttl">ホーム画面に追加</div>
+    <div class="install-safari-note">iPhoneは自動では追加できません。まず今の画面の共有ボタンを押してください。「ホーム画面に追加」が出ない場合だけ、メニューやコンパスの印からSafariで開いてください。</div>
+    <div class="install-guide">
+      <div class="install-step"><b>1</b><span>画面下の共有ボタン「□に↑」を押します</span></div>
+      <div class="install-step"><b>2</b><span>一覧を下へ動かして「ホーム画面に追加」を押します</span></div>
+      <div class="install-step"><b>3</b><span>「Webアプリとして開く」をオンにして「追加」を押します</span></div>
+    </div>
+    <div class="note" style="text-align:center;margin-top:12px;">追加後は、ホーム画面の「まいにこ」アイコンから開いてください。</div>
+    <button class="modal-close" type="button" onclick="closeInstallGuide()">わかりました</button>
+  </div>
 </div>
 
 <!-- ===== 同意(共用) ===== -->
@@ -1275,16 +1297,49 @@ function randCode(){
 
 /* ===== PWAインストール ===== */
 let deferredPrompt=null;
-window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredPrompt=e; });
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+}
+function updateInstallButton(){
+  const b=document.getElementById('install-main');
+  if(b) b.style.display=isStandalone()?'none':'block';
+}
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  updateInstallButton();
+});
+window.addEventListener('appinstalled', ()=>{
+  deferredPrompt=null;
+  updateInstallButton();
+});
+function openInstallGuide(){
+  const m=document.getElementById('install-modal');
+  if(m) m.classList.add('show');
+}
+function closeInstallGuide(){
+  const m=document.getElementById('install-modal');
+  if(m) m.classList.remove('show');
+}
 function installApp(){
-  if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt=null; return; }
+  if(isStandalone()){
+    alert('すでにホーム画面からアプリとして開いています');
+    return;
+  }
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt=null;
+    return;
+  }
   const ua=navigator.userAgent;
-  if(/iPhone|iPad/.test(ua)){
-    alert('iPhoneの場合(Safariで開いてください):\n1. 画面下の「共有」ボタン(四角に↑)を押す\n2.「ホーム画面に追加」を選ぶ\n3.「追加」を押す\n\n※LINEなどから開いている場合は、「Safariで開く」を選んでから行ってください');
+  const ios=/iPhone|iPad|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  if(ios){
+    openInstallGuide();
   }else{
-    alert('ブラウザのメニュー(右上の︙)から「ホーム画面に追加」または「アプリをインストール」を選んでください');
+    alert('ブラウザのメニュー（右上の︙など）から「ホーム画面に追加」または「アプリをインストール」を選んでください');
   }
 }
+updateInstallButton();
 
 /* ===== 画面遷移 ===== */
 function showPage(id){
