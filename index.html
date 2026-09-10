@@ -1310,7 +1310,7 @@ function startMode(){
   else showPage('entry');
 }
 function resetMode(){ previewStorage.removeItem('mainicoMode'); location.reload(); }
-function openBackConfirm(){ closePersonSettings(); document.getElementById('back-modal').classList.add('show'); }
+function openBackConfirm(){ closePersonSettings(); closeSettings(); document.getElementById('back-modal').classList.add('show'); }
 function closeBackConfirm(){ document.getElementById('back-modal').classList.remove('show'); }
 function openPersonSettings(){ updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); }
 function closePersonSettings(){ document.getElementById('person-settings-modal').classList.remove('show'); }
@@ -1838,7 +1838,7 @@ function initKazoku(){
       box.innerHTML=vis.map(v=>{
         const t=new Date(v.at.seconds*1000);
         const tm=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
-        if(v.type==='onegai' && !kOnlyNow){
+        if(v.type==='onegai'){
           const soto=(v.text==='今日はそっとしておいて');
           const head=soto?'今日はそっとしておいてほしいそうです':'お願いが届きました: 「'+esc(v.text)+'」';
           const rl=(replies[v._id]||[]).map(r=>{
@@ -2108,12 +2108,8 @@ var recReq = 0;                /* 読み込みの通し番号。古い結果を�
 function pad2(n){ return String(n).padStart(2,'0'); }
 function recDayStr(y,m,d){ return y+'-'+pad2(m+1)+'-'+pad2(d); }
 
-/* 家族記録モードでは、家族が記録した種類だけを見せます(今日の画面と同じ扱い) */
-var REC_KONLY_OK = {
-  'aisatsu':1,'aisatsu-back':1,'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1,'tag-alert':1,
-  'disaster-safe':1,'disaster-evacuating':1,'disaster-help':1
-};
-function recVisible(v){ return true; }  /* 表示は端末モードで間引かない(全端末で同じ集計にする) */
+/* 承認済み家族には、端末の利用モードにかかわらず同じ記録・集計を表示します */
+function recVisible(v){ return true; }
 
 /* 期間のグラフ(1か月=週別 / 半年・1年=月別)。件数の事実のみ */
 var rgCur=1, rgSeq=0;
