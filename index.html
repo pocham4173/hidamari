@@ -1478,7 +1478,12 @@ function initHonnin(){
         p.textContent=msgs[0].text;
         p.classList.add('show');
         const ts=msgs[0].at?msgs[0].at.seconds:0;
-        if(ts>hMsgSpokenThrough){ hMsgSpokenThrough=ts; speak(msgs[0].text); }
+        if(ts>hMsgSpokenThrough){
+          hMsgSpokenThrough=ts;
+          const received=ts?new Date(ts*1000):null;
+          const receivedTime=received?timeYomi(received.getHours()+':'+String(received.getMinutes()).padStart(2,'0'))+'、':'';
+          speak(receivedTime+msgs[0].text);
+        }
       }
     }, err=>console.warn('events', err));
 
