@@ -1310,7 +1310,15 @@ function startMode(){
   else showPage('entry');
 }
 function resetMode(){ previewStorage.removeItem('mainicoMode'); location.reload(); }
-function openBackConfirm(){ closePersonSettings(); closeSettings(); document.getElementById('back-modal').classList.add('show'); }
+function openBackConfirm(){
+  /* 先に設定画面を確実に消し、次の描画で確認画面へ進む */
+  ['person-settings-modal','settings-modal'].forEach(function(id){
+    const m=document.getElementById(id);
+    if(m) m.classList.remove('show');
+  });
+  const back=document.getElementById('back-modal');
+  if(back) requestAnimationFrame(function(){ back.classList.add('show'); });
+}
 function closeBackConfirm(){ document.getElementById('back-modal').classList.remove('show'); }
 function openPersonSettings(){ updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); }
 function closePersonSettings(){ document.getElementById('person-settings-modal').classList.remove('show'); }
@@ -1856,7 +1864,11 @@ function initKazoku(){
           ? ' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\''+jsArg(v.type)+'\',\''+jsArg(v.slot)+'\')">とりけす</button>' : '';
         return '<div class="ev"><div class="tm">'+tm+'</div>'+esc(label[v.type]?label[v.type](v):'')+own+'</div>';
       }).join('');
-    }, err=>console.warn('events', err));
+    }, err=>{
+      console.warn('events', err);
+      const box=document.getElementById('ev-list');
+      if(box) box.innerHTML='<div class="empty" style="color:#B0492F;">家族の記録を受信できませんでした。通信状態を確認して、画面を開き直してください。</div>';
+    });
   if(ytListUnsub) ytListUnsub();
   ytListUnsub=subscribeYotei(list=>{
     const t=todayStr();
