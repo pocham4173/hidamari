@@ -424,6 +424,13 @@ table.cal-rec td.pad{background:none;}
 .disaster-consent input{width:22px!important;min-height:22px!important;flex:0 0 22px;}
 .disaster-preview{margin-top:14px;text-align:center;}
 .disaster-preview img{max-width:100%;height:auto;}
+.local-info{margin-top:14px;text-align:left;}
+.local-info summary{display:flex;align-items:center;min-height:56px;font-size:1.05rem;font-weight:900;color:var(--murasaki-koi);cursor:pointer;list-style-position:inside;}
+.local-info .sd-btn{margin-top:8px;}
+.local-info .local-paper{border-color:#7C8795;color:#3F4B59;}
+.local-source{display:flex;flex-direction:column;gap:2px;margin-top:14px;padding-top:12px;border-top:1px solid #E4EAF0;color:var(--cha);}
+.local-source b{font-size:.95rem;}
+.local-source span{font-size:.78rem;color:var(--usucha);}
 
 
 </style>
@@ -439,6 +446,7 @@ table.cal-rec td.pad{background:none;}
   <img class="appicon" src="icon-192.png" alt="まいにこ">
   <h1>まいにこ</h1>
   <div class="entry-catch">押すだけで<em>「今日も元気」</em>が家族に届く</div>
+  <div class="note" style="max-width:320px;margin:7px auto 0;color:#5C4E3A;font-weight:700;">監視ではなく、ご本人から伝える毎日の安心</div>
   <div class="q">使い方を選んでください</div>
   <div id="select-box">
     <button class="entry-btn" onclick="pickMode('honnin')">ご本人が使う</button>
@@ -924,6 +932,17 @@ table.cal-rec td.pad{background:none;}
           <button type="button" onclick="openDisasterQr()">🪪<br>災害用QRを作る</button>
         </div>
         <div class="note">相談先の確認、日頃の備え、災害時に伝える情報をここでまとめられます。</div>
+        <details class="disaster-intro local-info">
+          <summary>📰 上田の情報を見る</summary>
+          <div class="note">まいにこはニュースを転載せず、信頼できる発信元へつなぎます。家族との声・予定・記録はまいにこで、地域の情報は読みやすい方法を選んでください。</div>
+          <div class="local-source"><b>上田市の公式情報</b><span>防災・市政・手続きなど</span></div>
+          <a class="sd-btn" href="https://www.city.ueda.nagano.jp/soshiki/uedapr/73021.html" target="_blank" rel="noopener noreferrer"><span class="l">上田市公式LINEの案内</span><span class="s">友だち登録と受信設定を確認できます</span></a>
+          <a class="sd-btn" href="https://www.city.ueda.nagano.jp/site/koho/" target="_blank" rel="noopener noreferrer"><span class="l">広報うえだを読む</span><span class="s">市の広報紙・電子版が開きます</span></a>
+          <div class="local-source"><b>地域の読みもの（民間）</b><span>身近な出来事・催し・地域の記事</span></div>
+          <a class="sd-btn local-paper" href="https://www.weekly-ueda.com/" target="_blank" rel="noopener noreferrer"><span class="l">週刊うえだ</span><span class="s">上田地域の生活情報紙</span></a>
+          <a class="sd-btn local-paper" href="https://tjournal.co.jp/" target="_blank" rel="noopener noreferrer"><span class="l">東信ジャーナル</span><span class="s">東信地域のニュース</span></a>
+          <div class="note">大切な防災・行政情報は、上田市の公式ページでも確認してください。地域紙は民間の情報です。</div>
+        </details>
       </div>
       <div class="card dom-soudan" id="sd-pick-card" style="display:none;">
         <h3>どんなことで困っていますか?</h3>
@@ -1497,18 +1516,14 @@ function yoteiDetail(v){
 }
 function yoteiColor(v){ return /^#[0-9A-Fa-f]{6}$/.test(v&&v.color||'')?v.color:'#3D6FB4'; }
 
-/* ===== 花の成長 ===== */
-const STAGES=['🌱','🌱','🌿','🌿','🌷','🌷','🌸','🌸','🌺'];
-function greetDays(){ return parseInt(previewStorage.getItem('greetDays')||'0'); }
-function plantNow(){
-  const d=greetDays();
-  if(d<=0) return '🌱';
-  return STAGES[Math.min(d-1, STAGES.length-1)];
-}
-function countGreetDay(){
-  if(previewStorage.getItem('greetDayCounted-'+todayStr())) return;
-  previewStorage.setItem('greetDayCounted-'+todayStr(),'1');
-  previewStorage.setItem('greetDays', String(greetDays()+1));
+/* ===== 挨拶を届けた印 =====
+   毎日続けることを評価しません。押せる日に安心して使えるよう、季節の花だけを表示します。 */
+function greetingFlower(){
+  const m=new Date().getMonth()+1;
+  if(m>=3 && m<=5) return '🌷';
+  if(m>=6 && m<=8) return '🌻';
+  if(m>=9 && m<=11) return '🌼';
+  return '🌸';
 }
 
 /* ===== 本人 ===== */
@@ -1619,9 +1634,9 @@ function initHonnin(){
 }
 function markAisatsuDone(){
   document.getElementById('btn-a').classList.add('done');
-  document.getElementById('a-ic').textContent=plantNow();
+  document.getElementById('a-ic').textContent=greetingFlower();
   document.getElementById('a-tx').textContent='家族の画面に記録されました';
-  document.getElementById('a-sb').textContent='挨拶をつづけると、花が育ちます('+greetDays()+'日目)・もう一度押すと声で確認できます';
+  document.getElementById('a-sb').textContent='今日もありがとう。押せる日にお使いください。もう一度押すと声で確認できます';
 }
 function markKusuriDone(){
   const b=document.getElementById('btn-k');
@@ -1661,7 +1676,6 @@ function sendAisatsu(){
     endSend(true);
     speak(s.tx+'を、家族の画面に届けました');
     previewStorage.setItem('aisatsu-'+todayStr()+'-'+s.key,'1');
-    countGreetDay();
     markAisatsuDone();
     if(!previewStorage.getItem('kibun-'+todayStr()))
       document.getElementById('kibun-box').style.display='block';
@@ -1845,17 +1859,6 @@ async function cancelEvent(id,type,slot){
     const t=todayStr();
     if(type==='aisatsu'){
       previewStorage.removeItem('aisatsu-'+t+'-'+slot);
-      /* 今日の挨拶がすべて取り消されたら、花の日数も1日戻す */
-      let rest=1;
-      try{
-        const snap=await col('events').where('date','==',t).get();
-        rest=0;
-        snap.forEach(doc=>{ const v=doc.data(); if(v.type==='aisatsu' && v.uid===uid()) rest++; });
-      }catch(e){ rest=1; }
-      if(rest===0 && previewStorage.getItem('greetDayCounted-'+t)){
-        previewStorage.removeItem('greetDayCounted-'+t);
-        previewStorage.setItem('greetDays', String(Math.max(0, greetDays()-1)));
-      }
     }
     if(type==='kibun') previewStorage.removeItem('kibun-'+t);
     if(type==='kusuri') previewStorage.removeItem('kusuri-'+t+'-'+slot);
