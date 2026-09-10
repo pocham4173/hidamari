@@ -88,10 +88,16 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .kibun-btn{background:#fff;border:2px solid var(--ha-usui);border-radius:16px;padding:15px 6px;font-family:inherit;font-size:1.05rem;font-weight:900;color:var(--cha);cursor:pointer;transition:transform .08s;}
 .kibun-btn:active{transform:scale(.94);background:var(--ha-usui);}
 .kibun .skip{display:block;margin:10px auto 0;background:none;border:none;font-family:inherit;color:var(--usucha);font-size:.95rem;text-decoration:underline;cursor:pointer;}
-.kusuri-btn{background:var(--ha);color:#fff;border:none;border-radius:22px;padding:20px;font-family:inherit;font-size:1.35rem;font-weight:900;cursor:pointer;box-shadow:0 6px 0 var(--ha-koi);transition:transform .08s;}
-.kusuri-btn:active{transform:translateY(5px);box-shadow:0 1px 0 var(--ha-koi);}
-.kusuri-btn.done{background:#F2F5EF;color:var(--ha-koi);box-shadow:none;font-size:1.1rem;border:2px solid var(--ha-usui);}
-.kusuri-btn.done small{display:block;margin-top:5px;font-size:.78rem;color:var(--usucha);}
+.kusuri-box{background:#fff;border:2px solid var(--ha-usui);border-radius:22px;padding:14px;}
+.kusuri-box .q{font-size:1.1rem;font-weight:900;text-align:center;margin-bottom:10px;}
+.kusuri-grid{display:grid;grid-template-columns:1fr;gap:10px;}
+.kusuri-btn{background:var(--ha);color:#fff;border:none;border-radius:18px;padding:17px 12px;min-height:62px;font-family:inherit;font-size:1.2rem;font-weight:900;cursor:pointer;box-shadow:0 5px 0 var(--ha-koi);transition:transform .08s;}
+.kusuri-btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ha-koi);}
+.kusuri-btn.done{background:#F2F5EF;color:var(--ha-koi);box-shadow:none;font-size:1.05rem;border:2px solid var(--ha-usui);}
+.kusuri-btn.done small{display:block;margin-top:4px;font-size:.74rem;color:var(--usucha);}
+.medicine-check-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}
+.medicine-check-grid button{min-height:62px;line-height:1.35;}
+@media (max-width:360px){.medicine-check-grid{grid-template-columns:1fr;}.medicine-check-grid button{min-height:50px;}}
 .onegai-btn{background:#fff;border:3px solid var(--ha);border-radius:22px;padding:18px;font-family:inherit;font-size:1.3rem;font-weight:900;color:var(--ha-koi);cursor:pointer;box-shadow:0 6px 0 #D9E2D3;transition:transform .08s;}
 .onegai-btn:active{transform:translateY(5px);box-shadow:0 1px 0 #D9E2D3;}
 .pop{background:#FFF3E2;border:3px solid var(--hi);border-radius:20px;padding:16px;text-align:center;font-size:1.15rem;font-weight:900;display:none;line-height:1.6;color:var(--cha);}
@@ -612,7 +618,15 @@ table.cal-rec td.pad{background:none;}
       </div>
       <button class="skip" onclick="skipKibun()">今日は答えない</button>
     </div>
-    <button class="kusuri-btn" id="btn-k" onclick="sendKusuri()">薬を飲みました</button>
+    <div class="kusuri-box">
+      <div class="q">お薬を飲んだら押してください</div>
+      <div class="kusuri-grid">
+        <button class="kusuri-btn" id="btn-k-asa" onclick="sendKusuri('asa')">💊 朝の薬を飲みました</button>
+        <button class="kusuri-btn" id="btn-k-hiru" onclick="sendKusuri('hiru')">💊 昼の薬を飲みました</button>
+        <button class="kusuri-btn" id="btn-k-yoru" onclick="sendKusuri('yoru')">💊 夜の薬を飲みました</button>
+      </div>
+      <div class="note" style="text-align:center;">飲んだ時間帯だけ押してください。服薬の証明ではありません。</div>
+    </div>
     <button class="onegai-btn" onclick="openOnegai()">ちょっとお願い</button>
     <button class="cal-open" onclick="openCal()">カレンダーを見る</button>
     <button class="cal-open" onclick="openHYotei()">予定を入れる</button>
@@ -850,8 +864,10 @@ table.cal-rec td.pad{background:none;}
         <div class="sent-note" id="note-aisatsu-back" style="display:none;"></div>
         <div class="set-sec">
           <h4>お薬の声かけ</h4>
-          <div class="ab-grid single">
-            <button class="ab-btn" onclick="askKusuri()"><span class="ic">💊</span><span class="tx">お薬飲んだ？</span></button>
+          <div class="medicine-check-grid">
+            <button class="ab-btn" id="btn-ask-asa" onclick="askKusuri('asa')"><span class="ic">🌅</span><span class="tx">朝の薬<br>飲んだ？</span></button>
+            <button class="ab-btn" id="btn-ask-hiru" onclick="askKusuri('hiru')"><span class="ic">☀️</span><span class="tx">昼の薬<br>飲んだ？</span></button>
+            <button class="ab-btn" id="btn-ask-yoru" onclick="askKusuri('yoru')"><span class="ic">🌙</span><span class="tx">夜の薬<br>飲んだ？</span></button>
           </div>
           <div class="sent-note" id="note-ask" style="display:none;"></div>
         </div>
@@ -865,7 +881,8 @@ table.cal-rec td.pad{background:none;}
       </div>
 
       <div class="card dom-record" id="card-krec" style="display:none;">
-        <h3>今日の体調を記録する</h3>
+        <h3>今日の様子を記録する</h3>
+        <h4 style="margin:2px 0 8px;font-size:.9rem;color:var(--usucha);">体調</h4>
         <div class="krec-grid">
           <button class="krec-btn" onclick="recKibun('よく眠れた')">よく眠れた</button>
           <button class="krec-btn" onclick="recKibun('眠れなかった')">眠れなかった</button>
@@ -873,8 +890,16 @@ table.cal-rec td.pad{background:none;}
           <button class="krec-btn" onclick="recKibun('疲れた')">疲れた</button>
           <button class="krec-btn" onclick="recKibun('どこか痛い')">どこか痛い</button>
         </div>
-        <button class="big-btn record" onclick="recKusuri()">本人に薬を飲んだか確認しました</button>
-        <div class="note">記録した人の名前と時刻が残ります。服薬の証明にはなりません。</div>
+        <div class="set-sec">
+          <h4>服薬を確認した時間帯</h4>
+          <div class="medicine-check-grid">
+            <button class="krec-btn" data-rec-kusuri onclick="recKusuri('asa')">朝の薬を確認</button>
+            <button class="krec-btn" data-rec-kusuri onclick="recKusuri('hiru')">昼の薬を確認</button>
+            <button class="krec-btn" data-rec-kusuri onclick="recKusuri('yoru')">夜の薬を確認</button>
+          </div>
+          <div class="save-state" id="krec-kusuri-state" aria-live="polite"></div>
+        </div>
+        <div class="note">確認した人の名前・時間帯・時刻が残ります。実際の服用を証明するものではありません。</div>
       </div>
 
       <div class="card dom-record">
@@ -1247,6 +1272,13 @@ async function hyDelete(){
     n.textContent='削除できませんでした。通信状態を確認して、もう一度押してください';
   }finally{ btn.disabled=false; }
 }
+const KUSURI_SLOT_NAMES={asa:'朝',hiru:'昼',yoru:'夜'};
+function kusuriSlotName(key){ return KUSURI_SLOT_NAMES[key]||''; }
+function kusuriQuestion(key){
+  const name=kusuriSlotName(key);
+  return name ? name+'の薬は飲みましたか？' : 'お薬は飲みましたか？';
+}
+function validKusuriSlot(key){ return Object.prototype.hasOwnProperty.call(KUSURI_SLOT_NAMES,key); }
 function slot(){
   const h=new Date().getHours();
   if(h>=5&&h<11) return {key:'asa', ic:'☀️', tx:'おはよう'};
@@ -1591,10 +1623,14 @@ function refreshSlotUI(){
   document.getElementById('a-ic').textContent=s.ic;
   document.getElementById('a-tx').textContent=s.tx;
   document.getElementById('a-sb').textContent='押すと家族の画面に記録されます';
-  const bk=document.getElementById('btn-k');
-  if(bk){ bk.classList.remove('done'); bk.textContent='薬を飲みました'; }
+  ['asa','hiru','yoru'].forEach(function(k){
+    const b=document.getElementById('btn-k-'+k);
+    if(!b) return;
+    b.classList.remove('done');
+    b.textContent='💊 '+kusuriSlotName(k)+'の薬を飲みました';
+    if(previewStorage.getItem('kusuri-'+todayStr()+'-'+k)) markKusuriDone(k);
+  });
   if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)) markAisatsuDone();
-  if(previewStorage.getItem('kusuri-'+todayStr()+'-'+s.key)) markKusuriDone();
 }
 function initHonnin(){
   hBootDay=todayStr(); hCurSlot=slot().key;
@@ -1623,7 +1659,9 @@ function initHonnin(){
   document.getElementById('a-sb').style.display='block';
   document.getElementById('a-sb').textContent='押すと家族の画面に記録されます';
   if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)) markAisatsuDone();
-  if(previewStorage.getItem('kusuri-'+todayStr()+'-'+s.key)) markKusuriDone();
+  ['asa','hiru','yoru'].forEach(function(k){
+    if(previewStorage.getItem('kusuri-'+todayStr()+'-'+k)) markKusuriDone(k);
+  });
   if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)
      && !previewStorage.getItem('kibun-'+todayStr()))
     document.getElementById('kibun-box').style.display='block';
@@ -1645,8 +1683,12 @@ function initHonnin(){
           msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
         if(v.type==='family-message')
           msgs.push({at:v.at, id:doc.id, type:'family-message', text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
-        if(v.type==='ask-kusuri' && !previewStorage.getItem('kusuri-'+todayStr()+'-'+slot().key))
-          msgs.push({at:v.at, text:(v.name||'家族')+'さんから「お薬飲んだ?」'});
+        if(v.type==='ask-kusuri'){
+          const askedSlot=validKusuriSlot(v.slot)?v.slot:slot().key;
+          if(!previewStorage.getItem('kusuri-'+todayStr()+'-'+askedSlot)){
+            msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+kusuriSlotName(askedSlot)+'の薬は飲みましたか？」'});
+          }
+        }
         if(v.type==='member-joined')
           msgs.push({at:v.at, text:(v.text||'')+'さんが家族として参加しました'});
       });
@@ -1693,10 +1735,12 @@ function markAisatsuDone(){
   document.getElementById('a-tx').textContent='家族の画面に記録されました';
   document.getElementById('a-sb').textContent='今日もありがとう。押せる日にお使いください。もう一度押すと声で確認できます';
 }
-function markKusuriDone(){
-  const b=document.getElementById('btn-k');
+function markKusuriDone(slotKey){
+  if(!validKusuriSlot(slotKey)) return;
+  const b=document.getElementById('btn-k-'+slotKey);
+  if(!b) return;
   b.classList.add('done');
-  b.innerHTML='薬を飲んだと記録しました<small>もう一度押すと声で確認できます</small>';
+  b.innerHTML='✓ '+kusuriSlotName(slotKey)+'の薬を記録しました<small>もう一度押すと声で確認できます</small>';
 }
 let honninSending=false;
 function beginSend(){
@@ -1751,20 +1795,21 @@ function skipKibun(){
   previewStorage.setItem('kibun-'+todayStr(),'1');
   document.getElementById('kibun-box').style.display='none';
 }
-function sendKusuri(){
-  const s=slot();
-  if(previewStorage.getItem('kusuri-'+todayStr()+'-'+s.key)){
+function sendKusuri(slotKey){
+  if(!validKusuriSlot(slotKey)) return;
+  const label=kusuriSlotName(slotKey);
+  if(previewStorage.getItem('kusuri-'+todayStr()+'-'+slotKey)){
     feedback();
-    speak('薬を飲んだと、家族の画面に届けています', true);
+    speak(label+'の薬を飲んだと、家族の画面に届けています', true);
     return;
   }
   if(!beginSend()) return;
   feedback();
-  addEvent({type:'kusuri', slot:s.key}).then(()=>{
+  addEvent({type:'kusuri', slot:slotKey}).then(()=>{
     endSend(true);
-    speak('薬を飲んだと、家族の画面に届けました');
-    previewStorage.setItem('kusuri-'+todayStr()+'-'+s.key,'1');
-    markKusuriDone();
+    speak(label+'の薬を飲んだと、家族の画面に届けました');
+    previewStorage.setItem('kusuri-'+todayStr()+'-'+slotKey,'1');
+    markKusuriDone(slotKey);
   }).catch(()=>{ endSend(false); honninSendFail(); });
 }
 
@@ -1896,7 +1941,7 @@ async function openCancel(){
     snap.forEach(doc=>{ const v=doc.data(); if(v.uid===uid()) { v._id=doc.id; mine.push(v); } });
     mine.sort((a,b)=>(a.at?a.at.seconds:0)-(b.at?b.at.seconds:0));
     if(mine.length===0){ box.innerHTML='<div class="empty">今日この端末でつけた記録はありません</div>'; return; }
-    const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')','onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':()=>'服薬の確認','memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':()=>'「お薬飲んだ?」','family-message':v=>'本人へのメッセージ「'+(v.text||'')+'」','family-message-back':v=>'家族への返事「'+(v.text||'')+'」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ','tag-alert':v=>'おまもりタグ「'+(v.text||'読み取り')+'」'};
+    const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録'+recSlot(v.slot),'onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':v=>'服薬の確認'+recSlot(v.slot),'memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':v=>'「'+kusuriQuestion(v.slot)+'」','family-message':v=>'本人へのメッセージ「'+(v.text||'')+'」','family-message-back':v=>'家族への返事「'+(v.text||'')+'」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ','tag-alert':v=>'おまもりタグ「'+(v.text||'読み取り')+'」'};
     box.innerHTML=mine.map(v=>{
       const t=v.at?new Date(v.at.seconds*1000):null;
       const tm=t?(t.getHours()+':'+String(t.getMinutes()).padStart(2,'0')):'';
@@ -1993,7 +2038,8 @@ function initKazoku(){
   evUnsub=col('events').where('date','==',todayStr())
     .onSnapshot(snap=>{
       const items=[];
-      let sentBack=null, sentBackAt=0, sentAsk=null;
+      let sentBack=null, sentBackAt=0;
+      const sentAskSlots={};
       snap.forEach(doc=>{
         const v=doc.data(); v._id=doc.id;
         if(v.at)items.push(v);
@@ -2001,14 +2047,22 @@ function initKazoku(){
           sentBack={name:v.name||'家族', text:v.text||''};
           sentBackAt=v.at.seconds;
         }
-        if(v.type==='ask-kusuri') sentAsk=v.name||'家族';
+        if(v.type==='ask-kusuri'){
+          sentAskSlots[validKusuriSlot(v.slot)?v.slot:'other']=v.name||'家族';
+        }
       });
       const nb=document.getElementById('note-aisatsu-back');
       const na=document.getElementById('note-ask');
       if(!aisatsuBackSending){
         if(sentBack){nb.classList.remove('err');nb.textContent='本日 '+sentBack.name+'さんが「'+sentBack.text+'」を送信済み';nb.style.display='block';}else{nb.style.display='none';}
       }
-      if(sentAsk){na.textContent='本日 '+sentAsk+'さんが送信済み';na.style.display='block';}else{na.style.display='none';}
+      const sentAskKeys=['asa','hiru','yoru'].filter(function(k){return sentAskSlots[k];});
+      if(sentAskKeys.length || sentAskSlots.other){
+        const parts=sentAskKeys.map(function(k){return kusuriSlotName(k);});
+        if(sentAskSlots.other) parts.push('時間帯指定なし');
+        na.textContent='本日 '+parts.join('・')+'の声かけを送信済み';
+        na.style.display='block';
+      }else{na.style.display='none';}
       items.sort((a,b)=>a.at.seconds-b.at.seconds);
       const box=document.getElementById('ev-list');
       const vis=items;  /* 全端末で同じ記録を表示する(モードで間引かない) */
@@ -2026,12 +2080,12 @@ function initKazoku(){
       const label={
         'aisatsu':v=>'ご本人が「'+(v.text||'')+'」と挨拶しました',
         'kibun':v=>'今日の調子: '+v.text,
-        'kusuri':v=>'服薬について記録がありました('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')',
+        'kusuri':v=>(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の薬':'お薬')+'を飲んだと記録がありました',
         'aisatsu-back':v=>(v.name||'家族')+'さんが「'+(v.text||'')+'」と挨拶しました',
-        'ask-kusuri':v=>(v.name||'家族')+'さんが「お薬飲んだ?」を送りました',
+        'ask-kusuri':v=>(v.name||'家族')+'さんが「'+kusuriQuestion(v.slot)+'」を送りました',
         'family-message':v=>(v.name||'家族')+'さんからのメッセージ：「'+(v.text||'')+'」',
         'kibun-kazoku':v=>(v.name||'家族')+'さんが体調を記録: '+v.text,
-        'kusuri-kakunin':v=>(v.name||'家族')+'さんが服薬を確認しました',
+        'kusuri-kakunin':v=>(v.name||'家族')+'さんが'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の':'')+'服薬を確認しました',
         'member-joined':v=>(v.text||'')+'さんが家族として参加しました',
         'memo':v=>(v.name||'家族')+': '+v.text,
         'disaster-safe':v=>(v.name||'家族')+'さんが「無事です」と記録しました',
@@ -2583,12 +2637,12 @@ var REC_LABEL = {
                                                         : 'ご本人からのお願い: 「'+(v.text||'')+'」']; },
   'onegai-back':    function(v){ return ['お願いへの返事','k-onegai', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
   'aisatsu-back':   function(v){ return ['家族の挨拶','', (v.name||'家族')+'さんが「'+(v.text||'')+'」と挨拶しました']; },
-  'ask-kusuri':     function(v){ return ['服薬の声かけ','k-kusuri', (v.name||'家族')+'さんが「お薬飲んだ?」を送りました']; },
+  'ask-kusuri':     function(v){ return ['服薬の声かけ','k-kusuri', (v.name||'家族')+'さんが「'+kusuriQuestion(v.slot)+'」を送りました']; },
   'family-message':  function(v){ return ['家族のメッセージ','', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
   'family-message-back': function(v){ return ['本人からの返事','', 'ご本人「'+(v.text||'')+'」']; },
   'kibun-kazoku':   function(v){ return ['体調','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
   'tag-alert':      function(v){ return ['タグ','k-tag', 'おまもりタグが読み取られました: '+(v.text||'')]; },
-  'kusuri-kakunin': function(v){ return ['服薬','k-kusuri', (v.name||'家族')+'さんが服薬を確認しました']; },
+  'kusuri-kakunin': function(v){ return ['服薬','k-kusuri', (v.name||'家族')+'さんが'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の':'')+'服薬を確認しました']; },
   'memo':           function(v){ return ['様子メモ','', (v.name||'家族')+'さん: '+(v.text||'')]; },
   'disaster-safe':  function(v){ return ['防災','', (v.name||'家族')+'さんが「無事です」と記録しました']; },
   'disaster-evacuating': function(v){ return ['防災','', (v.name||'家族')+'さんが「避難中です」と記録しました']; },
@@ -2778,7 +2832,7 @@ function sendAisatsuBack(key){
   const tx=AISATSU_BACK_WORDS[key];
   if(!tx || aisatsuBackSending) return;
   aisatsuBackSending=true;
-  document.querySelectorAll('.ab-btn').forEach(b=>b.disabled=true);
+  document.querySelectorAll('[id^="btn-ab-"]').forEach(b=>b.disabled=true);
   const nb=document.getElementById('note-aisatsu-back');
   nb.classList.remove('err');
   nb.textContent='送信しています…';
@@ -2792,10 +2846,30 @@ function sendAisatsuBack(key){
     nb.textContent='送信できませんでした。電波状況を確認してもう一度押してください';
   }).finally(()=>{
     aisatsuBackSending=false;
-    document.querySelectorAll('.ab-btn').forEach(b=>b.disabled=false);
+    document.querySelectorAll('[id^="btn-ab-"]').forEach(b=>b.disabled=false);
   });
 }
-function askKusuri(){ feedback(); addEvent({type:'ask-kusuri', name:myName()}).catch(()=>alert('送信できませんでした。電波状況を確認して、もう一度押してください')); }
+let askKusuriSending=false;
+async function askKusuri(slotKey){
+  if(!validKusuriSlot(slotKey) || askKusuriSending) return;
+  askKusuriSending=true;
+  document.querySelectorAll('[id^="btn-ask-"]').forEach(function(b){b.disabled=true;});
+  const n=document.getElementById('note-ask');
+  n.classList.remove('err');
+  n.textContent=kusuriSlotName(slotKey)+'の声かけを送信しています…';
+  n.style.display='block';
+  feedback();
+  try{
+    await addEvent({type:'ask-kusuri',slot:slotKey,name:myName()});
+    n.textContent='「'+kusuriQuestion(slotKey)+'」を送りました';
+  }catch(e){
+    n.classList.add('err');
+    n.textContent='送信できませんでした。電波状況を確認して、もう一度押してください';
+  }finally{
+    askKusuriSending=false;
+    document.querySelectorAll('[id^="btn-ask-"]').forEach(function(b){b.disabled=false;});
+  }
+}
 let familyMessageSending=false;
 async function sendFamilyMessage(){
   const el=document.getElementById('in-family-message');
@@ -2868,7 +2942,26 @@ async function sendPersonMessageReply(){
   try{if(await sendFamilyMessageBack(text))closePersonMessageReply();}finally{btn.disabled=false;}
 }
 function recKibun(text){ feedback(); addEvent({type:'kibun-kazoku', text:text, name:myName()}).catch(()=>alert('記録できませんでした。電波状況を確認して、もう一度押してください')); }
-function recKusuri(){ feedback(); addEvent({type:'kusuri-kakunin', name:myName()}).catch(()=>alert('記録できませんでした。電波状況を確認して、もう一度押してください')); }
+let recKusuriSending=false;
+async function recKusuri(slotKey){
+  if(!validKusuriSlot(slotKey) || recKusuriSending) return;
+  const state=document.getElementById('krec-kusuri-state');
+  recKusuriSending=true;
+  document.querySelectorAll('[data-rec-kusuri]').forEach(function(b){b.disabled=true;});
+  state.classList.remove('err');
+  state.textContent=kusuriSlotName(slotKey)+'の服薬確認を記録しています…';
+  feedback();
+  try{
+    await addEvent({type:'kusuri-kakunin',slot:slotKey,name:myName()});
+    state.textContent=kusuriSlotName(slotKey)+'の服薬確認を記録しました';
+  }catch(e){
+    state.classList.add('err');
+    state.textContent='記録できませんでした。通信状態を確認して、もう一度押してください';
+  }finally{
+    recKusuriSending=false;
+    document.querySelectorAll('[data-rec-kusuri]').forEach(function(b){b.disabled=false;});
+  }
+}
 function sendMemo(){
   const el=document.getElementById('in-memo');
   const t=el.value.trim();
