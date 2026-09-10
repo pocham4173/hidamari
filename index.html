@@ -87,7 +87,8 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .onegai-btn{background:#fff;border:3px solid var(--ha);border-radius:22px;padding:18px;font-family:inherit;font-size:1.3rem;font-weight:900;color:var(--ha-koi);cursor:pointer;box-shadow:0 6px 0 #D9E2D3;transition:transform .08s;}
 .onegai-btn:active{transform:translateY(5px);box-shadow:0 1px 0 #D9E2D3;}
 .pop{background:#FFF3E2;border:3px solid var(--hi);border-radius:20px;padding:16px;text-align:center;font-size:1.15rem;font-weight:900;display:none;line-height:1.6;color:var(--cha);}
-.pop.show{display:block;animation:pop .4s;}
+.pop.show{display:block;animation:pop .4s;cursor:pointer;}
+.pop.show::after{content:'🔊 押すともう一度聞けます';display:block;margin-top:8px;font-size:.82rem;color:var(--hi-koi);}
 @keyframes pop{from{transform:scale(.85);opacity:0;}to{transform:scale(1);opacity:1;}}
 .cal-open{background:#fff;border:2px solid var(--ao);border-radius:20px;padding:16px;font-family:inherit;font-size:1.2rem;font-weight:900;color:var(--ao-koi);cursor:pointer;}
 .cal-open:active{background:var(--ao-usui);}
@@ -551,7 +552,7 @@ table.cal-rec td.pad{background:none;}
       <div class="pl" id="y-label">これからの予定はありません</div>
     </div>
     <div id="h-approve"></div>
-    <div class="pop" id="pop-msg"></div>
+    <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
     <button class="aisatsu" id="btn-a" onclick="sendAisatsu()">
       <div class="ic" id="a-ic">☀️</div>
       <div class="tx" id="a-tx">おはよう</div>
@@ -993,7 +994,7 @@ function dateJp(d){
   return (d.getMonth()+1)+'月'+d.getDate()+'日('+yobi+')';
 }
 /* ===== 読み上げ(こえの おへんじ) ===== */
-function speechOn(){ return previewStorage.getItem('mainicoSpeechOn')==='1'; }
+function speechOn(){ return previewStorage.getItem('mainicoSpeechOn')!=='0'; }  /* 本人画面は初期オン。設定でオフにできます */
 let chosenVoice=null;
 function pickVoice(){
   try{
@@ -1024,6 +1025,11 @@ function speak(t, force){
     if(chosenVoice) u.voice=chosenVoice;
     speechSynthesis.speak(u);
   }catch(e){}
+}
+function speakPopMessage(){
+  const p=document.getElementById('pop-msg');
+  const t=p&&p.textContent?p.textContent.trim():'';
+  if(t) speak(t, true);
 }
 function toggleSpeech(){
   const on = !speechOn();
@@ -1317,11 +1323,11 @@ function openBackConfirm(){
     if(m) m.classList.remove('show');
   });
   const back=document.getElementById('back-modal');
-  if(back) requestAnimationFrame(function(){ back.classList.add('show'); });
+  if(back) requestAnimationFrame(function(){ back.classList.add('show'); speak('利用方法を 変更しますか'); });
 }
-function closeBackConfirm(){ document.getElementById('back-modal').classList.remove('show'); }
-function openPersonSettings(){ updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); }
-function closePersonSettings(){ document.getElementById('person-settings-modal').classList.remove('show'); }
+function closeBackConfirm(){ speak('変更を やめました'); document.getElementById('back-modal').classList.remove('show'); }
+function openPersonSettings(){ speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); }
+function closePersonSettings(){ speak('とじました'); document.getElementById('person-settings-modal').classList.remove('show'); }
 /* ===== 予定 ===== */
 let yoteiCache=[];
 function subscribeYotei(cb){
@@ -1544,12 +1550,13 @@ function sendKibun(text,emoji){
   feedback();
   addEvent({type:'kibun', text:text, emoji:emoji}).then(()=>{
     endSend(true);
-    speak('きょうの ちょうしを おくりました');
+    speak(text+'を おくりました');
     previewStorage.setItem('kibun-'+todayStr(),'1');
     document.getElementById('kibun-box').style.display='none';
   }).catch(()=>{ endSend(false); honninSendFail(); });
 }
 function skipKibun(){
+  speak('今日は 答えないに しました');
   previewStorage.setItem('kibun-'+todayStr(),'1');
   document.getElementById('kibun-box').style.display='none';
 }
@@ -1567,14 +1574,14 @@ function sendKusuri(){
 
 /* ちょっとお願い */
 function openOnegai(){ speak('おねがいの がめんを ひらきました'); document.getElementById('onegai-modal').classList.add('show'); }
-function closeOnegai(){ speak('とじました'); document.getElementById('onegai-modal').classList.remove('show'); }
+function closeOnegai(silent){ if(!silent) speak('とじました'); document.getElementById('onegai-modal').classList.remove('show'); }
 function sendOnegai(text){
   if(!beginSend()) return;
   feedback();
   addEvent({type:'onegai', text:text}).then(()=>{
   endSend(true);
-  speak('おねがいを おくりました');
-  closeOnegai();
+  closeOnegai(true);
+  speak(text+'を おくりました');
   const p=document.getElementById('pop-msg');
   if(text==='今日はそっとしておいて'){
     p.textContent='家族の画面に伝えました。今日はゆっくりお過ごしください';
@@ -1683,6 +1690,7 @@ function renderFamilyCal(){
 
 /* 今日の記録のとりけし(本人) */
 async function openCancel(){
+  speak('今日の 記録の 取り消しを ひらきました');
   document.getElementById('cancel-modal').classList.add('show');
   const box=document.getElementById('cancel-list');
   try{
@@ -1700,7 +1708,7 @@ async function openCancel(){
     }).join('');
   }catch(e){ box.innerHTML='<div class="empty">読み込めませんでした</div>'; }
 }
-function closeCancel(){ document.getElementById('cancel-modal').classList.remove('show'); }
+function closeCancel(){ speak('とじました'); document.getElementById('cancel-modal').classList.remove('show'); }
 async function cancelEvent(id,type,slot){
   speak('きろくを とりけします');
   if(!confirm('この記録をとりけしますか?')) return;
@@ -1729,6 +1737,7 @@ async function cancelEvent(id,type,slot){
 
 /* つながっている家族(本人側・閲覧) */
 async function openMembers(){
+  speak('つながっている 家族を ひらきました');
   document.getElementById('members-modal').classList.add('show');
   const box=document.getElementById('members-list');
   try{
@@ -1767,7 +1776,7 @@ async function honninRemove(mid, isMe){
     openMembers();
   }catch(e){ alert('解除できませんでした: '+e.message); }
 }
-function closeMembers(){ document.getElementById('members-modal').classList.remove('show'); }
+function closeMembers(){ speak('とじました'); document.getElementById('members-modal').classList.remove('show'); }
 
 /* ===== 家族 ===== */
 let evUnsub=null, ytListUnsub=null, aisatsuBackSending=false;
