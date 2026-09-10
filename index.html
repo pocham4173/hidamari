@@ -285,6 +285,7 @@ table.cal-rec td.pad{background:none;}
 .reply-btn{background:#fff;color:#7A5A34;border:1.5px solid #C9B8A0;border-radius:10px;font-family:inherit;font-weight:700;font-size:.85rem;padding:9px 12px;cursor:pointer;}
 .reply-btn:active{background:#F5EFE4;}
 .reply-log{font-size:.88rem;color:var(--ha-koi);font-weight:700;margin-top:6px;line-height:1.6;}
+.reply-guide{font-size:.82rem;color:#5C4E3A;font-weight:700;margin-top:9px;line-height:1.55;}
 .big-btn{display:flex;align-items:center;justify-content:center;text-align:center;width:100%;min-height:48px;background:#fff;color:var(--hi-koi);border:2px solid var(--hi);border-radius:10px;font-family:inherit;font-weight:700;font-size:.98rem;padding:13px;margin-top:8px;cursor:pointer;}
 /* 用途別の塗りボタン(記録=緑, 予定=青, 家族・招待=青緑) */
 .big-btn.record{background:var(--ha);color:#fff;border:none;}
@@ -856,7 +857,7 @@ table.cal-rec td.pad{background:none;}
 
     <!-- ふり返り -->
     <div class="ftab" id="t-kiroku" style="display:none;">
-      <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
+      <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div class="note" style="margin:0 0 10px;">時間順に並んでいます。左の色付きラベルが記録の種類で、本文にご本人または記録した家族の名前を表示します。</div><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
       <div class="card dom-record"><h3 id="rec-sum-ttl">今月のまとめ</h3><div class="rec-sum" id="rec-sum"></div><div class="note">件数を数えたものです。良い・悪いや、健康状態の判断はしていません。この記録は医療機関の診療記録ではありません。</div></div>
       <div class="card dom-record"><h3>期間のグラフ</h3>
         <div class="rg-period">
@@ -1047,6 +1048,11 @@ function timeYomi(t){
   if(!m) return t;
   return Number(m[1])+'じ'+(m[2]==='00'?'':Number(m[2])+'ふん');
 }
+function dateYomi(s){
+  const d=new Date(String(s||'')+'T00:00:00');
+  if(isNaN(d.getTime())) return '';
+  return (d.getMonth()+1)+'月'+d.getDate()+'日';
+}
 /* ===== きょうの予定 ===== */
 let hTodayItems=[];
 function renderHToday(){
@@ -1095,7 +1101,7 @@ async function hySave(){
     closeHYotei();
     const p=document.getElementById('pop-msg');
     if(p){ p.textContent='予定を保存しました'; p.classList.add('show'); }
-    speak('よていを ほぞんしました');
+    speak(dateYomi(hyDateStr())+'に、'+(document.getElementById('hy-time').value?timeYomi(document.getElementById('hy-time').value)+'に、':'')+label+'を ほぞんしました');
   }catch(e){
     n.textContent='保存できませんでした。通信状態を確認して、もう一度押してください';
   }
@@ -1843,10 +1849,10 @@ function initKazoku(){
         }
       });
       const label={
-        'aisatsu':v=>(v.uid===uid())?'「'+v.text+'」の挨拶をしました':'「'+v.text+'」が届きました',
+        'aisatsu':v=>'ご本人が「'+(v.text||'')+'」と挨拶しました',
         'kibun':v=>'今日の調子: '+v.text,
         'kusuri':v=>'服薬について記録がありました('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')',
-        'aisatsu-back':v=>(v.uid===uid())?'「'+(v.text||'')+'」の挨拶をしました':(v.name||'家族')+'さんから「'+(v.text||'')+'」の挨拶が届きました',
+        'aisatsu-back':v=>(v.name||'家族')+'さんが「'+(v.text||'')+'」と挨拶しました',
         'ask-kusuri':v=>(v.name||'家族')+'さんが「お薬飲んだ?」を送りました',
         'kibun-kazoku':v=>(v.name||'家族')+'さんが体調を記録: '+v.text,
         'kusuri-kakunin':v=>(v.name||'家族')+'さんが服薬を確認しました',
@@ -1863,11 +1869,12 @@ function initKazoku(){
         if(v.type==='onegai'){
           const soto=(v.text==='今日はそっとしておいて');
           const head=soto?'今日はそっとしておいてほしいそうです':'お願いが届きました: 「'+esc(v.text)+'」';
-          const rl=(replies[v._id]||[]).map(r=>{
+          const answered=replies[v._id]||[];
+          const rl=answered.map(r=>{
             const rt=new Date(r.at.seconds*1000);
-            return '↳ '+esc(r.name||'家族')+'さん「'+esc(r.text)+'」('+rt.getHours()+':'+String(rt.getMinutes()).padStart(2,'0')+')';
+            return '返事済み：'+esc(r.name||'家族')+'さん「'+esc(r.text)+'」('+rt.getHours()+':'+String(rt.getMinutes()).padStart(2,'0')+')';
           }).join('<br>');
-          const btns=soto?'':'<div class="reply-row">'+
+          const btns=(soto||answered.length)?'':'<div class="reply-guide">ご本人へ送る返事を1つ選んでください</div><div class="reply-row">'+
             ['今から対応するね','あとで連絡するね','今は対応できないよ'].map(r=>
               '<button class="reply-btn" onclick="sendOnegaiBack(\''+jsArg(v._id)+'\',\''+r+'\')">'+r+'</button>').join('')+'</div>';
           return '<div class="ev onegai-ev"><div class="tm">'+tm+'</div><b>'+head+'</b>'+
@@ -2385,14 +2392,14 @@ document.addEventListener('click', function(e){
 
 /* その日の記録 */
 var REC_LABEL = {
-  'aisatsu':        function(v){ return ['あいさつ','', (v.uid===uid())?'「'+(v.text||'')+'」の挨拶をしました':'ご本人から「'+(v.text||'')+'」が届きました']; },
+  'aisatsu':        function(v){ return ['本人の挨拶','', 'ご本人が「'+(v.text||'')+'」と挨拶しました']; },
   'kibun':          function(v){ return ['体調','k-kibun', 'ご本人が選んだ今日の調子: '+(v.text||'')]; },
   'kusuri':         function(v){ return ['服薬','k-kusuri', 'ご本人が、お薬を飲んだと記録しました'+recSlot(v.slot)]; },
   'onegai':         function(v){ return ['お願い','k-onegai',
                         v.text==='今日はそっとしておいて' ? 'ご本人が「今日はそっとしておいて」を選びました'
                                                         : 'ご本人からのお願い: 「'+(v.text||'')+'」']; },
   'onegai-back':    function(v){ return ['お願いへの返事','k-onegai', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
-  'aisatsu-back':   function(v){ return ['家族からの挨拶','', (v.uid===uid())?'「'+(v.text||'')+'」の挨拶をしました':(v.name||'家族')+'さんから「'+(v.text||'')+'」の挨拶が届きました']; },
+  'aisatsu-back':   function(v){ return ['家族の挨拶','', (v.name||'家族')+'さんが「'+(v.text||'')+'」と挨拶しました']; },
   'ask-kusuri':     function(v){ return ['服薬の声かけ','k-kusuri', (v.name||'家族')+'さんが「お薬飲んだ?」を送りました']; },
   'kibun-kazoku':   function(v){ return ['体調','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
   'tag-alert':      function(v){ return ['タグ','k-tag', 'おまもりタグが読み取られました: '+(v.text||'')]; },
@@ -2896,7 +2903,7 @@ function speakNextYotei(){
   const showDate=n._nextDate||n.date;
   const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
   if(diff<=0){ speakToday(); return; }
-  speak('あと'+diff+'日で、'+(n.time?timeYomi(n.time)+'に、':'')+(n.label||'予定')+'、です。', true);
+  speak(dateYomi(showDate)+'に、'+(n.time?timeYomi(n.time)+'に、':'')+(n.label||'予定')+'です。あと'+diff+'日です。', true);
 }
 function morningGreet(){
   if(greetedThisOpen || !speechOn()) return;
@@ -2914,7 +2921,7 @@ function morningGreet(){
     if(n){
       const showDate=n._nextDate||n.date;
       const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
-      if(diff>0) t+='あと'+diff+'日で、'+(n.time?timeYomi(n.time)+'に、':'')+(n.label||'予定')+'、です。';
+      if(diff>0) t+='次の予定は、'+dateYomi(showDate)+'に、'+(n.time?timeYomi(n.time)+'に、':'')+(n.label||'予定')+'です。あと'+diff+'日です。';
     }
   }
   speak(t);
