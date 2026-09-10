@@ -1554,7 +1554,7 @@ function sendAisatsu(){
   feedback();
   addEvent({type:'aisatsu', text:s.tx, slot:s.key}).then(()=>{
     endSend(true);
-    speak(s.tx+'を おくりました');
+    speak(s.tx+'を、家族の画面に届けました');
     previewStorage.setItem('aisatsu-'+todayStr()+'-'+s.key,'1');
     countGreetDay();
     markAisatsuDone();
@@ -1588,7 +1588,7 @@ function sendKusuri(){
   feedback();
   addEvent({type:'kusuri', slot:s.key}).then(()=>{
     endSend(true);
-    speak('おくすりを のんだと きろくしました');
+    speak('薬を飲んだと、家族の画面に届けました');
     previewStorage.setItem('kusuri-'+todayStr()+'-'+s.key,'1');
     markKusuriDone();
   }).catch(()=>{ endSend(false); honninSendFail(); });
