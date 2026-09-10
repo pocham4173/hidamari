@@ -534,18 +534,18 @@ table.cal-rec td.pad{background:none;}
 <!-- ===== 本人 ===== -->
 <div class="page" id="honnin">
   <button class="go-home" onclick="goHome()">⌂ ホーム</button>
-  <div class="h-date-wrap">
+  <div class="h-date-wrap" onclick="speakDateHeader()" style="cursor:pointer;">
     <div class="h-wareki" id="h-wareki"></div>
     <div class="h-date" id="h-date"></div>
     <div class="h-time" id="h-time"></div>
   </div>
   <div class="h-body">
-    <div class="h-today" id="h-today" style="display:none;">
+    <div class="h-today" id="h-today" style="display:none;cursor:pointer;" onclick="speakToday()">
       <div class="ht-lb">今日の予定</div>
       <div id="h-today-list"></div>
-      <button class="ht-yomi" type="button" onclick="speakToday()">🔊 音声で聞く</button>
+      <button class="ht-yomi" type="button" onclick="event.stopPropagation();speakToday()">🔊 音声で聞く</button>
     </div>
-    <div class="yotei-card">
+    <div class="yotei-card" onclick="speakNextYotei()" style="cursor:pointer;">
       <div class="lb">予定</div>
       <div class="days" id="y-days">-</div>
       <div class="pl" id="y-label">ご家族が登録すると表示されます</div>
@@ -1389,8 +1389,30 @@ function countGreetDay(){
 
 /* ===== 本人 ===== */
 let honninUnsub=null, yoteiUnsub=null, clockTimer=null;
+let hBootDay='', hCurSlot='';
+function refreshSlotUI(){
+  const s=slot();
+  const ba=document.getElementById('btn-a');
+  if(ba) ba.classList.remove('done');
+  document.getElementById('a-ic').textContent=s.ic;
+  document.getElementById('a-tx').textContent=s.tx;
+  document.getElementById('a-sb').textContent='押すと家族の画面に記録されます';
+  const bk=document.getElementById('btn-k');
+  if(bk){ bk.classList.remove('done'); bk.textContent='薬を飲みました'; }
+  if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)) markAisatsuDone();
+  if(previewStorage.getItem('kusuri-'+todayStr()+'-'+s.key)) markKusuriDone();
+}
 function initHonnin(){
+  hBootDay=todayStr(); hCurSlot=slot().key;
   const upd=()=>{
+    if(todayStr()!==hBootDay){
+      /* 送信中・画面入力中は切断しない。手が空いた次の確認(15秒後)で更新する */
+      const ae=document.activeElement;
+      const typing=ae && (ae.tagName==='INPUT'||ae.tagName==='TEXTAREA') && ae.value;
+      if(honninSending || document.querySelector('.modal.show') || typing) return;
+      location.reload(); return;
+    }
+    if(slot().key!==hCurSlot){ hCurSlot=slot().key; refreshSlotUI(); greetedThisOpen=false; morningGreet(); }
     const d=new Date();
     document.getElementById('h-date').textContent=dateJp(d);
     document.getElementById('h-time').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
@@ -1471,51 +1493,74 @@ function markKusuriDone(){
   b.classList.add('done');
   b.textContent='薬を飲んだと記録しました';
 }
+let honninSending=false;
+function beginSend(){
+  if(honninSending) return false;
+  honninSending=true;
+  const p=document.getElementById('pop-msg');
+  if(p){ p.textContent='送信しています…'; p.classList.add('show'); }
+  return true;
+}
+function endSend(ok){
+  honninSending=false;
+  if(ok){
+    const p=document.getElementById('pop-msg');
+    if(p && p.textContent==='送信しています…'){ p.textContent=''; p.classList.remove('show'); }
+  }
+}
 function honninSendFail(){
   const p=document.getElementById('pop-msg');
   if(p){ p.textContent='電波が届きませんでした。もう一度押してください'; p.classList.add('show'); }
   speak('でんぱが とどきませんでした。もういちど おしてください');
 }
 function sendAisatsu(){
+  if(!beginSend()) return;
   const s=slot();
   feedback();
   addEvent({type:'aisatsu', text:s.tx, slot:s.key}).then(()=>{
+    endSend(true);
     speak(s.tx+'を おくりました');
     previewStorage.setItem('aisatsu-'+todayStr()+'-'+s.key,'1');
     countGreetDay();
     markAisatsuDone();
     if(!previewStorage.getItem('kibun-'+todayStr()))
       document.getElementById('kibun-box').style.display='block';
-  }).catch(honninSendFail);
+  }).catch(()=>{ endSend(false); honninSendFail(); });
 }
 function sendKibun(text,emoji){
+  if(!beginSend()) return;
   feedback();
   addEvent({type:'kibun', text:text, emoji:emoji}).then(()=>{
+    endSend(true);
     speak('きょうの ちょうしを おくりました');
     previewStorage.setItem('kibun-'+todayStr(),'1');
     document.getElementById('kibun-box').style.display='none';
-  }).catch(honninSendFail);
+  }).catch(()=>{ endSend(false); honninSendFail(); });
 }
 function skipKibun(){
   previewStorage.setItem('kibun-'+todayStr(),'1');
   document.getElementById('kibun-box').style.display='none';
 }
 function sendKusuri(){
+  if(!beginSend()) return;
   const s=slot();
   feedback();
   addEvent({type:'kusuri', slot:s.key}).then(()=>{
+    endSend(true);
     speak('おくすりを のんだと きろくしました');
     previewStorage.setItem('kusuri-'+todayStr()+'-'+s.key,'1');
     markKusuriDone();
-  }).catch(honninSendFail);
+  }).catch(()=>{ endSend(false); honninSendFail(); });
 }
 
 /* ちょっとお願い */
 function openOnegai(){ speak('おねがいの がめんを ひらきました'); document.getElementById('onegai-modal').classList.add('show'); }
 function closeOnegai(){ speak('とじました'); document.getElementById('onegai-modal').classList.remove('show'); }
 function sendOnegai(text){
+  if(!beginSend()) return;
   feedback();
   addEvent({type:'onegai', text:text}).then(()=>{
+  endSend(true);
   speak('おねがいを おくりました');
   closeOnegai();
   const p=document.getElementById('pop-msg');
@@ -1525,7 +1570,7 @@ function sendOnegai(text){
     p.textContent='家族の画面にお願いを記録しました。返事が届かない場合もあります。急ぐときは電話を使ってください';
   }
   p.classList.add('show');
-  }).catch(honninSendFail);
+  }).catch(()=>{ endSend(false); honninSendFail(); });
 }
 
 /* カレンダー */
@@ -2070,7 +2115,7 @@ var REC_KONLY_OK = {
 function recVisible(v){ return !isKOnly() || REC_KONLY_OK[v.type]; }
 
 /* 期間のグラフ(1か月=週別 / 半年・1年=月別)。件数の事実のみ */
-var rgCur=1, rgLoaded=false;
+var rgCur=1, rgSeq=0;
 function rgDs(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
 function rgSelect(p){
   rgCur=p;
@@ -2080,6 +2125,7 @@ function rgSelect(p){
 function rgLoad(p){
   var body=document.getElementById('rg-body');
   if(!body) return;
+  var mySeq=++rgSeq;
   body.innerHTML='<div class="empty">読み込み中…</div>';
   var now=new Date(), buckets=[], start;
   if(p===1){
@@ -2113,8 +2159,10 @@ function rgLoad(p){
       else if(t==='kibun'||t==='kibun-kazoku') M.kibun[b]++;
       else if(t==='onegai') M.onegai[b]++;
     });
+    if(mySeq!==rgSeq) return;   /* 後から来た古い結果では上書きしない */
     rgRender({buckets:buckets, M:M});
   }).catch(function(){
+    if(mySeq!==rgSeq) return;
     body.innerHTML='<div class="empty">読み込めませんでした。通信状態を確認して、もう一度期間のボタンを押してください。</div>';
   });
 }
@@ -2147,7 +2195,7 @@ function recOpen(){
   var rangeTo=document.getElementById('rec-range-to');
   if(rangeFrom && !rangeFrom.value) rangeFrom.value=recDayStr(now.getFullYear(),now.getMonth(),1);
   if(rangeTo && !rangeTo.value) rangeTo.value=todayStr();
-  if(!rgLoaded){ rgLoaded=true; rgLoad(rgCur); }
+  rgLoad(rgCur);
   recLoad();
 }
 function recToday(){
@@ -2532,7 +2580,7 @@ function sendAisatsuBack(key){
     document.querySelectorAll('.ab-btn').forEach(b=>b.disabled=false);
   });
 }
-function askKusuri(){ feedback(); addEvent({type:'ask-kusuri', name:myName()}); }
+function askKusuri(){ feedback(); addEvent({type:'ask-kusuri', name:myName()}).catch(()=>alert('送信できませんでした。電波状況を確認して、もう一度押してください')); }
 function sendOnegaiBack(onegaiId,text){ feedback(); addEvent({type:'onegai-back', text:text, name:myName(), replyTo:onegaiId}).catch(()=>alert('返信を送信できませんでした。電波状況を確認して、もう一度押してください')); }
 function recKibun(text){ feedback(); addEvent({type:'kibun-kazoku', text:text, name:myName()}).catch(()=>alert('記録できませんでした。電波状況を確認して、もう一度押してください')); }
 function recKusuri(){ feedback(); addEvent({type:'kusuri-kakunin', name:myName()}).catch(()=>alert('記録できませんでした。電波状況を確認して、もう一度押してください')); }
@@ -2542,7 +2590,7 @@ function sendMemo(){
   if(!t){alert('メモを入力してください');return;}
   feedback();
   addEvent({type:'memo', text:t, name:myName()}).then(()=>{
-    el.value='';
+    if(el.value===t) el.value='';   /* 送信待ちの間に書いた新しい文章は残す */
   }).catch(()=>alert('送信できませんでした。電波状況を確認して、もう一度押してください。\n(入力した内容は消えていません)'));
 }
 function initDisaster(){
@@ -2811,6 +2859,21 @@ let tagNotifiedThrough=0;
 let hMsgSpokenThrough=0;
 const YOBI_KANJI=['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
 let greetedThisOpen=false;
+function speakDateHeader(){
+  const d=new Date();
+  let t='今日は、令和'+(d.getFullYear()-2018)+'年、'+(d.getMonth()+1)+'月'+d.getDate()+'日、'+YOBI_KANJI[d.getDay()]+'。';
+  const r=rokuyoOf(d);
+  if(r) t+=r+'です。';
+  speak(t, true);
+}
+function speakNextYotei(){
+  const n=nextYotei();
+  if(!n){ speak('予定は、ご家族が登録すると表示されます', true); return; }
+  const showDate=n._nextDate||n.date;
+  const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
+  if(diff<=0){ speakToday(); return; }
+  speak('あと'+diff+'日で、'+(n.label||'予定')+'、です。', true);
+}
 function morningGreet(){
   if(greetedThisOpen || !speechOn()) return;
   greetedThisOpen=true;
@@ -3072,8 +3135,12 @@ auth.onAuthStateChanged(async user=>{
         return;
       }
     }catch(e){
-      previewStorage.removeItem('mainicoGid');
-      previewStorage.removeItem('mainicoMode');
+      /* 通信エラーでは接続情報を消さない。表示して再試行できるようにする */
+      const ld=document.getElementById('loading');
+      if(ld){
+        ld.innerHTML='通信できませんでした。電波の状態を確認してください。<br><button onclick="location.reload()" style="margin-top:12px;padding:12px 26px;font-family:inherit;font-size:1rem;font-weight:900;border:2px solid #D58B2B;border-radius:12px;background:#fff;color:#A8641C;cursor:pointer;">もう一度ためす</button>';
+      }
+      return;
     }
   }
   document.getElementById('loading').style.display='none';
