@@ -555,6 +555,17 @@ table.cal-rec td.pad{background:none;}
     </div>
     <div id="h-approve"></div>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
+    <div class="kibun" id="h-message-reply" style="display:none;">
+      <div class="q">家族へ返事を送れます</div>
+      <div class="note" style="text-align:center;margin:0 0 10px;">返事は急がなくて大丈夫です。送りたいときだけ選んでください。</div>
+      <div class="kibun-grid">
+        <button class="kibun-btn" onclick="sendFamilyMessageBack('読んだよ')">読んだよ</button>
+        <button class="kibun-btn" onclick="sendFamilyMessageBack('ありがとう')">ありがとう</button>
+        <button class="kibun-btn" onclick="sendFamilyMessageBack('あとで電話するね')">あとで電話するね</button>
+        <button class="kibun-btn" onclick="openPersonMessageReply()">自分で返事を書く</button>
+      </div>
+      <div class="save-state" id="h-message-reply-state" aria-live="polite"></div>
+    </div>
     <button class="aisatsu" id="btn-a" onclick="sendAisatsu()">
       <div class="ic" id="a-ic">☀️</div>
       <div class="tx" id="a-tx">おはよう</div>
@@ -632,6 +643,23 @@ table.cal-rec td.pad{background:none;}
   </div>
 </div>
 
+<!-- 家族が「お願い」へ自由に返事を書く -->
+<div class="modal" id="onegai-reply-modal"><div class="modal-box adult-font">
+  <div class="ttl">ご本人への返事を書く</div>
+  <div class="note" style="margin-bottom:8px;">60文字まで入力できます。送った文章は本人画面で読み上げられます。</div>
+  <input type="text" id="onegai-reply-text" class="setup-input" maxlength="60" placeholder="例：仕事が終わったら電話するね">
+  <button class="entry-btn" id="onegai-reply-send" type="button" onclick="sendOnegaiBackFree()">この返事を送る</button>
+  <div class="save-state" id="onegai-reply-state" aria-live="polite"></div>
+  <button class="modal-close" onclick="closeOnegaiBackFree()">やめる</button>
+</div></div>
+<div class="modal" id="person-message-reply-modal"><div class="modal-box">
+  <div class="ttl">家族へ返事を書く</div>
+  <div class="note" style="margin-bottom:8px;">返事は急がなくて大丈夫です。送りたいときだけ書いてください。</div>
+  <input type="text" id="person-message-reply-text" class="setup-input" maxlength="60" placeholder="返事を書いてください">
+  <button class="entry-btn" id="person-message-reply-send" type="button" onclick="sendPersonMessageReply()">この返事を送る</button>
+  <div class="save-state" id="person-message-reply-state" aria-live="polite"></div>
+  <button class="modal-close" onclick="closePersonMessageReply()">やめる</button>
+</div></div>
 <!-- ちょっとお願い -->
 <div class="modal" id="onegai-modal">
   <div class="modal-box">
@@ -1546,7 +1574,7 @@ function initHonnin(){
         if(v.type==='onegai-back')
           msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
         if(v.type==='family-message')
-          msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
+          msgs.push({at:v.at, id:doc.id, type:'family-message', text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
         if(v.type==='ask-kusuri' && !previewStorage.getItem('kusuri-'+todayStr()+'-'+slot().key))
           msgs.push({at:v.at, text:(v.name||'家族')+'さんから「お薬飲んだ?」'});
         if(v.type==='member-joined')
@@ -1557,6 +1585,9 @@ function initHonnin(){
         const p=document.getElementById('pop-msg');
         p.textContent=msgs[0].text;
         p.classList.add('show');
+        currentFamilyMessageId=msgs[0].type==='family-message'?(msgs[0].id||''):'';
+        const replyBox=document.getElementById('h-message-reply');
+        if(replyBox) replyBox.style.display=currentFamilyMessageId?'block':'none';
         const ts=msgs[0].at?msgs[0].at.seconds:0;
         if(ts>hMsgSpokenThrough){
           hMsgSpokenThrough=ts;
@@ -1796,7 +1827,7 @@ async function openCancel(){
     snap.forEach(doc=>{ const v=doc.data(); if(v.uid===uid()) { v._id=doc.id; mine.push(v); } });
     mine.sort((a,b)=>(a.at?a.at.seconds:0)-(b.at?b.at.seconds:0));
     if(mine.length===0){ box.innerHTML='<div class="empty">今日この端末でつけた記録はありません</div>'; return; }
-    const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')','onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':()=>'服薬の確認','memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':()=>'「お薬飲んだ?」','family-message':v=>'本人へのメッセージ「'+(v.text||'')+'」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ','tag-alert':v=>'おまもりタグ「'+(v.text||'読み取り')+'」'};
+    const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')','onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':()=>'服薬の確認','memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':()=>'「お薬飲んだ?」','family-message':v=>'本人へのメッセージ「'+(v.text||'')+'」','family-message-back':v=>'家族への返事「'+(v.text||'')+'」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ','tag-alert':v=>'おまもりタグ「'+(v.text||'読み取り')+'」'};
     box.innerHTML=mine.map(v=>{
       const t=v.at?new Date(v.at.seconds*1000):null;
       const tm=t?(t.getHours()+':'+String(t.getMinutes()).padStart(2,'0')):'';
@@ -1930,7 +1961,7 @@ function initKazoku(){
       /* お願いへの返信をIDで紐づけ */
       const replies={};
       items.forEach(v=>{
-        if(v.type==='onegai-back' && v.replyTo){
+        if((v.type==='onegai-back'||v.type==='family-message-back')&&v.replyTo){
           (replies[v.replyTo]=replies[v.replyTo]||[]).push(v);
         }
       });
@@ -1961,13 +1992,20 @@ function initKazoku(){
             const rt=new Date(r.at.seconds*1000);
             return '返事済み：'+esc(r.name||'家族')+'さん「'+esc(r.text)+'」('+rt.getHours()+':'+String(rt.getMinutes()).padStart(2,'0')+')';
           }).join('<br>');
-          const btns=(soto||answered.length)?'':'<div class="reply-guide">ご本人へ送る返事を1つ選んでください</div><div class="reply-row">'+
+          const btns=(soto||answered.length)?'':'<div class="reply-guide">ご本人へ送る返事を選ぶか、自由に書けます</div><div class="reply-row">'+
             ['今から対応するね','あとで連絡するね','今は対応できないよ'].map(r=>
-              '<button class="reply-btn" onclick="sendOnegaiBack(\''+jsArg(v._id)+'\',\''+r+'\')">'+r+'</button>').join('')+'</div>';
+              '<button class="reply-btn" onclick="sendOnegaiBack(\''+jsArg(v._id)+'\',\''+r+'\')">'+r+'</button>').join('')+
+            '<button class="reply-btn" onclick="openOnegaiBackFree(\''+jsArg(v._id)+'\')">自由に返事を書く</button></div>';
           return '<div class="ev onegai-ev"><div class="tm">'+tm+'</div><b>'+head+'</b>'+
                  (rl?'<div class="reply-log">'+rl+'</div>':'')+btns+'</div>';
         }
-        if(v.type==='onegai-back') return '';
+        if(v.type==='family-message'){
+          const answered=replies[v._id]||[];
+          const reply=answered.map(r=>{const rt=new Date(r.at.seconds*1000);return '<div class="reply-log">↳ ご本人「'+esc(r.text||'')+'」('+rt.getHours()+':'+String(rt.getMinutes()).padStart(2,'0')+')</div>';}).join('');
+          const own=v.uid===uid()?' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\'family-message\',\'\')">とりけす</button>':'';
+          return '<div class="ev"><div class="tm">'+tm+'</div>'+esc(label[v.type](v))+own+reply+'</div>';
+        }
+        if(v.type==='onegai-back'||v.type==='family-message-back') return '';
         const own=(v.uid===uid() && (v.type==='kibun-kazoku'||v.type==='kusuri-kakunin'||v.type==='memo'||v.type==='family-message'))
           ? ' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\''+jsArg(v.type)+'\',\''+jsArg(v.slot)+'\')">とりけす</button>' : '';
         return '<div class="ev"><div class="tm">'+tm+'</div>'+esc(label[v.type]?label[v.type](v):'')+own+'</div>';
@@ -2489,6 +2527,7 @@ var REC_LABEL = {
   'aisatsu-back':   function(v){ return ['家族の挨拶','', (v.name||'家族')+'さんが「'+(v.text||'')+'」と挨拶しました']; },
   'ask-kusuri':     function(v){ return ['服薬の声かけ','k-kusuri', (v.name||'家族')+'さんが「お薬飲んだ?」を送りました']; },
   'family-message':  function(v){ return ['家族のメッセージ','', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
+  'family-message-back': function(v){ return ['本人からの返事','', 'ご本人「'+(v.text||'')+'」']; },
   'kibun-kazoku':   function(v){ return ['体調','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
   'tag-alert':      function(v){ return ['タグ','k-tag', 'おまもりタグが読み取られました: '+(v.text||'')]; },
   'kusuri-kakunin': function(v){ return ['服薬','k-kusuri', (v.name||'家族')+'さんが服薬を確認しました']; },
@@ -2724,7 +2763,52 @@ async function sendFamilyMessage(){
     btn.disabled=false;
   }
 }
+let onegaiBackFreeId='';
+function openOnegaiBackFree(id){
+  onegaiBackFreeId=id;
+  document.getElementById('onegai-reply-text').value='';
+  document.getElementById('onegai-reply-state').textContent='';
+  document.getElementById('onegai-reply-modal').classList.add('show');
+}
+function closeOnegaiBackFree(){ document.getElementById('onegai-reply-modal').classList.remove('show'); onegaiBackFreeId=''; }
+async function sendOnegaiBackFree(){
+  const el=document.getElementById('onegai-reply-text'),st=document.getElementById('onegai-reply-state'),btn=document.getElementById('onegai-reply-send');
+  const text=el.value.trim(); st.classList.remove('err');
+  if(!onegaiBackFreeId||!text){st.classList.add('err');st.textContent='返事を入力してください';return;}
+  btn.disabled=true;st.textContent='送信しています…';feedback();
+  try{await addEvent({type:'onegai-back',text:text,name:myName(),replyTo:onegaiBackFreeId});closeOnegaiBackFree();}
+  catch(e){st.classList.add('err');st.textContent='送信できませんでした。入力は残っています';}
+  finally{btn.disabled=false;}
+}
 function sendOnegaiBack(onegaiId,text){ feedback(); addEvent({type:'onegai-back', text:text, name:myName(), replyTo:onegaiId}).catch(()=>alert('返信を送信できませんでした。電波状況を確認して、もう一度押してください')); }
+let personMessageReplySending=false;
+async function sendFamilyMessageBack(text){
+  if(!currentFamilyMessageId||personMessageReplySending)return false;
+  personMessageReplySending=true;
+  const st=document.getElementById('h-message-reply-state');
+  st.classList.remove('err');st.textContent='送信しています…';feedback();
+  try{
+    await addEvent({type:'family-message-back',text:text,name:'本人',replyTo:currentFamilyMessageId});
+    st.textContent='家族の画面へ返事を届けました';
+    speak('家族の画面へ、'+text+'と とどけました');
+    return true;
+  }catch(e){st.classList.add('err');st.textContent='送信できませんでした。もう一度お試しください';return false;}
+  finally{personMessageReplySending=false;}
+}
+function openPersonMessageReply(){
+  document.getElementById('person-message-reply-text').value='';
+  document.getElementById('person-message-reply-state').textContent='';
+  document.getElementById('person-message-reply-modal').classList.add('show');
+  speak('返事を 書く画面を ひらきました');
+}
+function closePersonMessageReply(){document.getElementById('person-message-reply-modal').classList.remove('show');}
+async function sendPersonMessageReply(){
+  const el=document.getElementById('person-message-reply-text'),st=document.getElementById('person-message-reply-state'),btn=document.getElementById('person-message-reply-send');
+  const text=el.value.trim();st.classList.remove('err');
+  if(!text){st.classList.add('err');st.textContent='返事を書いてください';return;}
+  btn.disabled=true;st.textContent='送信しています…';
+  try{if(await sendFamilyMessageBack(text))closePersonMessageReply();}finally{btn.disabled=false;}
+}
 function recKibun(text){ feedback(); addEvent({type:'kibun-kazoku', text:text, name:myName()}).catch(()=>alert('記録できませんでした。電波状況を確認して、もう一度押してください')); }
 function recKusuri(){ feedback(); addEvent({type:'kusuri-kakunin', name:myName()}).catch(()=>alert('記録できませんでした。電波状況を確認して、もう一度押してください')); }
 function sendMemo(){
@@ -3000,6 +3084,7 @@ function mirrorTagAlert(senderId, d, label){
 }
 let tagNotifiedThrough=0;
 let hMsgSpokenThrough=0;
+let currentFamilyMessageId='';
 const YOBI_KANJI=['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
 let greetedThisOpen=false;
 function speakDateHeader(){
