@@ -2882,6 +2882,7 @@ function speakDateHeader(){
   let t='今日は、令和'+(d.getFullYear()-2018)+'年、'+(d.getMonth()+1)+'月'+d.getDate()+'日、'+YOBI_KANJI[d.getDay()]+'。';
   const r=rokuyoOf(d);
   if(r) t+=r+'です。';
+  t+='現在の時刻は、'+timeYomi(d.getHours()+':'+String(d.getMinutes()).padStart(2,'0'))+'です。';
   speak(t, true);
 }
 function speakNextYotei(){
@@ -2890,7 +2891,7 @@ function speakNextYotei(){
   const showDate=n._nextDate||n.date;
   const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
   if(diff<=0){ speakToday(); return; }
-  speak('あと'+diff+'日で、'+(n.label||'予定')+'、です。', true);
+  speak('あと'+diff+'日で、'+(n.time?timeYomi(n.time)+'に、':'')+(n.label||'予定')+'、です。', true);
 }
 function morningGreet(){
   if(greetedThisOpen || !speechOn()) return;
@@ -2908,7 +2909,7 @@ function morningGreet(){
     if(n){
       const showDate=n._nextDate||n.date;
       const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
-      if(diff>0) t+='あと'+diff+'日で、'+(n.label||'予定')+'、です。';
+      if(diff>0) t+='あと'+diff+'日で、'+(n.time?timeYomi(n.time)+'に、':'')+(n.label||'予定')+'、です。';
     }
   }
   speak(t);
