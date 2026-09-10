@@ -722,6 +722,11 @@ table.cal-rec td.pad{background:none;}
       <div class="note">解除すると、その人はこの家族の記録を見られなくなります(過去の記録も含む)。端末を紛失した場合も、ここで解除すれば停止できます。</div>
     </div>
 
+    <div class="set-sec"><h4>利用方法の変更</h4>
+      <div class="note">「ご本人が使う」「ご家族が使う」などの選び直しは、ここから行えます。記録は消えません。</div>
+      <button class="set-btn warn" onclick="openBackConfirm()">利用方法を変更する</button>
+    </div>
+
     <div class="set-sec">
       <h4>利用をやめる</h4>
       <div id="consent-info" style="display:none;">─</div>
@@ -927,7 +932,6 @@ table.cal-rec td.pad{background:none;}
       </div>
     </div>
 
-    <button class="back back-subtle" onclick="openBackConfirm()" style="display:block;width:calc(100% - 28px);">利用方法を選び直す</button>
   </div>
 </div>
 
@@ -1804,12 +1808,9 @@ function initKazoku(){
       if(sentAsk){na.textContent='本日 '+sentAsk+'さんが送信済み';na.style.display='block';}else{na.style.display='none';}
       items.sort((a,b)=>a.at.seconds-b.at.seconds);
       const box=document.getElementById('ev-list');
-      const kOnlyNow=isKOnly();
-      /* 家族記録モードでは、家族が記録した種類だけを表示する */
-      const kAllowed={'aisatsu':1,'aisatsu-back':1,'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1,'tag-alert':1};
-      const vis=items.filter(v=>!kOnlyNow || kAllowed[v.type]);
+      const vis=items;  /* 全端末で同じ記録を表示する(モードで間引かない) */
       if(vis.length===0){
-        box.innerHTML='<div class="empty">'+(kOnlyNow?'今日の様子はまだ記録されていません':'まだ届いていません')+'</div>';
+        box.innerHTML='<div class="empty">今日の記録はまだありません</div>';
         return;
       }
       /* お願いへの返信をIDで紐づけ */
@@ -2112,7 +2113,7 @@ var REC_KONLY_OK = {
   'aisatsu':1,'aisatsu-back':1,'kibun-kazoku':1,'kusuri-kakunin':1,'memo':1,'member-joined':1,'tag-alert':1,
   'disaster-safe':1,'disaster-evacuating':1,'disaster-help':1
 };
-function recVisible(v){ return !isKOnly() || REC_KONLY_OK[v.type]; }
+function recVisible(v){ return true; }  /* 表示は端末モードで間引かない(全端末で同じ集計にする) */
 
 /* 期間のグラフ(1か月=週別 / 半年・1年=月別)。件数の事実のみ */
 var rgCur=1, rgSeq=0;
@@ -3125,7 +3126,7 @@ auth.onAuthStateChanged(async user=>{
   /* グループ所属の確認 */
   if(gid()){
     try{
-      const me=await col('members').doc(user.uid).get();
+      const me=await col('members').doc(user.uid).get({source:'server'});
       if(!me.exists){
         previewStorage.removeItem('mainicoGid');
         previewStorage.removeItem('mainicoMode');
