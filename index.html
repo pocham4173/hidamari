@@ -548,7 +548,7 @@ table.cal-rec td.pad{background:none;}
     <div class="yotei-card" onclick="speakNextYotei()" style="cursor:pointer;">
       <div class="lb">予定</div>
       <div class="days" id="y-days">-</div>
-      <div class="pl" id="y-label">ご家族が登録すると表示されます</div>
+      <div class="pl" id="y-label">これからの予定はありません</div>
     </div>
     <div id="h-approve"></div>
     <div class="pop" id="pop-msg"></div>
@@ -1484,7 +1484,7 @@ function initHonnin(){
     const elD=document.getElementById('y-days');
     const elL=document.getElementById('y-label');
     const ycard=elD.closest('.yotei-card');
-    if(!n){if(ycard)ycard.style.display='block';elD.textContent='-';elL.textContent='ご家族が登録すると表示されます';return;}
+    if(!n){if(ycard)ycard.style.display='block';elD.textContent='-';elL.textContent='これからの予定はありません';return;}
     const showDate=n._nextDate||n.date;
     const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
     if(diff===0){ if(ycard)ycard.style.display='none'; return; }  /* 今日の分は上の「今日の予定」に任せる */
@@ -2877,7 +2877,7 @@ function speakDateHeader(){
 }
 function speakNextYotei(){
   const n=nextYotei();
-  if(!n){ speak('予定は、ご家族が登録すると表示されます', true); return; }
+  if(!n){ speak('これからの予定はありません', true); return; }
   const showDate=n._nextDate||n.date;
   const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
   if(diff<=0){ speakToday(); return; }
