@@ -3125,7 +3125,7 @@ auth.onAuthStateChanged(async user=>{
   /* グループ所属の確認 */
   if(gid()){
     try{
-      const me=await col('members').doc(user.uid).get();
+      const me=await col('members').doc(user.uid).get({source:'server'});
       if(!me.exists){
         previewStorage.removeItem('mainicoGid');
         previewStorage.removeItem('mainicoMode');
