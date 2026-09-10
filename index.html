@@ -609,14 +609,15 @@ table.cal-rec td.pad{background:none;}
 
 <!-- カレンダー -->
 <div class="modal" id="h-yotei-modal"><div class="modal-box">
-  <div class="ttl">予定を入れる</div>
+  <div class="ttl" id="hy-title">予定を入れる</div>
   <div class="hy-q">いつですか？</div>
   <input type="date" id="hy-date">
   <div class="hy-q">何の予定ですか？</div>
   <input id="hy-free" maxlength="20" placeholder="予定の名前を書いてください">
   <div class="hy-q">時間（決めなくても大丈夫です）</div>
   <input type="time" id="hy-time">
-  <button class="hy-save" type="button" onclick="hySave()">この予定を保存する</button>
+  <button class="hy-save" id="hy-save-btn" type="button" onclick="hySave()">この予定を保存する</button>
+  <button class="set-btn warn" id="hy-delete-btn" type="button" onclick="hyDelete()" style="display:none;">この予定を削除する</button>
   <div class="note" id="hy-note">保存すると、ご家族の画面にも出ます。</div>
   <button class="modal-close" onclick="closeHYotei()">とじる</button>
 </div></div>
@@ -781,17 +782,28 @@ table.cal-rec td.pad{background:none;}
       </div>
 
       <div class="card dom-record" id="card-actions">
-        <h3>挨拶を送る</h3>
+        <h3>ご本人に連絡する</h3>
+        <h4 style="font-size:.9rem;margin:2px 0 8px;color:var(--usucha);">挨拶</h4>
         <div class="ab-grid">
           <button class="ab-btn" id="btn-ab-asa" onclick="sendAisatsuBack('asa')"><span class="ic">☀️</span><span class="tx">おはよう</span></button>
           <button class="ab-btn" id="btn-ab-hiru" onclick="sendAisatsuBack('hiru')"><span class="ic">🌤</span><span class="tx">こんにちは</span></button>
           <button class="ab-btn" id="btn-ab-yoru" onclick="sendAisatsuBack('yoru')"><span class="ic">🌙</span><span class="tx">おやすみ</span></button>
         </div>
         <div class="sent-note" id="note-aisatsu-back" style="display:none;"></div>
-        <div class="ab-grid single">
-          <button class="ab-btn" onclick="askKusuri()"><span class="ic">💊</span><span class="tx">お薬飲んだ？</span></button>
+        <div class="set-sec">
+          <h4>お薬の声かけ</h4>
+          <div class="ab-grid single">
+            <button class="ab-btn" onclick="askKusuri()"><span class="ic">💊</span><span class="tx">お薬飲んだ？</span></button>
+          </div>
+          <div class="sent-note" id="note-ask" style="display:none;"></div>
         </div>
-        <div class="sent-note" id="note-ask" style="display:none;"></div>
+        <div class="set-sec">
+          <h4>自由メッセージ</h4>
+          <div class="note" style="margin-top:0;">入力した文章が本人の画面に届き、声のお返事がオンなら読み上げます。</div>
+          <div class="in-row"><input type="text" id="in-family-message" maxlength="60" placeholder="例：今日は暖かいね"></div>
+          <button class="big-btn family" id="family-message-btn" onclick="sendFamilyMessage()">メッセージを送る</button>
+          <div class="sent-note" id="family-message-state" aria-live="polite"></div>
+        </div>
       </div>
 
       <div class="card dom-record" id="card-krec" style="display:none;">
@@ -1072,40 +1084,99 @@ function speakToday(){
   speak('きょうの よていは、'+parts.join('。つぎに、')+'、です。', true);
 }
 /* ===== 本人の予定入力 ===== */
-function openHYotei(){
+let hEditingYoteiId='';
+function openHYotei(id){
   feedback();
-  speak('予定の 入力を ひらきました');
-  document.getElementById('hy-date').value=todayStr();
-  document.getElementById('hy-free').value='';
-  document.getElementById('hy-time').value='';
-  const n=document.getElementById('hy-note');
-  n.textContent='保存すると、ご家族の画面にも出ます。';
+  hEditingYoteiId='';
+  const title=document.getElementById('hy-title');
+  const save=document.getElementById('hy-save-btn');
+  const del=document.getElementById('hy-delete-btn');
+  const note=document.getElementById('hy-note');
+  const v=id ? yoteiCache.find(x=>x._id===id) : null;
+  if(v){
+    if(v.uid!==uid()){ alert('この予定は、登録した家族だけが変更・削除できます。'); return; }
+    hEditingYoteiId=id;
+    title.textContent='予定を変更する';
+    save.textContent='変更を保存する';
+    del.style.display='block';
+    document.getElementById('hy-date').value=v.date||todayStr();
+    document.getElementById('hy-free').value=v.label||'';
+    document.getElementById('hy-time').value=v.time||'';
+    note.textContent='変更すると、ご家族の画面にも反映されます。';
+    document.getElementById('cal-modal').classList.remove('show');
+    speak('予定の 変更を ひらきました');
+  }else{
+    title.textContent='予定を入れる';
+    save.textContent='この予定を保存する';
+    del.style.display='none';
+    document.getElementById('hy-date').value=todayStr();
+    document.getElementById('hy-free').value='';
+    document.getElementById('hy-time').value='';
+    note.textContent='保存すると、ご家族の画面にも出ます。';
+    speak('予定の 入力を ひらきました');
+  }
   document.getElementById('h-yotei-modal').classList.add('show');
 }
-function closeHYotei(){ speak('とじました'); document.getElementById('h-yotei-modal').classList.remove('show'); }
+function closeHYotei(silent){
+  if(!silent) speak('とじました');
+  document.getElementById('h-yotei-modal').classList.remove('show');
+  hEditingYoteiId='';
+}
 function hyDateStr(){
   return document.getElementById('hy-date').value || todayStr();
 }
 async function hySave(){
-  const label = document.getElementById('hy-free').value.trim();
+  const label=document.getElementById('hy-free').value.trim();
+  const date=hyDateStr();
+  const time=document.getElementById('hy-time').value||'';
   const n=document.getElementById('hy-note');
+  const btn=document.getElementById('hy-save-btn');
   if(!label){ n.textContent='予定の名前を書いてください'; return; }
+  const editId=hEditingYoteiId;
   feedback();
+  btn.disabled=true;
   n.textContent='保存しています…';
   try{
-    await col('yotei').add({
-      kind:'📌', date:hyDateStr(), time:document.getElementById('hy-time').value||'',
-      label:label, color:'#3D6FB4', repeat:'none', uid:uid(),
-      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-    });
-    closeHYotei();
+    if(editId){
+      const v=yoteiCache.find(x=>x._id===editId);
+      if(!v || v.uid!==uid()) throw new Error('この予定は変更できません');
+      await col('yotei').doc(editId).update({
+        date:date,time:time,label:label,repeat:'none',
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }else{
+      await col('yotei').add({
+        kind:'📌',date:date,time:time,label:label,color:'#3D6FB4',repeat:'none',uid:uid(),
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    closeHYotei(true);
     const p=document.getElementById('pop-msg');
-    if(p){ p.textContent='予定を保存しました'; p.classList.add('show'); }
-    speak(dateYomi(hyDateStr())+'に、'+(document.getElementById('hy-time').value?timeYomi(document.getElementById('hy-time').value)+'に、':'')+label+'を ほぞんしました');
+    if(p){ p.textContent=editId?'予定の変更を保存しました':'予定を保存しました'; p.classList.add('show'); }
+    speak(dateYomi(date)+'に、'+(time?timeYomi(time)+'に、':'')+label+'を '+(editId?'へんこうしました':'ほぞんしました'));
   }catch(e){
     n.textContent='保存できませんでした。通信状態を確認して、もう一度押してください';
-  }
+  }finally{ btn.disabled=false; }
+}
+async function hyDelete(){
+  const id=hEditingYoteiId;
+  const v=yoteiCache.find(x=>x._id===id);
+  if(!id || !v || v.uid!==uid()){ alert('この予定は削除できません。'); return; }
+  if(!confirm('この予定を削除しますか？')) return;
+  const n=document.getElementById('hy-note');
+  const btn=document.getElementById('hy-delete-btn');
+  btn.disabled=true;
+  n.textContent='削除しています…';
+  try{
+    await col('yotei').doc(id).delete();
+    closeHYotei(true);
+    const p=document.getElementById('pop-msg');
+    if(p){ p.textContent='予定を削除しました'; p.classList.add('show'); }
+    speak('予定を さくじょしました');
+  }catch(e){
+    n.textContent='削除できませんでした。通信状態を確認して、もう一度押してください';
+  }finally{ btn.disabled=false; }
 }
 function slot(){
   const h=new Date().getHours();
@@ -1464,7 +1535,7 @@ function initHonnin(){
     renderPendingCard('h-approve', snap);
   }, err=>console.warn('members', err));
   if(honninUnsub) honninUnsub();
-  hMsgSpokenThrough=Math.floor(Date.now()/1000);   /* 開いた後に届いた分だけ声で知らせる */
+  hMsgSpokenThrough=Number(previewStorage.getItem('mainicoMessageSpokenThrough')||0);   /* 前回までに読んだ時刻を端末に保存 */
   honninUnsub=col('events').where('date','==',todayStr())
     .onSnapshot(snap=>{
       const msgs=[];
@@ -1473,6 +1544,8 @@ function initHonnin(){
         if(v.type==='aisatsu-back')
           msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+(v.text||'こんにちは')+'」が届きました'});
         if(v.type==='onegai-back')
+          msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
+        if(v.type==='family-message')
           msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
         if(v.type==='ask-kusuri' && !previewStorage.getItem('kusuri-'+todayStr()+'-'+slot().key))
           msgs.push({at:v.at, text:(v.name||'家族')+'さんから「お薬飲んだ?」'});
@@ -1487,6 +1560,7 @@ function initHonnin(){
         const ts=msgs[0].at?msgs[0].at.seconds:0;
         if(ts>hMsgSpokenThrough){
           hMsgSpokenThrough=ts;
+          previewStorage.setItem('mainicoMessageSpokenThrough',String(ts));
           const received=ts?new Date(ts*1000):null;
           const receivedTime=received?timeYomi(received.getHours()+':'+String(received.getMinutes()).padStart(2,'0'))+'、':'';
           speak(receivedTime+msgs[0].text);
@@ -1653,7 +1727,8 @@ function speakCalDay(y,m,day){
   const det=document.getElementById('cal-day-detail');
   if(det){
     det.innerHTML='<div class="cdd-date">'+(m+1)+'月'+day+'日の予定</div>'+
-      items.map(v=>'<div class="cdd-item">'+(v.time?'<small>'+esc(v.time)+'</small> ':'')+esc((v.kind||'📌')+' '+(v.label||''))+'</div>').join('');
+      items.map(v=>'<div class="cdd-item">'+(v.time?'<small>'+esc(v.time)+'</small> ':'')+esc((v.kind||'📌')+' '+(v.label||''))+
+        (v.uid===uid()?'<button class="set-btn" type="button" onclick="openHYotei(\''+jsArg(v._id)+'\')">この予定を変更・削除する</button>':'<div class="note">この予定は、登録した家族が変更できます。</div>')+'</div>').join('');
     det.style.display='block';
   }
   const parts=items.map(v=>(v.time?timeYomi(v.time)+'に、':'')+(v.label||'よてい'));
@@ -1721,7 +1796,7 @@ async function openCancel(){
     snap.forEach(doc=>{ const v=doc.data(); if(v.uid===uid()) { v._id=doc.id; mine.push(v); } });
     mine.sort((a,b)=>(a.at?a.at.seconds:0)-(b.at?b.at.seconds:0));
     if(mine.length===0){ box.innerHTML='<div class="empty">今日この端末でつけた記録はありません</div>'; return; }
-    const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')','onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':()=>'服薬の確認','memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':()=>'「お薬飲んだ?」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ','tag-alert':v=>'おまもりタグ「'+(v.text||'読み取り')+'」'};
+    const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')','onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':()=>'服薬の確認','memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':()=>'「お薬飲んだ?」','family-message':v=>'本人へのメッセージ「'+(v.text||'')+'」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ','tag-alert':v=>'おまもりタグ「'+(v.text||'読み取り')+'」'};
     box.innerHTML=mine.map(v=>{
       const t=v.at?new Date(v.at.seconds*1000):null;
       const tm=t?(t.getHours()+':'+String(t.getMinutes()).padStart(2,'0')):'';
@@ -1865,6 +1940,7 @@ function initKazoku(){
         'kusuri':v=>'服薬について記録がありました('+({asa:'朝',hiru:'昼',yoru:'夜'}[v.slot]||'')+')',
         'aisatsu-back':v=>(v.name||'家族')+'さんが「'+(v.text||'')+'」と挨拶しました',
         'ask-kusuri':v=>(v.name||'家族')+'さんが「お薬飲んだ?」を送りました',
+        'family-message':v=>(v.name||'家族')+'さんからのメッセージ：「'+(v.text||'')+'」',
         'kibun-kazoku':v=>(v.name||'家族')+'さんが体調を記録: '+v.text,
         'kusuri-kakunin':v=>(v.name||'家族')+'さんが服薬を確認しました',
         'member-joined':v=>(v.text||'')+'さんが家族として参加しました',
@@ -1892,7 +1968,7 @@ function initKazoku(){
                  (rl?'<div class="reply-log">'+rl+'</div>':'')+btns+'</div>';
         }
         if(v.type==='onegai-back') return '';
-        const own=(v.uid===uid() && (v.type==='kibun-kazoku'||v.type==='kusuri-kakunin'||v.type==='memo'))
+        const own=(v.uid===uid() && (v.type==='kibun-kazoku'||v.type==='kusuri-kakunin'||v.type==='memo'||v.type==='family-message'))
           ? ' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\''+jsArg(v.type)+'\',\''+jsArg(v.slot)+'\')">とりけす</button>' : '';
         return '<div class="ev"><div class="tm">'+tm+'</div>'+esc(label[v.type]?label[v.type](v):'')+own+'</div>';
       }).join('');
@@ -1925,7 +2001,7 @@ function initKazoku(){
       const actions=(v.uid===uid() || !v.uid)
         ? '<span class="yt-actions"><button class="yt-del" onclick="editYotei(\''+jsArg(v._id)+'\')">修正する</button>'+
           '<button class="yt-del danger" onclick="delYotei(\''+jsArg(v._id)+'\')">削除する</button></span>'
-        : '<small>'+(v.uid?'ほかの家族が登録':'以前の予定（修正できる人を確認中）')+'</small>';
+        : '<small>'+(v.uid?'この予定は、登録した家族だけが変更・削除できます':'以前の予定（承認済みの家族が整理できます）')+'</small>';
       return '<div class="yt-item" style="border-left:6px solid '+yoteiColor(v)+';padding-left:8px"><span class="yt-main"><small class="yt-date">'+esc(v.kind||'📌')+' '+dateJp(dd)+'</small><b>'+esc(v.label)+'</b>'+
         (detail?'<br><small>'+esc(detail)+'</small>':'')+'</span>'+actions+'</div>';
     }).join('');
@@ -2412,6 +2488,7 @@ var REC_LABEL = {
   'onegai-back':    function(v){ return ['お願いへの返事','k-onegai', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
   'aisatsu-back':   function(v){ return ['家族の挨拶','', (v.name||'家族')+'さんが「'+(v.text||'')+'」と挨拶しました']; },
   'ask-kusuri':     function(v){ return ['服薬の声かけ','k-kusuri', (v.name||'家族')+'さんが「お薬飲んだ?」を送りました']; },
+  'family-message':  function(v){ return ['家族のメッセージ','', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
   'kibun-kazoku':   function(v){ return ['体調','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
   'tag-alert':      function(v){ return ['タグ','k-tag', 'おまもりタグが読み取られました: '+(v.text||'')]; },
   'kusuri-kakunin': function(v){ return ['服薬','k-kusuri', (v.name||'家族')+'さんが服薬を確認しました']; },
@@ -2622,6 +2699,31 @@ function sendAisatsuBack(key){
   });
 }
 function askKusuri(){ feedback(); addEvent({type:'ask-kusuri', name:myName()}).catch(()=>alert('送信できませんでした。電波状況を確認して、もう一度押してください')); }
+let familyMessageSending=false;
+async function sendFamilyMessage(){
+  const el=document.getElementById('in-family-message');
+  const state=document.getElementById('family-message-state');
+  const btn=document.getElementById('family-message-btn');
+  const t=el.value.trim();
+  state.classList.remove('err');
+  if(!t){ state.classList.add('err'); state.textContent='メッセージを入力してください'; return; }
+  if(familyMessageSending) return;
+  familyMessageSending=true;
+  btn.disabled=true;
+  state.textContent='送信しています…';
+  feedback();
+  try{
+    await addEvent({type:'family-message',text:t,name:myName()});
+    if(el.value.trim()===t) el.value='';
+    state.textContent='本人の画面へメッセージを送りました';
+  }catch(e){
+    state.classList.add('err');
+    state.textContent='送信できませんでした。入力は残っています。通信状態を確認してください';
+  }finally{
+    familyMessageSending=false;
+    btn.disabled=false;
+  }
+}
 function sendOnegaiBack(onegaiId,text){ feedback(); addEvent({type:'onegai-back', text:text, name:myName(), replyTo:onegaiId}).catch(()=>alert('返信を送信できませんでした。電波状況を確認して、もう一度押してください')); }
 function recKibun(text){ feedback(); addEvent({type:'kibun-kazoku', text:text, name:myName()}).catch(()=>alert('記録できませんでした。電波状況を確認して、もう一度押してください')); }
 function recKusuri(){ feedback(); addEvent({type:'kusuri-kakunin', name:myName()}).catch(()=>alert('記録できませんでした。電波状況を確認して、もう一度押してください')); }
