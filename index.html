@@ -2106,7 +2106,7 @@ function initKazoku(){
       }else{na.style.display='none';}
       items.sort((a,b)=>a.at.seconds-b.at.seconds);
       const box=document.getElementById('ev-list');
-      const vis=items;  /* 全端末で同じ記録を表示する(モードで間引かない) */
+      const vis=items.filter(recVisible);  /* 家族のみモードでは、家族が付ける生活記録だけを表示する */
       if(vis.length===0){
         box.innerHTML='<div class="empty">今日の記録はまだありません</div>';
         return;
@@ -2420,7 +2420,17 @@ function pad2(n){ return String(n).padStart(2,'0'); }
 function recDayStr(y,m,d){ return y+'-'+pad2(m+1)+'-'+pad2(d); }
 
 /* 承認済み家族には、端末の利用モードにかかわらず同じ記録・集計を表示します */
-function recVisible(v){ return true; }
+var REC_KONLY_OK = {
+  'kibun-kazoku':1,
+  'kusuri-kakunin':1,
+  'memo':1,
+  'member-joined':1,
+  'tag-alert':1,
+  'disaster-safe':1,
+  'disaster-evacuating':1,
+  'disaster-help':1
+};
+function recVisible(v){ return !isKOnly() || !!REC_KONLY_OK[v.type]; }
 
 /* 期間のグラフ(1か月=週別 / 半年・1年=月別)。件数の事実のみ */
 var rgCur=1, rgSeq=0;
