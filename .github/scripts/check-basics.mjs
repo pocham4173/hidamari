@@ -139,6 +139,26 @@ if (html !== null) {
     graphHasSharedSeries,
     graphHasSharedSeries ? '' : '共有履歴に必要なグラフ系列が不足しています'
   );
+
+  const actorColors = ['who-honnin', 'who-kazoku', 'who-shared'].every((name) =>
+    html.includes(`.rec-kind.${name}`)
+  ) && /function\s+eventWhoClass\s*\(/.test(html);
+  record(
+    '本人・家族・共有情報を色で区別する',
+    actorColors,
+    actorColors ? '' : '記録した人を区別する色または判定処理が不足しています'
+  );
+
+  const unifiedSummary =
+    /function\s+sv\s*\(n,\s*ds,\s*detail\)/.test(html) &&
+    html.includes("elapsed+'日中 '+n+'件") &&
+    html.includes("記録あり'+Object.keys(ds).length+'日'") &&
+    html.includes("d.periodDays+'日中 '+sum+'件・記録あり'+activeDays+'日");
+  record(
+    '月まとめと期間グラフを「何日中・何件・記録日数」で統一する',
+    unifiedSummary,
+    unifiedSummary ? '' : '日数と件数を統一して表示する処理が不足しています'
+  );
 }
 
 /* ---------- 3. manifest.json が正しい JSON ---------- */
