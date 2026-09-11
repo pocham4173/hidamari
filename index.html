@@ -919,15 +919,23 @@ table.cal-rec td.pad{background:none;}
           <div class="save-state" id="krec-kusuri-state" aria-live="polite"></div>
         </div>
         <div class="note">確認した人の名前・時間帯・時刻が残ります。実際の服用を証明するものではありません。</div>
+        <div class="set-sec">
+          <h4>そのほかの様子</h4>
+          <div class="in-row"><input type="text" id="krec-free-input" maxlength="80" placeholder="例：食欲あり、散歩をした"></div>
+          <button class="big-btn record" id="krec-free-btn" type="button" onclick="recKibunFree()">自由に記録する</button>
+          <div class="save-state" id="krec-free-state" aria-live="polite"></div>
+        </div>
       </div>
 
       <div class="card dom-record family-only-card" id="card-care-quick">
         <h3>家庭で選ぶ介護の記録</h3>
         <div class="note" style="margin-top:0;">必要な項目だけを選び、確認した家族が記録できます。</div>
         <div class="family-tool-grid" id="care-quick-buttons"><div class="empty">読み込み中…</div></div>
-        <details class="care-config">
+        <details class="care-config" id="care-config-details">
           <summary style="font-weight:900;cursor:pointer;">記録する項目を選ぶ</summary>
           <div class="care-checks" id="care-config-checks"></div>
+          <div class="in-row"><input type="text" id="care-custom-input" maxlength="100" placeholder="自由項目（例：デイサービスに行った）"></div>
+          <div class="note">複数作るときは「、」で区切ってください（5項目まで）。</div>
           <button class="set-btn" type="button" onclick="saveCareConfig()">この項目で使う</button>
           <div class="save-state" id="care-config-state" aria-live="polite"></div>
         </details>
@@ -935,7 +943,7 @@ table.cal-rec td.pad{background:none;}
 
       <div class="card dom-record family-only-card" id="card-family-notes">
         <h3>家族間の伝言メモ</h3>
-        <div class="note" style="margin-top:0;">承認済みの家族みんなに共有されます。既読を急かさない「確認しました」だけ付けられます。</div>
+        <div class="note" style="margin-top:0;">承認済みの家族みんなに共有されます。「確認しました」または自由な返事を付けられます。</div>
         <div class="in-row"><input type="text" id="family-note-input" maxlength="100" placeholder="例：冷蔵庫に作り置きがあります"></div>
         <button class="big-btn record" id="family-note-btn" type="button" onclick="addFamilyNote()">伝言を残す</button>
         <div class="save-state" id="family-note-state" aria-live="polite"></div>
@@ -945,8 +953,8 @@ table.cal-rec td.pad{background:none;}
       <div class="card dom-record family-only-card" id="card-family-tasks">
         <h3>家族のやることリスト</h3>
         <div class="note" style="margin-top:0;">担当を決めつけず、できる家族が「対応済み」にできます。</div>
-        <div class="in-row"><input type="text" id="family-task-input" maxlength="80" placeholder="例：薬局へ処方箋を取りに行く"></div>
         <div class="in-row"><input type="date" id="family-task-date" aria-label="期限（任意）"></div>
+        <div class="in-row"><input type="text" id="family-task-input" maxlength="80" placeholder="例：薬局へ処方箋を取りに行く"></div>
         <button class="big-btn record" id="family-task-btn" type="button" onclick="addFamilyTask()">やることを追加</button>
         <div class="save-state" id="family-task-state" aria-live="polite"></div>
         <div class="family-tool-list" id="family-task-list"><div class="empty">読み込み中…</div></div>
@@ -1032,7 +1040,7 @@ table.cal-rec td.pad{background:none;}
         <div class="set-sec family-only-card" id="family-contact-area">
           <h4>大切な連絡先</h4>
           <div class="note">病院・薬局・ケアマネジャーなど、家族で使う連絡先を登録できます。</div>
-          <div class="in-row"><select id="family-contact-kind" aria-label="連絡先の種類"><option>かかりつけの病院</option><option>薬局</option><option>ケアマネジャー</option><option>介護事業所</option><option>地域包括支援センター</option><option>その他</option></select></div>
+          <div class="in-row"><input type="text" id="family-contact-kind" maxlength="30" aria-label="連絡先の種類" placeholder="種類（例：かかりつけの病院）"></div>
           <div class="in-row"><input type="text" id="family-contact-name" maxlength="40" placeholder="施設名・呼び名"></div>
           <div class="in-row"><input type="tel" id="family-contact-phone" maxlength="20" inputmode="tel" placeholder="電話番号"></div>
           <div class="in-row"><input type="text" id="family-contact-note" maxlength="60" placeholder="メモ（任意）"></div>
@@ -2493,7 +2501,7 @@ var REC_KONLY_OK = {
 };
 var REC_META_TYPES = {
   'care-config':1,
-  'family-note':1,'family-note-ack':1,
+  'family-note':1,'family-note-ack':1,'family-note-reply':1,
   'family-task':1,'family-task-done':1,
   'family-contact':1
 };
@@ -3112,6 +3120,21 @@ async function recKusuri(slotKey){
     document.querySelectorAll('[data-rec-kusuri]').forEach(function(b){b.disabled=false;});
   }
 }
+async function recKibunFree(){
+  const el=document.getElementById('krec-free-input');
+  const state=document.getElementById('krec-free-state');
+  const btn=document.getElementById('krec-free-btn');
+  const text=el.value.trim();
+  state.classList.remove('err');
+  if(!text){state.classList.add('err');state.textContent='様子を入力してください';return;}
+  btn.disabled=true;state.textContent='記録しています…';
+  try{
+    await addEvent({type:'kibun-kazoku',text:text,name:myName()});
+    if(el.value.trim()===text)el.value='';
+    state.textContent='今日の様子を記録しました';
+  }catch(e){state.classList.add('err');state.textContent='記録できませんでした。入力は残っています';}
+  finally{btn.disabled=false;}
+}
 function sendMemo(){
   const el=document.getElementById('in-memo');
   const t=el.value.trim();
@@ -3132,7 +3155,7 @@ const CARE_OPTIONS=[
 ];
 const CARE_DEFAULT=['meal','water','call','visit'];
 let familyOnlyUnsubs=[];
-let familyOnlyData={config:[],notes:[],noteAcks:[],tasks:[],taskDone:[],contacts:[]};
+let familyOnlyData={config:[],notes:[],noteAcks:[],noteReplies:[],tasks:[],taskDone:[],contacts:[]};
 
 function foMillis(v){
   if(v.at&&v.at.toMillis) return v.at.toMillis();
@@ -3174,33 +3197,43 @@ function initFamilyOnlyTools(){
   foWatch('care-config','config',renderCareTools);
   foWatch('family-note','notes',renderFamilyNotes);
   foWatch('family-note-ack','noteAcks',renderFamilyNotes);
+  foWatch('family-note-reply','noteReplies',renderFamilyNotes);
   foWatch('family-task','tasks',renderFamilyTasks);
   foWatch('family-task-done','taskDone',renderFamilyTasks);
   foWatch('family-contact','contacts',renderFamilyContacts);
 }
-function currentCareKeys(){
+function currentCareItems(){
   const v=familyOnlyData.config[0];
-  const keys=v&&Array.isArray(v.keys)?v.keys.filter(function(k){return CARE_OPTIONS.some(function(o){return o.key===k;});}):CARE_DEFAULT.slice();
-  return keys.length?keys:CARE_DEFAULT.slice();
+  if(v&&Array.isArray(v.items)&&v.items.length){
+    return v.items.filter(function(o){return o&&o.key&&o.label;}).slice(0,13);
+  }
+  const keys=v&&Array.isArray(v.keys)?v.keys:CARE_DEFAULT;
+  return CARE_OPTIONS.filter(function(o){return keys.indexOf(o.key)>=0;});
 }
-function renderCareConfigChecks(keys){
+function renderCareConfigChecks(items){
   const box=document.getElementById('care-config-checks');
   if(!box) return;
+  const selected=(items||[]).map(function(o){return typeof o==='string'?o:o.key;});
   box.textContent='';
   CARE_OPTIONS.forEach(function(o){
     const lab=document.createElement('label');
     const ck=document.createElement('input');
-    ck.type='checkbox'; ck.value=o.key; ck.checked=keys.indexOf(o.key)>=0;
+    ck.type='checkbox'; ck.value=o.key; ck.checked=selected.indexOf(o.key)>=0;
     lab.appendChild(ck); lab.appendChild(document.createTextNode(o.label)); box.appendChild(lab);
   });
+  const custom=document.getElementById('care-custom-input');
+  if(custom){
+    custom.value=(items||[]).filter(function(o){return typeof o!=='string'&&String(o.key).indexOf('custom-')===0;})
+      .map(function(o){return o.label;}).join('、');
+  }
 }
 function renderCareTools(){
-  const keys=currentCareKeys();
-  renderCareConfigChecks(keys);
+  const items=currentCareItems();
+  renderCareConfigChecks(items);
   const box=document.getElementById('care-quick-buttons');
   if(!box) return;
   box.textContent='';
-  CARE_OPTIONS.filter(function(o){return keys.indexOf(o.key)>=0;}).forEach(function(o){
+  items.forEach(function(o){
     const b=document.createElement('button');
     b.type='button'; b.className='family-tool-btn'; b.textContent=o.label;
     b.addEventListener('click',function(){ addCareLog(o.key); });
@@ -3209,16 +3242,22 @@ function renderCareTools(){
 }
 async function saveCareConfig(){
   const keys=Array.from(document.querySelectorAll('#care-config-checks input:checked')).map(function(x){return x.value;});
-  if(!keys.length){ foState('care-config-state','少なくとも1つ選んでください',true); return; }
+  const items=CARE_OPTIONS.filter(function(o){return keys.indexOf(o.key)>=0;}).map(function(o){return {key:o.key,label:o.label};});
+  const free=document.getElementById('care-custom-input').value.trim();
+  const custom=free.split(/[、,\n]/).map(function(s){return s.trim();}).filter(Boolean).slice(0,5);
+  custom.forEach(function(label,i){items.push({key:'custom-'+i+'-'+label.slice(0,12),label:label.slice(0,30)});});
+  if(!items.length){ foState('care-config-state','少なくとも1つ選ぶか、自由項目を入力してください',true); return; }
   foState('care-config-state','保存しています…',false);
   try{
-    await addEvent({type:'care-config',keys:keys,name:myName(),clientAt:Date.now()});
+    await addEvent({type:'care-config',keys:keys,items:items,name:myName(),clientAt:Date.now()});
     foState('care-config-state','家族で使う項目を保存しました',false);
+    const details=document.getElementById('care-config-details');
+    if(details) details.open=false;
   }catch(e){ foState('care-config-state','保存できませんでした。通信状態を確認してください',true); }
 }
 let careLogSending=false;
 async function addCareLog(key){
-  const o=CARE_OPTIONS.find(function(x){return x.key===key;});
+  const o=currentCareItems().find(function(x){return x.key===key;});
   if(!o||careLogSending) return;
   careLogSending=true;
   document.querySelectorAll('#care-quick-buttons button').forEach(function(b){b.disabled=true;});
@@ -3248,6 +3287,10 @@ function renderFamilyNotes(){
   if(!box) return;
   const ack={};
   familyOnlyData.noteAcks.forEach(function(v){if(v.replyTo&&!ack[v.replyTo])ack[v.replyTo]=v;});
+  const replies={};
+  familyOnlyData.noteReplies.forEach(function(v){
+    if(v.replyTo)(replies[v.replyTo]=replies[v.replyTo]||[]).push(v);
+  });
   box.textContent='';
   const rows=familyOnlyData.notes.slice(0,20);
   if(!rows.length){box.innerHTML='<div class="empty">伝言はまだありません</div>';return;}
@@ -3255,6 +3298,11 @@ function renderFamilyNotes(){
     const row=document.createElement('div'); row.className='family-tool-row';
     row.appendChild(document.createTextNode(v.text||''));
     const meta=document.createElement('span');meta.className='meta';meta.textContent=(v.name||'家族')+'・'+foDateTime(v);row.appendChild(meta);
+    (replies[v._id]||[]).slice().reverse().forEach(function(r){
+      const reply=document.createElement('div');reply.className='reply-log';
+      reply.textContent='↳ '+(r.name||'家族')+'さん「'+(r.text||'')+'」 '+foDateTime(r);
+      row.appendChild(reply);
+    });
     const acts=document.createElement('div');acts.className='family-tool-actions';
     if(ack[v._id]){
       const s=document.createElement('span');s.className='meta';s.textContent=(ack[v._id].name||'家族')+'さんが確認しました';acts.appendChild(s);
@@ -3264,13 +3312,29 @@ function renderFamilyNotes(){
     if(v.uid===uid()){
       const d=document.createElement('button');d.type='button';d.className='danger';d.textContent='削除';d.addEventListener('click',function(){deleteFamilyEvent(v._id,'伝言');});acts.appendChild(d);
     }
-    row.appendChild(acts);box.appendChild(row);
+    row.appendChild(acts);
+    const replyRow=document.createElement('div');replyRow.className='in-row';
+    const input=document.createElement('input');input.type='text';input.maxLength=100;input.placeholder='自由に返事を書く';
+    const send=document.createElement('button');send.type='button';send.className='reply-btn';send.textContent='返事を送る';
+    send.addEventListener('click',function(){replyFamilyNote(v._id,input,send);});
+    replyRow.appendChild(input);replyRow.appendChild(send);row.appendChild(replyRow);
+    box.appendChild(row);
   });
 }
 async function ackFamilyNote(id){
   if(familyOnlyData.noteAcks.some(function(v){return v.replyTo===id;})) return;
   try{await addEvent({type:'family-note-ack',replyTo:id,name:myName(),clientAt:Date.now()});}
   catch(e){alert('確認を記録できませんでした。通信状態を確認してください');}
+}
+async function replyFamilyNote(id,input,button){
+  const text=input.value.trim();
+  if(!text){alert('返事を入力してください');return;}
+  button.disabled=true;
+  try{
+    await addEvent({type:'family-note-reply',replyTo:id,text:text,name:myName(),clientAt:Date.now()});
+    if(input.value.trim()===text)input.value='';
+  }catch(e){alert('返事を送れませんでした。入力は残っています');}
+  finally{button.disabled=false;}
 }
 async function addFamilyTask(){
   const el=document.getElementById('family-task-input'), due=document.getElementById('family-task-date').value;
@@ -3316,18 +3380,20 @@ async function finishFamilyTask(id){
   catch(e){alert('対応済みを記録できませんでした。通信状態を確認してください');}
 }
 async function addFamilyContact(){
-  const kind=document.getElementById('family-contact-kind').value;
+  const kindEl=document.getElementById('family-contact-kind');
+  const kind=kindEl.value.trim();
   const nameEl=document.getElementById('family-contact-name');
   const phoneEl=document.getElementById('family-contact-phone');
   const noteEl=document.getElementById('family-contact-note');
   const name=nameEl.value.trim(),phone=phoneEl.value.trim(),note=noteEl.value.trim();
+  if(!kind){foState('family-contact-state','連絡先の種類を入力してください',true);return;}
   if(!name){foState('family-contact-state','施設名・呼び名を入力してください',true);return;}
   if(!/^[0-9+()\-\s]{5,20}$/.test(phone)){foState('family-contact-state','電話番号を確認してください',true);return;}
   const btn=document.getElementById('family-contact-btn');btn.disabled=true;
   foState('family-contact-state','保存しています…',false);
   try{
     await addEvent({type:'family-contact',kind:kind,contactName:name,phone:phone,note:note,name:myName(),clientAt:Date.now()});
-    nameEl.value='';phoneEl.value='';noteEl.value='';
+    kindEl.value='';nameEl.value='';phoneEl.value='';noteEl.value='';
     foState('family-contact-state','家族の連絡先へ登録しました',false);
   }catch(e){foState('family-contact-state','保存できませんでした。入力は残っています',true);}
   finally{btn.disabled=false;}
