@@ -2173,7 +2173,8 @@ function initKazoku(){
       }else{na.style.display='none';}
       items.sort((a,b)=>a.at.seconds-b.at.seconds);
       const box=document.getElementById('ev-list');
-      const vis=items.filter(recVisible);  /* 家族のみモードでは、家族が付ける生活記録だけを表示する */
+      /* 利用方法を切り替えても、同じ家族で共有した履歴はすべて表示する */
+      const vis=items.filter(recVisible);
       if(vis.length===0){
         box.innerHTML='<div class="empty">今日の記録はまだありません</div>';
         return;
@@ -2487,18 +2488,8 @@ var recReq = 0;                /* 読み込みの通し番号。古い結果を�
 function pad2(n){ return String(n).padStart(2,'0'); }
 function recDayStr(y,m,d){ return y+'-'+pad2(m+1)+'-'+pad2(d); }
 
-/* 承認済み家族には、端末の利用モードにかかわらず同じ記録・集計を表示します */
-var REC_KONLY_OK = {
-  'kibun-kazoku':1,
-  'kusuri-kakunin':1,
-  'care-log':1,
-  'memo':1,
-  'member-joined':1,
-  'tag-alert':1,
-  'disaster-safe':1,
-  'disaster-evacuating':1,
-  'disaster-help':1
-};
+/* 承認済み家族には、端末の利用モードにかかわらず同じ記録・集計を表示します。
+   利用方法は入力画面だけを変え、これまで共有した履歴を隠しません。 */
 var REC_META_TYPES = {
   'care-config':1,
   'family-note':1,'family-note-ack':1,'family-note-reply':1,
@@ -2506,8 +2497,7 @@ var REC_META_TYPES = {
   'family-contact':1
 };
 function recVisible(v){
-  if(REC_META_TYPES[v.type]) return false;
-  return !isKOnly() || !!REC_KONLY_OK[v.type];
+  return !REC_META_TYPES[v.type];
 }
 
 /* 期間のグラフ(1か月=週別 / 半年・1年=月別)。件数の事実のみ */
@@ -2541,7 +2531,7 @@ function rgLoad(p){
   }
   col('events').where('date','>=',rgDs(start)).where('date','<=',todayStr()).get().then(function(snap){
     var n=buckets.length;
-    var M={aisatsu:[], kusuri:[], kibun:[], onegai:[], care:[]};
+    var M={aisatsu:[], message:[], kusuri:[], kibun:[], onegai:[], care:[]};
     Object.keys(M).forEach(function(k){ for(var i=0;i<n;i++) M[k].push(0); });
     snap.forEach(function(doc){
       var v=doc.data();
@@ -2551,6 +2541,7 @@ function rgLoad(p){
       if(b<0) return;
       var t=v.type;
       if(t==='aisatsu'||t==='aisatsu-back') M.aisatsu[b]++;
+      else if(t==='family-message'||t==='family-message-back') M.message[b]++;
       else if(t==='kusuri'||t==='kusuri-kakunin'||t==='ask-kusuri') M.kusuri[b]++;
       else if(t==='kibun'||t==='kibun-kazoku') M.kibun[b]++;
       else if(t==='care-log') M.care[b]++;
@@ -2568,9 +2559,15 @@ function rgRender(d){
   var total=0;
   Object.keys(d.M).forEach(function(k){ d.M[k].forEach(function(v){ total+=v; }); });
   if(total===0){ body.innerHTML='<div class="empty">この期間の記録はまだありません</div>'; return; }
-  var series=isKOnly()
-    ? [['介護の様子','care','#3F815C'],['服薬を確認した記録','kusuri','#5B8DC9'],['体調の記録','kibun','#C9A227']]
-    : [['挨拶','aisatsu','#D58B2B'],['服薬に関する記録','kusuri','#5B8DC9'],['体調の記録','kibun','#C9A227'],['ちょっとお願い','onegai','#A34A2E']];
+  /* どちらの利用方法でも、本人・家族・介護記録を同じ系列で振り返れます */
+  var series=[
+    ['挨拶','aisatsu','#D58B2B'],
+    ['メッセージと返事','message','#8B6EC7'],
+    ['服薬に関する記録','kusuri','#5B8DC9'],
+    ['体調の記録','kibun','#C9A227'],
+    ['ちょっとお願い','onegai','#A34A2E'],
+    ['介護の様子','care','#3F815C']
+  ];
   var html='';
   series.forEach(function(sc){
     var vals=d.M[sc[1]];
@@ -2894,12 +2891,14 @@ function recDrawSummary(){
   document.getElementById('rec-sum-ttl').textContent = (recM+1)+'月のまとめ';
   var now = new Date();
   var elapsed = (recY===now.getFullYear() && recM===now.getMonth()) ? now.getDate() : new Date(recY, recM+1, 0).getDate();
-  var days={}, aisatsuDays={}, aisatsuH=0, aisatsuK=0, kibun=0, kibunBy={}, careN=0, careBy={}, kusuriH=0, kusuriK=0, kusuriSlot={asa:0,hiru:0,yoru:0}, onegai=0, henshin=0, memo=0, disaster=0, tagN=0, tagBy={};
+  var days={}, aisatsuDays={}, aisatsuH=0, aisatsuK=0, messageK=0, messageH=0, kibun=0, kibunBy={}, careN=0, careBy={}, kusuriH=0, kusuriK=0, kusuriSlot={asa:0,hiru:0,yoru:0}, onegai=0, henshin=0, memo=0, disaster=0, tagN=0, tagBy={};
   recEvents.forEach(function(v){
     if(!recVisible(v) || v.type==='member-joined') return;
     days[v.date]=1;
     if(v.type==='aisatsu'){ aisatsuH++; aisatsuDays[v.date]=1; }
     if(v.type==='aisatsu-back') aisatsuK++;
+    if(v.type==='family-message') messageK++;
+    if(v.type==='family-message-back') messageH++;
     if(v.type==='kibun' || v.type==='kibun-kazoku'){ kibun++; var t=(v.text||'その他'); kibunBy[t]=(kibunBy[t]||0)+1; }
     if(v.type==='care-log'){ careN++; var ct=(v.text||'介護の様子'); careBy[ct]=(careBy[ct]||0)+1; }
     if(v.type==='kusuri') kusuriH++;
@@ -2912,33 +2911,23 @@ function recDrawSummary(){
     if(/^disaster-/.test(v.type||'')) disaster++;
   });
   var items = [['記録があった日', Object.keys(days).length + '日（' + elapsed + '日中）']];
-  if(isKOnly()){
-    items.push(['介護の様子', careN + '件']);
-    Object.keys(careBy).forEach(function(t){ items.push(['　└ ' + t, careBy[t] + '件']); });
-    items.push(['体調の記録', kibun + '件']);
-    Object.keys(kibunBy).forEach(function(t){ items.push(['　└ ' + t, kibunBy[t] + '件']); });
-    items.push(
-      ['服薬を確認した記録', kusuriK + '件'],
-      ['様子メモ', memo + '件'],
-      ['おまもりタグの読み取り', tagN + '件'],
-      ['防災の記録', disaster + '件']
-    );
-  }else{
-    items.push(
-      ['本人の挨拶があった日', Object.keys(aisatsuDays).length + '日'],
-      ['挨拶', (aisatsuH+aisatsuK) + '件（本人' + aisatsuH + '・家族' + aisatsuK + '）'],
-      ['体調の記録', kibun + '件']
-    );
-    Object.keys(kibunBy).forEach(function(t){ items.push(['　└ ' + t, kibunBy[t] + '件']); });
-    items.push(
-      ['服薬に関する記録', (kusuriH+kusuriK) + '件（本人' + kusuriH + '・家族' + kusuriK + '）'],
-      ['ちょっとお願い', onegai + '件'],
-      ['お願いへの返信', henshin + '件'],
-      ['様子メモ', memo + '件'],
-      ['おまもりタグの読み取り', tagN + '件'],
-      ['防災の記録', disaster + '件']
-    );
-  }
+  items.push(
+    ['本人の挨拶があった日', Object.keys(aisatsuDays).length + '日'],
+    ['挨拶', (aisatsuH+aisatsuK) + '件（本人' + aisatsuH + '・家族' + aisatsuK + '）'],
+    ['メッセージと返事', (messageK+messageH) + '件（家族' + messageK + '・本人の返事' + messageH + '）'],
+    ['体調の記録', kibun + '件']
+  );
+  Object.keys(kibunBy).forEach(function(t){ items.push(['　└ ' + t, kibunBy[t] + '件']); });
+  items.push(['介護の様子', careN + '件']);
+  Object.keys(careBy).forEach(function(t){ items.push(['　└ ' + t, careBy[t] + '件']); });
+  items.push(
+    ['服薬に関する記録', (kusuriH+kusuriK) + '件（本人' + kusuriH + '・家族' + kusuriK + '）'],
+    ['ちょっとお願い', onegai + '件'],
+    ['お願いへの返信', henshin + '件'],
+    ['様子メモ', memo + '件'],
+    ['おまもりタグの読み取り', tagN + '件'],
+    ['防災の記録', disaster + '件']
+  );
   var box = document.getElementById('rec-sum');
   box.textContent = '';
   items.forEach(function(it){
