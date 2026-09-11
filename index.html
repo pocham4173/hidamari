@@ -184,6 +184,13 @@ table.cal-rec td.pad{background:none;}
 .rec-kind.k-kibun{background:#FFF6E2;color:#8A6A00;}
 .rec-kind.k-tag{background:#FFF1EC;color:#963521;}
 .rec-kind.k-onegai{background:#FAF0EC;color:#A34A2E;}
+/* 記録した人を色で区別する。本人=オレンジ、家族=青、共有・安全情報=緑 */
+.rec-kind.who-honnin{background:#FFF0E4;color:#B45309;border:1px solid #F4B07D;}
+.rec-kind.who-kazoku{background:#EAF1FD;color:#315FAE;border:1px solid #9CB9E8;}
+.rec-kind.who-shared{background:#E5F4EA;color:#33704D;border:1px solid #9BC9AA;}
+.ev.who-honnin{border-left:4px solid #F28A42;padding-left:10px;background:#FFFBF7;}
+.ev.who-kazoku{border-left:4px solid #4F7FD3;padding-left:10px;background:#F8FAFE;}
+.ev.who-shared{border-left:4px solid #63A57D;padding-left:10px;background:#F8FCF9;}
 /* 期間のグラフ */
 .rg-period{display:flex;gap:8px;margin-bottom:4px;}
 .rg-period button{flex:1;min-height:44px;border:2px solid var(--hi);background:#fff;color:var(--hi-koi);border-radius:10px;font-family:inherit;font-size:.95rem;font-weight:900;cursor:pointer;}
@@ -221,7 +228,7 @@ table.cal-rec td.pad{background:none;}
 /* 月のまとめ */
 .sum-graph{grid-column:1/-1;margin-top:12px;padding-top:10px;border-top:1px dashed #E3D9C8;}
 .sum-graph .g-ttl{font-weight:900;font-size:.92rem;color:var(--cha);margin-bottom:8px;}
-.sum-graph .g-row{display:grid;grid-template-columns:9em 1fr 3.2em;gap:8px;align-items:center;margin-bottom:6px;font-size:.85rem;}
+.sum-graph .g-row{display:grid;grid-template-columns:8em 1fr 7em;gap:8px;align-items:center;margin-bottom:6px;font-size:.85rem;}
 .sum-graph .g-l{color:#5C4E3A;font-weight:700;line-height:1.3;}
 .sum-graph .g-bar{background:#F3EDE2;border-radius:999px;height:14px;overflow:hidden;}
 .sum-graph .g-bar i{display:block;height:100%;background:#C95843;border-radius:999px;}
@@ -1011,8 +1018,8 @@ table.cal-rec td.pad{background:none;}
 
     <!-- ふり返り -->
     <div class="ftab" id="t-kiroku" style="display:none;">
-      <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div class="note" style="margin:0 0 10px;">時間順に並んでいます。左の色付きラベルが記録の種類で、本文にご本人または記録した家族の名前を表示します。</div><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
-      <div class="card dom-record"><h3 id="rec-sum-ttl">今月のまとめ</h3><div class="rec-sum" id="rec-sum"></div><div class="note">件数を数えたものです。良い・悪いや、健康状態の判断はしていません。この記録は医療機関の診療記録ではありません。</div></div>
+      <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div class="note" style="margin:0 0 10px;"><b style="color:#B45309;">オレンジはご本人</b>、<b style="color:#315FAE;">青はご家族</b>、<b style="color:#33704D;">緑は共有・安全情報</b>です。時間順に並び、本文には記録した家族の名前も表示します。</div><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
+      <div class="card dom-record"><h3 id="rec-sum-ttl">今月のまとめ</h3><div class="rec-sum" id="rec-sum"></div><div class="note">「今月の経過日数中に何件あり、何日に記録があったか」を同じ形でまとめています。良い・悪いや健康状態の判断はしていません。この記録は医療機関の診療記録ではありません。</div></div>
       <div class="card dom-record"><h3>期間のグラフ</h3>
         <div class="rg-period">
           <button type="button" id="rg-p1" class="on" onclick="rgSelect(1)">1か月</button>
@@ -2218,19 +2225,19 @@ function initKazoku(){
             ['今から対応するね','あとで連絡するね','今は対応できないよ'].map(r=>
               '<button class="reply-btn" onclick="sendOnegaiBack(\''+jsArg(v._id)+'\',\''+r+'\')">'+r+'</button>').join('')+
             '<button class="reply-btn" onclick="openOnegaiBackFree(\''+jsArg(v._id)+'\')">自由に返事を書く</button></div>';
-          return '<div class="ev onegai-ev"><div class="tm">'+tm+'</div><b>'+head+'</b>'+
+          return '<div class="ev onegai-ev '+eventWhoClass(v)+'"><div class="tm">'+tm+'</div><b>'+head+'</b>'+
                  (rl?'<div class="reply-log">'+rl+'</div>':'')+btns+'</div>';
         }
         if(v.type==='family-message'){
           const answered=replies[v._id]||[];
           const reply=answered.map(r=>{const rt=new Date(r.at.seconds*1000);return '<div class="reply-log">↳ ご本人「'+esc(r.text||'')+'」('+rt.getHours()+':'+String(rt.getMinutes()).padStart(2,'0')+')</div>';}).join('');
           const own=v.uid===uid()?' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\'family-message\',\'\')">とりけす</button>':'';
-          return '<div class="ev"><div class="tm">'+tm+'</div>'+esc(label[v.type](v))+own+reply+'</div>';
+          return '<div class="ev '+eventWhoClass(v)+'"><div class="tm">'+tm+'</div>'+esc(label[v.type](v))+own+reply+'</div>';
         }
         if(v.type==='onegai-back'||v.type==='family-message-back') return '';
         const own=(v.uid===uid() && (v.type==='kibun-kazoku'||v.type==='kusuri-kakunin'||v.type==='care-log'||v.type==='memo'||v.type==='family-message'))
           ? ' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\''+jsArg(v.type)+'\',\''+jsArg(v.slot)+'\')">とりけす</button>' : '';
-        return '<div class="ev"><div class="tm">'+tm+'</div>'+esc(label[v.type]?label[v.type](v):'')+own+'</div>';
+        return '<div class="ev '+eventWhoClass(v)+'"><div class="tm">'+tm+'</div>'+esc(label[v.type]?label[v.type](v):'')+own+'</div>';
       }).join('');
     }, err=>{
       console.warn('events', err);
@@ -2500,6 +2507,13 @@ function recVisible(v){
   return !REC_META_TYPES[v.type];
 }
 
+function eventWhoClass(v){
+  var t=v&&v.type;
+  if(t==='aisatsu'||t==='kibun'||t==='kusuri'||t==='onegai'||t==='family-message-back') return 'who-honnin';
+  if(t==='aisatsu-back'||t==='ask-kusuri'||t==='family-message'||t==='onegai-back'||t==='kibun-kazoku'||t==='kusuri-kakunin'||t==='care-log'||t==='memo') return 'who-kazoku';
+  return 'who-shared';
+}
+
 /* 期間のグラフ(1か月=週別 / 半年・1年=月別)。件数の事実のみ */
 var rgCur=1, rgSeq=0;
 function rgDs(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
@@ -2532,6 +2546,7 @@ function rgLoad(p){
   col('events').where('date','>=',rgDs(start)).where('date','<=',todayStr()).get().then(function(snap){
     var n=buckets.length;
     var M={aisatsu:[], message:[], kusuri:[], kibun:[], onegai:[], care:[]};
+    var D={aisatsu:{}, message:{}, kusuri:{}, kibun:{}, onegai:{}, care:{}};
     Object.keys(M).forEach(function(k){ for(var i=0;i<n;i++) M[k].push(0); });
     snap.forEach(function(doc){
       var v=doc.data();
@@ -2540,15 +2555,18 @@ function rgLoad(p){
       for(var i=0;i<n;i++){ if(v.date>=buckets[i].s && v.date<=buckets[i].e){ b=i; break; } }
       if(b<0) return;
       var t=v.type;
-      if(t==='aisatsu'||t==='aisatsu-back') M.aisatsu[b]++;
-      else if(t==='family-message'||t==='family-message-back') M.message[b]++;
-      else if(t==='kusuri'||t==='kusuri-kakunin'||t==='ask-kusuri') M.kusuri[b]++;
-      else if(t==='kibun'||t==='kibun-kazoku') M.kibun[b]++;
-      else if(t==='care-log') M.care[b]++;
-      else if(t==='onegai') M.onegai[b]++;
+      var key='';
+      if(t==='aisatsu'||t==='aisatsu-back') key='aisatsu';
+      else if(t==='family-message'||t==='family-message-back') key='message';
+      else if(t==='kusuri'||t==='kusuri-kakunin'||t==='ask-kusuri') key='kusuri';
+      else if(t==='kibun'||t==='kibun-kazoku') key='kibun';
+      else if(t==='care-log') key='care';
+      else if(t==='onegai') key='onegai';
+      if(key){ M[key][b]++; D[key][v.date]=1; }
     });
     if(mySeq!==rgSeq) return;   /* 後から来た古い結果では上書きしない */
-    rgRender({buckets:buckets, M:M});
+    var periodDays=Math.floor((new Date(todayStr()+'T00:00:00')-new Date(rgDs(start)+'T00:00:00'))/86400000)+1;
+    rgRender({buckets:buckets, M:M, D:D, periodDays:periodDays});
   }).catch(function(){
     if(mySeq!==rgSeq) return;
     body.innerHTML='<div class="empty">読み込めませんでした。通信状態を確認して、もう一度期間のボタンを押してください。</div>';
@@ -2573,7 +2591,8 @@ function rgRender(d){
     var vals=d.M[sc[1]];
     var sum=vals.reduce(function(a,b){return a+b;},0);
     var mx=Math.max.apply(null, vals.concat([1]));
-    html+='<div class="rg-chart"><div class="rg-t">'+sc[0]+'<span>合計'+sum+'件</span></div><div class="rg-bars">';
+    var activeDays=Object.keys(d.D[sc[1]]||{}).length;
+    html+='<div class="rg-chart"><div class="rg-t">'+sc[0]+'<span>'+d.periodDays+'日中 '+sum+'件・記録あり'+activeDays+'日</span></div><div class="rg-bars">';
     vals.forEach(function(v){
       var h=v===0?2:Math.max(8, Math.round(v/mx*100));
       var color=v===0?'#E9E1D2':sc[2];
@@ -2770,21 +2789,21 @@ document.addEventListener('click', function(e){
 /* その日の記録 */
 var REC_LABEL = {
   'aisatsu':        function(v){ return ['本人の挨拶','', 'ご本人が「'+(v.text||'')+'」と挨拶しました']; },
-  'kibun':          function(v){ return ['体調','k-kibun', 'ご本人が選んだ今日の調子: '+(v.text||'')]; },
-  'kusuri':         function(v){ return ['服薬','k-kusuri', 'ご本人が、お薬を飲んだと記録しました'+recSlot(v.slot)]; },
-  'onegai':         function(v){ return ['お願い','k-onegai',
+  'kibun':          function(v){ return ['本人の体調','k-kibun', 'ご本人が選んだ今日の調子: '+(v.text||'')]; },
+  'kusuri':         function(v){ return ['本人の服薬','k-kusuri', 'ご本人が、お薬を飲んだと記録しました'+recSlot(v.slot)]; },
+  'onegai':         function(v){ return ['本人のお願い','k-onegai',
                         v.text==='今日はそっとしておいて' ? 'ご本人が「今日はそっとしておいて」を選びました'
                                                         : 'ご本人からのお願い: 「'+(v.text||'')+'」']; },
-  'onegai-back':    function(v){ return ['お願いへの返事','k-onegai', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
+  'onegai-back':    function(v){ return ['家族の返事','k-onegai', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
   'aisatsu-back':   function(v){ return ['家族の挨拶','', (v.name||'家族')+'さんが「'+(v.text||'')+'」と挨拶しました']; },
   'ask-kusuri':     function(v){ return ['服薬の声かけ','k-kusuri', (v.name||'家族')+'さんが「'+kusuriQuestion(v.slot)+'」を送りました']; },
   'family-message':  function(v){ return ['家族のメッセージ','', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
   'family-message-back': function(v){ return ['本人からの返事','', 'ご本人「'+(v.text||'')+'」']; },
-  'kibun-kazoku':   function(v){ return ['体調','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
-  'care-log':        function(v){ return ['介護記録','', (v.name||'家族')+'さんが「'+(v.text||'介護の様子')+'」と記録しました']; },
+  'kibun-kazoku':   function(v){ return ['家族の体調記録','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
+  'care-log':        function(v){ return ['家族の介護記録','', (v.name||'家族')+'さんが「'+(v.text||'介護の様子')+'」と記録しました']; },
   'tag-alert':      function(v){ return ['タグ','k-tag', 'おまもりタグが読み取られました: '+(v.text||'')]; },
-  'kusuri-kakunin': function(v){ return ['服薬','k-kusuri', (v.name||'家族')+'さんが'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の':'')+'服薬を確認しました']; },
-  'memo':           function(v){ return ['様子メモ','', (v.name||'家族')+'さん: '+(v.text||'')]; },
+  'kusuri-kakunin': function(v){ return ['家族の服薬確認','k-kusuri', (v.name||'家族')+'さんが'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の':'')+'服薬を確認しました']; },
+  'memo':           function(v){ return ['家族の様子メモ','', (v.name||'家族')+'さん: '+(v.text||'')]; },
   'disaster-safe':  function(v){ return ['防災','', (v.name||'家族')+'さんが「無事です」と記録しました']; },
   'disaster-evacuating': function(v){ return ['防災','', (v.name||'家族')+'さんが「避難中です」と記録しました']; },
   'disaster-help':  function(v){ return ['防災','k-onegai', (v.name||'家族')+'さんが「助けが必要です」と記録しました（緊急通報ではありません）']; }
@@ -2818,7 +2837,7 @@ function recRow(v, kind, cls, text, isReply){
   row.appendChild(tm);
   var body = document.createElement('div');
   var k = document.createElement('span');
-  k.className = 'rec-kind' + (cls ? ' '+cls : '');
+  k.className = 'rec-kind' + (cls ? ' '+cls : '') + ' ' + eventWhoClass(v);
   k.textContent = kind;
   body.appendChild(k);
   body.appendChild(document.createTextNode(text));
@@ -2891,42 +2910,43 @@ function recDrawSummary(){
   document.getElementById('rec-sum-ttl').textContent = (recM+1)+'月のまとめ';
   var now = new Date();
   var elapsed = (recY===now.getFullYear() && recM===now.getMonth()) ? now.getDate() : new Date(recY, recM+1, 0).getDate();
-  var days={}, aisatsuDays={}, aisatsuH=0, aisatsuK=0, messageK=0, messageH=0, kibun=0, kibunBy={}, careN=0, careBy={}, kusuriH=0, kusuriK=0, kusuriSlot={asa:0,hiru:0,yoru:0}, onegai=0, henshin=0, memo=0, disaster=0, tagN=0, tagBy={};
+  var days={}, totalN=0, aisatsuDays={}, messageDays={}, kibunDays={}, careDays={}, kusuriDays={}, onegaiDays={}, henshinDays={}, memoDays={}, disasterDays={}, tagDays={};
+  var aisatsuH=0, aisatsuK=0, messageK=0, messageH=0, kibun=0, kibunBy={}, careN=0, careBy={}, kusuriH=0, kusuriK=0, kusuriSlot={asa:0,hiru:0,yoru:0}, onegai=0, henshin=0, memo=0, disaster=0, tagN=0, tagBy={};
   recEvents.forEach(function(v){
     if(!recVisible(v) || v.type==='member-joined') return;
-    days[v.date]=1;
+    days[v.date]=1; totalN++;
     if(v.type==='aisatsu'){ aisatsuH++; aisatsuDays[v.date]=1; }
-    if(v.type==='aisatsu-back') aisatsuK++;
-    if(v.type==='family-message') messageK++;
-    if(v.type==='family-message-back') messageH++;
-    if(v.type==='kibun' || v.type==='kibun-kazoku'){ kibun++; var t=(v.text||'その他'); kibunBy[t]=(kibunBy[t]||0)+1; }
-    if(v.type==='care-log'){ careN++; var ct=(v.text||'介護の様子'); careBy[ct]=(careBy[ct]||0)+1; }
-    if(v.type==='kusuri') kusuriH++;
-    if(v.type==='kusuri-kakunin' || v.type==='ask-kusuri') kusuriK++;
+    if(v.type==='aisatsu-back'){ aisatsuK++; aisatsuDays[v.date]=1; }
+    if(v.type==='family-message'){ messageK++; messageDays[v.date]=1; }
+    if(v.type==='family-message-back'){ messageH++; messageDays[v.date]=1; }
+    if(v.type==='kibun' || v.type==='kibun-kazoku'){ kibun++; kibunDays[v.date]=1; var t=(v.text||'その他'); kibunBy[t]=(kibunBy[t]||0)+1; }
+    if(v.type==='care-log'){ careN++; careDays[v.date]=1; var ct=(v.text||'介護の様子'); careBy[ct]=(careBy[ct]||0)+1; }
+    if(v.type==='kusuri'){ kusuriH++; kusuriDays[v.date]=1; }
+    if(v.type==='kusuri-kakunin' || v.type==='ask-kusuri'){ kusuriK++; kusuriDays[v.date]=1; }
     if((v.type==='kusuri' || v.type==='kusuri-kakunin') && kusuriSlot[v.slot]!==undefined) kusuriSlot[v.slot]++;
-    if(v.type==='onegai') onegai++;
-    if(v.type==='onegai-back') henshin++;
-    if(v.type==='memo') memo++;
-    if(v.type==='tag-alert'){ tagN++; var tt=(v.text||'読み取り'); tagBy[tt]=(tagBy[tt]||0)+1; }
-    if(/^disaster-/.test(v.type||'')) disaster++;
+    if(v.type==='onegai'){ onegai++; onegaiDays[v.date]=1; }
+    if(v.type==='onegai-back'){ henshin++; henshinDays[v.date]=1; }
+    if(v.type==='memo'){ memo++; memoDays[v.date]=1; }
+    if(v.type==='tag-alert'){ tagN++; tagDays[v.date]=1; var tt=(v.text||'読み取り'); tagBy[tt]=(tagBy[tt]||0)+1; }
+    if(/^disaster-/.test(v.type||'')){ disaster++; disasterDays[v.date]=1; }
   });
-  var items = [['記録があった日', Object.keys(days).length + '日（' + elapsed + '日中）']];
+  function sv(n, ds, detail){ return elapsed+'日中 '+n+'件（記録あり'+Object.keys(ds).length+'日'+(detail?'・'+detail:'')+'）'; }
+  var items = [['今月の記録合計', sv(totalN, days, '')]];
   items.push(
-    ['本人の挨拶があった日', Object.keys(aisatsuDays).length + '日'],
-    ['挨拶', (aisatsuH+aisatsuK) + '件（本人' + aisatsuH + '・家族' + aisatsuK + '）'],
-    ['メッセージと返事', (messageK+messageH) + '件（家族' + messageK + '・本人の返事' + messageH + '）'],
-    ['体調の記録', kibun + '件']
+    ['挨拶', sv(aisatsuH+aisatsuK, aisatsuDays, '本人'+aisatsuH+'・家族'+aisatsuK)],
+    ['メッセージと返事', sv(messageK+messageH, messageDays, '家族'+messageK+'・本人の返事'+messageH)],
+    ['体調の記録', sv(kibun, kibunDays, '')]
   );
-  Object.keys(kibunBy).forEach(function(t){ items.push(['　└ ' + t, kibunBy[t] + '件']); });
-  items.push(['介護の様子', careN + '件']);
-  Object.keys(careBy).forEach(function(t){ items.push(['　└ ' + t, careBy[t] + '件']); });
+  Object.keys(kibunBy).forEach(function(t){ items.push(['　└ ' + t, elapsed+'日中 '+kibunBy[t]+'件']); });
+  items.push(['介護の様子', sv(careN, careDays, '')]);
+  Object.keys(careBy).forEach(function(t){ items.push(['　└ ' + t, elapsed+'日中 '+careBy[t]+'件']); });
   items.push(
-    ['服薬に関する記録', (kusuriH+kusuriK) + '件（本人' + kusuriH + '・家族' + kusuriK + '）'],
-    ['ちょっとお願い', onegai + '件'],
-    ['お願いへの返信', henshin + '件'],
-    ['様子メモ', memo + '件'],
-    ['おまもりタグの読み取り', tagN + '件'],
-    ['防災の記録', disaster + '件']
+    ['服薬に関する記録', sv(kusuriH+kusuriK, kusuriDays, '本人'+kusuriH+'・家族'+kusuriK)],
+    ['ちょっとお願い', sv(onegai, onegaiDays, '')],
+    ['お願いへの返信', sv(henshin, henshinDays, '')],
+    ['様子メモ', sv(memo, memoDays, '')],
+    ['おまもりタグの読み取り', sv(tagN, tagDays, '')],
+    ['防災の記録', sv(disaster, disasterDays, '')]
   );
   var box = document.getElementById('rec-sum');
   box.textContent = '';
@@ -2946,7 +2966,7 @@ function recDrawSummary(){
       var bw=document.createElement('div'); bw.className='g-bar';
       var bi=document.createElement('i'); bi.style.width=Math.max(8, Math.round(tagBy[t]/mx*100))+'%';
       bw.appendChild(bi);
-      var n=document.createElement('span'); n.className='g-n'; n.textContent=tagBy[t]+'件';
+      var n=document.createElement('span'); n.className='g-n'; n.textContent=elapsed+'日中 '+tagBy[t]+'件';
       row.appendChild(l); row.appendChild(bw); row.appendChild(n); g.appendChild(row);
     });
     box.appendChild(g);
@@ -2964,7 +2984,7 @@ function recDrawSummary(){
       var bw=document.createElement('div'); bw.className='g-bar';
       var bi=document.createElement('i'); bi.style.width=(v===0?4:Math.max(8, Math.round(v/kmx*100)))+'%'; bi.style.background=(v===0?'#E3D9C8':'#5B8DC9');
       bw.appendChild(bi);
-      var n=document.createElement('span'); n.className='g-n'; n.textContent=v+'件'; n.style.color='#2E5B95';
+      var n=document.createElement('span'); n.className='g-n'; n.textContent=elapsed+'日中 '+v+'件'; n.style.color='#2E5B95';
       row.appendChild(l); row.appendChild(bw); row.appendChild(n); kg.appendChild(row);
     });
     var kn=document.createElement('div'); kn.className='note'; kn.style.marginTop='6px';
