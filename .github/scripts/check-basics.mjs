@@ -114,6 +114,33 @@ if (html !== null) {
   );
 }
 
+/* ---------- 利用方法を切り替えても共有履歴を隠さない ---------- */
+
+if (html !== null) {
+  const modeIndependentHistory =
+    /function\s+recVisible\s*\(v\)\s*\{\s*return\s+!REC_META_TYPES\[v\.type\];\s*\}/.test(html) &&
+    !/REC_KONLY_OK/.test(html);
+  record(
+    '家族の共有履歴を利用モードで除外しない',
+    modeIndependentHistory,
+    modeIndependentHistory ? '' : '本人・家族の履歴をモード別に除外する処理が残っています'
+  );
+
+  const graphHasSharedSeries = [
+    "['挨拶','aisatsu'",
+    "['メッセージと返事','message'",
+    "['服薬に関する記録','kusuri'",
+    "['体調の記録','kibun'",
+    "['ちょっとお願い','onegai'",
+    "['介護の様子','care'"
+  ].every((text) => html.includes(text));
+  record(
+    'グラフに本人・家族・介護の共有系列がある',
+    graphHasSharedSeries,
+    graphHasSharedSeries ? '' : '共有履歴に必要なグラフ系列が不足しています'
+  );
+}
+
 /* ---------- 3. manifest.json が正しい JSON ---------- */
 
 let manifest = null;
