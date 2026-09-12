@@ -151,17 +151,23 @@ if (html !== null) {
 
   const unifiedSummary =
     /function\s+addGraph\s*\(title,\s*rows,\s*note\)/.test(html) &&
+    /function\s+addList\s*\(title,\s*rows,\s*note\)/.test(html) &&
     html.includes("className='sum-overview'") &&
+    html.includes("className='sum-points'") &&
     html.includes("r[1]+'件・'+Object.keys(r[2]||{}).length+'日'") &&
-    html.includes("addGraph('今月の詳しい記録'") &&
+    html.includes("addList('記録の詳細を見る'") &&
+    html.includes("className='sum-item'") &&
+    html.includes("className='sum-detail-row'") &&
     html.includes("['本人の挨拶',detailCounts.aisatsuH") &&
     html.includes("['家族からの服薬声かけ',detailCounts.kusuriAskK") &&
+    html.includes("detailEvents.aisatsuK") &&
     html.includes("addGraph('挨拶の朝・昼・夜'") &&
     html.includes("['本人・朝の挨拶',aisatsuSlotCounts.honnin.asa") &&
     html.includes("['家族・夜の挨拶',aisatsuSlotCounts.kazoku.yoru") &&
     html.includes("addEvent({type:'aisatsu-back', text:tx, slot:key") &&
     html.includes("className='g-line'") &&
     !html.includes("addGraph('今月の記録一覧'") &&
+    !html.includes("addGraph('今月の詳しい記録'") &&
     !html.includes("addGraph('本人と家族のやり取り'") &&
     html.includes("addGraph('体調の内訳'") &&
     html.includes("addGraph('服薬の時間帯'") &&

@@ -230,10 +230,32 @@ table.cal-rec td.pad{background:none;}
 .sum-overview .so-period{font-size:.82rem;font-weight:800;color:#3F815C;}
 .sum-overview .so-main{font-size:1.65rem;font-weight:900;color:var(--cha);line-height:1.35;margin-top:3px;}
 .sum-overview .so-sub{font-size:.9rem;font-weight:800;color:var(--usucha);margin-top:4px;}
+.sum-points{margin-top:14px;padding:14px;border-radius:14px;background:#FFF8ED;border:2px solid #F1C28E;}
+.sum-points h4{font-size:1rem;color:#8B4B17;margin-bottom:8px;}
+.sum-points p{padding:7px 0;border-bottom:1px solid #F2DCC3;font-size:.88rem;font-weight:750;line-height:1.55;color:var(--cha);}
+.sum-points p:last-child{border-bottom:0;}
+.sum-list{margin-top:14px;padding-top:13px;border-top:1px dashed #D9E3DC;}
+.sum-list .sl-ttl{font-weight:900;font-size:1rem;color:var(--cha);}
+.sum-list .sl-sub{font-size:.75rem;color:var(--usucha);margin:3px 0 10px;line-height:1.5;}
+.sum-item{margin-bottom:9px;border:1px solid #DCE4E0;border-radius:12px;background:#fff;overflow:hidden;}
+.sum-item summary{display:flex;align-items:center;gap:9px;min-height:54px;padding:11px 12px;cursor:pointer;list-style:none;}
+.sum-item summary::-webkit-details-marker{display:none;}
+.sum-item summary::after{content:'›';font-size:1.35rem;font-weight:900;color:#7B8794;transform:rotate(90deg);transition:transform .15s;}
+.sum-item[open] summary::after{transform:rotate(-90deg);}
+.sum-item .si-mark{width:7px;align-self:stretch;border-radius:999px;background:#3F815C;flex-shrink:0;}
+.sum-item .si-name{flex:1;font-size:.9rem;font-weight:900;line-height:1.4;color:var(--cha);}
+.sum-item .si-count{font-size:.82rem;font-weight:900;white-space:nowrap;color:var(--cha);}
+.sum-detail{border-top:1px solid #E6ECE8;padding:3px 12px 9px 28px;background:#FAFCFB;}
+.sum-detail-row{padding:9px 0;border-bottom:1px solid #E6ECE8;font-size:.82rem;line-height:1.55;color:var(--cha);}
+.sum-detail-row:last-child{border-bottom:0;}
+.sum-detail-row time{display:block;font-size:.72rem;font-weight:800;color:var(--usucha);}
 .sum-graph{margin-top:14px;padding-top:13px;border-top:1px dashed #D9E3DC;}
 .sum-graph .g-ttl{font-weight:900;font-size:1rem;color:var(--cha);margin-bottom:3px;}
 .sum-graph .g-sub{font-size:.75rem;color:var(--usucha);margin-bottom:10px;line-height:1.5;}
 .sum-graph .g-row{display:block;margin-bottom:13px;font-size:.84rem;}
+.sum-graph details.g-row{border:1px solid #E1E7E3;border-radius:12px;padding:9px 10px;background:#fff;}
+.sum-graph details.g-row summary{cursor:pointer;list-style:none;}
+.sum-graph details.g-row summary::-webkit-details-marker{display:none;}
 .sum-graph .g-line{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;}
 .sum-graph .g-l{flex:1;color:#5C4E3A;font-weight:800;line-height:1.4;padding-left:8px;border-left:5px solid #3F815C;}
 .sum-graph .g-bar{background:#EDF0ED;border-radius:999px;height:16px;overflow:hidden;}
@@ -2909,12 +2931,12 @@ function recDrawDay(){
   }
 }
 
-/* 月のまとめ。カードの羅列ではなく、件数と記録日数を横棒で比較します。 */
+/* 月のまとめ。概要は押せる詳細一覧、比較に意味がある内訳だけ横棒で表示します。 */
 function recDrawSummary(){
   document.getElementById('rec-sum-ttl').textContent = (recM+1)+'月のまとめ';
   var now=new Date();
   var elapsed=(recY===now.getFullYear()&&recM===now.getMonth())?now.getDate():new Date(recY,recM+1,0).getDate();
-  var totalN=0, allDays={};
+  var totalN=0, allDays={}, dayTotals={};
   var counts={aisatsu:0,message:0,kibun:0,care:0,kusuri:0,onegai:0,henshin:0,memo:0,tag:0,disaster:0};
   var catDays={aisatsu:{},message:{},kibun:{},care:{},kusuri:{},onegai:{},henshin:{},memo:{},tag:{},disaster:{}};
   var detailCounts={aisatsuH:0,aisatsuK:0,messageK:0,messageH:0,kibunH:0,kibunK:0,kusuriH:0,kusuriConfirmK:0,kusuriAskK:0,onegaiH:0,henshinK:0,careK:0,memoK:0,tag:0,disaster:0};
@@ -2935,7 +2957,7 @@ function recDrawSummary(){
   function hitAisatsuSlot(who,v){ var s=aisatsuSummarySlot(v); aisatsuSlotCounts[who][s]++; aisatsuSlotDays[who][s][v.date]=1; }
   recEvents.forEach(function(v){
     if(!recVisible(v)||v.type==='member-joined') return;
-    totalN++; allDays[v.date]=1;
+    totalN++; allDays[v.date]=1; dayTotals[v.date]=(dayTotals[v.date]||0)+1;
     if(v.type==='aisatsu'){ hit('aisatsu',v.date); hitDetail('aisatsuH',v.date); hitAisatsuSlot('honnin',v); }
     else if(v.type==='aisatsu-back'){ hit('aisatsu',v.date); hitDetail('aisatsuK',v.date); hitAisatsuSlot('kazoku',v); }
     else if(v.type==='family-message'){ hit('message',v.date); hitDetail('messageK',v.date); }
@@ -2958,12 +2980,109 @@ function recDrawSummary(){
     else if(v.type==='tag-alert'){ hit('tag',v.date); hitDetail('tag',v.date); hitBy(tagBy,tagByDays,v.text||'読み取り',v.date); }
     else if(/^disaster-/.test(v.type||'')){ hit('disaster',v.date); hitDetail('disaster',v.date); }
   });
+  /* 集計の数字を押したときに、元になった日付・時刻・内容を確認できるよう保持します */
+  var detailEvents={aisatsuH:[],aisatsuK:[],messageK:[],messageH:[],kibunH:[],kibunK:[],kusuriH:[],kusuriConfirmK:[],kusuriAskK:[],onegaiH:[],henshinK:[],careK:[],memoK:[],tag:[],disaster:[]};
+  var aisatsuSlotEvents={honnin:{asa:[],hiru:[],yoru:[]},kazoku:{asa:[],hiru:[],yoru:[]}};
+  var kibunByEvents={},careByEvents={},tagByEvents={},kusuriSlotEvents={asa:[],hiru:[],yoru:[]};
+  function pushBy(map,key,v){ (map[key]=map[key]||[]).push(v); }
+  recEvents.forEach(function(v){
+    if(!recVisible(v)||v.type==='member-joined') return;
+    if(v.type==='aisatsu'){ detailEvents.aisatsuH.push(v); aisatsuSlotEvents.honnin[aisatsuSummarySlot(v)].push(v); }
+    else if(v.type==='aisatsu-back'){ detailEvents.aisatsuK.push(v); aisatsuSlotEvents.kazoku[aisatsuSummarySlot(v)].push(v); }
+    else if(v.type==='family-message') detailEvents.messageK.push(v);
+    else if(v.type==='family-message-back') detailEvents.messageH.push(v);
+    else if(v.type==='kibun'){ detailEvents.kibunH.push(v); pushBy(kibunByEvents,v.text||'その他',v); }
+    else if(v.type==='kibun-kazoku'){ detailEvents.kibunK.push(v); pushBy(kibunByEvents,v.text||'その他',v); }
+    else if(v.type==='care-log'){ detailEvents.careK.push(v); pushBy(careByEvents,v.text||'介護の様子',v); }
+    else if(v.type==='kusuri'){
+      detailEvents.kusuriH.push(v); if(kusuriSlotEvents[v.slot]) kusuriSlotEvents[v.slot].push(v);
+    }else if(v.type==='kusuri-kakunin'){
+      detailEvents.kusuriConfirmK.push(v); if(kusuriSlotEvents[v.slot]) kusuriSlotEvents[v.slot].push(v);
+    }else if(v.type==='ask-kusuri') detailEvents.kusuriAskK.push(v);
+    else if(v.type==='onegai') detailEvents.onegaiH.push(v);
+    else if(v.type==='onegai-back') detailEvents.henshinK.push(v);
+    else if(v.type==='memo') detailEvents.memoK.push(v);
+    else if(v.type==='tag-alert'){ detailEvents.tag.push(v); pushBy(tagByEvents,v.text||'読み取り',v); }
+    else if(/^disaster-/.test(v.type||'')) detailEvents.disaster.push(v);
+  });
   var box=document.getElementById('rec-sum'); box.textContent='';
   var overview=document.createElement('div'); overview.className='sum-overview';
   var op=document.createElement('div'); op.className='so-period'; op.textContent=(recM+1)+'月'+elapsed+'日分の記録';
   var om=document.createElement('div'); om.className='so-main'; om.textContent='合計'+totalN+'件';
   var os=document.createElement('div'); os.className='so-sub'; os.textContent=elapsed+'日中、記録があったのは'+Object.keys(allDays).length+'日';
   overview.appendChild(op); overview.appendChild(om); overview.appendChild(os); box.appendChild(overview);
+
+  var pointTexts=[elapsed+'日中'+Object.keys(allDays).length+'日に、合計'+totalN+'件の記録がありました。'];
+  var honninN=detailCounts.aisatsuH+detailCounts.messageH+detailCounts.kibunH+detailCounts.kusuriH+detailCounts.onegaiH;
+  var kazokuN=detailCounts.aisatsuK+detailCounts.messageK+detailCounts.kibunK+detailCounts.kusuriConfirmK+detailCounts.kusuriAskK+detailCounts.henshinK+detailCounts.careK+detailCounts.memoK;
+  var sharedN=detailCounts.tag+detailCounts.disaster;
+  pointTexts.push('記録した人の内訳は、本人'+honninN+'件・家族'+kazokuN+'件'+(sharedN?'・共有／安全情報'+sharedN+'件':'')+'でした。');
+  var busiest=Object.keys(dayTotals).sort(function(a,b){return dayTotals[b]-dayTotals[a];})[0];
+  if(busiest){
+    var busyDate=new Date(busiest+'T00:00:00');
+    pointTexts.push('最も記録が多かったのは'+(busyDate.getMonth()+1)+'月'+busyDate.getDate()+'日の'+dayTotals[busiest]+'件でした。');
+  }
+  if(counts.aisatsu){
+    var ga=aisatsuSlotCounts.honnin.asa+aisatsuSlotCounts.kazoku.asa;
+    var gh=aisatsuSlotCounts.honnin.hiru+aisatsuSlotCounts.kazoku.hiru;
+    var gy=aisatsuSlotCounts.honnin.yoru+aisatsuSlotCounts.kazoku.yoru;
+    pointTexts.push('挨拶は本人'+detailCounts.aisatsuH+'件、家族'+detailCounts.aisatsuK+'件。朝'+ga+'件・昼'+gh+'件・夜'+gy+'件でした。');
+  }
+  if(counts.message) pointTexts.push('家族からのメッセージは'+detailCounts.messageK+'件、本人からの返事は'+detailCounts.messageH+'件でした。');
+  if(counts.onegai||counts.henshin) pointTexts.push('本人からのお願いは'+detailCounts.onegaiH+'件、家族からの返信は'+detailCounts.henshinK+'件でした。');
+  if(counts.kusuri) pointTexts.push('服薬に関する記録は、本人'+detailCounts.kusuriH+'件・家族の確認'+detailCounts.kusuriConfirmK+'件・家族の声かけ'+detailCounts.kusuriAskK+'件でした。');
+  var topKibun=Object.keys(kibunBy).sort(function(a,b){return kibunBy[b]-kibunBy[a];})[0];
+  if(topKibun) pointTexts.push('体調で最も多く記録された言葉は「'+topKibun+'」'+kibunBy[topKibun]+'件でした。');
+  var points=document.createElement('div'); points.className='sum-points';
+  var pt=document.createElement('h4'); pt.textContent='今月のポイント'; points.appendChild(pt);
+  pointTexts.forEach(function(t){ var p=document.createElement('p'); p.textContent=t; points.appendChild(p); });
+  box.appendChild(points);
+
+  function eventStamp(v){
+    var d=v.date ? new Date(v.date+'T00:00:00') : null;
+    var ds=d && !isNaN(d.getTime()) ? ((d.getMonth()+1)+'月'+d.getDate()+'日') : '日付不明';
+    var ts='';
+    if(v.at && typeof v.at.seconds==='number') ts=' '+recTime(v);
+    return ds+ts;
+  }
+  function eventText(v){
+    var f=REC_LABEL[v.type];
+    if(f){
+      var p=f(v);
+      if(p && p[2]) return p[2]+recReplyFor(v);
+    }
+    return v.text||'記録がありました';
+  }
+  function appendEventDetails(parent,events){
+    var detail=document.createElement('div'); detail.className='sum-detail';
+    (events||[]).slice().sort(function(a,b){
+      var ad=(a.date||'')+' '+(a.at&&a.at.seconds||0);
+      var bd=(b.date||'')+' '+(b.at&&b.at.seconds||0);
+      return ad<bd ? 1 : ad>bd ? -1 : 0;
+    }).forEach(function(v){
+      var row=document.createElement('div'); row.className='sum-detail-row';
+      var tm=document.createElement('time'); tm.textContent=eventStamp(v);
+      var tx=document.createElement('span'); tx.textContent=eventText(v);
+      row.appendChild(tm); row.appendChild(tx); detail.appendChild(row);
+    });
+    parent.appendChild(detail);
+  }
+  function addList(title,rows,note){
+    if(!rows.length) return;
+    var list=document.createElement('div'); list.className='sum-list';
+    var lt=document.createElement('div'); lt.className='sl-ttl'; lt.textContent=title; list.appendChild(lt);
+    var ls=document.createElement('div'); ls.className='sl-sub'; ls.textContent=note; list.appendChild(ls);
+    rows.forEach(function(r){
+      var item=document.createElement('details'); item.className='sum-item';
+      var sm=document.createElement('summary');
+      var mark=document.createElement('span'); mark.className='si-mark'; mark.style.background=r[3]||'#3F815C';
+      var name=document.createElement('span'); name.className='si-name'; name.textContent=r[0];
+      var count=document.createElement('span'); count.className='si-count'; count.textContent=r[1]+'件・'+Object.keys(r[2]||{}).length+'日';
+      sm.appendChild(mark); sm.appendChild(name); sm.appendChild(count); item.appendChild(sm);
+      appendEventDetails(item,r[4]); list.appendChild(item);
+    });
+    box.appendChild(list);
+  }
 
   function addGraph(title,rows,note){
     if(!rows.length) return;
@@ -2972,52 +3091,56 @@ function recDrawSummary(){
     var gs=document.createElement('div'); gs.className='g-sub'; gs.textContent=note||('件数／記録があった日数（'+elapsed+'日中）'); g.appendChild(gs);
     var mx=Math.max.apply(null,rows.map(function(r){return r[1];}).concat([1]));
     rows.forEach(function(r){
-      var row=document.createElement('div'); row.className='g-row';
+      var row=document.createElement(r[4]&&r[4].length?'details':'div'); row.className='g-row';
+      var holder=row;
+      if(r[4]&&r[4].length){ holder=document.createElement('summary'); row.appendChild(holder); }
       var line=document.createElement('div'); line.className='g-line';
       var l=document.createElement('span'); l.className='g-l'; l.textContent=r[0]; l.style.borderLeftColor=r[3]||'#3F815C';
       var bw=document.createElement('div'); bw.className='g-bar';
       var bi=document.createElement('i'); bi.style.width=(r[1]===0?3:Math.max(8,Math.round(r[1]/mx*100)))+'%'; bi.style.background=r[3]||(r[1]===0?'#D8DDD9':'#3F815C'); bw.appendChild(bi);
       var n=document.createElement('span'); n.className='g-n'; n.textContent=r[1]+'件・'+Object.keys(r[2]||{}).length+'日';
-      line.appendChild(l); line.appendChild(n); row.appendChild(line); row.appendChild(bw); g.appendChild(row);
+      line.appendChild(l); line.appendChild(n); holder.appendChild(line); holder.appendChild(bw);
+      if(r[4]&&r[4].length) appendEventDetails(row,r[4]);
+      g.appendChild(row);
     });
     box.appendChild(g);
   }
   var recordRows=[
-    ['本人の挨拶',detailCounts.aisatsuH,detailDays.aisatsuH,'#F28A42'],
-    ['家族の挨拶',detailCounts.aisatsuK,detailDays.aisatsuK,'#4F7FD3'],
-    ['家族からのメッセージ',detailCounts.messageK,detailDays.messageK,'#4F7FD3'],
-    ['本人からの返事',detailCounts.messageH,detailDays.messageH,'#F28A42'],
-    ['本人の体調記録',detailCounts.kibunH,detailDays.kibunH,'#F28A42'],
-    ['家族が記録した体調',detailCounts.kibunK,detailDays.kibunK,'#4F7FD3'],
-    ['本人の服薬記録',detailCounts.kusuriH,detailDays.kusuriH,'#F28A42'],
-    ['家族の服薬確認',detailCounts.kusuriConfirmK,detailDays.kusuriConfirmK,'#4F7FD3'],
-    ['家族からの服薬声かけ',detailCounts.kusuriAskK,detailDays.kusuriAskK,'#4F7FD3'],
-    ['本人からのお願い',detailCounts.onegaiH,detailDays.onegaiH,'#F28A42'],
-    ['家族からの返信',detailCounts.henshinK,detailDays.henshinK,'#4F7FD3'],
-    ['家族の介護記録',detailCounts.careK,detailDays.careK,'#4F7FD3'],
-    ['家族の様子メモ',detailCounts.memoK,detailDays.memoK,'#4F7FD3'],
-    ['おまもりタグの読み取り',detailCounts.tag,detailDays.tag,'#63A57D'],
-    ['防災の記録',detailCounts.disaster,detailDays.disaster,'#63A57D']
+    ['本人の挨拶',detailCounts.aisatsuH,detailDays.aisatsuH,'#F28A42',detailEvents.aisatsuH],
+    ['家族の挨拶',detailCounts.aisatsuK,detailDays.aisatsuK,'#4F7FD3',detailEvents.aisatsuK],
+    ['家族からのメッセージ',detailCounts.messageK,detailDays.messageK,'#4F7FD3',detailEvents.messageK],
+    ['本人からの返事',detailCounts.messageH,detailDays.messageH,'#F28A42',detailEvents.messageH],
+    ['本人の体調記録',detailCounts.kibunH,detailDays.kibunH,'#F28A42',detailEvents.kibunH],
+    ['家族が記録した体調',detailCounts.kibunK,detailDays.kibunK,'#4F7FD3',detailEvents.kibunK],
+    ['本人の服薬記録',detailCounts.kusuriH,detailDays.kusuriH,'#F28A42',detailEvents.kusuriH],
+    ['家族の服薬確認',detailCounts.kusuriConfirmK,detailDays.kusuriConfirmK,'#4F7FD3',detailEvents.kusuriConfirmK],
+    ['家族からの服薬声かけ',detailCounts.kusuriAskK,detailDays.kusuriAskK,'#4F7FD3',detailEvents.kusuriAskK],
+    ['本人からのお願い',detailCounts.onegaiH,detailDays.onegaiH,'#F28A42',detailEvents.onegaiH],
+    ['家族からの返信',detailCounts.henshinK,detailDays.henshinK,'#4F7FD3',detailEvents.henshinK],
+    ['家族の介護記録',detailCounts.careK,detailDays.careK,'#4F7FD3',detailEvents.careK],
+    ['家族の様子メモ',detailCounts.memoK,detailDays.memoK,'#4F7FD3',detailEvents.memoK],
+    ['おまもりタグの読み取り',detailCounts.tag,detailDays.tag,'#63A57D',detailEvents.tag],
+    ['防災の記録',detailCounts.disaster,detailDays.disaster,'#63A57D',detailEvents.disaster]
   ].filter(function(r){return r[1]>0;});
-  addGraph('今月の詳しい記録',recordRows,'何の記録か、誰が行ったかを分けています。オレンジは本人、青は家族、緑は共有・安全情報です。');
+  addList('記録の詳細を見る',recordRows,'項目を押すと、記録した日付・時刻・内容が開きます。オレンジは本人、青は家族、緑は共有・安全情報です。');
 
   var greetRows=[
-    ['本人・朝の挨拶',aisatsuSlotCounts.honnin.asa,aisatsuSlotDays.honnin.asa,'#F28A42'],
-    ['本人・昼の挨拶',aisatsuSlotCounts.honnin.hiru,aisatsuSlotDays.honnin.hiru,'#F28A42'],
-    ['本人・夜の挨拶',aisatsuSlotCounts.honnin.yoru,aisatsuSlotDays.honnin.yoru,'#F28A42'],
-    ['家族・朝の挨拶',aisatsuSlotCounts.kazoku.asa,aisatsuSlotDays.kazoku.asa,'#4F7FD3'],
-    ['家族・昼の挨拶',aisatsuSlotCounts.kazoku.hiru,aisatsuSlotDays.kazoku.hiru,'#4F7FD3'],
-    ['家族・夜の挨拶',aisatsuSlotCounts.kazoku.yoru,aisatsuSlotDays.kazoku.yoru,'#4F7FD3']
+    ['本人・朝の挨拶',aisatsuSlotCounts.honnin.asa,aisatsuSlotDays.honnin.asa,'#F28A42',aisatsuSlotEvents.honnin.asa],
+    ['本人・昼の挨拶',aisatsuSlotCounts.honnin.hiru,aisatsuSlotDays.honnin.hiru,'#F28A42',aisatsuSlotEvents.honnin.hiru],
+    ['本人・夜の挨拶',aisatsuSlotCounts.honnin.yoru,aisatsuSlotDays.honnin.yoru,'#F28A42',aisatsuSlotEvents.honnin.yoru],
+    ['家族・朝の挨拶',aisatsuSlotCounts.kazoku.asa,aisatsuSlotDays.kazoku.asa,'#4F7FD3',aisatsuSlotEvents.kazoku.asa],
+    ['家族・昼の挨拶',aisatsuSlotCounts.kazoku.hiru,aisatsuSlotDays.kazoku.hiru,'#4F7FD3',aisatsuSlotEvents.kazoku.hiru],
+    ['家族・夜の挨拶',aisatsuSlotCounts.kazoku.yoru,aisatsuSlotDays.kazoku.yoru,'#4F7FD3',aisatsuSlotEvents.kazoku.yoru]
   ];
   if(counts.aisatsu>0) addGraph('挨拶の朝・昼・夜',greetRows,'本人と家族を分けて、挨拶した時間帯を表示します。0件の時間帯も確認できます。');
 
-  var kbRows=Object.keys(kibunBy).map(function(k){return [k,kibunBy[k],kibunByDays[k],'#C9A227'];});
+  var kbRows=Object.keys(kibunBy).map(function(k){return [k,kibunBy[k],kibunByDays[k],'#C9A227',kibunByEvents[k]];});
   addGraph('体調の内訳',kbRows,'選ばれた言葉をそのまま集計しています。健康状態の判定ではありません。');
-  var careRows=Object.keys(careBy).map(function(k){return [k,careBy[k],careByDays[k],'#3F815C'];});
+  var careRows=Object.keys(careBy).map(function(k){return [k,careBy[k],careByDays[k],'#3F815C',careByEvents[k]];});
   addGraph('介護の様子の内訳',careRows,'家族が選んだ項目・自由項目をまとめています。');
-  var slotRows=[['朝',kusuriSlot.asa,kusuriSlotDays.asa,'#5B8DC9'],['昼',kusuriSlot.hiru,kusuriSlotDays.hiru,'#5B8DC9'],['夜',kusuriSlot.yoru,kusuriSlotDays.yoru,'#5B8DC9']];
+  var slotRows=[['朝',kusuriSlot.asa,kusuriSlotDays.asa,'#5B8DC9',kusuriSlotEvents.asa],['昼',kusuriSlot.hiru,kusuriSlotDays.hiru,'#5B8DC9',kusuriSlotEvents.hiru],['夜',kusuriSlot.yoru,kusuriSlotDays.yoru,'#5B8DC9',kusuriSlotEvents.yoru]];
   if(counts.kusuri>0) addGraph('服薬の時間帯',slotRows,'画面で押された記録です。飲み忘れや実際の服用を判定するものではありません。');
-  var tagRows=Object.keys(tagBy).map(function(k){return [k,tagBy[k],tagByDays[k],'#B0492F'];});
+  var tagRows=Object.keys(tagBy).map(function(k){return [k,tagBy[k],tagByDays[k],'#B0492F',tagByEvents[k]];});
   addGraph('おまもりタグの内訳',tagRows,'読み取った方が選んだ内容を集計しています。');
 }
 
