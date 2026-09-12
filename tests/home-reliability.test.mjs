@@ -31,14 +31,17 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
 {
   const loading = new Element();
   let delayed;
+  const stage = { mainicoStartupStage: '家族との接続確認中' };
   const watchdog = section('setTimeout(function(){\n  var loading=document.getElementById(\'loading\');', '</script>');
   vm.runInNewContext(watchdog, {
-    document: { getElementById: () => loading },
+    document: { getElementById: () => loading, createElement: tag => new Element(tag) },
+    window: stage,
     setTimeout: (fn, ms) => { assert.equal(ms, 15000); delayed = fn; }
   });
   delayed();
-  assert.match(loading.innerHTML, /もう一度読み込む/);
-  assert.match(loading.innerHTML, /Safariで開いてください/);
+  assert.match(loading.textContent, /家族との接続確認中/);
+  assert.match(loading.textContent, /もう一度読み込む/);
+  assert.match(loading.textContent, /Safariで開いてください/);
   loading.style.display = 'none';
   loading.innerHTML = '画面を開きました';
   delayed();
