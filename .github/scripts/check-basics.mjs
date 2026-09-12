@@ -150,9 +150,13 @@ if (html !== null) {
   );
 
   const unifiedSummary =
-    /function\s+sv\s*\(n,\s*ds,\s*detail\)/.test(html) &&
-    html.includes("elapsed+'日中 '+n+'件") &&
-    html.includes("記録あり'+Object.keys(ds).length+'日'") &&
+    /function\s+addGraph\s*\(title,\s*rows,\s*note\)/.test(html) &&
+    html.includes("className='sum-overview'") &&
+    html.includes("r[1]+'件・'+Object.keys(r[2]||{}).length+'日'") &&
+    html.includes("addGraph('今月の記録一覧'") &&
+    html.includes("addGraph('本人と家族のやり取り'") &&
+    html.includes("addGraph('体調の内訳'") &&
+    html.includes("addGraph('服薬の時間帯'") &&
     html.includes("d.periodDays+'日中 '+sum+'件・記録あり'+activeDays+'日");
   record(
     '月まとめと期間グラフを「何日中・何件・記録日数」で統一する',
