@@ -492,7 +492,11 @@ table.cal-rec td.pad{background:none;}
 @media (max-width:360px){
   .nav button{font-size:.88rem;white-space:normal;line-height:1.15;}
 }
-#loading{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:99;font-weight:900;color:var(--usucha);font-size:1rem;}
+#loading{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px 20px;z-index:99;font-weight:700;color:var(--usucha);font-size:1rem;text-align:center;line-height:1.6;overflow-y:auto;overflow-wrap:anywhere;}
+#loading>*{width:100%;max-width:360px;flex:none;}
+#loading .startup-title{font-weight:900;color:var(--cha);font-size:1.12rem;}
+#loading .startup-hint{font-size:.9rem;}
+#loading .startup-retry{width:auto;min-width:190px;min-height:52px;margin-top:6px;padding:10px 20px;border:2px solid #B56B37;border-radius:12px;background:#fff;color:#7B451A;font:inherit;font-weight:900;cursor:pointer;}
 
 /* 2026-09-07 完成優先の画面整理 */
 .anshin-choices{grid-template-columns:1fr!important;gap:12px;}
@@ -1192,15 +1196,30 @@ table.cal-rec td.pad{background:none;}
 <!-- 外部ライブラリやログインの応答が止まっても、白い「読み込み中」のまま放置しません。 -->
 <script>
 window.mainicoStartupStage='必要なファイルの読み込み中';
+window.mainicoStartupProblem='';
+window.showStartupProblem=function(message){
+  var loading=document.getElementById('loading');
+  if(!loading || loading.style.display==='none') return;
+  window.mainicoStartupProblem=message;
+  var title=document.createElement('div');title.className='startup-title';title.textContent=message+'（'+window.mainicoStartupStage+'）。';
+  var hint=document.createElement('div');hint.className='startup-hint';hint.textContent='通信状態を確認してください。アプリ内ブラウザーなら右下のコンパスからSafariで開くこともできます。';
+  var button=document.createElement('button');button.className='startup-retry';button.type='button';button.textContent='もう一度読み込む';
+  button.addEventListener('click',function(){location.reload();});
+  loading.replaceChildren(title,hint,button);
+};
+window.addEventListener('error',function(e){
+  if(e.target && e.target.tagName==='SCRIPT'){
+    window.mainicoStartupStage='必要なファイルの読み込み中';
+    window.showStartupProblem('外部ファイルを読み込めませんでした');
+  }else if(e.target===window && document.getElementById('loading').style.display!=='none'){
+    console.warn('startup script error',e.message,e.filename,e.lineno);
+    window.showStartupProblem('起動処理でエラーが起きました');
+  }
+},true);
 setTimeout(function(){
   var loading=document.getElementById('loading');
   if(!loading || loading.style.display==='none') return;
-  var stage=document.createElement('div');stage.textContent='読み込みが進んでいません（'+window.mainicoStartupStage+'）。通信状態を確認してください。';
-  var hint=document.createElement('div');hint.textContent='アプリ内ブラウザーで止まる場合は右下のコンパスからSafariで開いてください。';
-  var button=document.createElement('button');button.type='button';button.textContent='もう一度読み込む';
-  button.style.cssText='margin-top:14px;padding:12px 20px;border:2px solid #B56B37;border-radius:10px;background:#fff;color:#7B451A;font:inherit;cursor:pointer;';
-  button.addEventListener('click',function(){location.reload();});
-  loading.textContent='';loading.appendChild(stage);loading.appendChild(hint);loading.appendChild(button);
+  window.showStartupProblem(window.mainicoStartupProblem||'読み込みが進んでいません');
 },15000);
 </script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -1223,7 +1242,10 @@ const previewApp=firebase.initializeApp({
 });
 const db = previewApp.firestore();
 window.mainicoStartupStage='ログインの準備中';
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+if('serviceWorker' in navigator){
+  try{ navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('service worker',e); }); }
+  catch(e){ console.warn('service worker',e); }
+}
 /* 六曜(2025〜2030年・旧暦計算に基づく)。0大安1赤口2先勝3友引4先負5仏滅 */
 const ROKUYO_EPOCH=Date.UTC(2025,0,1);
 const ROKUYO_NAMES=['大安','赤口','先勝','友引','先負','仏滅'];
@@ -4301,13 +4323,14 @@ async function deleteAllData(){
 }
 
 /* ===== 起動 ===== */
-auth.onAuthStateChanged(async user=>{
+window.mainicoStartupStage='ログインの応答待ち';
+try{auth.onAuthStateChanged(async user=>{
   if(!user){
     window.mainicoStartupStage='ログイン確認中';
     try{ await auth.signInAnonymously(); }
     catch(e){
       window.mainicoStartupStage='ログインできませんでした';
-      document.getElementById('loading').textContent='ログインできませんでした。通信状態を確認してください。まもなく再試行の案内を表示します。';
+      window.showStartupProblem('ログインできませんでした');
     }
     return;
   }
@@ -4326,20 +4349,26 @@ auth.onAuthStateChanged(async user=>{
       }
     }catch(e){
       /* 通信エラーでは接続情報を消さない。表示して再試行できるようにする */
-      const ld=document.getElementById('loading');
-      if(ld){
-        ld.innerHTML='通信できませんでした。電波の状態を確認してください。<br><button onclick="location.reload()" style="margin-top:12px;padding:12px 26px;font-family:inherit;font-size:1rem;font-weight:900;border:2px solid #D58B2B;border-radius:12px;background:#fff;color:#A8641C;cursor:pointer;">もう一度ためす</button>';
-      }
+      window.showStartupProblem('家族との接続を確認できませんでした');
       return;
     }
   }
   window.mainicoStartupStage='準備完了';
   document.getElementById('loading').style.display='none';
-  startMode();
+  try{startMode();}catch(e){
+    console.warn('start mode',e);
+    document.getElementById('loading').style.display='flex';
+    window.mainicoStartupStage='画面の表示中';
+    window.showStartupProblem('画面を開けませんでした');
+  }
 },function(e){
   window.mainicoStartupStage='ログイン情報の読み込みに失敗しました';
   console.warn('auth startup',e);
-});
+  window.showStartupProblem('ログイン情報を読み込めませんでした');
+});}catch(e){
+  console.warn('auth startup registration',e);
+  window.showStartupProblem('ログインの準備ができませんでした');
+}
 
 /* ===== 災害用QR（端末内保存・オフライン読取） ===== */
 const DISASTER_QR_KEY='mainico_preview_disaster_qr_v1';
