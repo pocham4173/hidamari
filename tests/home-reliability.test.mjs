@@ -25,6 +25,10 @@ assert.match(html, /id="card-family-notes"[\s\S]*?<details class="family-compose
 assert.match(html, /id="card-family-tasks"[\s\S]*?<details class="family-compose" id="family-task-compose"/);
 assert.match(html, /insertBefore\([\s\S]*?'card-care-quick'[\s\S]*?'card-krec'/);
 assert.match(html, /id="card-family-notes-preview"[\s\S]*?onclick="openFamilyNotes\(\)"/);
+assert.match(html, /id="card-next-yotei"[\s\S]*?id="family-today-tomorrow"[\s\S]*?onclick="showTab\('t-yotei'\)"/);
+assert.match(html, /id="card-family-tasks-preview"[\s\S]*?onclick="openFamilyTasks\(\)"/);
+assert.ok(html.indexOf('id="card-next-yotei"')<html.indexOf('id="card-family-notes-preview"'));
+assert.ok(html.indexOf('id="card-family-notes-preview"')<html.indexOf('id="card-family-tasks-preview"'));
 assert.match(html, /id="card-care-quick"[\s\S]*?家族のワンタップ記録/);
 assert.doesNotMatch(html, /家庭で選ぶ介護の記録|家族の介護記録/);
 console.log('✅ 家族ホームはワンタップ記録を先に、補助入力を開閉式に表示');
@@ -93,7 +97,7 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   const context = {
     document: { getElementById: id => id === 'family-notes-preview' ? preview : list,
       createElement: tag => new Element(tag), createTextNode: text => ({ textContent: text }) },
-    familyOnlyData: data, uid: () => viewer, foDateTime: () => '9月12日 10:00',
+    familyOnlyData: data, familyOnlyLoad: {notes:'ready',noteAcks:'ready'}, uid: () => viewer, foDateTime: () => '9月12日 10:00',
     ackFamilyNote() {}, replyFamilyNote() {}, deleteFamilyEvent() {}, Object
   };
   vm.runInNewContext(section('function renderFamilyNotes(){', 'async function ackFamilyNote(id){'), context);
@@ -106,8 +110,19 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   viewer = 'familyA';
   context.renderFamilyNotes();
   assert.match(preview.textContent, /自分の確認記録がない伝言 0件/);
+  assert.doesNotMatch(preview.textContent, /連絡します/, '確認済みの伝言はホームで繰り返さない');
   assert.match(list.textContent, /あなたは確認済み/);
   assert.doesNotMatch(list.textContent, /自分が確認しました/);
+  viewer = 'author';
+  context.renderFamilyNotes();
+  assert.match(preview.textContent, /自分の確認記録がない伝言 0件/);
+  assert.match(list.textContent, /自分が書いた伝言/);
+  assert.doesNotMatch(list.textContent, /自分が確認しました/);
+  viewer = 'familyA';
+  context.familyOnlyLoad.noteAcks='error';
+  context.renderFamilyNotes();
+  assert.match(preview.textContent, /読み込めませんでした/);
+  assert.doesNotMatch(preview.textContent, /0件/);
   let sent = 0;
   const ackContext = {
     familyOnlyData: data, uid: () => viewer, myName: () => '家族B',
@@ -121,6 +136,60 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   await ackContext.ackFamilyNote('note1');
   assert.equal(sent, 1, '別の家族なら確認を記録できる');
   console.log('✅ 伝言の確認は家族ごとに区別し、他人の確認で自分を確認済みにしない');
+}
+
+{
+  const schedule = new Element(), next = new Element();
+  const context = vm.createContext({
+    document: { getElementById: id => id === 'family-today-tomorrow' ? schedule : next,
+      createElement: tag => new Element(tag) },
+    isKOnly: () => true, todayStr: () => '2026-09-12', dateOnly: s => new Date(s+'T00:00:00'),
+    dateString: d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+    dateJp: d => `${d.getMonth()+1}月${d.getDate()}日`,
+    yoteiOccursOn: (v,s) => v.date===s, yoteiNextDate: (v,s) => v.date>=s?v.date:'',
+    yoteiColor: () => '#4F7FD3', Date,
+    yoteiCache: [{date:'2026-09-12',label:'通院',time:'09:00'},
+      {date:'2026-09-13',label:'買い物'}, {date:'2026-09-14',label:'電話'}]
+  });
+  vm.runInContext(section("let familyYoteiStatus='loading';", 'function initKazoku(){'), context);
+  context.renderFamilySchedule();
+  assert.match(schedule.textContent, /読み込んでいます/);
+  vm.runInContext("familyYoteiStatus='ready'",context);
+  context.renderFamilySchedule();
+  assert.match(schedule.textContent, /今日.*通院.*明日.*買い物/);
+  assert.match(next.textContent, /電話/);
+  vm.runInContext("familyYoteiStatus='cached'",context);
+  context.renderFamilySchedule();
+  assert.match(schedule.textContent, /保存済みの予定です/);
+  vm.runInContext("familyYoteiStatus='error'",context);
+  context.renderFamilySchedule();
+  assert.match(schedule.textContent, /読み込めませんでした/);
+  assert.doesNotMatch(schedule.textContent, /登録された予定はありません/);
+  console.log('✅ 家族のみホームの今日・明日とその後の予定、通信失敗を区別する');
+}
+assert.match(html, /onSnapshot\(\{includeMetadataChanges:true\},snap=>/);
+
+{
+  const preview = new Element();
+  const context = {
+    document: {getElementById: () => preview, createElement: tag => new Element(tag)},
+    familyOnlyLoad: {tasks:'ready',taskDone:'ready'},
+    familyOnlyData: {tasks:[{_id:'late',text:'薬局',due:'2026-09-11'},
+      {_id:'done',text:'完了した用事',due:'2026-09-12'},
+      {_id:'later',text:'訪問',due:'2026-09-14'}]},
+    todayStr: () => '2026-09-12',dateOnly: s => new Date(s+'T00:00:00'),
+    dateJp: d => `${d.getMonth()+1}月${d.getDate()}日`,foByNewest: () => 0
+  };
+  vm.runInNewContext(section('function renderFamilyTasksPreview(done){','async function finishFamilyTask(id){'),context);
+  context.renderFamilyTasksPreview({done:true});
+  assert.match(preview.textContent,/未完了 2件/);
+  assert.match(preview.textContent,/薬局.*期限が過ぎています.*訪問/);
+  assert.doesNotMatch(preview.textContent,/完了した用事/);
+  context.familyOnlyLoad.taskDone='error';
+  context.renderFamilyTasksPreview({});
+  assert.match(preview.textContent,/読み込めませんでした/);
+  assert.doesNotMatch(preview.textContent,/0件/);
+  console.log('✅ 家族のみホームの未完了・期限超過・通信失敗を区別する');
 }
 
 {

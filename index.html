@@ -398,6 +398,14 @@ table.cal-rec td.pad{background:none;}
 .family-preview span{display:block;color:var(--cha);font-size:.87rem;overflow-wrap:anywhere;}
 .family-preview .meta{font-size:.75rem;color:var(--usucha);}
 .family-jump{display:block;width:100%;min-height:48px;margin-top:10px;border:2px solid #4F7FD3;border-radius:11px;background:#fff;color:#315FAE;font:inherit;font-weight:900;cursor:pointer;}
+.family-day-plan{display:grid;gap:9px;}
+.family-day-plan .day-title{font-size:.88rem;font-weight:900;color:#315FAE;}
+.family-day-plan .day-row{border-left:4px solid #4F7FD3;padding:5px 9px;background:#F5F9FD;border-radius:0 8px 8px 0;line-height:1.45;overflow-wrap:anywhere;}
+.family-day-plan .day-row small{display:block;color:var(--usucha);font-size:.76rem;}
+.family-day-plan .day-empty{font-size:.85rem;color:var(--usucha);}
+.family-upcoming{margin-top:11px;font-size:.81rem;color:var(--usucha);line-height:1.5;overflow-wrap:anywhere;}
+.family-task-preview{background:#F5FAF7;border-color:#BBD9C5;}
+.family-task-preview strong{color:var(--ha-koi);}
 .care-today{margin-top:12px;padding:10px 12px;border-radius:11px;background:#F5FAF7;color:var(--cha);font-size:.83rem;line-height:1.6;}
 .care-today b{display:block;color:#33704D;}
 .rec-load-error{padding:14px;border:2px solid #D9A274;border-radius:12px;background:#FFF8EE;color:#7B451A;line-height:1.6;font-weight:800;}
@@ -902,14 +910,22 @@ table.cal-rec td.pad{background:none;}
     <div class="ftab" id="t-home">
       <div id="card-pending"></div>
       <div class="card dom-yotei" id="card-next-yotei" style="display:none;">
-        <h3>次の予定</h3>
-        <div id="f-next-yotei" style="font-size:1.02rem;font-weight:700;">まだ登録がありません</div>
+        <h3>今日・明日の予定</h3>
+        <div id="family-today-tomorrow" class="family-day-plan" aria-live="polite">予定を読み込んでいます…</div>
+        <div class="family-upcoming">その後の予定：<span id="f-next-yotei">予定を読み込んでいます…</span></div>
+        <button class="family-jump" type="button" onclick="showTab('t-yotei')">カレンダー・予定一覧を見る</button>
       </div>
 
       <div class="card dom-record family-only-card" id="card-family-notes-preview">
         <h3>家族の伝言</h3>
         <div class="family-preview" id="family-notes-preview" aria-live="polite">伝言を読み込んでいます…</div>
         <button class="family-jump" type="button" onclick="openFamilyNotes()">伝言をすべて見る・返事する</button>
+      </div>
+
+      <div class="card dom-record family-only-card" id="card-family-tasks-preview">
+        <h3>家族のやること</h3>
+        <div class="family-preview family-task-preview" id="family-tasks-preview" aria-live="polite">やることを読み込んでいます…</div>
+        <button class="family-jump" type="button" onclick="openFamilyTasks()">やることをすべて見る・追加する</button>
       </div>
 
       <div class="card tag-home" id="watch-tag-home" style="display:none;">
@@ -1714,7 +1730,7 @@ function closePersonSettings(){ speak('とじました'); document.getElementByI
 /* ===== 予定 ===== */
 let yoteiCache=[];
 function subscribeYotei(cb){
-  return col('yotei').onSnapshot(snap=>{
+  return col('yotei').onSnapshot({includeMetadataChanges:true},snap=>{
     const list=[];
     snap.forEach(doc=>{ const v=doc.data(); v._id=doc.id; list.push(v); });
     list.sort((a,b)=>{
@@ -1722,8 +1738,14 @@ function subscribeYotei(cb){
       return String(a.time||'').localeCompare(String(b.time||''));
     });
     yoteiCache=list;
-    if(cb) cb(list);
-  }, err=>console.warn('yotei', err));
+    if(cb) cb(list,snap.metadata);
+  }, err=>{
+    console.warn('yotei', err);
+    if(isKOnly() && document.getElementById('kazoku').classList.contains('active')){
+      familyYoteiStatus='error';renderFamilySchedule();
+      document.getElementById('yt-list').innerHTML='<div class="empty">予定を読み込めませんでした。画面を開き直してください。</div>';
+    }
+  });
 }
 function dateOnly(s){ return new Date(s+'T00:00:00'); }
 function dateString(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -2219,6 +2241,43 @@ function closeMembers(){ speak('とじました'); document.getElementById('memb
 
 /* ===== 家族 ===== */
 let evUnsub=null, ytListUnsub=null, aisatsuBackSending=false;
+let familyYoteiStatus='loading';
+function renderFamilySchedule(){
+  if(!isKOnly()) return;
+  const box=document.getElementById('family-today-tomorrow');
+  if(!box) return;
+  box.textContent='';
+  const next=document.getElementById('f-next-yotei');
+  if(familyYoteiStatus==='loading' || familyYoteiStatus==='error'){
+    box.textContent=familyYoteiStatus==='error'?'予定を読み込めませんでした。通信状態を確認して、画面を開き直してください。':'予定を読み込んでいます…';
+    next.textContent=familyYoteiStatus==='error'?'確認できませんでした':'読み込み中…';
+    return;
+  }
+  const today=dateOnly(todayStr()),tomorrow=new Date(today);
+  tomorrow.setDate(tomorrow.getDate()+1);
+  const tomorrowStr=dateString(tomorrow);
+  [[todayStr(),'今日'],[tomorrowStr,'明日']].forEach(function(entry){
+    const title=document.createElement('div');title.className='day-title';
+    title.textContent=entry[1]+'（'+dateJp(dateOnly(entry[0]))+'）';box.appendChild(title);
+    const rows=yoteiCache.filter(function(v){return yoteiOccursOn(v,entry[0]);})
+      .sort(function(a,b){return String(a.time||'').localeCompare(String(b.time||''));});
+    if(!rows.length){
+      const empty=document.createElement('div');empty.className='day-empty';
+      empty.textContent=familyYoteiStatus==='cached'?'この端末に保存された予定はありません（通信確認待ち）':'登録された予定はありません';box.appendChild(empty);
+    }
+    rows.forEach(function(v){
+      const row=document.createElement('div');row.className='day-row';row.style.borderLeftColor=yoteiColor(v);
+      row.textContent=(v.time?v.time+'　':'')+(v.kind||'📌')+' '+(v.label||'予定');box.appendChild(row);
+    });
+  });
+  if(familyYoteiStatus==='cached'){
+    const notice=document.createElement('small');notice.textContent='保存済みの予定です。最新の内容は通信が戻ってから確認してください。';box.appendChild(notice);
+  }
+  const later=yoteiCache.map(function(v){return {item:v,date:yoteiNextDate(v,dateString(new Date(tomorrow.getFullYear(),tomorrow.getMonth(),tomorrow.getDate()+1)))};})
+    .filter(function(v){return v.date;}).sort(function(a,b){return a.date.localeCompare(b.date)||String(a.item.time||'').localeCompare(String(b.item.time||''));})[0];
+  next.textContent=later?(dateJp(dateOnly(later.date))+' '+(later.item.label||'予定')):
+    (familyYoteiStatus==='cached'?'保存済みの予定はありません（通信確認待ち）':'登録された予定はありません');
+}
 function initKazoku(){
   const d=new Date();
   const kOnly=isKOnly();
@@ -2233,16 +2292,23 @@ function initKazoku(){
   document.getElementById('card-krec').style.display=kOnly?'block':'none';
   document.getElementById('card-next-yotei').style.display=kOnly?'block':'none';
   document.querySelectorAll('.family-only-card').forEach(function(el){ el.style.display=kOnly?'block':'none'; });
-  /* 大事なお知らせの後に伝言の入口、今日の記録の後に押すボタンを並べます。 */
+  /* おまもりタグの知らせがあれば最優先。その次に予定、未確認の伝言、やることを並べます。 */
   if(kOnly){
+    document.getElementById('t-home').insertBefore(
+      document.getElementById('watch-tag-home'),document.getElementById('card-next-yotei'));
     document.getElementById('t-home').insertBefore(
       document.getElementById('card-family-notes-preview'),document.getElementById('card-today-records'));
     document.getElementById('t-home').insertBefore(
+      document.getElementById('card-family-tasks-preview'),document.getElementById('card-today-records'));
+    document.getElementById('t-home').insertBefore(
       document.getElementById('card-care-quick'),document.getElementById('card-krec'));
   }
+  familyYoteiStatus='loading';
+  if(kOnly)renderFamilySchedule();
   document.getElementById('yt-note').textContent=kOnly
     ?'登録した予定は、ホームとカレンダーに表示されます。'
     :'本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。';
+  if(kOnly)familyOnlyLoad={notes:'loading',noteAcks:'loading',tasks:'loading',taskDone:'loading'};
   showTab('t-home');
   if(kOnly) initFamilyOnlyTools();
   initDisaster();
@@ -2348,23 +2414,15 @@ function initKazoku(){
       if(box) box.innerHTML='<div class="empty" style="color:#B0492F;">家族の記録を受信できませんでした。通信状態を確認して、画面を開き直してください。</div>';
     });
   if(ytListUnsub) ytListUnsub();
-  ytListUnsub=subscribeYotei(list=>{
+  ytListUnsub=subscribeYotei((list,metadata)=>{
+    familyYoteiStatus=metadata&&metadata.fromCache?'cached':'ready';
+    if(kOnly)renderFamilySchedule();
     const t=todayStr();
     const future=list.map(v=>Object.assign({},v,{_nextDate:yoteiNextDate(v,t)})).filter(v=>v._nextDate);
     future.sort((a,b)=>a._nextDate<b._nextDate?-1:1);
     const box=document.getElementById('yt-list');
-    const n=future[0];
-    const fEl=document.getElementById('f-next-yotei');
-    if(n){
-      const dd=new Date(n._nextDate+'T00:00:00');
-      const diff=Math.ceil((new Date(n._nextDate+'T00:00:00')-new Date(t+'T00:00:00'))/86400000);
-      fEl.textContent=(n.kind||'📌')+' '+dateJp(dd)+' '+(n.label||'')+(yoteiDetail(n)?' / '+yoteiDetail(n):'')+' ('+(diff===0?'今日':'あと'+diff+'日')+')';
-      fEl.style.borderLeft='6px solid '+yoteiColor(n); fEl.style.paddingLeft='8px';
-    }else{
-      fEl.textContent='まだ登録がありません';
-    }
     renderFamilyCal();
-    if(future.length===0){box.innerHTML='<div class="empty">まだ登録がありません</div>';return;}
+    if(future.length===0){box.innerHTML='<div class="empty">'+(familyYoteiStatus==='cached'?'保存済みの予定はありません。通信が戻るまで最新の予定は確認できません。':'これからの予定はありません')+'</div>';return;}
     box.innerHTML=future.map(v=>{
       const dd=new Date(v._nextDate+'T00:00:00');
       const detail=yoteiDetail(v);
@@ -2387,6 +2445,11 @@ function showTab(t){
   });
   if(t==='t-kiroku') recOpen();
   if(t==='t-soudan') openAnshin('home');
+  if(t==='t-home' && isKOnly()){
+    document.getElementById('home-date-h3').textContent=dateJp(new Date())+' の記録';
+    renderFamilySchedule();
+    renderFamilyTasks();
+  }
 }
 document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
   b.addEventListener('click',()=>showTab(b.dataset.t));
@@ -3472,6 +3535,7 @@ const CARE_OPTIONS=[
 const CARE_DEFAULT=['meal','water','call','visit'];
 let familyOnlyUnsubs=[];
 let familyOnlyData={config:[],notes:[],noteAcks:[],noteReplies:[],tasks:[],taskDone:[],contacts:[]};
+let familyOnlyLoad={notes:'loading',noteAcks:'loading',tasks:'loading',taskDone:'loading'};
 
 function foMillis(v){
   if(v.at&&v.at.toMillis) return v.at.toMillis();
@@ -3497,8 +3561,14 @@ function foWatch(type,key,draw){
     snap.forEach(function(doc){ const v=doc.data(); v._id=doc.id; rows.push(v); });
     rows.sort(foByNewest);
     familyOnlyData[key]=rows;
+    if(key in familyOnlyLoad)familyOnlyLoad[key]='ready';
     draw();
   },function(){
+    if(key in familyOnlyLoad){
+      familyOnlyLoad[key]='error';
+      if(key==='notes'||key==='noteAcks')renderFamilyNotes();
+      if(key==='tasks'||key==='taskDone')renderFamilyTasks();
+    }
     if(key==='notes'){
       const preview=document.getElementById('family-notes-preview');
       if(preview)preview.textContent='伝言を読み込めませんでした。通信を確認して画面を開き直してください。';
@@ -3513,6 +3583,7 @@ function foWatch(type,key,draw){
 function initFamilyOnlyTools(){
   familyOnlyUnsubs.forEach(function(u){try{u();}catch(e){}});
   familyOnlyUnsubs=[];
+  familyOnlyLoad={notes:'loading',noteAcks:'loading',tasks:'loading',taskDone:'loading'};
   renderCareConfigChecks(CARE_DEFAULT);
   foWatch('care-config','config',renderCareTools);
   foWatch('family-note','notes',renderFamilyNotes);
@@ -3635,6 +3706,11 @@ function renderFamilyNotes(){
   });
   renderFamilyNotesPreview(ack);
   box.textContent='';
+  if(familyOnlyLoad.notes!=='ready'||familyOnlyLoad.noteAcks!=='ready'){
+    box.textContent=familyOnlyLoad.notes==='error'||familyOnlyLoad.noteAcks==='error'?
+      '伝言の確認状況を読み込めませんでした。通信状態を確認して、画面を開き直してください。':'伝言の確認状況を読み込んでいます…';
+    return;
+  }
   const rows=familyOnlyData.notes;
   if(!rows.length){box.innerHTML='<div class="empty">伝言はまだありません</div>';return;}
   rows.forEach(function(v){
@@ -3655,7 +3731,9 @@ function renderFamilyNotes(){
       }).join('、')+'。表示されていない家族の確認状況は分かりません。';
       row.appendChild(s);
     }
-    if(ack[v._id]&&ack[v._id][uid()]){
+    if(v.uid===uid()){
+      const s=document.createElement('span');s.className='meta';s.textContent='自分が書いた伝言';acts.appendChild(s);
+    }else if(ack[v._id]&&ack[v._id][uid()]){
       const s=document.createElement('span');s.className='meta';s.textContent='あなたは確認済み';acts.appendChild(s);
     }else{
       const b=document.createElement('button');b.type='button';b.textContent='自分が確認しました';b.addEventListener('click',function(){ackFamilyNote(v._id);});acts.appendChild(b);
@@ -3676,13 +3754,22 @@ function renderFamilyNotesPreview(ack){
   const box=document.getElementById('family-notes-preview');
   if(!box)return;
   box.textContent='';
+  if(familyOnlyLoad.notes==='error'||familyOnlyLoad.noteAcks==='error'){
+    box.textContent='未確認の伝言を読み込めませんでした。通信状態を確認して、画面を開き直してください。';return;
+  }
+  if(familyOnlyLoad.notes!=='ready'||familyOnlyLoad.noteAcks!=='ready'){
+    box.textContent='未確認の伝言を読み込んでいます…';return;
+  }
   const notes=familyOnlyData.notes;
   if(!notes.length){box.textContent='伝言はまだありません。下の「伝言をすべて見る・返事する」から新しく書けます。';return;}
-  const remaining=notes.filter(function(v){return !ack[v._id]||!ack[v._id][uid()];}).length;
+  const remaining=notes.filter(function(v){return v.uid!==uid()&&(!ack[v._id]||!ack[v._id][uid()]);});
   const count=document.createElement('strong');
-  count.textContent='伝言 '+notes.length+'件・自分の確認記録がない伝言 '+remaining+'件';
+  count.textContent='伝言 '+notes.length+'件・自分の確認記録がない伝言 '+remaining.length+'件';
   box.appendChild(count);
-  notes.slice(0,2).forEach(function(v){
+  if(!remaining.length){
+    const empty=document.createElement('span');empty.textContent='今、確認する伝言はありません。';box.appendChild(empty);
+  }
+  remaining.slice(0,2).forEach(function(v){
     const text=document.createElement('span');text.textContent=v.text||'（内容なし）';box.appendChild(text);
     const meta=document.createElement('span');meta.className='meta';meta.textContent=(v.name||'家族')+'さん ・ '+foDateTime(v);box.appendChild(meta);
   });
@@ -3727,6 +3814,12 @@ async function addFamilyTask(){
 function renderFamilyTasks(){
   const box=document.getElementById('family-task-list');if(!box)return;
   const done={};familyOnlyData.taskDone.forEach(function(v){if(v.replyTo&&!done[v.replyTo])done[v.replyTo]=v;});
+  renderFamilyTasksPreview(done);
+  if(familyOnlyLoad.tasks!=='ready'||familyOnlyLoad.taskDone!=='ready'){
+    box.textContent=familyOnlyLoad.tasks==='error'||familyOnlyLoad.taskDone==='error'?
+      'やることの対応状況を読み込めませんでした。通信状態を確認して、画面を開き直してください。':'やることの対応状況を読み込んでいます…';
+    return;
+  }
   box.textContent='';const rows=familyOnlyData.tasks.slice(0,30);
   if(!rows.length){box.innerHTML='<div class="empty">やることはまだありません</div>';return;}
   rows.sort(function(a,b){const ad=done[a._id]?1:0,bd=done[b._id]?1:0;return ad-bd||foByNewest(a,b);});
@@ -3747,6 +3840,33 @@ function renderFamilyTasks(){
     }
     row.appendChild(acts);box.appendChild(row);
   });
+}
+function renderFamilyTasksPreview(done){
+  const box=document.getElementById('family-tasks-preview');if(!box)return;
+  box.textContent='';
+  if(familyOnlyLoad.tasks==='error'||familyOnlyLoad.taskDone==='error'){
+    box.textContent='未完了のやることを読み込めませんでした。通信状態を確認して、画面を開き直してください。';return;
+  }
+  if(familyOnlyLoad.tasks!=='ready'||familyOnlyLoad.taskDone!=='ready'){
+    box.textContent='未完了のやることを読み込んでいます…';return;
+  }
+  const pending=familyOnlyData.tasks.filter(function(v){return !done[v._id];})
+    .sort(function(a,b){return (a.due||'9999-12-31').localeCompare(b.due||'9999-12-31')||foByNewest(a,b);});
+  const count=document.createElement('strong');count.textContent='未完了 '+pending.length+'件';box.appendChild(count);
+  if(!pending.length){
+    const empty=document.createElement('span');empty.textContent='今、残っているやることはありません。';box.appendChild(empty);
+  }
+  pending.slice(0,2).forEach(function(v){
+    const row=document.createElement('span');row.textContent='□ '+(v.text||'（内容なし）');box.appendChild(row);
+    if(v.due){
+      const due=document.createElement('span');due.className='meta';
+      due.textContent=(v.due<todayStr()?'期限が過ぎています：':'期限：')+dateJp(dateOnly(v.due));box.appendChild(due);
+    }
+  });
+}
+function openFamilyTasks(){
+  const card=document.getElementById('card-family-tasks');
+  if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function finishFamilyTask(id){
   if(familyOnlyData.taskDone.some(function(v){return v.replyTo===id;}))return;
