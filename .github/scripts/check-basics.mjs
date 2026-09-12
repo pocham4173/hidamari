@@ -132,10 +132,10 @@ if (html !== null) {
     "['服薬に関する記録','kusuri'",
     "['体調の記録','kibun'",
     "['ちょっとお願い','onegai'",
-    "['介護の様子','care'"
+    "['家族の記録','care'"
   ].every((text) => html.includes(text));
   record(
-    'グラフに本人・家族・介護の共有系列がある',
+    'グラフに本人・家族・日々の記録の共有系列がある',
     graphHasSharedSeries,
     graphHasSharedSeries ? '' : '共有履歴に必要なグラフ系列が不足しています'
   );
