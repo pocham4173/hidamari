@@ -14,7 +14,7 @@ class Element {
   constructor(tag = 'div') { this.tagName = tag; this.children = []; this.style = {}; this._text = ''; }
   appendChild(child) { this.children.push(child); return child; }
   replaceChildren(...children) { this.children = children; this._text = ''; }
-  addEventListener() {}
+  addEventListener(name, handler) { if(name==='click') this._click=handler; }
   set textContent(value) { this._text = String(value); this.children = []; }
   get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
   set innerHTML(value) { this._text = String(value); this.children = []; }
@@ -27,8 +27,10 @@ assert.match(html, /insertBefore\([\s\S]*?'card-care-quick'[\s\S]*?'card-krec'/)
 assert.match(html, /id="card-family-notes-preview"[\s\S]*?onclick="openFamilyNotes\(\)"/);
 assert.match(html, /id="card-next-yotei"[\s\S]*?id="family-today-tomorrow"[\s\S]*?onclick="showTab\('t-yotei'\)"/);
 assert.match(html, /id="card-family-tasks-preview"[\s\S]*?onclick="openFamilyTasks\(\)"/);
-assert.ok(html.indexOf('id="card-next-yotei"')<html.indexOf('id="card-family-notes-preview"'));
-assert.ok(html.indexOf('id="card-family-notes-preview"')<html.indexOf('id="card-family-tasks-preview"'));
+assert.ok(html.indexOf('id="card-family-notes-preview"')<html.indexOf('id="card-next-yotei"'));
+assert.ok(html.indexOf('id="card-next-yotei"')<html.indexOf('id="card-family-tasks-preview"'));
+assert.match(html, /id="card-today-records" style="display:none;"[\s\S]*?ご本人からの連絡/);
+assert.match(html, /今日の記録をふり返りで見る/);
 assert.match(html, /id="card-care-quick"[\s\S]*?家族のワンタップ記録/);
 assert.doesNotMatch(html, /家庭で選ぶ介護の記録|家族の介護記録/);
 console.log('✅ 家族ホームはワンタップ記録を先に、補助入力を開閉式に表示');
@@ -88,6 +90,7 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
 {
   const list = new Element();
   const preview = new Element();
+  const previewCard = new Element();
   const data = {
     notes: [{ _id: 'note1', uid: 'author', name: '送り手', text: '連絡します', at: { seconds: 1 } }],
     noteAcks: [{ _id: 'ack1', replyTo: 'note1', uid: 'familyA', name: '家族A', at: { seconds: 2 } }],
@@ -95,33 +98,35 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   };
   let viewer = 'familyB';
   const context = {
-    document: { getElementById: id => id === 'family-notes-preview' ? preview : list,
+    document: { getElementById: id => id === 'family-notes-preview' ? preview : id === 'card-family-notes-preview' ? previewCard : list,
       createElement: tag => new Element(tag), createTextNode: text => ({ textContent: text }) },
     familyOnlyData: data, familyOnlyLoad: {notes:'ready',noteAcks:'ready'}, uid: () => viewer, foDateTime: () => '9月12日 10:00',
     ackFamilyNote() {}, replyFamilyNote() {}, deleteFamilyEvent() {}, Object
   };
   vm.runInNewContext(section('function renderFamilyNotes(){', 'async function ackFamilyNote(id){'), context);
   context.renderFamilyNotes();
-  assert.match(preview.textContent, /自分の確認記録がない伝言 1件/);
+  assert.match(preview.textContent, /確認が必要な伝言 1件/);
+  assert.equal(previewCard.style.display, 'block');
   assert.match(preview.textContent, /連絡します/);
   assert.match(list.textContent, /確認した人: 家族Aさん/);
   assert.match(list.textContent, /表示されていない家族の確認状況は分かりません/);
   assert.match(list.textContent, /自分が確認しました/);
   viewer = 'familyA';
   context.renderFamilyNotes();
-  assert.match(preview.textContent, /自分の確認記録がない伝言 0件/);
+  assert.equal(previewCard.style.display, 'none');
   assert.doesNotMatch(preview.textContent, /連絡します/, '確認済みの伝言はホームで繰り返さない');
   assert.match(list.textContent, /あなたは確認済み/);
   assert.doesNotMatch(list.textContent, /自分が確認しました/);
   viewer = 'author';
   context.renderFamilyNotes();
-  assert.match(preview.textContent, /自分の確認記録がない伝言 0件/);
+  assert.equal(previewCard.style.display, 'none');
   assert.match(list.textContent, /自分が書いた伝言/);
   assert.doesNotMatch(list.textContent, /自分が確認しました/);
   viewer = 'familyA';
   context.familyOnlyLoad.noteAcks='error';
   context.renderFamilyNotes();
   assert.match(preview.textContent, /読み込めませんでした/);
+  assert.equal(previewCard.style.display, 'block');
   assert.doesNotMatch(preview.textContent, /0件/);
   let sent = 0;
   const ackContext = {
@@ -136,6 +141,40 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   await ackContext.ackFamilyNote('note1');
   assert.equal(sent, 1, '別の家族なら確認を記録できる');
   console.log('✅ 伝言の確認は家族ごとに区別し、他人の確認で自分を確認済みにしない');
+}
+
+{
+  const context = vm.createContext({});
+  vm.runInContext(section('function homeAttentionRows(items,replies,kOnly){', "let familyYoteiStatus='loading';"), context);
+  const events = [
+    { _id:'answered', type:'onegai', text:'お願いA', at:{seconds:1} },
+    { _id:'open', type:'onegai', text:'お願いB', at:{seconds:2} },
+    { _id:'quiet', type:'onegai', text:'今日はそっとしておいて', at:{seconds:3} },
+    { _id:'old-reply', type:'family-message-back', text:'前の返事', at:{seconds:4} },
+    { _id:'new-reply', type:'family-message-back', text:'新しい返事', at:{seconds:5} },
+    { _id:'ordinary', type:'aisatsu', at:{seconds:6} }
+  ];
+  assert.deepEqual(Array.from(context.homeAttentionRows(events,{answered:[{type:'onegai-back'}]},false),v=>v._id),
+    ['open','quiet','new-reply']);
+  assert.equal(context.homeAttentionRows(events,{},true).length,0);
+  console.log('✅ ホームには未回答のお願いと直近の返事だけを残し、家族のみの全件記録を隠す');
+}
+
+{
+  let removed;
+  const context = {
+    document: {createElement: tag => new Element(tag), createTextNode: text => ({textContent:text})},
+    recTime: () => '10:00', eventWhoClass: () => 'from-family', uid: () => 'mine',
+    todayStr: () => '2026-09-12', cancelEvent: (...args) => {removed=args;}
+  };
+  vm.runInNewContext(section('function recRow(v, kind, cls, text, isReply){', 'function recDrawDay(){'),context);
+  const own=context.recRow({_id:'own1',uid:'mine',date:'2026-09-12',type:'kusuri-kakunin',slot:'asa'},'服薬','','朝',false);
+  assert.match(own.textContent,/自分の記録をとりけす/);
+  own.children[1].children.at(-1)._click();
+  assert.deepEqual(removed,['own1','kusuri-kakunin','asa']);
+  assert.doesNotMatch(context.recRow({_id:'other',uid:'another',date:'2026-09-12',type:'care-log'},'記録','','訪問',false).textContent,/とりけす/);
+  assert.doesNotMatch(context.recRow({_id:'past',uid:'mine',date:'2026-09-11',type:'care-log'},'記録','','訪問',false).textContent,/とりけす/);
+  console.log('✅ ふり返りで当日・自分の記録だけ取り消せる');
 }
 
 {
