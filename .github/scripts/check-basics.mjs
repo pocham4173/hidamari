@@ -156,6 +156,11 @@ if (html !== null) {
     html.includes("addGraph('今月の詳しい記録'") &&
     html.includes("['本人の挨拶',detailCounts.aisatsuH") &&
     html.includes("['家族からの服薬声かけ',detailCounts.kusuriAskK") &&
+    html.includes("addGraph('挨拶の朝・昼・夜'") &&
+    html.includes("['本人・朝の挨拶',aisatsuSlotCounts.honnin.asa") &&
+    html.includes("['家族・夜の挨拶',aisatsuSlotCounts.kazoku.yoru") &&
+    html.includes("addEvent({type:'aisatsu-back', text:tx, slot:key") &&
+    html.includes("className='g-line'") &&
     !html.includes("addGraph('今月の記録一覧'") &&
     !html.includes("addGraph('本人と家族のやり取り'") &&
     html.includes("addGraph('体調の内訳'") &&
