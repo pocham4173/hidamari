@@ -55,6 +55,35 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
 }
 
 {
+  const ids=Object.fromEntries(['watch-tag-area','watch-tag-alerts','watch-tag-home',
+    'home-watch-tag-status','watch-tag-history','tag-unread-count','tag-seen-btn']
+    .map(id=>[id,new Element()]));
+  ids['watch-tag-home'].classList={add(){},remove(){}};
+  let listener,mirrored=0,notified=0;
+  const context={
+    document:{getElementById:id=>ids[id]},gid:()=> 'group',watchTagUnsub:null,
+    col:()=>({doc:()=>({get:async()=>({exists:true,data:()=>({watchTagActive:true,watchTagId:'tag1'})})})}),
+    db:{collection:()=>({doc:()=>({collection:()=>({orderBy(){return this;},limit(){return this;},
+      onSnapshot(options,callback){assert.equal(options.includeMetadataChanges,true);listener=callback;return ()=>{};}})})})},
+    renderWatchTag(){},tagLastSeen:()=>0,mirrorTagAlert(){mirrored++;},tagApplyUnread:n=>{ids['watch-tag-home'].style.display=n?'block':'none';},
+    tagNotifySound(){notified++;},tagOsNotify(){},esc:v=>v,dateJp:()=> '9月12日',tagNotifiedThrough:0,
+    console:{warn(){}},Date
+  };
+  vm.runInNewContext(section('async function loadWatchTag(){','function renderWatchTag(id){'),context);
+  await context.loadWatchTag();
+  const alert={id:'alert1',data:()=>({situation:'safe',createdAt:{toDate:()=>new Date()}})};
+  listener({metadata:{fromCache:true},forEach:fn=>fn(alert)});
+  assert.match(ids['home-watch-tag-status'].textContent,/今は判断できません/);
+  assert.equal(ids['watch-tag-home'].style.display,'block');
+  assert.equal(notified,0,'保存済みの通知で新しい警告音を鳴らさない');
+  assert.equal(mirrored,0,'キャッシュだけの通知を確定した履歴として書かない');
+  listener({metadata:{fromCache:false},forEach:fn=>fn(alert)});
+  assert.equal(notified,1);
+  assert.equal(mirrored,1);
+  console.log('✅ タグも通信未確認と確定した通知を区別する');
+}
+
+{
   const loading = new Element();
   let delayed;
   const stage = { addEventListener: (name, fn) => { if (name === 'error') stage.onError = fn; } };
