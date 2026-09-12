@@ -2916,8 +2916,8 @@ function recDrawSummary(){
   var totalN=0, allDays={};
   var counts={aisatsu:0,message:0,kibun:0,care:0,kusuri:0,onegai:0,henshin:0,memo:0,tag:0,disaster:0};
   var catDays={aisatsu:{},message:{},kibun:{},care:{},kusuri:{},onegai:{},henshin:{},memo:{},tag:{},disaster:{}};
-  var detailCounts={aisatsuH:0,aisatsuK:0,messageK:0,messageH:0,kusuriH:0,kusuriK:0};
-  var detailDays={aisatsuH:{},aisatsuK:{},messageK:{},messageH:{},kusuriH:{},kusuriK:{}};
+  var detailCounts={aisatsuH:0,aisatsuK:0,messageK:0,messageH:0,kibunH:0,kibunK:0,kusuriH:0,kusuriConfirmK:0,kusuriAskK:0,onegaiH:0,henshinK:0,careK:0,memoK:0,tag:0,disaster:0};
+  var detailDays={aisatsuH:{},aisatsuK:{},messageK:{},messageH:{},kibunH:{},kibunK:{},kusuriH:{},kusuriConfirmK:{},kusuriAskK:{},onegaiH:{},henshinK:{},careK:{},memoK:{},tag:{},disaster:{}};
   var kibunBy={},kibunByDays={},careBy={},careByDays={},tagBy={},tagByDays={};
   var kusuriSlot={asa:0,hiru:0,yoru:0},kusuriSlotDays={asa:{},hiru:{},yoru:{}};
   function hit(key,date){ counts[key]++; catDays[key][date]=1; }
@@ -2930,22 +2930,23 @@ function recDrawSummary(){
     else if(v.type==='aisatsu-back'){ hit('aisatsu',v.date); hitDetail('aisatsuK',v.date); }
     else if(v.type==='family-message'){ hit('message',v.date); hitDetail('messageK',v.date); }
     else if(v.type==='family-message-back'){ hit('message',v.date); hitDetail('messageH',v.date); }
-    else if(v.type==='kibun'||v.type==='kibun-kazoku'){ hit('kibun',v.date); hitBy(kibunBy,kibunByDays,v.text||'その他',v.date); }
-    else if(v.type==='care-log'){ hit('care',v.date); hitBy(careBy,careByDays,v.text||'介護の様子',v.date); }
+    else if(v.type==='kibun'){ hit('kibun',v.date); hitDetail('kibunH',v.date); hitBy(kibunBy,kibunByDays,v.text||'その他',v.date); }
+    else if(v.type==='kibun-kazoku'){ hit('kibun',v.date); hitDetail('kibunK',v.date); hitBy(kibunBy,kibunByDays,v.text||'その他',v.date); }
+    else if(v.type==='care-log'){ hit('care',v.date); hitDetail('careK',v.date); hitBy(careBy,careByDays,v.text||'介護の様子',v.date); }
     else if(v.type==='kusuri'){
       hit('kusuri',v.date); hitDetail('kusuriH',v.date);
       if(kusuriSlot[v.slot]!==undefined){ kusuriSlot[v.slot]++; kusuriSlotDays[v.slot][v.date]=1; }
     }
     else if(v.type==='kusuri-kakunin'){
-      hit('kusuri',v.date); hitDetail('kusuriK',v.date);
+      hit('kusuri',v.date); hitDetail('kusuriConfirmK',v.date);
       if(kusuriSlot[v.slot]!==undefined){ kusuriSlot[v.slot]++; kusuriSlotDays[v.slot][v.date]=1; }
     }
-    else if(v.type==='ask-kusuri'){ hit('kusuri',v.date); hitDetail('kusuriK',v.date); }
-    else if(v.type==='onegai'){ hit('onegai',v.date); }
-    else if(v.type==='onegai-back'){ hit('henshin',v.date); }
-    else if(v.type==='memo'){ hit('memo',v.date); }
-    else if(v.type==='tag-alert'){ hit('tag',v.date); hitBy(tagBy,tagByDays,v.text||'読み取り',v.date); }
-    else if(/^disaster-/.test(v.type||'')){ hit('disaster',v.date); }
+    else if(v.type==='ask-kusuri'){ hit('kusuri',v.date); hitDetail('kusuriAskK',v.date); }
+    else if(v.type==='onegai'){ hit('onegai',v.date); hitDetail('onegaiH',v.date); }
+    else if(v.type==='onegai-back'){ hit('henshin',v.date); hitDetail('henshinK',v.date); }
+    else if(v.type==='memo'){ hit('memo',v.date); hitDetail('memoK',v.date); }
+    else if(v.type==='tag-alert'){ hit('tag',v.date); hitDetail('tag',v.date); hitBy(tagBy,tagByDays,v.text||'読み取り',v.date); }
+    else if(/^disaster-/.test(v.type||'')){ hit('disaster',v.date); hitDetail('disaster',v.date); }
   });
   var box=document.getElementById('rec-sum'); box.textContent='';
   var overview=document.createElement('div'); overview.className='sum-overview';
@@ -2970,25 +2971,24 @@ function recDrawSummary(){
     });
     box.appendChild(g);
   }
-  var defs=[
-    ['挨拶','aisatsu','#D98A28'],['メッセージ・返事','message','#8B6EC7'],['体調','kibun','#C9A227'],
-    ['介護の様子','care','#3F815C'],['服薬関連','kusuri','#5B8DC9'],['お願い','onegai','#A34A2E'],
-    ['お願いへの返信','henshin','#C97A62'],['様子メモ','memo','#68778A'],['タグ読み取り','tag','#B0492F'],['防災','disaster','#C95843']
-  ];
-  var mainRows=defs.filter(function(d){return counts[d[1]]>0;}).map(function(d){return [d[0],counts[d[1]],catDays[d[1]],d[2]];});
-  addGraph('今月の記録一覧',mainRows,'長い棒ほど記録件数が多い項目です。右側は「件数・記録があった日数」です。');
-  var none=defs.filter(function(d){return counts[d[1]]===0;}).map(function(d){return d[0];});
-  if(none.length){ var ne=document.createElement('div'); ne.className='sum-none'; ne.textContent='今月まだ記録がない項目：'+none.join('、'); box.appendChild(ne); }
-
-  var peopleRows=[
+  var recordRows=[
     ['本人の挨拶',detailCounts.aisatsuH,detailDays.aisatsuH,'#F28A42'],
     ['家族の挨拶',detailCounts.aisatsuK,detailDays.aisatsuK,'#4F7FD3'],
-    ['家族のメッセージ',detailCounts.messageK,detailDays.messageK,'#4F7FD3'],
+    ['家族からのメッセージ',detailCounts.messageK,detailDays.messageK,'#4F7FD3'],
     ['本人からの返事',detailCounts.messageH,detailDays.messageH,'#F28A42'],
+    ['本人の体調記録',detailCounts.kibunH,detailDays.kibunH,'#F28A42'],
+    ['家族が記録した体調',detailCounts.kibunK,detailDays.kibunK,'#4F7FD3'],
     ['本人の服薬記録',detailCounts.kusuriH,detailDays.kusuriH,'#F28A42'],
-    ['家族の服薬確認・声かけ',detailCounts.kusuriK,detailDays.kusuriK,'#4F7FD3']
+    ['家族の服薬確認',detailCounts.kusuriConfirmK,detailDays.kusuriConfirmK,'#4F7FD3'],
+    ['家族からの服薬声かけ',detailCounts.kusuriAskK,detailDays.kusuriAskK,'#4F7FD3'],
+    ['本人からのお願い',detailCounts.onegaiH,detailDays.onegaiH,'#F28A42'],
+    ['家族からの返信',detailCounts.henshinK,detailDays.henshinK,'#4F7FD3'],
+    ['家族の介護記録',detailCounts.careK,detailDays.careK,'#4F7FD3'],
+    ['家族の様子メモ',detailCounts.memoK,detailDays.memoK,'#4F7FD3'],
+    ['おまもりタグの読み取り',detailCounts.tag,detailDays.tag,'#63A57D'],
+    ['防災の記録',detailCounts.disaster,detailDays.disaster,'#63A57D']
   ].filter(function(r){return r[1]>0;});
-  addGraph('本人と家族のやり取り',peopleRows,'オレンジは本人、青は家族の記録です。');
+  addGraph('今月の詳しい記録',recordRows,'何の記録か、誰が行ったかを分けています。オレンジは本人、青は家族、緑は共有・安全情報です。');
 
   var kbRows=Object.keys(kibunBy).map(function(k){return [k,kibunBy[k],kibunByDays[k],'#C9A227'];});
   addGraph('体調の内訳',kbRows,'選ばれた言葉をそのまま集計しています。健康状態の判定ではありません。');
