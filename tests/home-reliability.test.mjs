@@ -15,6 +15,9 @@ class Element {
   appendChild(child) { this.children.push(child); return child; }
   replaceChildren(...children) { this.children = children; this._text = ''; }
   addEventListener(name, handler) { if(name==='click') this._click=handler; }
+  setAttribute(name,value) { this[name]=value; }
+  focus() { this.focused=true; }
+  scrollIntoView() { this.scrolled=true; }
   set textContent(value) { this._text = String(value); this.children = []; }
   get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
   set innerHTML(value) { this._text = String(value); this.children = []; }
@@ -31,9 +34,25 @@ assert.ok(html.indexOf('id="card-family-notes-preview"')<html.indexOf('id="card-
 assert.ok(html.indexOf('id="card-next-yotei"')<html.indexOf('id="card-family-tasks-preview"'));
 assert.match(html, /id="card-today-records" style="display:none;"[\s\S]*?ご本人からの連絡/);
 assert.match(html, /今日の記録をふり返りで見る/);
+assert.match(html, /id="watch-tag-history"/);
+assert.match(html, /この端末で確認しました/);
+assert.match(html, /get\(\{source:'server'\}\)/);
 assert.match(html, /id="card-care-quick"[\s\S]*?家族のワンタップ記録/);
 assert.doesNotMatch(html, /家庭で選ぶ介護の記録|家族の介護記録/);
 console.log('✅ 家族ホームはワンタップ記録を先に、補助入力を開閉式に表示');
+
+{
+  const ids=Object.fromEntries(['watch-tag-home','tag-unread-count','tag-seen-btn','home-watch-tag-status']
+    .map(id=>[id,new Element()]));
+  ids['watch-tag-home'].classList={add(){},remove(){}};
+  const context={document:{getElementById:id=>ids[id]},previewStorage:{setItem(){}},Date};
+  vm.runInNewContext(section('function tagLastSeen(){','function tagNotifySound(){'),context);
+  context.tagApplyUnread(2);
+  assert.equal(ids['watch-tag-home'].style.display,'block');
+  context.tagMarkSeen();
+  assert.equal(ids['watch-tag-home'].style.display,'none','確認済みのタグが未確認の伝言を押し下げない');
+  console.log('✅ タグの最優先表示は未確認の間だけ');
+}
 
 {
   const loading = new Element();
@@ -68,19 +87,21 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   const ids = Object.fromEntries(['rec-cal', 'rec-sum', 'rec-day', 'rec-day-note', 'rec-sum-ttl', 'rec-day-ttl', 'rec-ttl']
     .map(id => [id, new Element()]));
   let summarized = false;
+  const sources = [];
   const context = {
     document: { getElementById: id => ids[id] },
     recY: 2026, recM: 8, recReq: 0,
     recDayStr: (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
     recDrawSummary: () => { summarized = true; },
     recEvents: [], recPrevEvents: [], recPrevReady: false,
-    col: () => ({ where() { return this; }, get() { return Promise.reject(new Error('offline')); } }),
+    col: () => ({ where() { return this; }, get(options) { sources.push(options?.source); return Promise.reject(new Error('offline')); } }),
     console: { warn() {} }, Date, Promise
   };
   vm.runInNewContext(section('function recShowLoading(m){', '/* 日ごとの件数 */'), context);
   context.recLoad();
   await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(summarized, false);
+  assert.deepEqual(sources,['server','server'],'キャッシュの0件を確定した0件として扱わない');
   assert.match(ids['rec-sum'].innerHTML, /0件という意味ではありません/);
   assert.match(ids['rec-sum'].innerHTML, /onclick="recLoad\(\)"/);
   assert.match(ids['rec-day'].innerHTML, /記録なしという意味ではありません/);
@@ -98,9 +119,10 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   };
   let viewer = 'familyB';
   const context = {
-    document: { getElementById: id => id === 'family-notes-preview' ? preview : id === 'card-family-notes-preview' ? previewCard : list,
+    document: { getElementById: id => id === 'family-notes-preview' ? preview : id === 'card-family-notes-preview' ? previewCard :
+      id.startsWith('family-note-') && id !== 'family-note-list' ? list.children.find(x=>x.id===id) : list,
       createElement: tag => new Element(tag), createTextNode: text => ({ textContent: text }) },
-    familyOnlyData: data, familyOnlyLoad: {notes:'ready',noteAcks:'ready'}, uid: () => viewer, foDateTime: () => '9月12日 10:00',
+    familyOnlyData: data, familyOnlyLoad: {notes:'ready',noteAcks:'ready',noteReplies:'ready'}, uid: () => viewer, foDateTime: () => '9月12日 10:00', foByNewest: (a,b) => b.at.seconds-a.at.seconds,
     ackFamilyNote() {}, replyFamilyNote() {}, deleteFamilyEvent() {}, Object
   };
   vm.runInNewContext(section('function renderFamilyNotes(){', 'async function ackFamilyNote(id){'), context);
@@ -108,15 +130,25 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   assert.match(preview.textContent, /確認が必要な伝言 1件/);
   assert.equal(previewCard.style.display, 'block');
   assert.match(preview.textContent, /連絡します/);
+  const noteButton=preview.children.find(x=>x.className==='family-preview-link');
+  assert.ok(noteButton,'未確認の伝言自体を押せる');
+  noteButton._click();
+  assert.equal(list.children[0].id,'family-note-note1');
+  assert.equal(list.children[0].focused,true);
+  assert.equal(list.children[0].scrolled,true);
+  data.notes.push({_id:'note2',uid:'author',name:'送り手',text:'新しい確認済み',at:{seconds:3}});
+  data.noteAcks.push({_id:'ack2',replyTo:'note2',uid:'familyB',name:'家族B',at:{seconds:4}});
+  context.renderFamilyNotes();
+  assert.equal(list.children[0].id,'family-note-note1','新しい確認済みより古い未確認を先に表示');
   assert.match(list.textContent, /確認した人: 家族Aさん/);
   assert.match(list.textContent, /表示されていない家族の確認状況は分かりません/);
   assert.match(list.textContent, /自分が確認しました/);
   viewer = 'familyA';
   context.renderFamilyNotes();
-  assert.equal(previewCard.style.display, 'none');
+  assert.equal(previewCard.style.display, 'block','別の未確認の伝言を見逃さない');
   assert.doesNotMatch(preview.textContent, /連絡します/, '確認済みの伝言はホームで繰り返さない');
   assert.match(list.textContent, /あなたは確認済み/);
-  assert.doesNotMatch(list.textContent, /自分が確認しました/);
+  assert.doesNotMatch(list.children.find(x=>x.id==='family-note-note1').textContent, /自分が確認しました/);
   viewer = 'author';
   context.renderFamilyNotes();
   assert.equal(previewCard.style.display, 'none');
@@ -127,6 +159,11 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   context.renderFamilyNotes();
   assert.match(preview.textContent, /読み込めませんでした/);
   assert.equal(previewCard.style.display, 'block');
+  assert.doesNotMatch(preview.textContent, /0件/);
+  context.familyOnlyLoad.noteAcks='cached';
+  context.renderFamilyNotes();
+  assert.match(preview.textContent, /今は判断できません/);
+  assert.equal(previewCard.style.display,'block');
   assert.doesNotMatch(preview.textContent, /0件/);
   let sent = 0;
   const ackContext = {
@@ -141,6 +178,28 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   await ackContext.ackFamilyNote('note1');
   assert.equal(sent, 1, '別の家族なら確認を記録できる');
   console.log('✅ 伝言の確認は家族ごとに区別し、他人の確認で自分を確認済みにしない');
+}
+
+{
+  const summary=new Element(), heading=new Element();
+  const context={
+    document:{getElementById:id=>id==='rec-sum'?summary:heading,createElement:tag=>new Element(tag)},
+    recY:2026,recM:8,recPrevReady:false,recPrevEvents:[],
+    recEvents:[
+      {_id:'note',type:'family-note',date:'2026-09-12',at:{seconds:1},name:'家族A',text:'明日は通院'},
+      {_id:'task',type:'family-task',date:'2026-09-12',at:{seconds:2},name:'家族B',text:'薬局に行く'}
+    ],
+    recVisible:v=>!['family-note','family-task'].includes(v.type),
+    REC_LABEL:{'family-note':v=>['家族の伝言','','家族Aさん「'+v.text+'」'],
+      'family-task':v=>['家族のやること','','家族Bさん「'+v.text+'」']},
+    recTime:()=> '10:00',recReplyFor:()=>'',Date
+  };
+  vm.runInNewContext(section('function recDrawSummary(){','const AISATSU_BACK_WORDS='),context);
+  context.recDrawSummary();
+  assert.match(summary.textContent,/生活の記録 0件/);
+  assert.match(summary.textContent,/家族間の共有は別に2件/);
+  assert.match(summary.textContent,/家族間の共有履歴.*明日は通院.*薬局に行く/);
+  console.log('✅ 月のまとめに家族の伝言・やることを生活記録と区別して残す');
 }
 
 {
@@ -207,6 +266,29 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   console.log('✅ 家族のみホームの今日・明日とその後の予定、通信失敗を区別する');
 }
 assert.match(html, /onSnapshot\(\{includeMetadataChanges:true\},snap=>/);
+
+{
+  let onNext,onError,changes=0;
+  const context={
+    document:{getElementById:()=>null},
+    col:()=>({where(){return this;},onSnapshot(options,success,error){
+      assert.equal(options.includeMetadataChanges,true);
+      onNext=success;onError=error;return ()=>{};
+    }}),
+    familyOnlyData:{notes:[]},familyOnlyLoad:{notes:'loading'},familyOnlyUnsubs:[],foByNewest:()=>0,
+    renderFamilyNotes:()=>{},renderFamilyTasks:()=>{},foState:()=>{}
+  };
+  vm.runInNewContext(section('function foWatch(type,key,draw){','function initFamilyOnlyTools(){'),context);
+  context.foWatch('family-note','notes',()=>{changes++;});
+  onNext({metadata:{fromCache:true},forEach:fn=>fn({id:'saved',data:()=>({text:'保存済み'})})});
+  assert.equal(context.familyOnlyLoad.notes,'cached');
+  onNext({metadata:{fromCache:false},forEach:()=>{}});
+  assert.equal(context.familyOnlyLoad.notes,'ready');
+  assert.equal(changes,2,'通信回復でデータが同じでも表示状態を更新');
+  onError(new Error('offline'));
+  assert.equal(context.familyOnlyLoad.notes,'error');
+  console.log('✅ 家族の伝言は保存済み・最新確認済み・通信エラーを区別する');
+}
 
 {
   const preview = new Element();
