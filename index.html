@@ -385,6 +385,8 @@ table.cal-rec td.pad{background:none;}
 .family-tool-btn:disabled{opacity:.55;}
 .family-tool-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
 .family-tool-row{border:1px solid #DDE7E1;border-radius:11px;background:#FAFCFB;padding:10px 11px;line-height:1.55;}
+.family-tool-row:focus{outline:3px solid #4F7FD3;outline-offset:2px;scroll-margin-top:18px;}
+.family-needs-check{display:inline-block;margin-bottom:6px;color:#315FAE;font-size:.84rem;}
 .family-tool-row .meta{display:block;color:var(--usucha);font-size:.76rem;font-weight:700;margin-top:3px;}
 .family-tool-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px;}
 .family-tool-actions button{min-height:38px;background:#fff;border:1.5px solid #B9CABB;border-radius:9px;color:var(--ha-koi);font:inherit;font-size:.82rem;font-weight:800;padding:6px 10px;cursor:pointer;}
@@ -397,6 +399,9 @@ table.cal-rec td.pad{background:none;}
 .family-preview strong{display:block;color:#315FAE;font-size:.88rem;}
 .family-preview span{display:block;color:var(--cha);font-size:.87rem;overflow-wrap:anywhere;}
 .family-preview .meta{font-size:.75rem;color:var(--usucha);}
+.family-preview-link{display:block;width:100%;margin-top:9px;padding:10px 11px;border:1px solid #9EB9DF;border-radius:9px;background:#fff;color:var(--cha);font:inherit;text-align:left;cursor:pointer;overflow-wrap:anywhere;}
+.family-preview-link span{display:block;}
+.family-preview-link:focus-visible{outline:3px solid #315FAE;outline-offset:2px;}
 .family-jump{display:block;width:100%;min-height:48px;margin-top:10px;border:2px solid #4F7FD3;border-radius:11px;background:#fff;color:#315FAE;font:inherit;font-weight:900;cursor:pointer;}
 .family-day-plan{display:grid;gap:9px;}
 .family-day-plan .day-title{font-size:.88rem;font-weight:900;color:#315FAE;}
@@ -912,7 +917,7 @@ table.cal-rec td.pad{background:none;}
       <div class="card dom-record family-only-card" id="card-family-notes-preview">
         <h3>未確認の伝言</h3>
         <div class="family-preview" id="family-notes-preview" aria-live="polite">伝言を読み込んでいます…</div>
-        <button class="family-jump" type="button" onclick="openFamilyNotes()">伝言をすべて見る・返事する</button>
+        <button class="family-jump" type="button" onclick="openFamilyNotes()">未確認の伝言を一覧で見る・返事する</button>
       </div>
 
       <div class="card dom-yotei" id="card-next-yotei" style="display:none;">
@@ -932,7 +937,7 @@ table.cal-rec td.pad{background:none;}
         <div class="tag-home-head"><span class="ic">🔔</span><span>おまもりタグからのお知らせ</span><span class="tag-unread-count" id="tag-unread-count" style="display:none;"></span></div>
         <div class="tag-home-status" id="home-watch-tag-status"></div>
         <div id="watch-tag-alerts"></div>
-        <button class="tag-seen-btn" id="tag-seen-btn" style="display:none;" onclick="tagMarkSeen()">お知らせを確認しました</button>
+        <button class="tag-seen-btn" id="tag-seen-btn" style="display:none;" onclick="tagMarkSeen()">この端末で確認しました</button>
         <details class="tag-guide"><summary>お知らせが来たら（この後の動き方）</summary>
           <ol>
             <li>まず本人に電話などで連絡してみる</li>
@@ -1176,6 +1181,7 @@ table.cal-rec td.pad{background:none;}
           ・緊急通報ではありません。危険なときは、読み取った方が119番・110番へ連絡します</div>
         </details>
         <div id="watch-tag-area"><div class="empty">状態を確認しています…</div></div>
+        <div id="watch-tag-history" class="family-tool-list" aria-live="polite"></div>
         <div class="note">読み取られた内容は、家族のまいにこに記録されます。</div>
         <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
       </div>
@@ -2312,7 +2318,7 @@ function initKazoku(){
   document.getElementById('yt-note').textContent=kOnly
     ?'登録した予定は、ホームとカレンダーに表示されます。'
     :'本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。';
-  if(kOnly)familyOnlyLoad={notes:'loading',noteAcks:'loading',tasks:'loading',taskDone:'loading'};
+  if(kOnly)familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading'};
   showTab('t-home');
   if(kOnly) initFamilyOnlyTools();
   initDisaster();
@@ -2722,7 +2728,7 @@ function rgLoad(p){
       buckets.push({label:(ms.getMonth()+1)+'月', s:rgDs(ms), e:rgDs(me)});
     }
   }
-  col('events').where('date','>=',rgDs(start)).where('date','<=',todayStr()).get().then(function(snap){
+  col('events').where('date','>=',rgDs(start)).where('date','<=',todayStr()).get({source:'server'}).then(function(snap){
     var n=buckets.length;
     var M={aisatsu:[], message:[], kusuri:[], kibun:[], onegai:[], care:[]};
     var D={aisatsu:{}, message:{}, kusuri:{}, kibun:{}, onegai:{}, care:{}};
@@ -2817,7 +2823,7 @@ function recLoadRange(){
   if(to>todayStr()){ state.classList.add('err'); state.textContent='終了日は今日以前を選んでください'; return; }
   state.textContent='読み込み中…';
   box.innerHTML='<div class="rec-loading">読み込み中…</div>';
-  col('events').get().then(function(snap){
+  col('events').get({source:'server'}).then(function(snap){
     var rows=[];
     snap.forEach(function(doc){
       var v=doc.data(); v._id=doc.id;
@@ -2906,8 +2912,8 @@ function recLoad(){
   document.getElementById('rec-ttl').textContent = y + '年' + (m+1) + '月';
   recShowLoading(m);
 
-  var currentReq=col('events').where('date','>=',from).where('date','<=',to).get();
-  var previousReq=col('events').where('date','>=',prevFrom).where('date','<=',prevTo).get().catch(function(e){
+  var currentReq=col('events').where('date','>=',from).where('date','<=',to).get({source:'server'});
+  var previousReq=col('events').where('date','>=',prevFrom).where('date','<=',prevTo).get({source:'server'}).catch(function(e){
     console.warn('rec previous comparison',e); return null;
   });
   Promise.all([currentReq,previousReq]).then(function(result){
@@ -3000,6 +3006,10 @@ var REC_LABEL = {
   'family-message-back': function(v){ return ['本人からの返事','', 'ご本人「'+(v.text||'')+'」']; },
   'kibun-kazoku':   function(v){ return ['家族の体調記録','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
   'care-log':        function(v){ return ['家族の記録','', (v.name||'家族')+'さんが「'+(v.text||'今日の様子')+'」と記録しました']; },
+  'family-note':     function(v){ return ['家族の伝言','', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
+  'family-note-reply':function(v){ return ['伝言への返事','', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
+  'family-task':     function(v){ return ['家族のやること','', (v.name||'家族')+'さんが追加: '+(v.text||'')+(v.due?'（期限 '+v.due+'）':'')]; },
+  'family-task-done':function(v){ return ['やることの対応済み','', (v.name||'家族')+'さんがやることを対応済みにしました']; },
   'tag-alert':      function(v){ return ['タグ','k-tag', 'おまもりタグが読み取られました: '+(v.text||'')]; },
   'kusuri-kakunin': function(v){ return ['家族の服薬確認','k-kusuri', (v.name||'家族')+'さんが'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の':'')+'服薬を確認しました']; },
   'memo':           function(v){ return ['家族の様子メモ','', (v.name||'家族')+'さん: '+(v.text||'')]; },
@@ -3117,6 +3127,10 @@ function recDrawSummary(){
   document.getElementById('rec-sum-ttl').textContent = (recM+1)+'月のまとめ';
   var now=new Date();
   var elapsed=(recY===now.getFullYear()&&recM===now.getMonth())?now.getDate():new Date(recY,recM+1,0).getDate();
+  /* 家族間の連絡は生活記録の合計には混ぜず、別枠で日時と内容を残す。 */
+  var sharedTypes=['family-note','family-note-reply','family-task','family-task-done'];
+  var familyShared=recEvents.filter(function(v){return sharedTypes.includes(v.type);});
+  var familySharedDays={};familyShared.forEach(function(v){familySharedDays[v.date]=1;});
   var totalN=0, allDays={}, dayTotals={};
   var counts={aisatsu:0,message:0,kibun:0,care:0,kusuri:0,onegai:0,henshin:0,memo:0,tag:0,disaster:0};
   var catDays={aisatsu:{},message:{},kibun:{},care:{},kusuri:{},onegai:{},henshin:{},memo:{},tag:{},disaster:{}};
@@ -3212,9 +3226,10 @@ function recDrawSummary(){
   });
   var box=document.getElementById('rec-sum'); box.textContent='';
   var overview=document.createElement('div'); overview.className='sum-overview';
-  var op=document.createElement('div'); op.className='so-period'; op.textContent=(recM+1)+'月'+elapsed+'日分の記録';
-  var om=document.createElement('div'); om.className='so-main'; om.textContent='合計'+totalN+'件';
-  var os=document.createElement('div'); os.className='so-sub'; os.textContent=elapsed+'日中、記録があったのは'+Object.keys(allDays).length+'日';
+  var op=document.createElement('div'); op.className='so-period'; op.textContent=(recM+1)+'月'+elapsed+'日分の生活記録';
+  var om=document.createElement('div'); om.className='so-main'; om.textContent='生活の記録 '+totalN+'件';
+  var os=document.createElement('div'); os.className='so-sub'; os.textContent=elapsed+'日中、生活の記録があったのは'+Object.keys(allDays).length+'日'+
+    (familyShared.length?'。家族間の共有は別に'+familyShared.length+'件（'+Object.keys(familySharedDays).length+'日）':'');
   overview.appendChild(op); overview.appendChild(om); overview.appendChild(os); box.appendChild(overview);
 
   var insights=[];
@@ -3223,12 +3238,13 @@ function recDrawSummary(){
   var kazokuN=detailCounts.aisatsuK+detailCounts.messageK+detailCounts.kibunK+detailCounts.kusuriConfirmK+detailCounts.kusuriAskK+detailCounts.henshinK+detailCounts.careK+detailCounts.memoK;
   var sharedN=detailCounts.tag+detailCounts.disaster;
   var busiest=Object.keys(dayTotals).sort(function(a,b){return dayTotals[b]-dayTotals[a];})[0];
-  var wholeText=elapsed+'日中'+Object.keys(allDays).length+'日に、合計'+totalN+'件の記録がありました。本人'+honninN+'件・家族'+kazokuN+'件'+(sharedN?'・共有／安全情報'+sharedN+'件':'')+'です。';
+  var wholeText=elapsed+'日中'+Object.keys(allDays).length+'日に、合計'+totalN+'件の生活記録がありました。本人'+honninN+'件・家族'+kazokuN+'件'+(sharedN?'・共有／安全情報'+sharedN+'件':'')+'です。';
   if(busiest){
     var busyDate=new Date(busiest+'T00:00:00');
     wholeText+=' 最も記録が多かったのは'+(busyDate.getMonth()+1)+'月'+busyDate.getDate()+'日の'+dayTotals[busiest]+'件でした。';
   }
   addInsight('今月の全体像',wholeText,'');
+  if(familyShared.length) addInsight('家族間の共有',elapsed+'日中'+familyShared.length+'件・共有があったのは'+Object.keys(familySharedDays).length+'日。伝言ややることの内容は下の「家族間の共有履歴」を押すと確認できます。','blue');
 
   if(recPrevReady){
     var prevMonthDate=new Date(recY,recM-1,1);
@@ -3362,6 +3378,16 @@ function recDrawSummary(){
     ['防災の記録',detailCounts.disaster,detailDays.disaster,'#63A57D',detailEvents.disaster]
   ].filter(function(r){return r[1]>0;});
   addList('記録の詳細を見る',recordRows,'項目を押すと、記録した日付・時刻・内容が開きます。オレンジは本人、青は家族、緑は共有・安全情報です。');
+
+  var familySharedRows=[
+    ['家族の伝言','family-note'],['伝言への返事','family-note-reply'],
+    ['やることの追加','family-task'],['やることの対応済み','family-task-done']
+  ].map(function(entry){
+    var events=familyShared.filter(function(v){return v.type===entry[1];});
+    var days={};events.forEach(function(v){days[v.date]=1;});
+    return [entry[0],events.length,days,'#4F7FD3',events];
+  }).filter(function(row){return row[1]>0;});
+  addList('家族間の共有履歴',familySharedRows,'伝言とやることは生活の記録と別集計です。押すと日付・時刻・内容が開きます。');
 
   var greetRows=[
     ['本人・朝の挨拶',aisatsuSlotCounts.honnin.asa,aisatsuSlotDays.honnin.asa,'#F28A42',aisatsuSlotEvents.honnin.asa],
@@ -3554,7 +3580,7 @@ const CARE_OPTIONS=[
 const CARE_DEFAULT=['meal','water','call','visit'];
 let familyOnlyUnsubs=[];
 let familyOnlyData={config:[],notes:[],noteAcks:[],noteReplies:[],tasks:[],taskDone:[],contacts:[]};
-let familyOnlyLoad={notes:'loading',noteAcks:'loading',tasks:'loading',taskDone:'loading'};
+let familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading'};
 
 function foMillis(v){
   if(v.at&&v.at.toMillis) return v.at.toMillis();
@@ -3575,17 +3601,17 @@ function foState(id,text,err){
   el.classList.toggle('err',!!err);
 }
 function foWatch(type,key,draw){
-  const unsub=col('events').where('type','==',type).onSnapshot(function(snap){
+  const unsub=col('events').where('type','==',type).onSnapshot({includeMetadataChanges:true},function(snap){
     const rows=[];
     snap.forEach(function(doc){ const v=doc.data(); v._id=doc.id; rows.push(v); });
     rows.sort(foByNewest);
     familyOnlyData[key]=rows;
-    if(key in familyOnlyLoad)familyOnlyLoad[key]='ready';
+    if(key in familyOnlyLoad)familyOnlyLoad[key]=snap.metadata&&snap.metadata.fromCache?'cached':'ready';
     draw();
   },function(){
     if(key in familyOnlyLoad){
       familyOnlyLoad[key]='error';
-      if(key==='notes'||key==='noteAcks')renderFamilyNotes();
+      if(key==='notes'||key==='noteAcks'||key==='noteReplies')renderFamilyNotes();
       if(key==='tasks'||key==='taskDone')renderFamilyTasks();
     }
     if(key==='notes'){
@@ -3602,7 +3628,7 @@ function foWatch(type,key,draw){
 function initFamilyOnlyTools(){
   familyOnlyUnsubs.forEach(function(u){try{u();}catch(e){}});
   familyOnlyUnsubs=[];
-  familyOnlyLoad={notes:'loading',noteAcks:'loading',tasks:'loading',taskDone:'loading'};
+  familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading'};
   renderCareConfigChecks(CARE_DEFAULT);
   foWatch('care-config','config',renderCareTools);
   foWatch('family-note','notes',renderFamilyNotes);
@@ -3725,15 +3751,25 @@ function renderFamilyNotes(){
   });
   renderFamilyNotesPreview(ack);
   box.textContent='';
-  if(familyOnlyLoad.notes!=='ready'||familyOnlyLoad.noteAcks!=='ready'){
-    box.textContent=familyOnlyLoad.notes==='error'||familyOnlyLoad.noteAcks==='error'?
-      '伝言の確認状況を読み込めませんでした。通信状態を確認して、画面を開き直してください。':'伝言の確認状況を読み込んでいます…';
+  if(familyOnlyLoad.notes!=='ready'||familyOnlyLoad.noteAcks!=='ready'||familyOnlyLoad.noteReplies!=='ready'){
+    box.textContent=[familyOnlyLoad.notes,familyOnlyLoad.noteAcks,familyOnlyLoad.noteReplies].includes('error')?
+      '伝言の確認状況を読み込めませんでした。通信状態を確認して、画面を開き直してください。':
+      [familyOnlyLoad.notes,familyOnlyLoad.noteAcks,familyOnlyLoad.noteReplies].includes('cached')?
+      '保存済みの伝言はありますが、最新の内容と確認状況は通信が戻るまで確定できません。':'伝言の確認状況を読み込んでいます…';
     return;
   }
-  const rows=familyOnlyData.notes;
+  /* 未確認のものを一覧でも先に表示し、ホームから同じ伝言に直接移動できるようにする。 */
+  const needsCheck=function(v){return v.uid!==uid()&&!(ack[v._id]&&ack[v._id][uid()]);};
+  const rows=familyOnlyData.notes.slice().sort(function(a,b){
+    return Number(needsCheck(b))-Number(needsCheck(a))||foByNewest(a,b);
+  });
   if(!rows.length){box.innerHTML='<div class="empty">伝言はまだありません</div>';return;}
   rows.forEach(function(v){
     const row=document.createElement('div'); row.className='family-tool-row';
+    row.id='family-note-'+v._id;row.tabIndex=-1;
+    if(needsCheck(v)){
+      const label=document.createElement('strong');label.className='family-needs-check';label.textContent='あなたの確認待ち';row.appendChild(label);
+    }
     row.appendChild(document.createTextNode(v.text||''));
     const meta=document.createElement('span');meta.className='meta';meta.textContent=(v.name||'家族')+'・'+foDateTime(v);row.appendChild(meta);
     (replies[v._id]||[]).slice().reverse().forEach(function(r){
@@ -3775,11 +3811,12 @@ function renderFamilyNotesPreview(ack){
   const card=document.getElementById('card-family-notes-preview');
   if(card)card.style.display='block';
   box.textContent='';
-  if(familyOnlyLoad.notes==='error'||familyOnlyLoad.noteAcks==='error'){
+  if(familyOnlyLoad.notes==='error'||familyOnlyLoad.noteAcks==='error'||familyOnlyLoad.noteReplies==='error'){
     box.textContent='未確認の伝言を読み込めませんでした。通信状態を確認して、画面を開き直してください。';return;
   }
-  if(familyOnlyLoad.notes!=='ready'||familyOnlyLoad.noteAcks!=='ready'){
-    box.textContent='未確認の伝言を読み込んでいます…';return;
+  if(familyOnlyLoad.notes!=='ready'||familyOnlyLoad.noteAcks!=='ready'||familyOnlyLoad.noteReplies!=='ready'){
+    box.textContent=[familyOnlyLoad.notes,familyOnlyLoad.noteAcks,familyOnlyLoad.noteReplies].includes('cached')?
+      '通信を確認できません。未確認の伝言の件数は今は判断できません。':'未確認の伝言を読み込んでいます…';return;
   }
   const notes=familyOnlyData.notes;
   if(!notes.length){if(card)card.style.display='none';return;}
@@ -3789,13 +3826,18 @@ function renderFamilyNotesPreview(ack){
   count.textContent='確認が必要な伝言 '+remaining.length+'件';
   box.appendChild(count);
   remaining.slice(0,2).forEach(function(v){
-    const text=document.createElement('span');text.textContent=v.text||'（内容なし）';box.appendChild(text);
-    const meta=document.createElement('span');meta.className='meta';meta.textContent=(v.name||'家族')+'さん ・ '+foDateTime(v);box.appendChild(meta);
+    const button=document.createElement('button');button.type='button';button.className='family-preview-link';
+    button.setAttribute('aria-label',(v.name||'家族')+'さんの未確認の伝言を開く: '+(v.text||'内容なし'));
+    const text=document.createElement('span');text.textContent=v.text||'（内容なし）';button.appendChild(text);
+    const meta=document.createElement('span');meta.className='meta';meta.textContent=(v.name||'家族')+'さん ・ '+foDateTime(v);button.appendChild(meta);
+    button.addEventListener('click',function(){openFamilyNotes(v._id);});box.appendChild(button);
   });
 }
-function openFamilyNotes(){
+function openFamilyNotes(id){
+  const target=id&&document.getElementById('family-note-'+id);
   const card=document.getElementById('card-family-notes');
-  if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
+  if(target){target.focus({preventScroll:true});target.scrollIntoView({behavior:'smooth',block:'center'});}
+  else if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
 }
 const familyAckSending=new Set();
 async function ackFamilyNote(id){
@@ -3836,7 +3878,9 @@ function renderFamilyTasks(){
   renderFamilyTasksPreview(done);
   if(familyOnlyLoad.tasks!=='ready'||familyOnlyLoad.taskDone!=='ready'){
     box.textContent=familyOnlyLoad.tasks==='error'||familyOnlyLoad.taskDone==='error'?
-      'やることの対応状況を読み込めませんでした。通信状態を確認して、画面を開き直してください。':'やることの対応状況を読み込んでいます…';
+      'やることの対応状況を読み込めませんでした。通信状態を確認して、画面を開き直してください。':
+      familyOnlyLoad.tasks==='cached'||familyOnlyLoad.taskDone==='cached'?
+      '保存済みのやることはありますが、最新の対応状況は通信が戻るまで確定できません。':'やることの対応状況を読み込んでいます…';
     return;
   }
   box.textContent='';const rows=familyOnlyData.tasks.slice(0,30);
@@ -3867,7 +3911,8 @@ function renderFamilyTasksPreview(done){
     box.textContent='未完了のやることを読み込めませんでした。通信状態を確認して、画面を開き直してください。';return;
   }
   if(familyOnlyLoad.tasks!=='ready'||familyOnlyLoad.taskDone!=='ready'){
-    box.textContent='未完了のやることを読み込んでいます…';return;
+    box.textContent=familyOnlyLoad.tasks==='cached'||familyOnlyLoad.taskDone==='cached'?
+      '通信を確認できません。未完了の件数は今は判断できません。':'未完了のやることを読み込んでいます…';return;
   }
   const pending=familyOnlyData.tasks.filter(function(v){return !done[v._id];})
     .sort(function(a,b){return (a.due||'9999-12-31').localeCompare(b.due||'9999-12-31')||foByNewest(a,b);});
@@ -4251,6 +4296,8 @@ function tagMarkSeen(){
 function tagApplyUnread(n){
   const home=document.getElementById('watch-tag-home');
   if(!home) return;
+  /* 確認済みのお知らせは「安心」の履歴に残し、ホームの最優先枠は未確認だけにする。 */
+  home.style.display=n>0?'block':'none';
   const cnt=document.getElementById('tag-unread-count');
   const seen=document.getElementById('tag-seen-btn');
   const st=document.getElementById('home-watch-tag-status');
@@ -4318,6 +4365,7 @@ function watchTagQr(url){
 async function loadWatchTag(){
   const area=document.getElementById('watch-tag-area');
   const alerts=document.getElementById('watch-tag-alerts');
+  const history=document.getElementById('watch-tag-history');
   const home=document.getElementById('watch-tag-home');
   const homeStatus=document.getElementById('home-watch-tag-status');
   if(!area || !gid()) return;
@@ -4329,6 +4377,7 @@ async function loadWatchTag(){
     const v=g.exists?g.data():{};
     currentWatchTagId=(v.watchTagActive && v.watchTagId)?v.watchTagId:'';
     if(!currentWatchTagId){
+      if(history)history.textContent='';
       area.innerHTML='<button class="big-btn family" onclick="createWatchTag()">おまもりタグを作る</button>'+
         '<div class="note">内部確認用の試作品です。本人の同意、実通知、乱用防止、削除機能が完成するまで販売・配布には使いません。作成後も、いつでも停止・再発行できます。</div>';
       return;
@@ -4336,7 +4385,7 @@ async function loadWatchTag(){
     renderWatchTag(currentWatchTagId);
     if(homeStatus){ homeStatus.textContent='おまもりタグは使用中です。QRの表示・停止は「安心」タブから行えます。'; }
     watchTagUnsub=db.collection('watchTags').doc(currentWatchTagId).collection('alerts')
-      .orderBy('createdAt','desc').limit(5).onSnapshot(snap=>{
+      .orderBy('createdAt','desc').limit(5).onSnapshot({includeMetadataChanges:true},snap=>{
         const rows=[];
         const situationLabels={
           lost:'道に迷っているようです',unwell:'体調が心配です',
@@ -4348,7 +4397,7 @@ async function loadWatchTag(){
           const x=doc.data();
           const d=x.createdAt&&x.createdAt.toDate?x.createdAt.toDate():null;
           const situation=situationLabels[x.situation]||'おまもりタグが読み取られました';
-          if(d) mirrorTagAlert(doc.id, d, situation);      /* ふり返り用に記録(重複は自動で防止) */
+          if(d && !(snap.metadata&&snap.metadata.fromCache)) mirrorTagAlert(doc.id, d, situation); /* 確定した読み取りだけをふり返りに記録 */
           if(d && Date.now()-d.getTime()>86400000) return;  /* お知らせ表示は24時間で消える */
           if(d){
             const t=d.getTime();
@@ -4359,16 +4408,31 @@ async function loadWatchTag(){
             (d?'<time>'+esc(dateJp(d))+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+'</time>':'')+'</div>');
         });
         alerts.innerHTML=rows.join('');
-        if(home){ home.style.display = rows.length ? 'block' : 'none'; }  /* お知らせが無い日はカード自体を出さない */
+        if(snap.metadata&&snap.metadata.fromCache){
+          if(home){home.style.display='block';home.classList.remove('tag-unread');}
+          if(homeStatus)homeStatus.textContent='通信を確認できません。新しいお知らせがあるか、今は判断できません。';
+          document.getElementById('tag-unread-count').style.display='none';
+          document.getElementById('tag-seen-btn').style.display='none';
+          if(history)history.innerHTML='<div class="note">保存済みのお知らせです。通信が戻るまで最新の状況は確認できません。</div>'+rows.join('');
+          return;
+        }
+        if(history)history.innerHTML=rows.length?'<strong>最近のお知らせ（確認済みも含む）</strong>'+rows.join(''):
+          '<div class="note">直近24時間のお知らせはありません。以前の記録は「ふり返り」に残ります。</div>';
         tagApplyUnread(unread);
         if(unread>0 && latest>tagNotifiedThrough){
           tagNotifiedThrough=latest;
           tagNotifySound();
           tagOsNotify(latestLabel+'（新着'+unread+'件）');
         }
-      },()=>{ alerts.innerHTML='<div class="note">お知らせを読み込めませんでした。</div>'; });
+      },()=>{
+        alerts.innerHTML='<div class="note">お知らせを読み込めませんでした。未確認の有無は判断できません。</div>';
+        if(history)history.textContent='お知らせを読み込めませんでした。通信状態を確認してください。';
+        if(home){home.style.display='block';home.classList.add('tag-unread');}
+        if(homeStatus)homeStatus.textContent='お知らせを確認できません。通信状態を確認してください。';
+      });
   }catch(e){
     area.innerHTML='<div class="empty">おまもりタグを確認できませんでした。通信状態を確かめてください。</div>';
+    if(history)history.textContent='お知らせを確認できませんでした。通信状態を確認してください。';
   }
 }
 function renderWatchTag(id){
