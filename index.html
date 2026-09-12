@@ -233,11 +233,12 @@ table.cal-rec td.pad{background:none;}
 .sum-graph{margin-top:14px;padding-top:13px;border-top:1px dashed #D9E3DC;}
 .sum-graph .g-ttl{font-weight:900;font-size:1rem;color:var(--cha);margin-bottom:3px;}
 .sum-graph .g-sub{font-size:.75rem;color:var(--usucha);margin-bottom:10px;line-height:1.5;}
-.sum-graph .g-row{display:grid;grid-template-columns:7.4em 1fr 5.8em;gap:7px;align-items:center;margin-bottom:9px;font-size:.84rem;}
-.sum-graph .g-l{color:#5C4E3A;font-weight:700;line-height:1.3;}
+.sum-graph .g-row{display:block;margin-bottom:13px;font-size:.84rem;}
+.sum-graph .g-line{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;}
+.sum-graph .g-l{flex:1;color:#5C4E3A;font-weight:800;line-height:1.4;padding-left:8px;border-left:5px solid #3F815C;}
 .sum-graph .g-bar{background:#EDF0ED;border-radius:999px;height:16px;overflow:hidden;}
 .sum-graph .g-bar i{display:block;height:100%;background:#C95843;border-radius:999px;}
-.sum-graph .g-n{text-align:right;font-weight:900;color:var(--cha);font-size:.78rem;line-height:1.25;}
+.sum-graph .g-n{flex-shrink:0;text-align:right;font-weight:900;color:var(--cha);font-size:.82rem;line-height:1.4;white-space:nowrap;}
 .sum-none{margin-top:12px;padding:10px 12px;border-radius:10px;background:#F7F9F8;color:var(--usucha);font-size:.78rem;line-height:1.55;}
 .rec-sum{display:block;}
 @media (max-width:360px){
@@ -2917,17 +2918,26 @@ function recDrawSummary(){
   var counts={aisatsu:0,message:0,kibun:0,care:0,kusuri:0,onegai:0,henshin:0,memo:0,tag:0,disaster:0};
   var catDays={aisatsu:{},message:{},kibun:{},care:{},kusuri:{},onegai:{},henshin:{},memo:{},tag:{},disaster:{}};
   var detailCounts={aisatsuH:0,aisatsuK:0,messageK:0,messageH:0,kibunH:0,kibunK:0,kusuriH:0,kusuriConfirmK:0,kusuriAskK:0,onegaiH:0,henshinK:0,careK:0,memoK:0,tag:0,disaster:0};
-  var detailDays={aisatsuH:{},aisatsuK:{},messageK:{},messageH:{},kibunH:{},kibunK:{},kusuriH:{},kusuriConfirmK:{},kusuriAskK:{},onegaiH:{},henshinK:{},careK:{},memoK:{},tag:{},disaster:{}};
+    var detailDays={aisatsuH:{},aisatsuK:{},messageK:{},messageH:{},kibunH:{},kibunK:{},kusuriH:{},kusuriConfirmK:{},kusuriAskK:{},onegaiH:{},henshinK:{},careK:{},memoK:{},tag:{},disaster:{}};
+  var aisatsuSlotCounts={honnin:{asa:0,hiru:0,yoru:0},kazoku:{asa:0,hiru:0,yoru:0}};
+  var aisatsuSlotDays={honnin:{asa:{},hiru:{},yoru:{}},kazoku:{asa:{},hiru:{},yoru:{}}};
   var kibunBy={},kibunByDays={},careBy={},careByDays={},tagBy={},tagByDays={};
   var kusuriSlot={asa:0,hiru:0,yoru:0},kusuriSlotDays={asa:{},hiru:{},yoru:{}};
   function hit(key,date){ counts[key]++; catDays[key][date]=1; }
   function hitDetail(key,date){ detailCounts[key]++; detailDays[key][date]=1; }
   function hitBy(countMap,dayMap,key,date){ countMap[key]=(countMap[key]||0)+1; (dayMap[key]=dayMap[key]||{})[date]=1; }
+  function aisatsuSummarySlot(v){
+    if(v.slot==='asa'||v.slot==='hiru'||v.slot==='yoru') return v.slot;
+    if(v.text==='おはよう') return 'asa';
+    if(v.text==='こんにちは') return 'hiru';
+    return 'yoru';
+  }
+  function hitAisatsuSlot(who,v){ var s=aisatsuSummarySlot(v); aisatsuSlotCounts[who][s]++; aisatsuSlotDays[who][s][v.date]=1; }
   recEvents.forEach(function(v){
     if(!recVisible(v)||v.type==='member-joined') return;
     totalN++; allDays[v.date]=1;
-    if(v.type==='aisatsu'){ hit('aisatsu',v.date); hitDetail('aisatsuH',v.date); }
-    else if(v.type==='aisatsu-back'){ hit('aisatsu',v.date); hitDetail('aisatsuK',v.date); }
+    if(v.type==='aisatsu'){ hit('aisatsu',v.date); hitDetail('aisatsuH',v.date); hitAisatsuSlot('honnin',v); }
+    else if(v.type==='aisatsu-back'){ hit('aisatsu',v.date); hitDetail('aisatsuK',v.date); hitAisatsuSlot('kazoku',v); }
     else if(v.type==='family-message'){ hit('message',v.date); hitDetail('messageK',v.date); }
     else if(v.type==='family-message-back'){ hit('message',v.date); hitDetail('messageH',v.date); }
     else if(v.type==='kibun'){ hit('kibun',v.date); hitDetail('kibunH',v.date); hitBy(kibunBy,kibunByDays,v.text||'その他',v.date); }
@@ -2963,11 +2973,12 @@ function recDrawSummary(){
     var mx=Math.max.apply(null,rows.map(function(r){return r[1];}).concat([1]));
     rows.forEach(function(r){
       var row=document.createElement('div'); row.className='g-row';
-      var l=document.createElement('span'); l.className='g-l'; l.textContent=r[0];
+      var line=document.createElement('div'); line.className='g-line';
+      var l=document.createElement('span'); l.className='g-l'; l.textContent=r[0]; l.style.borderLeftColor=r[3]||'#3F815C';
       var bw=document.createElement('div'); bw.className='g-bar';
       var bi=document.createElement('i'); bi.style.width=(r[1]===0?3:Math.max(8,Math.round(r[1]/mx*100)))+'%'; bi.style.background=r[3]||(r[1]===0?'#D8DDD9':'#3F815C'); bw.appendChild(bi);
       var n=document.createElement('span'); n.className='g-n'; n.textContent=r[1]+'件・'+Object.keys(r[2]||{}).length+'日';
-      row.appendChild(l); row.appendChild(bw); row.appendChild(n); g.appendChild(row);
+      line.appendChild(l); line.appendChild(n); row.appendChild(line); row.appendChild(bw); g.appendChild(row);
     });
     box.appendChild(g);
   }
@@ -2990,6 +3001,16 @@ function recDrawSummary(){
   ].filter(function(r){return r[1]>0;});
   addGraph('今月の詳しい記録',recordRows,'何の記録か、誰が行ったかを分けています。オレンジは本人、青は家族、緑は共有・安全情報です。');
 
+  var greetRows=[
+    ['本人・朝の挨拶',aisatsuSlotCounts.honnin.asa,aisatsuSlotDays.honnin.asa,'#F28A42'],
+    ['本人・昼の挨拶',aisatsuSlotCounts.honnin.hiru,aisatsuSlotDays.honnin.hiru,'#F28A42'],
+    ['本人・夜の挨拶',aisatsuSlotCounts.honnin.yoru,aisatsuSlotDays.honnin.yoru,'#F28A42'],
+    ['家族・朝の挨拶',aisatsuSlotCounts.kazoku.asa,aisatsuSlotDays.kazoku.asa,'#4F7FD3'],
+    ['家族・昼の挨拶',aisatsuSlotCounts.kazoku.hiru,aisatsuSlotDays.kazoku.hiru,'#4F7FD3'],
+    ['家族・夜の挨拶',aisatsuSlotCounts.kazoku.yoru,aisatsuSlotDays.kazoku.yoru,'#4F7FD3']
+  ];
+  if(counts.aisatsu>0) addGraph('挨拶の朝・昼・夜',greetRows,'本人と家族を分けて、挨拶した時間帯を表示します。0件の時間帯も確認できます。');
+
   var kbRows=Object.keys(kibunBy).map(function(k){return [k,kibunBy[k],kibunByDays[k],'#C9A227'];});
   addGraph('体調の内訳',kbRows,'選ばれた言葉をそのまま集計しています。健康状態の判定ではありません。');
   var careRows=Object.keys(careBy).map(function(k){return [k,careBy[k],careByDays[k],'#3F815C'];});
@@ -3011,7 +3032,7 @@ function sendAisatsuBack(key){
   nb.textContent='送信しています…';
   nb.style.display='block';
   feedback();
-  addEvent({type:'aisatsu-back', text:tx, name:myName()}).then(()=>{
+  addEvent({type:'aisatsu-back', text:tx, slot:key, name:myName()}).then(()=>{
     nb.classList.remove('err');
     nb.textContent='「'+tx+'」を送信しました';
   }).catch(()=>{
