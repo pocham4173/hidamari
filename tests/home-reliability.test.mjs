@@ -13,6 +13,7 @@ function section(from, to) {
 class Element {
   constructor(tag = 'div') { this.tagName = tag; this.children = []; this.style = {}; this._text = ''; }
   appendChild(child) { this.children.push(child); return child; }
+  replaceChildren(...children) { this.children = children; this._text = ''; }
   addEventListener() {}
   set textContent(value) { this._text = String(value); this.children = []; }
   get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
@@ -31,23 +32,31 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
 {
   const loading = new Element();
   let delayed;
-  const stage = { mainicoStartupStage: '家族との接続確認中' };
-  const watchdog = section('setTimeout(function(){\n  var loading=document.getElementById(\'loading\');', '</script>');
+  const stage = { addEventListener: (name, fn) => { if (name === 'error') stage.onError = fn; } };
+  const watchdog = section("window.mainicoStartupStage='必要なファイルの読み込み中';", '</script>');
   vm.runInNewContext(watchdog, {
     document: { getElementById: () => loading, createElement: tag => new Element(tag) },
     window: stage,
-    setTimeout: (fn, ms) => { assert.equal(ms, 15000); delayed = fn; }
+    setTimeout: (fn, ms) => { assert.equal(ms, 15000); delayed = fn; },
+    console: { warn() {} }
   });
+  stage.mainicoStartupStage = 'ログインの応答待ち';
   delayed();
-  assert.match(loading.textContent, /家族との接続確認中/);
+  assert.match(loading.textContent, /ログインの応答待ち/);
   assert.match(loading.textContent, /もう一度読み込む/);
-  assert.match(loading.textContent, /Safariで開いてください/);
+  assert.match(loading.textContent, /Safariで開く/);
+  assert.equal(loading.children.length, 3, '縦並びの案内と再試行ボタンを表示');
+  stage.onError({ target: { tagName: 'SCRIPT' } });
+  assert.match(loading.textContent, /外部ファイルを読み込めませんでした/);
   loading.style.display = 'none';
   loading.innerHTML = '画面を開きました';
   delayed();
   assert.equal(loading.innerHTML, '画面を開きました');
-  console.log('✅ 起動が止まれば再試行を表示し、起動済みの画面は妨げない');
+  console.log('✅ 起動が止まれば縦並びの再試行と段階を表示し、起動済みの画面は妨げない');
 }
+assert.match(html, /window\.mainicoStartupStage='ログインの応答待ち';/);
+assert.match(html, /try\{ navigator\.serviceWorker\.register\('sw\.js'\)\.catch/);
+assert.match(html, /window\.showStartupProblem\('ログインできませんでした'\)/);
 
 {
   const ids = Object.fromEntries(['rec-cal', 'rec-sum', 'rec-day', 'rec-day-note', 'rec-sum-ttl', 'rec-day-ttl', 'rec-ttl']
