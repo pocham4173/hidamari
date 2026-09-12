@@ -4385,7 +4385,7 @@ async function loadWatchTag(){
     renderWatchTag(currentWatchTagId);
     if(homeStatus){ homeStatus.textContent='おまもりタグは使用中です。QRの表示・停止は「安心」タブから行えます。'; }
     watchTagUnsub=db.collection('watchTags').doc(currentWatchTagId).collection('alerts')
-      .orderBy('createdAt','desc').limit(5).onSnapshot(snap=>{
+      .orderBy('createdAt','desc').limit(5).onSnapshot({includeMetadataChanges:true},snap=>{
         const rows=[];
         const situationLabels={
           lost:'道に迷っているようです',unwell:'体調が心配です',
@@ -4397,7 +4397,7 @@ async function loadWatchTag(){
           const x=doc.data();
           const d=x.createdAt&&x.createdAt.toDate?x.createdAt.toDate():null;
           const situation=situationLabels[x.situation]||'おまもりタグが読み取られました';
-          if(d) mirrorTagAlert(doc.id, d, situation);      /* ふり返り用に記録(重複は自動で防止) */
+          if(d && !(snap.metadata&&snap.metadata.fromCache)) mirrorTagAlert(doc.id, d, situation); /* 確定した読み取りだけをふり返りに記録 */
           if(d && Date.now()-d.getTime()>86400000) return;  /* お知らせ表示は24時間で消える */
           if(d){
             const t=d.getTime();
@@ -4408,6 +4408,14 @@ async function loadWatchTag(){
             (d?'<time>'+esc(dateJp(d))+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+'</time>':'')+'</div>');
         });
         alerts.innerHTML=rows.join('');
+        if(snap.metadata&&snap.metadata.fromCache){
+          if(home){home.style.display='block';home.classList.remove('tag-unread');}
+          if(homeStatus)homeStatus.textContent='通信を確認できません。新しいお知らせがあるか、今は判断できません。';
+          document.getElementById('tag-unread-count').style.display='none';
+          document.getElementById('tag-seen-btn').style.display='none';
+          if(history)history.innerHTML='<div class="note">保存済みのお知らせです。通信が戻るまで最新の状況は確認できません。</div>'+rows.join('');
+          return;
+        }
         if(history)history.innerHTML=rows.length?'<strong>最近のお知らせ（確認済みも含む）</strong>'+rows.join(''):
           '<div class="note">直近24時間のお知らせはありません。以前の記録は「ふり返り」に残ります。</div>';
         tagApplyUnread(unread);
