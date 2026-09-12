@@ -32,3 +32,6 @@ jobs:
 
       - name: 基本検査を実行
         run: node .github/scripts/check-basics.mjs
+
+      - name: 家族ホーム・通信・伝言の回帰検査
+        run: node tests/home-reliability.test.mjs
