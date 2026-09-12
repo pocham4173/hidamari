@@ -153,8 +153,11 @@ if (html !== null) {
     /function\s+addGraph\s*\(title,\s*rows,\s*note\)/.test(html) &&
     html.includes("className='sum-overview'") &&
     html.includes("r[1]+'件・'+Object.keys(r[2]||{}).length+'日'") &&
-    html.includes("addGraph('今月の記録一覧'") &&
-    html.includes("addGraph('本人と家族のやり取り'") &&
+    html.includes("addGraph('今月の詳しい記録'") &&
+    html.includes("['本人の挨拶',detailCounts.aisatsuH") &&
+    html.includes("['家族からの服薬声かけ',detailCounts.kusuriAskK") &&
+    !html.includes("addGraph('今月の記録一覧'") &&
+    !html.includes("addGraph('本人と家族のやり取り'") &&
     html.includes("addGraph('体調の内訳'") &&
     html.includes("addGraph('服薬の時間帯'") &&
     html.includes("d.periodDays+'日中 '+sum+'件・記録あり'+activeDays+'日");
