@@ -154,6 +154,14 @@ if (html !== null) {
     /function\s+addList\s*\(title,\s*rows,\s*note\)/.test(html) &&
     html.includes("className='sum-overview'") &&
     html.includes("className='sum-points'") &&
+    html.includes("pt.textContent='記録からわかること'") &&
+    html.includes("addInsight('前月との比較'") &&
+    html.includes("addInsight('生活リズム'") &&
+    html.includes("addInsight('本人と家族のやり取り'") &&
+    html.includes("addInsight('体調の記録'") &&
+    html.includes("addInsight('服薬に関する記録'") &&
+    html.includes("recPrevEvents = prevList") &&
+    html.includes("Promise.all([currentReq,previousReq])") &&
     html.includes("r[1]+'件・'+Object.keys(r[2]||{}).length+'日'") &&
     html.includes("addList('記録の詳細を見る'") &&
     html.includes("className='sum-item'") &&

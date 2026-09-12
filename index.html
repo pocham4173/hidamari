@@ -230,10 +230,16 @@ table.cal-rec td.pad{background:none;}
 .sum-overview .so-period{font-size:.82rem;font-weight:800;color:#3F815C;}
 .sum-overview .so-main{font-size:1.65rem;font-weight:900;color:var(--cha);line-height:1.35;margin-top:3px;}
 .sum-overview .so-sub{font-size:.9rem;font-weight:800;color:var(--usucha);margin-top:4px;}
-.sum-points{margin-top:14px;padding:14px;border-radius:14px;background:#FFF8ED;border:2px solid #F1C28E;}
-.sum-points h4{font-size:1rem;color:#8B4B17;margin-bottom:8px;}
-.sum-points p{padding:7px 0;border-bottom:1px solid #F2DCC3;font-size:.88rem;font-weight:750;line-height:1.55;color:var(--cha);}
-.sum-points p:last-child{border-bottom:0;}
+.sum-points{margin-top:14px;padding:14px;border-radius:14px;background:#F5FAF7;border:2px solid #B9D9C5;}
+.sum-points h4{font-size:1.05rem;color:#276445;margin-bottom:4px;}
+.sum-points .sp-intro{font-size:.76rem;color:var(--usucha);line-height:1.5;margin-bottom:10px;}
+.sum-insight{padding:11px 12px;margin-top:8px;border-radius:11px;background:#fff;border-left:6px solid #3F815C;box-shadow:0 1px 0 rgba(40,70,55,.05);}
+.sum-insight .in-title{font-size:.78rem;font-weight:900;color:#3F815C;margin-bottom:3px;}
+.sum-insight .in-text{font-size:.88rem;font-weight:750;line-height:1.6;color:var(--cha);}
+.sum-insight.orange{border-left-color:#F28A42}.sum-insight.orange .in-title{color:#A95316}
+.sum-insight.blue{border-left-color:#4F7FD3}.sum-insight.blue .in-title{color:#315FAE}
+.sum-insight.gold{border-left-color:#C9A227}.sum-insight.gold .in-title{color:#826A09}
+.sum-points .sp-note{font-size:.72rem;color:var(--usucha);line-height:1.55;margin-top:10px;}
 .sum-list{margin-top:14px;padding-top:13px;border-top:1px dashed #D9E3DC;}
 .sum-list .sl-ttl{font-weight:900;font-size:1rem;color:var(--cha);}
 .sum-list .sl-sub{font-size:.75rem;color:var(--usucha);margin:3px 0 10px;line-height:1.5;}
@@ -2516,6 +2522,8 @@ function soudanShow(i){
 var recY = 0, recM = 0;        /* 表示中の年・月(0始まり) */
 var recSel = '';               /* 選んでいる日 'YYYY-MM-DD' */
 var recEvents = [];            /* 表示中の月のevents */
+var recPrevEvents = [];        /* 前月の同じ日数分。月まとめの比較だけに使います */
+var recPrevReady = false;      /* 前月が0件なのか、通信で取得できなかったのかを分けます */
 var recReq = 0;                /* 読み込みの通し番号。古い結果を捨てるために使います */
 
 function pad2(n){ return String(n).padStart(2,'0'); }
@@ -2728,6 +2736,8 @@ function recMove(step){
    「読み込み中」に置き換えます。古い月の内容が新しい月のものに見えないようにするためです。 */
 function recShowLoading(m){
   recEvents = [];
+  recPrevEvents = [];
+  recPrevReady = false;
   document.getElementById('rec-cal').innerHTML =
     '<tr><td colspan="7"><div class="rec-loading">読み込み中…</div></td></tr>';
   document.getElementById('rec-sum-ttl').textContent = (m+1)+'月のまとめ';
@@ -2743,19 +2753,34 @@ function recLoad(){
   var my = ++recReq;
   var y = recY, m = recM;
   var from = recDayStr(y,m,1), to = recDayStr(y,m,new Date(y,m+1,0).getDate());
+  var today=new Date();
+  var periodDays=(y===today.getFullYear()&&m===today.getMonth())?today.getDate():new Date(y,m+1,0).getDate();
+  var prevDate=new Date(y,m-1,1), py=prevDate.getFullYear(), pm=prevDate.getMonth();
+  var prevDays=Math.min(periodDays,new Date(py,pm+1,0).getDate());
+  var prevFrom=recDayStr(py,pm,1), prevTo=recDayStr(py,pm,prevDays);
   document.getElementById('rec-ttl').textContent = y + '年' + (m+1) + '月';
-  var now = new Date();
   recShowLoading(m);
 
-  col('events').where('date','>=',from).where('date','<=',to).get().then(function(snap){
+  var currentReq=col('events').where('date','>=',from).where('date','<=',to).get();
+  var previousReq=col('events').where('date','>=',prevFrom).where('date','<=',prevTo).get().catch(function(e){
+    console.warn('rec previous comparison',e); return null;
+  });
+  Promise.all([currentReq,previousReq]).then(function(result){
     if(my !== recReq) return;   /* もっと新しい月の読み込みが始まっているので、この結果は使いません */
-    var list = [];
-    snap.forEach(function(doc){
+    var list = [], prevList=[];
+    result[0].forEach(function(doc){
       var v = doc.data(); v._id = doc.id;
       if(v.at && v.date) list.push(v);
     });
+    if(result[1]) result[1].forEach(function(doc){
+      var v = doc.data(); v._id = doc.id;
+      if(v.at && v.date) prevList.push(v);
+    });
     list.sort(function(a,b){ return (a.at.seconds||0) - (b.at.seconds||0); });
+    prevList.sort(function(a,b){ return (a.at.seconds||0) - (b.at.seconds||0); });
     recEvents = list;
+    recPrevEvents = prevList;
+    recPrevReady = !!result[1];
     recDrawCal(); recDrawSummary(); recDrawDay();
   }).catch(function(e){
     if(my !== recReq) return;   /* 古い月の失敗で、新しい月の表示を消さないようにします */
@@ -2948,6 +2973,30 @@ function recDrawSummary(){
   function hit(key,date){ counts[key]++; catDays[key][date]=1; }
   function hitDetail(key,date){ detailCounts[key]++; detailDays[key][date]=1; }
   function hitBy(countMap,dayMap,key,date){ countMap[key]=(countMap[key]||0)+1; (dayMap[key]=dayMap[key]||{})[date]=1; }
+  function summaryCategory(type){
+    if(type==='aisatsu'||type==='aisatsu-back') return 'aisatsu';
+    if(type==='family-message'||type==='family-message-back') return 'message';
+    if(type==='kibun'||type==='kibun-kazoku') return 'kibun';
+    if(type==='care-log') return 'care';
+    if(type==='kusuri'||type==='kusuri-kakunin'||type==='ask-kusuri') return 'kusuri';
+    if(type==='onegai') return 'onegai';
+    if(type==='onegai-back') return 'henshin';
+    if(type==='memo') return 'memo';
+    if(type==='tag-alert') return 'tag';
+    if(/^disaster-/.test(type||'')) return 'disaster';
+    return '';
+  }
+  function comparisonMetrics(events,limitDay){
+    var r={total:0,days:{},counts:{aisatsu:0,message:0,kibun:0,care:0,kusuri:0,onegai:0,henshin:0,memo:0,tag:0,disaster:0}};
+    (events||[]).forEach(function(v){
+      if(!recVisible(v)||v.type==='member-joined') return;
+      var day=parseInt((v.date||'').slice(8,10),10);
+      if(limitDay && day>limitDay) return;
+      var key=summaryCategory(v.type); if(!key) return;
+      r.total++; r.days[v.date]=1; r.counts[key]++;
+    });
+    return r;
+  }
   function aisatsuSummarySlot(v){
     if(v.slot==='asa'||v.slot==='hiru'||v.slot==='yoru') return v.slot;
     if(v.text==='おはよう') return 'asa';
@@ -3012,30 +3061,64 @@ function recDrawSummary(){
   var os=document.createElement('div'); os.className='so-sub'; os.textContent=elapsed+'日中、記録があったのは'+Object.keys(allDays).length+'日';
   overview.appendChild(op); overview.appendChild(om); overview.appendChild(os); box.appendChild(overview);
 
-  var pointTexts=[elapsed+'日中'+Object.keys(allDays).length+'日に、合計'+totalN+'件の記録がありました。'];
+  var insights=[];
+  function addInsight(title,text,tone){ insights.push({title:title,text:text,tone:tone||''}); }
   var honninN=detailCounts.aisatsuH+detailCounts.messageH+detailCounts.kibunH+detailCounts.kusuriH+detailCounts.onegaiH;
   var kazokuN=detailCounts.aisatsuK+detailCounts.messageK+detailCounts.kibunK+detailCounts.kusuriConfirmK+detailCounts.kusuriAskK+detailCounts.henshinK+detailCounts.careK+detailCounts.memoK;
   var sharedN=detailCounts.tag+detailCounts.disaster;
-  pointTexts.push('記録した人の内訳は、本人'+honninN+'件・家族'+kazokuN+'件'+(sharedN?'・共有／安全情報'+sharedN+'件':'')+'でした。');
   var busiest=Object.keys(dayTotals).sort(function(a,b){return dayTotals[b]-dayTotals[a];})[0];
+  var wholeText=elapsed+'日中'+Object.keys(allDays).length+'日に、合計'+totalN+'件の記録がありました。本人'+honninN+'件・家族'+kazokuN+'件'+(sharedN?'・共有／安全情報'+sharedN+'件':'')+'です。';
   if(busiest){
     var busyDate=new Date(busiest+'T00:00:00');
-    pointTexts.push('最も記録が多かったのは'+(busyDate.getMonth()+1)+'月'+busyDate.getDate()+'日の'+dayTotals[busiest]+'件でした。');
+    wholeText+=' 最も記録が多かったのは'+(busyDate.getMonth()+1)+'月'+busyDate.getDate()+'日の'+dayTotals[busiest]+'件でした。';
   }
+  addInsight('今月の全体像',wholeText,'');
+
+  if(recPrevReady){
+    var prevMonthDate=new Date(recY,recM-1,1);
+    var compareDays=Math.min(elapsed,new Date(prevMonthDate.getFullYear(),prevMonthDate.getMonth()+1,0).getDate());
+    var currentCmp=comparisonMetrics(recEvents,compareDays), previousCmp=comparisonMetrics(recPrevEvents,compareDays);
+    var delta=currentCmp.total-previousCmp.total;
+    var compareText='前月の同じ'+compareDays+'日間と比べ、記録は'+(delta===0?'同じ件数です':Math.abs(delta)+'件'+(delta>0?'増えています':'少なくなっています'))+'（'+previousCmp.total+'件 → '+currentCmp.total+'件）。';
+    var catNames={aisatsu:'挨拶',message:'メッセージと返事',kibun:'体調',care:'介護の様子',kusuri:'服薬関連',onegai:'お願い',henshin:'お願いへの返信',memo:'様子メモ',tag:'タグ読み取り',disaster:'防災'};
+    var changed=Object.keys(catNames).sort(function(a,b){
+      return Math.abs(currentCmp.counts[b]-previousCmp.counts[b])-Math.abs(currentCmp.counts[a]-previousCmp.counts[a]);
+    })[0];
+    if(changed && (currentCmp.counts[changed]||previousCmp.counts[changed])) compareText+=' 最も差があったのは'+catNames[changed]+'（'+previousCmp.counts[changed]+'件 → '+currentCmp.counts[changed]+'件）です。';
+    addInsight('前月との比較',compareText,'orange');
+  }
+
   if(counts.aisatsu){
     var ga=aisatsuSlotCounts.honnin.asa+aisatsuSlotCounts.kazoku.asa;
     var gh=aisatsuSlotCounts.honnin.hiru+aisatsuSlotCounts.kazoku.hiru;
     var gy=aisatsuSlotCounts.honnin.yoru+aisatsuSlotCounts.kazoku.yoru;
-    pointTexts.push('挨拶は本人'+detailCounts.aisatsuH+'件、家族'+detailCounts.aisatsuK+'件。朝'+ga+'件・昼'+gh+'件・夜'+gy+'件でした。');
+    var greetMax=Math.max(ga,gh,gy), greetTop=[];
+    if(ga===greetMax) greetTop.push('朝'); if(gh===greetMax) greetTop.push('昼'); if(gy===greetMax) greetTop.push('夜');
+    addInsight('生活リズム','挨拶は朝'+ga+'件・昼'+gh+'件・夜'+gy+'件で、'+greetTop.join('・')+'の記録が最も多くなっています。本人'+detailCounts.aisatsuH+'件・家族'+detailCounts.aisatsuK+'件でした。','gold');
   }
-  if(counts.message) pointTexts.push('家族からのメッセージは'+detailCounts.messageK+'件、本人からの返事は'+detailCounts.messageH+'件でした。');
-  if(counts.onegai||counts.henshin) pointTexts.push('本人からのお願いは'+detailCounts.onegaiH+'件、家族からの返信は'+detailCounts.henshinK+'件でした。');
-  if(counts.kusuri) pointTexts.push('服薬に関する記録は、本人'+detailCounts.kusuriH+'件・家族の確認'+detailCounts.kusuriConfirmK+'件・家族の声かけ'+detailCounts.kusuriAskK+'件でした。');
+  if(counts.message||counts.onegai||counts.henshin){
+    addInsight('本人と家族のやり取り','家族からのメッセージ'+detailCounts.messageK+'件・本人からの返事'+detailCounts.messageH+'件、本人からのお願い'+detailCounts.onegaiH+'件・家族からの返信'+detailCounts.henshinK+'件が記録されています。必要な内容は下の詳細から確認できます。','blue');
+  }
   var topKibun=Object.keys(kibunBy).sort(function(a,b){return kibunBy[b]-kibunBy[a];})[0];
-  if(topKibun) pointTexts.push('体調で最も多く記録された言葉は「'+topKibun+'」'+kibunBy[topKibun]+'件でした。');
+  if(topKibun) addInsight('体調の記録','最も多く記録された言葉は「'+topKibun+'」'+kibunBy[topKibun]+'件でした。本人や家族が選んだ言葉の傾向で、健康状態の判定ではありません。','gold');
+  if(counts.kusuri){
+    var medicineMax=Math.max(kusuriSlot.asa,kusuriSlot.hiru,kusuriSlot.yoru), medicineTop=[];
+    if(kusuriSlot.asa===medicineMax) medicineTop.push('朝'); if(kusuriSlot.hiru===medicineMax) medicineTop.push('昼'); if(kusuriSlot.yoru===medicineMax) medicineTop.push('夜');
+    var medicineText='本人の記録'+detailCounts.kusuriH+'件・家族の確認'+detailCounts.kusuriConfirmK+'件・家族の声かけ'+detailCounts.kusuriAskK+'件です。';
+    medicineText+=medicineMax>0 ? ' 時間帯では'+medicineTop.join('・')+'が最も多く記録されています。' : ' 時間帯別の服薬記録はまだありません。';
+    addInsight('服薬に関する記録',medicineText,'blue');
+  }
+  if(counts.care||counts.memo) addInsight('家族が残した様子','介護の様子'+detailCounts.careK+'件・自由な様子メモ'+detailCounts.memoK+'件が記録されています。具体的な内容は下の項目を押すと確認できます。','blue');
   var points=document.createElement('div'); points.className='sum-points';
-  var pt=document.createElement('h4'); pt.textContent='今月のポイント'; points.appendChild(pt);
-  pointTexts.forEach(function(t){ var p=document.createElement('p'); p.textContent=t; points.appendChild(p); });
+  var pt=document.createElement('h4'); pt.textContent='記録からわかること'; points.appendChild(pt);
+  var pi=document.createElement('div'); pi.className='sp-intro'; pi.textContent='記録された事実を、家族で振り返りやすい形にまとめています。'; points.appendChild(pi);
+  insights.forEach(function(v){
+    var card=document.createElement('div'); card.className='sum-insight'+(v.tone?' '+v.tone:'');
+    var title=document.createElement('div'); title.className='in-title'; title.textContent=v.title;
+    var text=document.createElement('div'); text.className='in-text'; text.textContent=v.text;
+    card.appendChild(title); card.appendChild(text); points.appendChild(card);
+  });
+  var pn=document.createElement('div'); pn.className='sp-note'; pn.textContent='記録の増減や記録がない日は、体調の良し悪し・未実施・家族関係を判定するものではありません。確認や会話のきっかけとしてご利用ください。'; points.appendChild(pn);
   box.appendChild(points);
 
   function eventStamp(v){
