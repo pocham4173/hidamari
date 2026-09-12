@@ -516,7 +516,7 @@ table.cal-rec td.pad{background:none;}
 </style>
 </head>
 <body>
-<div id="loading">読み込み中…</div>
+<div id="loading" role="status" aria-live="polite">読み込み中…</div>
 <div class="phone">
 <div role="status" style="position:sticky;top:0;z-index:40;background:#111;color:#fff;text-align:center;padding:calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;font:700 13px/1.45 sans-serif">試験運用中｜実名・住所・電話・病歴は入力しないでください</div>
 
@@ -1189,6 +1189,20 @@ table.cal-rec td.pad{background:none;}
 
 </div>
 
+<!-- 外部ライブラリやログインの応答が止まっても、白い「読み込み中」のまま放置しません。 -->
+<script>
+window.mainicoStartupStage='必要なファイルの読み込み中';
+setTimeout(function(){
+  var loading=document.getElementById('loading');
+  if(!loading || loading.style.display==='none') return;
+  var stage=document.createElement('div');stage.textContent='読み込みが進んでいません（'+window.mainicoStartupStage+'）。通信状態を確認してください。';
+  var hint=document.createElement('div');hint.textContent='アプリ内ブラウザーで止まる場合は右下のコンパスからSafariで開いてください。';
+  var button=document.createElement('button');button.type='button';button.textContent='もう一度読み込む';
+  button.style.cssText='margin-top:14px;padding:12px 20px;border:2px solid #B56B37;border-radius:10px;background:#fff;color:#7B451A;font:inherit;cursor:pointer;';
+  button.addEventListener('click',function(){location.reload();});
+  loading.textContent='';loading.appendChild(stage);loading.appendChild(hint);loading.appendChild(button);
+},15000);
+</script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -1208,6 +1222,7 @@ const previewApp=firebase.initializeApp({
   appId: "1:565713968884:web:0a9665d1fe5e0fa161c8a1"
 });
 const db = previewApp.firestore();
+window.mainicoStartupStage='ログインの準備中';
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 /* 六曜(2025〜2030年・旧暦計算に基づく)。0大安1赤口2先勝3友引4先負5仏滅 */
 const ROKUYO_EPOCH=Date.UTC(2025,0,1);
@@ -4288,14 +4303,17 @@ async function deleteAllData(){
 /* ===== 起動 ===== */
 auth.onAuthStateChanged(async user=>{
   if(!user){
+    window.mainicoStartupStage='ログイン確認中';
     try{ await auth.signInAnonymously(); }
     catch(e){
-      document.getElementById('loading').textContent='接続できませんでした。設定手順書の「匿名ログインを有効化」を確認してください。';
+      window.mainicoStartupStage='ログインできませんでした';
+      document.getElementById('loading').textContent='ログインできませんでした。通信状態を確認してください。まもなく再試行の案内を表示します。';
     }
     return;
   }
   /* グループ所属の確認 */
   if(gid()){
+    window.mainicoStartupStage='家族との接続確認中';
     try{
       const me=await col('members').doc(user.uid).get({source:'server'});
       if(!me.exists){
@@ -4315,8 +4333,12 @@ auth.onAuthStateChanged(async user=>{
       return;
     }
   }
+  window.mainicoStartupStage='準備完了';
   document.getElementById('loading').style.display='none';
   startMode();
+},function(e){
+  window.mainicoStartupStage='ログイン情報の読み込みに失敗しました';
+  console.warn('auth startup',e);
 });
 
 /* ===== 災害用QR（端末内保存・オフライン読取） ===== */

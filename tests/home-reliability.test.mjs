@@ -29,6 +29,27 @@ assert.doesNotMatch(html, /家庭で選ぶ介護の記録|家族の介護記録/
 console.log('✅ 家族ホームはワンタップ記録を先に、補助入力を開閉式に表示');
 
 {
+  const loading = new Element();
+  let delayed;
+  const stage = { mainicoStartupStage: '家族との接続確認中' };
+  const watchdog = section('setTimeout(function(){\n  var loading=document.getElementById(\'loading\');', '</script>');
+  vm.runInNewContext(watchdog, {
+    document: { getElementById: () => loading, createElement: tag => new Element(tag) },
+    window: stage,
+    setTimeout: (fn, ms) => { assert.equal(ms, 15000); delayed = fn; }
+  });
+  delayed();
+  assert.match(loading.textContent, /家族との接続確認中/);
+  assert.match(loading.textContent, /もう一度読み込む/);
+  assert.match(loading.textContent, /Safariで開いてください/);
+  loading.style.display = 'none';
+  loading.innerHTML = '画面を開きました';
+  delayed();
+  assert.equal(loading.innerHTML, '画面を開きました');
+  console.log('✅ 起動が止まれば再試行を表示し、起動済みの画面は妨げない');
+}
+
+{
   const ids = Object.fromEntries(['rec-cal', 'rec-sum', 'rec-day', 'rec-day-note', 'rec-sum-ttl', 'rec-day-ttl', 'rec-ttl']
     .map(id => [id, new Element()]));
   let summarized = false;
