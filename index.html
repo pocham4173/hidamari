@@ -393,6 +393,13 @@ table.cal-rec td.pad{background:none;}
 .family-compose summary{cursor:pointer;font-weight:900;color:var(--ha-koi);min-height:34px;line-height:34px;}
 .family-compose .in-row{margin-top:8px;}
 .family-confirmations{margin-top:8px;padding:7px 9px;border-radius:8px;background:#EDF6F0;color:#276445;font-size:.78rem;line-height:1.5;}
+.family-preview{padding:12px;border-radius:11px;background:#F5F9FD;border:1px solid #C9D9ED;line-height:1.55;}
+.family-preview strong{display:block;color:#315FAE;font-size:.88rem;}
+.family-preview span{display:block;color:var(--cha);font-size:.87rem;overflow-wrap:anywhere;}
+.family-preview .meta{font-size:.75rem;color:var(--usucha);}
+.family-jump{display:block;width:100%;min-height:48px;margin-top:10px;border:2px solid #4F7FD3;border-radius:11px;background:#fff;color:#315FAE;font:inherit;font-weight:900;cursor:pointer;}
+.care-today{margin-top:12px;padding:10px 12px;border-radius:11px;background:#F5FAF7;color:var(--cha);font-size:.83rem;line-height:1.6;}
+.care-today b{display:block;color:#33704D;}
 .rec-load-error{padding:14px;border:2px solid #D9A274;border-radius:12px;background:#FFF8EE;color:#7B451A;line-height:1.6;font-weight:800;}
 .rec-load-error button{display:block;margin-top:10px;min-height:44px;padding:8px 16px;border:2px solid #B56B37;border-radius:9px;background:#fff;color:#7B451A;font:inherit;cursor:pointer;}
 .care-config{margin-top:10px;padding:10px;border:1px dashed #B8CFC0;border-radius:11px;background:#F6FBF7;}
@@ -895,6 +902,12 @@ table.cal-rec td.pad{background:none;}
         <div id="f-next-yotei" style="font-size:1.02rem;font-weight:700;">まだ登録がありません</div>
       </div>
 
+      <div class="card dom-record family-only-card" id="card-family-notes-preview">
+        <h3>家族の伝言</h3>
+        <div class="family-preview" id="family-notes-preview" aria-live="polite">伝言を読み込んでいます…</div>
+        <button class="family-jump" type="button" onclick="openFamilyNotes()">伝言をすべて見る・返事する</button>
+      </div>
+
       <div class="card tag-home" id="watch-tag-home" style="display:none;">
         <div class="tag-home-head"><span class="ic">🔔</span><span>おまもりタグからのお知らせ</span><span class="tag-unread-count" id="tag-unread-count" style="display:none;"></span></div>
         <div class="tag-home-status" id="home-watch-tag-status"></div>
@@ -912,7 +925,7 @@ table.cal-rec td.pad{background:none;}
         </details>
       </div>
 
-      <div class="card dom-record">
+      <div class="card dom-record" id="card-today-records">
         <h3 id="home-date-h3">今日の記録</h3>
         <div id="ev-list"><div class="empty" id="ev-empty">まだ届いていません</div></div>
       </div>
@@ -973,11 +986,13 @@ table.cal-rec td.pad{background:none;}
       </div>
 
       <div class="card dom-record family-only-card" id="card-care-quick">
-        <h3>家庭で選ぶ介護の記録</h3>
-        <div class="note" style="margin-top:0;">必要な項目だけを選び、確認した家族が記録できます。</div>
+        <h3>家族のワンタップ記録</h3>
+        <div class="note" style="margin-top:0;">実際に確認したときだけ押してください。押した内容・家族の名前・時刻は下と「ふり返り」に残ります。</div>
         <div class="family-tool-grid" id="care-quick-buttons"><div class="empty">読み込み中…</div></div>
+        <div class="save-state" id="care-log-state" aria-live="polite"></div>
+        <div class="care-today" id="care-today">今日押した記録を読み込んでいます…</div>
         <details class="care-config" id="care-config-details">
-          <summary style="font-weight:900;cursor:pointer;">記録する項目を選ぶ</summary>
+          <summary style="font-weight:900;cursor:pointer;">表示するボタンを変える</summary>
           <div class="care-checks" id="care-config-checks"></div>
           <div class="in-row"><input type="text" id="care-custom-input" maxlength="100" placeholder="自由項目（例：デイサービスに行った）"></div>
           <div class="note">複数作るときは「、」で区切ってください（5項目まで）。</div>
@@ -987,7 +1002,7 @@ table.cal-rec td.pad{background:none;}
       </div>
 
       <div class="card dom-record family-only-card" id="card-family-notes">
-        <h3>家族間の伝言メモ</h3>
+        <h3>家族の伝言一覧</h3>
         <div class="note" style="margin-top:0;">伝言は承認済みの家族に共有されます。確認した人だけを個別に表示し、全員が読んだとは扱いません。</div>
         <details class="family-compose" id="family-note-compose"><summary>＋ 新しい伝言を書く</summary>
           <div class="in-row"><input type="text" id="family-note-input" maxlength="100" placeholder="例：冷蔵庫に作り置きがあります"></div>
@@ -2181,9 +2196,13 @@ function initKazoku(){
   document.getElementById('card-krec').style.display=kOnly?'block':'none';
   document.getElementById('card-next-yotei').style.display=kOnly?'block':'none';
   document.querySelectorAll('.family-only-card').forEach(function(el){ el.style.display=kOnly?'block':'none'; });
-  /* 家族のみでは、毎日押す介護記録を先に。伝言・タスクは一覧を見せ、入力だけ閉じます。 */
-  if(kOnly) document.getElementById('t-home').insertBefore(
-    document.getElementById('card-care-quick'),document.getElementById('card-krec'));
+  /* 大事なお知らせの後に伝言の入口、今日の記録の後に押すボタンを並べます。 */
+  if(kOnly){
+    document.getElementById('t-home').insertBefore(
+      document.getElementById('card-family-notes-preview'),document.getElementById('card-today-records'));
+    document.getElementById('t-home').insertBefore(
+      document.getElementById('card-care-quick'),document.getElementById('card-krec'));
+  }
   document.getElementById('yt-note').textContent=kOnly
     ?'登録した予定は、ホームとカレンダーに表示されます。'
     :'本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。';
@@ -2225,6 +2244,7 @@ function initKazoku(){
         na.style.display='block';
       }else{na.style.display='none';}
       items.sort((a,b)=>a.at.seconds-b.at.seconds);
+      if(kOnly) renderTodayQuickRecords(items);
       const box=document.getElementById('ev-list');
       /* 利用方法を切り替えても、同じ家族で共有した履歴はすべて表示する */
       const vis=items.filter(recVisible);
@@ -2247,7 +2267,7 @@ function initKazoku(){
         'ask-kusuri':v=>(v.name||'家族')+'さんが「'+kusuriQuestion(v.slot)+'」を送りました',
         'family-message':v=>(v.name||'家族')+'さんからのメッセージ：「'+(v.text||'')+'」',
         'kibun-kazoku':v=>(v.name||'家族')+'さんが体調を記録: '+v.text,
-        'care-log':v=>(v.name||'家族')+'さんが「'+(v.text||'介護の様子')+'」と記録しました',
+        'care-log':v=>(v.name||'家族')+'さんが「'+(v.text||'今日の様子')+'」と記録しました',
         'kusuri-kakunin':v=>(v.name||'家族')+'さんが'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の':'')+'服薬を確認しました',
         'member-joined':v=>(v.text||'')+'さんが家族として参加しました',
         'memo':v=>(v.name||'家族')+': '+v.text,
@@ -2632,7 +2652,7 @@ function rgRender(d){
     ['服薬に関する記録','kusuri','#5B8DC9'],
     ['体調の記録','kibun','#C9A227'],
     ['ちょっとお願い','onegai','#A34A2E'],
-    ['介護の様子','care','#3F815C']
+    ['家族の記録','care','#3F815C']
   ];
   var html='';
   series.forEach(function(sc){
@@ -2868,7 +2888,7 @@ var REC_LABEL = {
   'family-message':  function(v){ return ['家族のメッセージ','', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
   'family-message-back': function(v){ return ['本人からの返事','', 'ご本人「'+(v.text||'')+'」']; },
   'kibun-kazoku':   function(v){ return ['家族の体調記録','k-kibun', (v.name||'家族')+'さんが体調を記録: '+(v.text||'')]; },
-  'care-log':        function(v){ return ['家族の介護記録','', (v.name||'家族')+'さんが「'+(v.text||'介護の様子')+'」と記録しました']; },
+  'care-log':        function(v){ return ['家族の記録','', (v.name||'家族')+'さんが「'+(v.text||'今日の様子')+'」と記録しました']; },
   'tag-alert':      function(v){ return ['タグ','k-tag', 'おまもりタグが読み取られました: '+(v.text||'')]; },
   'kusuri-kakunin': function(v){ return ['家族の服薬確認','k-kusuri', (v.name||'家族')+'さんが'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の':'')+'服薬を確認しました']; },
   'memo':           function(v){ return ['家族の様子メモ','', (v.name||'家族')+'さん: '+(v.text||'')]; },
@@ -3030,7 +3050,7 @@ function recDrawSummary(){
     else if(v.type==='family-message-back'){ hit('message',v.date); hitDetail('messageH',v.date); }
     else if(v.type==='kibun'){ hit('kibun',v.date); hitDetail('kibunH',v.date); hitBy(kibunBy,kibunByDays,v.text||'その他',v.date); }
     else if(v.type==='kibun-kazoku'){ hit('kibun',v.date); hitDetail('kibunK',v.date); hitBy(kibunBy,kibunByDays,v.text||'その他',v.date); }
-    else if(v.type==='care-log'){ hit('care',v.date); hitDetail('careK',v.date); hitBy(careBy,careByDays,v.text||'介護の様子',v.date); }
+    else if(v.type==='care-log'){ hit('care',v.date); hitDetail('careK',v.date); hitBy(careBy,careByDays,v.text||'今日の様子',v.date); }
     else if(v.type==='kusuri'){
       hit('kusuri',v.date); hitDetail('kusuriH',v.date);
       if(kusuriSlot[v.slot]!==undefined){ kusuriSlot[v.slot]++; kusuriSlotDays[v.slot][v.date]=1; }
@@ -3059,7 +3079,7 @@ function recDrawSummary(){
     else if(v.type==='family-message-back') detailEvents.messageH.push(v);
     else if(v.type==='kibun'){ detailEvents.kibunH.push(v); pushBy(kibunByEvents,v.text||'その他',v); }
     else if(v.type==='kibun-kazoku'){ detailEvents.kibunK.push(v); pushBy(kibunByEvents,v.text||'その他',v); }
-    else if(v.type==='care-log'){ detailEvents.careK.push(v); pushBy(careByEvents,v.text||'介護の様子',v); }
+    else if(v.type==='care-log'){ detailEvents.careK.push(v); pushBy(careByEvents,v.text||'今日の様子',v); }
     else if(v.type==='kusuri'){
       detailEvents.kusuriH.push(v); if(kusuriSlotEvents[v.slot]) kusuriSlotEvents[v.slot].push(v);
     }else if(v.type==='kusuri-kakunin'){
@@ -3097,7 +3117,7 @@ function recDrawSummary(){
     var currentCmp=comparisonMetrics(recEvents,compareDays), previousCmp=comparisonMetrics(recPrevEvents,compareDays);
     var delta=currentCmp.total-previousCmp.total;
     var compareText='前月の同じ'+compareDays+'日間と比べ、記録は'+(delta===0?'同じ件数です':Math.abs(delta)+'件'+(delta>0?'増えています':'少なくなっています'))+'（'+previousCmp.total+'件 → '+currentCmp.total+'件）。';
-    var catNames={aisatsu:'挨拶',message:'メッセージと返事',kibun:'体調',care:'介護の様子',kusuri:'服薬関連',onegai:'お願い',henshin:'お願いへの返信',memo:'様子メモ',tag:'タグ読み取り',disaster:'防災'};
+    var catNames={aisatsu:'挨拶',message:'メッセージと返事',kibun:'体調',care:'家族の記録',kusuri:'服薬関連',onegai:'お願い',henshin:'お願いへの返信',memo:'様子メモ',tag:'タグ読み取り',disaster:'防災'};
     var changed=Object.keys(catNames).sort(function(a,b){
       return Math.abs(currentCmp.counts[b]-previousCmp.counts[b])-Math.abs(currentCmp.counts[a]-previousCmp.counts[a]);
     })[0];
@@ -3125,7 +3145,7 @@ function recDrawSummary(){
     medicineText+=medicineMax>0 ? ' 時間帯では'+medicineTop.join('・')+'が最も多く記録されています。' : ' 時間帯別の服薬記録はまだありません。';
     addInsight('服薬に関する記録',medicineText,'blue');
   }
-  if(counts.care||counts.memo) addInsight('家族が残した様子','介護の様子'+detailCounts.careK+'件・自由な様子メモ'+detailCounts.memoK+'件が記録されています。具体的な内容は下の項目を押すと確認できます。','blue');
+  if(counts.care||counts.memo) addInsight('家族が残した様子','ワンタップ記録'+detailCounts.careK+'件・自由な様子メモ'+detailCounts.memoK+'件が記録されています。具体的な内容は下の項目を押すと確認できます。','blue');
   var points=document.createElement('div'); points.className='sum-points';
   var pt=document.createElement('h4'); pt.textContent='記録からわかること'; points.appendChild(pt);
   var pi=document.createElement('div'); pi.className='sp-intro'; pi.textContent='記録された事実を、家族で振り返りやすい形にまとめています。'; points.appendChild(pi);
@@ -3217,7 +3237,7 @@ function recDrawSummary(){
     ['家族からの服薬声かけ',detailCounts.kusuriAskK,detailDays.kusuriAskK,'#4F7FD3',detailEvents.kusuriAskK],
     ['本人からのお願い',detailCounts.onegaiH,detailDays.onegaiH,'#F28A42',detailEvents.onegaiH],
     ['家族からの返信',detailCounts.henshinK,detailDays.henshinK,'#4F7FD3',detailEvents.henshinK],
-    ['家族の介護記録',detailCounts.careK,detailDays.careK,'#4F7FD3',detailEvents.careK],
+    ['家族のワンタップ記録',detailCounts.careK,detailDays.careK,'#4F7FD3',detailEvents.careK],
     ['家族の様子メモ',detailCounts.memoK,detailDays.memoK,'#4F7FD3',detailEvents.memoK],
     ['おまもりタグの読み取り',detailCounts.tag,detailDays.tag,'#63A57D',detailEvents.tag],
     ['防災の記録',detailCounts.disaster,detailDays.disaster,'#63A57D',detailEvents.disaster]
@@ -3237,7 +3257,7 @@ function recDrawSummary(){
   var kbRows=Object.keys(kibunBy).map(function(k){return [k,kibunBy[k],kibunByDays[k],'#C9A227',kibunByEvents[k]];});
   addGraph('体調の内訳',kbRows,'選ばれた言葉をそのまま集計しています。健康状態の判定ではありません。');
   var careRows=Object.keys(careBy).map(function(k){return [k,careBy[k],careByDays[k],'#3F815C',careByEvents[k]];});
-  addGraph('介護の様子の内訳',careRows,'家族が選んだ項目・自由項目をまとめています。');
+  addGraph('家族の記録の内訳',careRows,'家族が選んだ項目・自由項目をまとめています。');
   var slotRows=[['朝',kusuriSlot.asa,kusuriSlotDays.asa,'#5B8DC9',kusuriSlotEvents.asa],['昼',kusuriSlot.hiru,kusuriSlotDays.hiru,'#5B8DC9',kusuriSlotEvents.hiru],['夜',kusuriSlot.yoru,kusuriSlotDays.yoru,'#5B8DC9',kusuriSlotEvents.yoru]];
   if(counts.kusuri>0) addGraph('服薬の時間帯',slotRows,'画面で押された記録です。飲み忘れや実際の服用を判定するものではありません。');
   var tagRows=Object.keys(tagBy).map(function(k){return [k,tagBy[k],tagByDays[k],'#B0492F',tagByEvents[k]];});
@@ -3442,6 +3462,10 @@ function foWatch(type,key,draw){
     familyOnlyData[key]=rows;
     draw();
   },function(){
+    if(key==='notes'){
+      const preview=document.getElementById('family-notes-preview');
+      if(preview)preview.textContent='伝言を読み込めませんでした。通信を確認して画面を開き直してください。';
+    }
     foState(key==='config'?'care-config-state':
       key==='contacts'?'family-contact-state':
       key==='tasks'||key==='taskDone'?'family-task-state':'family-note-state',
@@ -3499,6 +3523,19 @@ function renderCareTools(){
     box.appendChild(b);
   });
 }
+function renderTodayQuickRecords(items){
+  const box=document.getElementById('care-today');
+  if(!box)return;
+  const recent=items.filter(function(v){return v.type==='care-log';}).slice(-3).reverse();
+  box.textContent='';
+  const title=document.createElement('b');title.textContent='今日押した記録';box.appendChild(title);
+  if(!recent.length){box.appendChild(document.createTextNode('まだありません。記録を押すとここに表示されます。'));return;}
+  recent.forEach(function(v){
+    const line=document.createElement('div');
+    line.textContent=(v.text||'今日の様子')+' ・ '+(v.name||'家族')+'さん ・ '+foDateTime(v);
+    box.appendChild(line);
+  });
+}
 async function saveCareConfig(){
   const keys=Array.from(document.querySelectorAll('#care-config-checks input:checked')).map(function(x){return x.value;});
   const items=CARE_OPTIONS.filter(function(o){return keys.indexOf(o.key)>=0;}).map(function(o){return {key:o.key,label:o.label};});
@@ -3520,9 +3557,11 @@ async function addCareLog(key){
   if(!o||careLogSending) return;
   careLogSending=true;
   document.querySelectorAll('#care-quick-buttons button').forEach(function(b){b.disabled=true;});
+  foState('care-log-state','記録しています…',false);
   try{
     await addEvent({type:'care-log',careKey:key,text:o.label,name:myName(),clientAt:Date.now()});
-  }catch(e){ alert('記録できませんでした。通信状態を確認して、もう一度押してください'); }
+    foState('care-log-state','「'+o.label+'」を記録しました。今日の記録にも表示されます。',false);
+  }catch(e){ foState('care-log-state','記録できませんでした。通信状態を確認して、もう一度押してください',true); }
   finally{
     careLogSending=false;
     document.querySelectorAll('#care-quick-buttons button').forEach(function(b){b.disabled=false;});
@@ -3557,8 +3596,9 @@ function renderFamilyNotes(){
   familyOnlyData.noteReplies.forEach(function(v){
     if(v.replyTo)(replies[v.replyTo]=replies[v.replyTo]||[]).push(v);
   });
+  renderFamilyNotesPreview(ack);
   box.textContent='';
-  const rows=familyOnlyData.notes.slice(0,20);
+  const rows=familyOnlyData.notes;
   if(!rows.length){box.innerHTML='<div class="empty">伝言はまだありません</div>';return;}
   rows.forEach(function(v){
     const row=document.createElement('div'); row.className='family-tool-row';
@@ -3594,6 +3634,25 @@ function renderFamilyNotes(){
     replyRow.appendChild(input);replyRow.appendChild(send);row.appendChild(replyRow);
     box.appendChild(row);
   });
+}
+function renderFamilyNotesPreview(ack){
+  const box=document.getElementById('family-notes-preview');
+  if(!box)return;
+  box.textContent='';
+  const notes=familyOnlyData.notes;
+  if(!notes.length){box.textContent='伝言はまだありません。下の「伝言をすべて見る・返事する」から新しく書けます。';return;}
+  const remaining=notes.filter(function(v){return !ack[v._id]||!ack[v._id][uid()];}).length;
+  const count=document.createElement('strong');
+  count.textContent='伝言 '+notes.length+'件・自分の確認記録がない伝言 '+remaining+'件';
+  box.appendChild(count);
+  notes.slice(0,2).forEach(function(v){
+    const text=document.createElement('span');text.textContent=v.text||'（内容なし）';box.appendChild(text);
+    const meta=document.createElement('span');meta.className='meta';meta.textContent=(v.name||'家族')+'さん ・ '+foDateTime(v);box.appendChild(meta);
+  });
+}
+function openFamilyNotes(){
+  const card=document.getElementById('card-family-notes');
+  if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
 }
 const familyAckSending=new Set();
 async function ackFamilyNote(id){

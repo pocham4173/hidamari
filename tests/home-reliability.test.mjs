@@ -23,6 +23,9 @@ class Element {
 assert.match(html, /id="card-family-notes"[\s\S]*?<details class="family-compose" id="family-note-compose"/);
 assert.match(html, /id="card-family-tasks"[\s\S]*?<details class="family-compose" id="family-task-compose"/);
 assert.match(html, /insertBefore\([\s\S]*?'card-care-quick'[\s\S]*?'card-krec'/);
+assert.match(html, /id="card-family-notes-preview"[\s\S]*?onclick="openFamilyNotes\(\)"/);
+assert.match(html, /id="card-care-quick"[\s\S]*?家族のワンタップ記録/);
+assert.doesNotMatch(html, /家庭で選ぶ介護の記録|家族の介護記録/);
 console.log('✅ 家族ホームはワンタップ記録を先に、補助入力を開閉式に表示');
 
 {
@@ -50,6 +53,7 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
 
 {
   const list = new Element();
+  const preview = new Element();
   const data = {
     notes: [{ _id: 'note1', uid: 'author', name: '送り手', text: '連絡します', at: { seconds: 1 } }],
     noteAcks: [{ _id: 'ack1', replyTo: 'note1', uid: 'familyA', name: '家族A', at: { seconds: 2 } }],
@@ -57,17 +61,21 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
   };
   let viewer = 'familyB';
   const context = {
-    document: { getElementById: () => list, createElement: tag => new Element(tag), createTextNode: text => ({ textContent: text }) },
+    document: { getElementById: id => id === 'family-notes-preview' ? preview : list,
+      createElement: tag => new Element(tag), createTextNode: text => ({ textContent: text }) },
     familyOnlyData: data, uid: () => viewer, foDateTime: () => '9月12日 10:00',
     ackFamilyNote() {}, replyFamilyNote() {}, deleteFamilyEvent() {}, Object
   };
   vm.runInNewContext(section('function renderFamilyNotes(){', 'async function ackFamilyNote(id){'), context);
   context.renderFamilyNotes();
+  assert.match(preview.textContent, /自分の確認記録がない伝言 1件/);
+  assert.match(preview.textContent, /連絡します/);
   assert.match(list.textContent, /確認した人: 家族Aさん/);
   assert.match(list.textContent, /表示されていない家族の確認状況は分かりません/);
   assert.match(list.textContent, /自分が確認しました/);
   viewer = 'familyA';
   context.renderFamilyNotes();
+  assert.match(preview.textContent, /自分の確認記録がない伝言 0件/);
   assert.match(list.textContent, /あなたは確認済み/);
   assert.doesNotMatch(list.textContent, /自分が確認しました/);
   let sent = 0;
@@ -83,4 +91,17 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
   await ackContext.ackFamilyNote('note1');
   assert.equal(sent, 1, '別の家族なら確認を記録できる');
   console.log('✅ 伝言の確認は家族ごとに区別し、他人の確認で自分を確認済みにしない');
+}
+
+{
+  const today = new Element();
+  const context = {
+    document: { getElementById: () => today, createElement: tag => new Element(tag),
+      createTextNode: text => ({ textContent: text }) },
+    foDateTime: () => '9月12日 14:20'
+  };
+  vm.runInNewContext(section('function renderTodayQuickRecords(items){', 'async function saveCareConfig(){'), context);
+  context.renderTodayQuickRecords([{ type: 'care-log', text: '訪問した', name: '家族A' }]);
+  assert.match(today.textContent, /訪問した ・ 家族Aさん ・ 9月12日 14:20/);
+  console.log('✅ ワンタップ記録の結果はその場で名前と時刻を確認できる');
 }
