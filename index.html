@@ -909,17 +909,17 @@ table.cal-rec td.pad{background:none;}
     <!-- ホーム -->
     <div class="ftab" id="t-home">
       <div id="card-pending"></div>
+      <div class="card dom-record family-only-card" id="card-family-notes-preview">
+        <h3>未確認の伝言</h3>
+        <div class="family-preview" id="family-notes-preview" aria-live="polite">伝言を読み込んでいます…</div>
+        <button class="family-jump" type="button" onclick="openFamilyNotes()">伝言をすべて見る・返事する</button>
+      </div>
+
       <div class="card dom-yotei" id="card-next-yotei" style="display:none;">
         <h3>今日・明日の予定</h3>
         <div id="family-today-tomorrow" class="family-day-plan" aria-live="polite">予定を読み込んでいます…</div>
         <div class="family-upcoming">その後の予定：<span id="f-next-yotei">予定を読み込んでいます…</span></div>
         <button class="family-jump" type="button" onclick="showTab('t-yotei')">カレンダー・予定一覧を見る</button>
-      </div>
-
-      <div class="card dom-record family-only-card" id="card-family-notes-preview">
-        <h3>家族の伝言</h3>
-        <div class="family-preview" id="family-notes-preview" aria-live="polite">伝言を読み込んでいます…</div>
-        <button class="family-jump" type="button" onclick="openFamilyNotes()">伝言をすべて見る・返事する</button>
       </div>
 
       <div class="card dom-record family-only-card" id="card-family-tasks-preview">
@@ -945,9 +945,10 @@ table.cal-rec td.pad{background:none;}
         </details>
       </div>
 
-      <div class="card dom-record" id="card-today-records">
-        <h3 id="home-date-h3">今日の記録</h3>
+      <div class="card dom-record" id="card-today-records" style="display:none;">
+        <h3 id="home-date-h3">ご本人からの連絡</h3>
         <div id="ev-list"><div class="empty" id="ev-empty">まだ届いていません</div></div>
+        <button class="family-jump" type="button" onclick="showTab('t-kiroku')">今日の記録をふり返りで見る</button>
       </div>
 
       <div class="card dom-record" id="card-actions">
@@ -1007,7 +1008,7 @@ table.cal-rec td.pad{background:none;}
 
       <div class="card dom-record family-only-card" id="card-care-quick">
         <h3>家族のワンタップ記録</h3>
-        <div class="note" style="margin-top:0;">実際に確認したときだけ押してください。押した内容・家族の名前・時刻は下と「ふり返り」に残ります。</div>
+        <div class="note" style="margin-top:0;">実際に確認したときだけ押してください。押した内容・家族の名前・時刻は「ふり返り」にも残ります。</div>
         <div class="family-tool-grid" id="care-quick-buttons"><div class="empty">読み込み中…</div></div>
         <div class="save-state" id="care-log-state" aria-live="polite"></div>
         <div class="care-today" id="care-today">今日押した記録を読み込んでいます…</div>
@@ -2241,6 +2242,13 @@ function closeMembers(){ speak('とじました'); document.getElementById('memb
 
 /* ===== 家族 ===== */
 let evUnsub=null, ytListUnsub=null, aisatsuBackSending=false;
+function homeAttentionRows(items,replies,kOnly){
+  if(kOnly)return [];
+  const requests=items.filter(v=>v.type==='onegai' &&
+    (v.text==='今日はそっとしておいて'||!(replies[v._id]||[]).length));
+  const latestReply=items.filter(v=>v.type==='family-message-back').slice(-1);
+  return requests.concat(latestReply).sort((a,b)=>a.at.seconds-b.at.seconds);
+}
 let familyYoteiStatus='loading';
 function renderFamilySchedule(){
   if(!isKOnly()) return;
@@ -2283,7 +2291,7 @@ function initKazoku(){
   const kOnly=isKOnly();
   document.getElementById('f-lg').textContent=kOnly?'まいにこ ─ 家族のみで記録中':'まいにこ ─ 管理';
   document.getElementById('f-title').textContent=dateJp(d);
-  document.getElementById('home-date-h3').textContent=dateJp(d)+' の記録';
+  document.getElementById('home-date-h3').textContent='ご本人からの連絡';
   document.querySelectorAll('.ab-btn').forEach(b=>b.classList.remove('suggested'));
   const curAb=document.getElementById('btn-ab-'+slot().key);
   if(curAb) curAb.classList.add('suggested');
@@ -2292,14 +2300,10 @@ function initKazoku(){
   document.getElementById('card-krec').style.display=kOnly?'block':'none';
   document.getElementById('card-next-yotei').style.display=kOnly?'block':'none';
   document.querySelectorAll('.family-only-card').forEach(function(el){ el.style.display=kOnly?'block':'none'; });
-  /* おまもりタグの知らせがあれば最優先。その次に予定、未確認の伝言、やることを並べます。 */
+  /* おまもりタグの知らせがあれば最優先。その次に未確認の伝言、予定、やることを並べます。 */
   if(kOnly){
     document.getElementById('t-home').insertBefore(
-      document.getElementById('watch-tag-home'),document.getElementById('card-next-yotei'));
-    document.getElementById('t-home').insertBefore(
-      document.getElementById('card-family-notes-preview'),document.getElementById('card-today-records'));
-    document.getElementById('t-home').insertBefore(
-      document.getElementById('card-family-tasks-preview'),document.getElementById('card-today-records'));
+      document.getElementById('watch-tag-home'),document.getElementById('card-family-notes-preview'));
     document.getElementById('t-home').insertBefore(
       document.getElementById('card-care-quick'),document.getElementById('card-krec'));
   }
@@ -2349,19 +2353,17 @@ function initKazoku(){
       items.sort((a,b)=>a.at.seconds-b.at.seconds);
       if(kOnly) renderTodayQuickRecords(items);
       const box=document.getElementById('ev-list');
-      /* 利用方法を切り替えても、同じ家族で共有した履歴はすべて表示する */
-      const vis=items.filter(recVisible);
-      if(vis.length===0){
-        box.innerHTML='<div class="empty">今日の記録はまだありません</div>';
-        return;
-      }
-      /* お願いへの返信をIDで紐づけ */
+      const card=document.getElementById('card-today-records');
+      /* 記録の全文は「ふり返り」。ホームには対応を要するお願いと直近の返事だけを残す。 */
       const replies={};
       items.forEach(v=>{
         if((v.type==='onegai-back'||v.type==='family-message-back')&&v.replyTo){
           (replies[v.replyTo]=replies[v.replyTo]||[]).push(v);
         }
       });
+      const vis=homeAttentionRows(items,replies,kOnly);
+      card.style.display=vis.length?'block':'none';
+      if(!vis.length){box.textContent='';return;}
       const label={
         'aisatsu':v=>'ご本人が「'+(v.text||'')+'」と挨拶しました',
         'kibun':v=>'今日の調子: '+v.text,
@@ -2403,7 +2405,10 @@ function initKazoku(){
           const own=v.uid===uid()?' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\'family-message\',\'\')">とりけす</button>':'';
           return '<div class="ev '+eventWhoClass(v)+'"><div class="tm">'+tm+'</div>'+esc(label[v.type](v))+own+reply+'</div>';
         }
-        if(v.type==='onegai-back'||v.type==='family-message-back') return '';
+        if(v.type==='family-message-back'){
+          return '<div class="ev '+eventWhoClass(v)+'"><div class="tm">'+tm+'</div>ご本人からの返事：「'+esc(v.text||'')+'」</div>';
+        }
+        if(v.type==='onegai-back') return '';
         const own=(v.uid===uid() && (v.type==='kibun-kazoku'||v.type==='kusuri-kakunin'||v.type==='care-log'||v.type==='memo'||v.type==='family-message'))
           ? ' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\''+jsArg(v.type)+'\',\''+jsArg(v.slot)+'\')">とりけす</button>' : '';
         return '<div class="ev '+eventWhoClass(v)+'"><div class="tm">'+tm+'</div>'+esc(label[v.type]?label[v.type](v):'')+own+'</div>';
@@ -2411,7 +2416,13 @@ function initKazoku(){
     }, err=>{
       console.warn('events', err);
       const box=document.getElementById('ev-list');
-      if(box) box.innerHTML='<div class="empty" style="color:#B0492F;">家族の記録を受信できませんでした。通信状態を確認して、画面を開き直してください。</div>';
+      if(kOnly){
+        const care=document.getElementById('care-today');
+        if(care)care.textContent='今日押した記録を読み込めませんでした。通信状態を確認して、画面を開き直してください。';
+      }else{
+        document.getElementById('card-today-records').style.display='block';
+        if(box)box.innerHTML='<div class="empty" style="color:#B0492F;">本人からの連絡を確認できませんでした。通信状態を確認して、画面を開き直してください。</div>';
+      }
     });
   if(ytListUnsub) ytListUnsub();
   ytListUnsub=subscribeYotei((list,metadata)=>{
@@ -2446,7 +2457,7 @@ function showTab(t){
   if(t==='t-kiroku') recOpen();
   if(t==='t-soudan') openAnshin('home');
   if(t==='t-home' && isKOnly()){
-    document.getElementById('home-date-h3').textContent=dateJp(new Date())+' の記録';
+    document.getElementById('home-date-h3').textContent='ご本人からの連絡';
     renderFamilySchedule();
     renderFamilyTasks();
   }
@@ -3029,6 +3040,14 @@ function recRow(v, kind, cls, text, isReply){
   k.textContent = kind;
   body.appendChild(k);
   body.appendChild(document.createTextNode(text));
+  /* ホームの全件一覧を省いた後も、当日・自分の記録だけを取り消せるようにする。 */
+  if(v.uid===uid() && v.date===todayStr() &&
+     ['kibun-kazoku','kusuri-kakunin','care-log','memo','family-message'].includes(v.type)){
+    var cancel=document.createElement('button');
+    cancel.type='button';cancel.className='yt-del';cancel.textContent='自分の記録をとりけす';
+    cancel.addEventListener('click',function(){cancelEvent(v._id,v.type,v.slot||'');});
+    body.appendChild(cancel);
+  }
   row.appendChild(body);
   return row;
 }
@@ -3753,6 +3772,8 @@ function renderFamilyNotes(){
 function renderFamilyNotesPreview(ack){
   const box=document.getElementById('family-notes-preview');
   if(!box)return;
+  const card=document.getElementById('card-family-notes-preview');
+  if(card)card.style.display='block';
   box.textContent='';
   if(familyOnlyLoad.notes==='error'||familyOnlyLoad.noteAcks==='error'){
     box.textContent='未確認の伝言を読み込めませんでした。通信状態を確認して、画面を開き直してください。';return;
@@ -3761,14 +3782,12 @@ function renderFamilyNotesPreview(ack){
     box.textContent='未確認の伝言を読み込んでいます…';return;
   }
   const notes=familyOnlyData.notes;
-  if(!notes.length){box.textContent='伝言はまだありません。下の「伝言をすべて見る・返事する」から新しく書けます。';return;}
+  if(!notes.length){if(card)card.style.display='none';return;}
   const remaining=notes.filter(function(v){return v.uid!==uid()&&(!ack[v._id]||!ack[v._id][uid()]);});
+  if(!remaining.length){if(card)card.style.display='none';return;}
   const count=document.createElement('strong');
-  count.textContent='伝言 '+notes.length+'件・自分の確認記録がない伝言 '+remaining.length+'件';
+  count.textContent='確認が必要な伝言 '+remaining.length+'件';
   box.appendChild(count);
-  if(!remaining.length){
-    const empty=document.createElement('span');empty.textContent='今、確認する伝言はありません。';box.appendChild(empty);
-  }
   remaining.slice(0,2).forEach(function(v){
     const text=document.createElement('span');text.textContent=v.text||'（内容なし）';box.appendChild(text);
     const meta=document.createElement('span');meta.className='meta';meta.textContent=(v.name||'家族')+'さん ・ '+foDateTime(v);box.appendChild(meta);
