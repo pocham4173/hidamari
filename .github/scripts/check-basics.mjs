@@ -261,6 +261,9 @@ function collectRefs(html, from) {
 
 if (html !== null) {
   collectRefs(html, 'index.html');
+  for (const m of html.matchAll(/<script\b[^>]*\bsrc\s*=\s*"([^"]+)"[^>]*><\/script>/gi)) {
+    need(m[1], 'index.html の外部スクリプト');
+  }
   for (const m of html.matchAll(/serviceWorker\.register\(\s*'([^']+)'/g)) need(m[1], 'index.html の Service Worker 登録');
 }
 /* tag.html が読み込むファイルも、同じように存在を確かめます */
