@@ -37,9 +37,22 @@ assert.match(html, /今日の記録をふり返りで見る/);
 assert.match(html, /id="watch-tag-history"/);
 assert.match(html, /この端末で確認しました/);
 assert.match(html, /get\(\{source:'server'\}\)/);
+assert.match(html, /id="medicine-info-area"[\s\S]*?id="medicine-name"[\s\S]*?id="medicine-timing"/);
+assert.match(html, /'medicine-info':1/);
+assert.match(html, /function showTab\(t\)[\s\S]*?resetFamilyScroll\(\);\s*\}/);
 assert.match(html, /id="card-care-quick"[\s\S]*?家族のワンタップ記録/);
 assert.doesNotMatch(html, /家庭で選ぶ介護の記録|家族の介護記録/);
 console.log('✅ 家族ホームはワンタップ記録を先に、補助入力を開閉式に表示');
+
+{
+  const familyBody={scrollTop:420};let top=-1;
+  const context={document:{querySelector:()=>familyBody},window:{scrollTo:arg=>{top=typeof arg==='object'?arg.top:arg;}}};
+  vm.runInNewContext(section('function resetFamilyScroll(){','function showPage(id){'),context);
+  context.resetFamilyScroll();
+  assert.equal(familyBody.scrollTop,0);
+  assert.equal(top,0);
+  console.log('✅ 家族・家族のみのタブは画面上部から開く');
+}
 
 {
   const ids=Object.fromEntries(['watch-tag-home','tag-unread-count','tag-seen-btn','home-watch-tag-status']
@@ -228,7 +241,27 @@ assert.match(html, /window\.showStartupProblem\('ログインできませんで�
   assert.match(summary.textContent,/生活の記録 0件/);
   assert.match(summary.textContent,/家族間の共有は別に2件/);
   assert.match(summary.textContent,/家族間の共有履歴.*明日は通院.*薬局に行く/);
+  assert.equal(summary.children[1].tagName,'details','記録からわかることは閉じて整理');
+  assert.ok(summary.children.filter(x=>x.tagName==='details').length>=2,'詳しい一覧も押して開く');
   console.log('✅ 月のまとめに家族の伝言・やることを生活記録と区別して残す');
+}
+
+{
+  const body=new Element();
+  const context={
+    document:{getElementById:()=>body},
+    REC_LABEL:{aisatsu:v=>['本人の挨拶','','ご本人が「'+v.text+'」と挨拶しました']},
+    recTime:()=> '7:30',esc:v=>String(v)
+  };
+  vm.runInNewContext(section('function rgRender(d){','function recOpen(){'),context);
+  context.rgRender({periodDays:28,buckets:[{label:'8/17〜'},{label:'8/24〜'}],
+    M:{aisatsu:[1,0],message:[0,0],kusuri:[0,0],kibun:[0,0],onegai:[0,0],care:[0,0]},
+    D:{aisatsu:{'2026-08-17':1}},E:{aisatsu:[{type:'aisatsu',date:'2026-08-17',text:'おはよう',at:{seconds:1}}]}});
+  assert.match(body.innerHTML,/<details class="rg-chart">/);
+  assert.match(body.innerHTML,/8\/17〜：1件/);
+  assert.match(body.innerHTML,/ご本人が「おはよう」と挨拶しました/);
+  assert.doesNotMatch(body.innerHTML,/>服薬に関する記録</,'0件の項目を並べてごちゃつかせない');
+  console.log('✅ 期間グラフは項目を押すと期間別件数と記録内容が分かる');
 }
 
 {
@@ -353,4 +386,28 @@ assert.match(html, /onSnapshot\(\{includeMetadataChanges:true\},snap=>/);
   context.renderTodayQuickRecords([{ type: 'care-log', text: '訪問した', name: '家族A' }]);
   assert.match(today.textContent, /訪問した ・ 家族Aさん ・ 9月12日 14:20/);
   console.log('✅ ワンタップ記録の結果はその場で名前と時刻を確認できる');
+}
+
+{
+  const ids=Object.fromEntries(['medicine-info-list','medicine-name','medicine-timing','medicine-note',
+    'medicine-info-btn','medicine-info-compose'].map(id=>[id,new Element(id==='medicine-info-list'?'div':'input')]));
+  ids['medicine-name'].value='血圧の薬';ids['medicine-timing'].value='朝食後';ids['medicine-note'].value='薬袋を確認';
+  let listener,saved;
+  const context={
+    document:{getElementById:id=>ids[id],createElement:tag=>new Element(tag)},
+    col:()=>({where(){return this;},onSnapshot(options,next){assert.equal(options.includeMetadataChanges,true);listener=next;return ()=>{};}}),
+    medicineInfoUnsub:null,medicineInfoRows:[],medicineInfoStatus:'loading',foByNewest:()=>0,
+    foDateTime:()=> '9月13日 8:00',uid:()=> 'mine',deleteFamilyEvent(){},myName:()=> '家族A',
+    foState(){},addEvent:async v=>{saved=v;},Date
+  };
+  vm.runInNewContext(section('function initMedicineInfo(){','function foMillis(v){'),context);
+  context.initMedicineInfo();
+  listener({metadata:{fromCache:false},forEach:fn=>fn({id:'med1',data:()=>({uid:'mine',medicineName:'薬A',medicineTiming:'朝',note:'1錠',name:'家族A'})})});
+  assert.match(ids['medicine-info-list'].textContent,/薬A.*飲む時間・回数：朝.*メモ：1錠/);
+  await context.addMedicineInfo();
+  assert.equal(saved.type,'medicine-info');
+  assert.equal(saved.medicineName,'血圧の薬');
+  assert.equal(saved.medicineTiming,'朝食後');
+  assert.equal(saved.note,'薬袋を確認');
+  console.log('✅ お薬情報は承認家族の共有データとして登録・確認できる');
 }
