@@ -551,6 +551,17 @@ table.cal-rec td.pad{background:none;}
 .local-source{display:flex;flex-direction:column;gap:2px;margin-top:14px;padding-top:12px;border-top:1px solid #E4EAF0;color:var(--cha);}
 .local-source b{font-size:.95rem;}
 .local-source span{font-size:.78rem;color:var(--usucha);}
+.h-inbox{margin:12px 0;padding:14px;border:2px solid #D9E4F4;border-radius:18px;background:#fff;}
+.h-inbox>summary{min-height:48px;display:flex;align-items:center;justify-content:space-between;font-weight:900;color:#315FAE;cursor:pointer;}
+.h-inbox-row{padding:12px 2px;border-top:1px solid #E7E0D3;line-height:1.55;}
+.h-inbox-row:first-of-type{border-top:0;}.h-inbox-row time{display:block;color:var(--usucha);font-size:.78rem;}
+.h-inbox-row button{min-height:44px;margin-top:8px;padding:8px 12px;border:2px solid #315FAE;border-radius:10px;background:#fff;color:#315FAE;font:inherit;font-weight:900;}
+.account-state{margin-top:8px;padding:10px;border-radius:10px;background:#F5F8FB;color:var(--usucha);font-size:.82rem;line-height:1.55;}
+.policy-links{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;padding:18px 12px 28px;font-size:.82rem;}
+.policy-links a{color:#315FAE;font-weight:800;}
+.manager-badge{display:inline-block;margin-left:5px;padding:2px 7px;border-radius:999px;background:#E5F3EA;color:#276445;font-size:.7rem;font-weight:900;}
+body.tap-flash .phone{animation:tap-confirm .32s ease-out;}
+@keyframes tap-confirm{0%{box-shadow:inset 0 0 0 999px rgba(255,244,178,.5)}100%{box-shadow:inset 0 0 0 0 rgba(255,244,178,0)}}
 
 
 </style>
@@ -558,14 +569,14 @@ table.cal-rec td.pad{background:none;}
 <body>
 <div id="loading" role="status" aria-live="polite">読み込み中…</div>
 <div class="phone">
-<div role="status" style="position:sticky;top:0;z-index:40;background:#111;color:#fff;text-align:center;padding:calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;font:700 13px/1.45 sans-serif">試験運用中｜実名・住所・電話・病歴は入力しないでください</div>
+<div role="status" style="position:sticky;top:0;z-index:40;background:#111;color:#fff;text-align:center;padding:calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;font:700 13px/1.45 sans-serif">試験運用中｜本人の同意を得て、必要最小限の情報だけ入力してください</div>
 
 <!-- ===== 入口 ===== -->
 <div class="page" id="entry">
   <img class="appicon" src="icon-192.png" alt="まいにこ">
   <h1>まいにこ</h1>
-  <div class="entry-catch">押すだけで<em>「今日も元気」</em>が家族に届く</div>
-  <div class="note" style="max-width:320px;margin:7px auto 0;color:#5C4E3A;font-weight:700;">監視ではなく、ご本人から伝える毎日の安心</div>
+  <div class="entry-catch">家族の今日を、無理なく伝え合う</div>
+  <div class="note" style="max-width:320px;margin:7px auto 0;color:#5C4E3A;font-weight:700;">離れていても続けやすい、家族のゆるやかな連絡帳</div>
   <button class="install-main" id="install-main" type="button" onclick="installApp()">📲 ホーム画面に追加する<small>次からアプリのようにすぐ開けます</small></button>
   <div class="q">使い方を選んでください</div>
   <div id="select-box">
@@ -576,6 +587,7 @@ table.cal-rec td.pad{background:none;}
   <div class="setup-or">─ または ─</div>
   <button class="entry-btn sub" onclick="pickMode('kazoku')">招待された方<small>招待コードを入力して参加する</small></button>
   <div class="note" style="max-width:320px;margin:6px auto 0;">ここから家族とつながれます。ご本人がこの端末を使う場合は、上の「ご本人が使う」を選んでください。</div>
+  <nav class="policy-links" aria-label="運営情報"><a href="privacy.html">プライバシー</a><a href="terms.html">利用上の注意</a><a href="support.html">問い合わせ</a></nav>
 </div>
 
 <!-- ホーム画面への追加案内 -->
@@ -699,6 +711,10 @@ table.cal-rec td.pad{background:none;}
     </div>
     <div id="h-approve"></div>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
+    <details class="h-inbox" id="h-inbox" style="display:none;">
+      <summary><span>家族から届いた連絡</span><span id="h-inbox-count"></span></summary>
+      <div id="h-inbox-list"></div>
+    </details>
     <div class="kibun" id="h-message-reply" style="display:none;">
       <div class="q">家族へ返事を送れます</div>
       <div class="note" style="text-align:center;margin:0 0 10px;">返事は急がなくて大丈夫です。送りたいときだけ選んでください。</div>
@@ -753,9 +769,9 @@ table.cal-rec td.pad{background:none;}
     <button class="set-btn" id="speech-toggle" onclick="toggleSpeech()">声のお返事：オフ（押すとオン）</button>
   </div>
   <div class="set-sec"><h4>利用方法の変更</h4>
-    <div class="note">利用する人を最初から選び直すときだけ使います。普段は変更する必要はありません。</div>
-    <button class="set-btn warn" onclick="openBackConfirm()">利用方法を変更する</button>
+    <div class="note">誤操作を防ぐため、この端末は初期設定で「ご本人用」に固定されています。変更が必要なときは管理家族へ連絡してください。</div>
   </div>
+  <nav class="policy-links" aria-label="運営情報"><a href="privacy.html">プライバシー</a><a href="terms.html">利用上の注意</a><a href="support.html">問い合わせ</a></nav>
   <button class="modal-close" onclick="closePersonSettings()">とじる</button>
 </div></div>
 
@@ -895,14 +911,19 @@ table.cal-rec td.pad{background:none;}
       <div class="ttl" style="margin:0;">設定</div>
     </div>
 
-    <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;">
+    <div class="set-sec" id="invite-section" style="border-top:none;margin-top:0;padding-top:0;display:none;">
       <h4>家族を追加する</h4>
       <div class="note" style="margin-top:0;">離れて暮らす家族も、3つの手順でつながれます。<br>
       ①「招待コードを作る」を押すと、ランダムな英数字8文字のコードが自動で発行されます<br>
       ② そのコードを家族に伝える（電話や紙のメモでOK）<br>
       ③ 家族が自分のスマホでまいにこを開き、入口の「招待された方」にコードを入れる → あなたの画面に出る「参加を認める」を押せば完了<br>
       <span style="color:#8A6F4D;">コードは24時間・1回だけ使えます。</span></div>
-      <button class="set-btn" onclick="makeInvite('settings-invite-area')">招待コードを作る</button>
+      <label style="display:block;font-weight:800;margin:10px 0 5px;">招待する人
+        <select id="invite-target-role" style="display:block;width:100%;min-height:48px;margin-top:5px;font:inherit;border:1px solid #CDD6E1;border-radius:9px;background:#fff;padding:8px;">
+          <option value="kazoku">ご家族</option><option value="honnin">ご本人</option>
+        </select>
+      </label>
+      <button class="set-btn" id="make-invite-btn" onclick="makeInvite('settings-invite-area')">招待コードを作る</button>
       <div id="settings-invite-area"></div>
     </div>
 
@@ -913,8 +934,26 @@ table.cal-rec td.pad{background:none;}
     </div>
 
     <div class="set-sec"><h4>利用方法の変更</h4>
-      <div class="note">「ご本人が使う」「ご家族が使う」などの選び直しは、ここから行えます。記録は消えません。</div>
-      <button class="set-btn warn" onclick="openBackConfirm()">利用方法を変更する</button>
+      <div class="note">誤操作を防ぐため、この端末の利用方法は初期設定で固定されています。別の使い方に変更するときは、この端末の接続を解除してから設定し直してください。</div>
+    </div>
+
+    <div class="set-sec"><h4>機種変更・端末紛失に備える</h4>
+      <div class="note">管理家族またはご本人は、復旧用メールを登録できます。新しい端末でも同じ家族の記録へ戻れます。</div>
+      <div class="in-row"><input type="email" id="recovery-email" autocomplete="email" placeholder="復旧用メールアドレス"></div>
+      <button class="set-btn" id="recovery-email-btn" type="button" onclick="sendRecoveryEmail()">復旧用メールを登録する</button>
+      <div class="account-state" id="recovery-email-state">登録状態を確認しています…</div>
+    </div>
+
+    <div class="set-sec"><h4>閉じている間の通知</h4>
+      <div class="note">本人からのお願い、家族の伝言、おまもりタグの読み取りを、この端末へ通知します。通知本文には詳しい内容を表示しません。</div>
+      <button class="set-btn" id="push-enable-btn" type="button" onclick="enablePushNotifications()">この端末で通知を受け取る</button>
+      <div class="account-state" id="push-state">通知状態を確認しています…</div>
+    </div>
+
+    <div class="set-sec" id="household-delete-section" style="display:none;"><h4>家族の全データを削除する</h4>
+      <div class="note">管理家族だけが実行できます。記録、予定、家族接続、招待、タグ、通知、復旧情報をサーバー側でまとめて削除します。</div>
+      <button class="set-btn warn" id="delete-all-btn" type="button" onclick="deleteAllData()">家族の全データを削除する</button>
+      <div class="account-state" id="delete-all-state"></div>
     </div>
 
     <div class="set-sec">
@@ -1156,13 +1195,17 @@ table.cal-rec td.pad{background:none;}
         <div class="medicine-info" id="medicine-info-area">
           <h4>💊 お薬情報（任意）</h4>
           <div class="note">本人と承認済みの家族だけで共有します。薬の名前と飲む時間を、必要な範囲だけ登録してください。</div>
-          <details class="family-compose" id="medicine-info-compose"><summary>＋ お薬情報を追加</summary>
+          <details class="family-compose" id="medicine-info-compose" style="display:none;"><summary id="medicine-form-title">＋ お薬情報を追加</summary>
             <div class="medicine-info-grid">
               <input type="text" id="medicine-name" maxlength="50" placeholder="薬の名前" aria-label="薬の名前">
               <input type="text" id="medicine-timing" maxlength="50" placeholder="例：朝食後・1日1回" aria-label="飲む時間や回数">
             </div>
             <div class="in-row"><input type="text" id="medicine-note" maxlength="100" placeholder="注意メモ（任意）"></div>
+            <label style="display:block;margin-top:8px;font-weight:800;">お薬手帳・薬袋などで確認した日
+              <input type="date" id="medicine-verified" style="display:block;width:100%;min-height:48px;margin-top:5px;font:inherit;border:1px solid #CDD6E1;border-radius:9px;padding:8px;">
+            </label>
             <button class="big-btn family" id="medicine-info-btn" type="button" onclick="addMedicineInfo()">お薬情報を登録</button>
+            <button class="set-btn" id="medicine-edit-cancel" type="button" style="display:none;" onclick="cancelMedicineEdit()">変更をやめる</button>
           </details>
           <div class="save-state" id="medicine-info-state" aria-live="polite"></div>
           <div class="family-tool-list" id="medicine-info-list"><div class="empty">読み込み中…</div></div>
@@ -1242,6 +1285,12 @@ table.cal-rec td.pad{background:none;}
       </div>
     </div>
 
+    <nav class="policy-links" aria-label="運営情報">
+      <a href="privacy.html" target="_blank" rel="noopener">プライバシー</a>
+      <a href="terms.html" target="_blank" rel="noopener">利用上の約束</a>
+      <a href="support.html" target="_blank" rel="noopener">問い合わせ・障害情報</a>
+    </nav>
+
   </div>
 </div>
 
@@ -1265,7 +1314,7 @@ window.showStartupProblem=function(message){
   if(!loading || loading.style.display==='none') return;
   window.mainicoStartupProblem=message;
   var title=document.createElement('div');title.className='startup-title';title.textContent=message+'（'+window.mainicoStartupStage+'）。';
-  var hint=document.createElement('div');hint.className='startup-hint';hint.textContent='通信状態を確認してください。アプリ内ブラウザーなら右下のコンパスからSafariで開くこともできます。';
+  var hint=document.createElement('div');hint.className='startup-hint';hint.textContent='いま電波がつながりにくいみたいです。少し待って「もう一度読み込む」を押してください。心配なときは家族に電話してください。アプリ内ブラウザーなら、コンパスの印からSafariで開くこともできます。';
   var button=document.createElement('button');button.className='startup-retry';button.type='button';button.textContent='もう一度読み込む';
   button.addEventListener('click',function(){location.reload();});
   loading.replaceChildren(title,hint,button);
@@ -1288,6 +1337,10 @@ setTimeout(function(){
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
+<script src="mainico-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script>
 const previewStorage={
@@ -1304,6 +1357,35 @@ const previewApp=firebase.initializeApp({
   appId: "1:565713968884:web:0a9665d1fe5e0fa161c8a1"
 });
 const db = previewApp.firestore();
+if(window.MAINICO_RECAPTCHA_SITE_KEY){
+  previewApp.appCheck().activate(new firebase.appCheck.ReCaptchaEnterpriseProvider(window.MAINICO_RECAPTCHA_SITE_KEY),true);
+}
+const functionsApi = previewApp.functions('asia-northeast1');
+function callServer(name,data){
+  return withTimeout(functionsApi.httpsCallable(name)(data||{}),30000).then(function(result){return result.data||{};});
+}
+let ownAccess={manager:false,owner:false,member:null,group:null};
+async function loadOwnAccess(){
+  if(!gid()||!uid()){ownAccess={manager:false,owner:false,member:null,group:null};return ownAccess;}
+  const results=await Promise.all([grp().get(),col('members').doc(uid()).get()]);
+  const group=results[0].exists?results[0].data():null;
+  const member=results[1].exists?results[1].data():null;
+  const legacy=!!(member&&!Object.prototype.hasOwnProperty.call(member,'permission')&&group&&group.createdBy===uid());
+  ownAccess={group:group,member:member,
+    owner:!!(member&&member.status==='approved'&&(member.permission==='owner'||legacy)),
+    manager:!!(member&&member.status==='approved'&&(['owner','manager'].includes(member.permission)||legacy))};
+  return ownAccess;
+}
+function isManagerClient(){return !!ownAccess.manager;}
+function isOwnerClient(){return !!ownAccess.owner;}
+async function saveUserProfile(){
+  if(!gid()||!uid())return;
+  const mode=previewStorage.getItem('mainicoMode')||previewStorage.getItem('mainicoPendingMode')||'kazoku';
+  await db.collection('userProfiles').doc(uid()).set({
+    groupId:gid(),mode:mode,name:mode==='honnin'?'本人':myName(),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  },{merge:true});
+}
 window.mainicoStartupStage='ログインの準備中';
 if('serviceWorker' in navigator){
   try{ navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('service worker',e); }); }
@@ -1520,6 +1602,10 @@ function slot(){
   return {key:'yoru', ic:'🌙', tx:'こんばんは'};
 }
 function feedback(){
+  document.body.classList.remove('tap-flash');
+  void document.body.offsetWidth;
+  document.body.classList.add('tap-flash');
+  setTimeout(function(){document.body.classList.remove('tap-flash');},320);
   if(navigator.vibrate) navigator.vibrate(80);
   try{
     const ctx=new (window.AudioContext||window.webkitAudioContext)();
@@ -1535,6 +1621,9 @@ function col(name){ return grp().collection(name); }
 function uid(){ return auth.currentUser ? auth.currentUser.uid : ''; }
 function myName(){ return previewStorage.getItem('mainicoName')||'家族'; }
 function isKOnly(){ return previewStorage.getItem('kazokuOnly')==='1'; }
+function withTimeout(promise,ms){
+  return Promise.race([promise,new Promise(function(_,reject){setTimeout(function(){const e=new Error('通信の確認に時間がかかっています');e.code='mainico/timeout';reject(e);},ms||15000);})]);
+}
 /* 画面表示用のエスケープ。名前や本文に記号が含まれても表示が壊れないようにする */
 const ESC_MAP={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
 function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, c=>ESC_MAP[c]); }
@@ -1550,9 +1639,14 @@ function rememberMember(realId, name){
   return id;
 }
 function addEvent(data){
-  return col('events').add(Object.assign({
+  return withTimeout(col('events').add(Object.assign({
     date:todayStr(), at:firebase.firestore.FieldValue.serverTimestamp(), uid:uid()
-  },data));
+  },data)),15000);
+}
+function addUniqueEvent(eventId,data){
+  return withTimeout(col('events').doc(eventId).set(Object.assign({
+    date:todayStr(),at:firebase.firestore.FieldValue.serverTimestamp(),uid:uid()
+  },data)),15000);
 }
 function randCode(){
   const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -1671,17 +1765,11 @@ async function createGroup(){
     alert('ご本人に説明し、了解を得てからチェックを入れてください'); return;
   }
   try{
-    const ref=await db.collection('groups').add({
-      createdBy: uid(),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    const result=await callServer('createHousehold',{
+      mode:pendingMode,
+      name:pendingMode==='honnin'?'本人':myName()
     });
-    await ref.collection('members').doc(uid()).set({
-      name: pendingMode==='honnin' ? '本人' : myName(),
-      role: pendingMode==='honnin' ? 'honnin' : 'kazoku',
-      status: 'approved',
-      joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    previewStorage.setItem('mainicoGid', ref.id);
+    previewStorage.setItem('mainicoGid', result.groupId);
     finishSetup();
   }catch(e){ alert('作成できませんでした。通信状態を確認してください。\n'+e.message); }
 }
@@ -1689,20 +1777,12 @@ async function joinByCode(){
   const code=document.getElementById('in-code').value.trim().toUpperCase();
   if(!code){ alert('招待コードを入力してください'); return; }
   try{
-    const inv=await db.collection('invites').doc(code).get();
-    if(!inv.exists){ alert('招待コードが見つかりません。コードを確認してください。'); return; }
-    const v=inv.data();
-    if(v.used){ alert('この招待コードは使用済みです。新しいコードを発行してもらってください。'); return; }
-    if(v.expiresAt && v.expiresAt.toMillis() < Date.now()){ alert('この招待コードは期限切れです。新しいコードを発行してもらってください。'); return; }
-    await db.collection('groups').doc(v.groupId).collection('members').doc(uid()).set({
-      name: pendingMode==='honnin' ? '本人' : myName(),
-      role: pendingMode==='honnin' ? 'honnin' : 'kazoku',
-      status: 'pending',
-      inviteCode: code,
-      joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+    const result=await callServer('claimInvite',{
+      code:code,mode:pendingMode,name:pendingMode==='honnin'?'本人':myName()
     });
-    await db.collection('invites').doc(code).update({used:true});
-    previewStorage.setItem('mainicoGid', v.groupId);
+    pendingMode=result.mode||pendingMode;
+    previewStorage.setItem('mainicoPendingMode',pendingMode);
+    previewStorage.setItem('mainicoGid', result.groupId);
     showPending();
   }catch(e){ alert('参加できませんでした。コードと通信状態を確認してください。\n'+e.message); }
 }
@@ -1710,6 +1790,8 @@ function finishSetup(){
   const m=previewStorage.getItem('mainicoPendingMode')||pendingMode;
   previewStorage.setItem('kazokuOnly', m==='konly'?'1':'');
   previewStorage.setItem('mainicoMode', m==='honnin'?'honnin':'kazoku');
+  previewStorage.setItem('mainicoDeviceLocked','1');
+  saveUserProfile().catch(function(e){console.warn('profile',e);});
   startMode();
 }
 let pendingUnsub=null;
@@ -1745,7 +1827,7 @@ async function cancelJoinRequest(){
   if(!confirm('参加の申請を取り下げますか?\n使った招待コードは、もう一度は使えません。参加し直すときは、新しい招待コードを発行してもらってください。')) return;
   cancelling=true;
   try{
-    await col('members').doc(uid()).delete();
+    await callServer('removeHouseholdMember',{groupId:gid(),memberId:uid()});
   }catch(e){
     /* 失敗したときは何も消さず、承認待ちの画面のまま残す */
     cancelling=false;
@@ -1769,6 +1851,10 @@ function startMode(){
 }
 function resetMode(){ previewStorage.removeItem('mainicoMode'); location.reload(); }
 function openBackConfirm(){
+  if(previewStorage.getItem('mainicoDeviceLocked')==='1'){
+    alert('この端末の利用方法は初期設定で固定されています。誤操作を防ぐため、通常の画面からは変更できません。端末を変更するときは復旧用メールを使うか、管理家族に接続解除を依頼してください。');
+    return;
+  }
   /* 先に設定画面を確実に消し、次の描画で確認画面へ進む */
   ['person-settings-modal','settings-modal'].forEach(function(id){
     const m=document.getElementById(id);
@@ -1862,6 +1948,32 @@ function greetingFlower(){
 /* ===== 本人 ===== */
 let honninUnsub=null, yoteiUnsub=null, clockTimer=null;
 let hBootDay='', hCurSlot='';
+function selectPersonMessage(id){
+  currentFamilyMessageId=id||'';
+  const reply=document.getElementById('h-message-reply');
+  if(reply){reply.style.display=currentFamilyMessageId?'block':'none';reply.scrollIntoView({behavior:'smooth',block:'center'});}
+  speak('このメッセージへの返事を えらべます');
+}
+function renderHonninInbox(msgs){
+  const box=document.getElementById('h-inbox'),list=document.getElementById('h-inbox-list'),count=document.getElementById('h-inbox-count');
+  if(!box||!list||!count)return;
+  list.textContent='';
+  if(!msgs.length){box.style.display='none';currentFamilyMessageId='';document.getElementById('h-message-reply').style.display='none';return;}
+  box.style.display='block';count.textContent=msgs.length+'件';
+  msgs.slice(0,20).forEach(function(v){
+    const row=document.createElement('div');row.className='h-inbox-row';
+    const time=document.createElement('time');
+    const ms=v.at&&v.at.toMillis?v.at.toMillis():(v.at&&v.at.seconds?v.at.seconds*1000:0);
+    time.textContent=ms?new Date(ms).getHours()+':'+String(new Date(ms).getMinutes()).padStart(2,'0'):'';
+    const text=document.createElement('div');text.textContent=v.text;
+    row.appendChild(time);row.appendChild(text);
+    if(v.type==='family-message'&&v.id){
+      const button=document.createElement('button');button.type='button';button.textContent='この連絡に返事をする';
+      button.addEventListener('click',function(){selectPersonMessage(v.id);});row.appendChild(button);
+    }
+    list.appendChild(row);
+  });
+}
 function refreshSlotUI(){
   const s=slot();
   const ba=document.getElementById('btn-a');
@@ -1913,7 +2025,8 @@ function initHonnin(){
     document.getElementById('kibun-box').style.display='block';
 
   if(memWatchUnsub) memWatchUnsub();
-  memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
+  memWatchUnsub=col('members').where('status','==','pending').onSnapshot(async snap=>{
+    try{await loadOwnAccess();}catch(e){}
     renderPendingCard('h-approve', snap);
   }, err=>console.warn('members', err));
   if(honninUnsub) honninUnsub();
@@ -1923,29 +2036,39 @@ function initHonnin(){
       const msgs=[];
       snap.forEach(doc=>{
         const v=doc.data();
+        if(v.uid===uid()&&v.type==='aisatsu'&&validKusuriSlot(v.slot)){
+          previewStorage.setItem('aisatsu-'+todayStr()+'-'+v.slot,'1');if(v.slot===slot().key)markAisatsuDone();
+        }
+        if(v.uid===uid()&&v.type==='kusuri'&&validKusuriSlot(v.slot)){
+          previewStorage.setItem('kusuri-'+todayStr()+'-'+v.slot,'1');markKusuriDone(v.slot);
+        }
         if(v.type==='aisatsu-back')
-          msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+(v.text||'こんにちは')+'」が届きました'});
+          msgs.push({at:v.at, id:doc.id, type:v.type, text:(v.name||'家族')+'さんから「'+(v.text||'こんにちは')+'」が届きました'});
         if(v.type==='onegai-back')
-          msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
+          msgs.push({at:v.at, id:doc.id, type:v.type, text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
         if(v.type==='family-message')
           msgs.push({at:v.at, id:doc.id, type:'family-message', text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
         if(v.type==='ask-kusuri'){
           const askedSlot=validKusuriSlot(v.slot)?v.slot:slot().key;
           if(!previewStorage.getItem('kusuri-'+todayStr()+'-'+askedSlot)){
-            msgs.push({at:v.at, text:(v.name||'家族')+'さんから「'+kusuriSlotName(askedSlot)+'の薬は飲みましたか？」'});
+            msgs.push({at:v.at, id:doc.id, type:v.type, text:(v.name||'家族')+'さんから「'+kusuriSlotName(askedSlot)+'の薬は飲みましたか？」'});
           }
         }
         if(v.type==='member-joined')
-          msgs.push({at:v.at, text:(v.text||'')+'さんが家族として参加しました'});
+          msgs.push({at:v.at, id:doc.id, type:v.type, text:(v.text||'')+'さんが家族として参加しました'});
       });
+      msgs.sort((a,b)=>(b.at?b.at.seconds:0)-(a.at?a.at.seconds:0));
+      renderHonninInbox(msgs);
       if(msgs.length>0){
-        msgs.sort((a,b)=>(b.at?b.at.seconds:0)-(a.at?a.at.seconds:0));
         const p=document.getElementById('pop-msg');
         p.textContent=msgs[0].text;
         p.classList.add('show');
-        currentFamilyMessageId=msgs[0].type==='family-message'?(msgs[0].id||''):'';
+        if(!currentFamilyMessageId){
+          const newestMessage=msgs.find(function(v){return v.type==='family-message';});
+          currentFamilyMessageId=newestMessage?(newestMessage.id||''):'';
+        }
         const replyBox=document.getElementById('h-message-reply');
-        if(replyBox) replyBox.style.display=currentFamilyMessageId?'block':'none';
+        if(replyBox) replyBox.style.display='none';
         const ts=msgs[0].at?msgs[0].at.seconds:0;
         if(ts>hMsgSpokenThrough){
           hMsgSpokenThrough=ts;
@@ -2005,8 +2128,8 @@ function endSend(ok){
 }
 function honninSendFail(){
   const p=document.getElementById('pop-msg');
-  if(p){ p.textContent='電波が届きませんでした。もう一度押してください'; p.classList.add('show'); }
-  speak('でんぱが とどきませんでした。もういちど おしてください');
+  if(p){ p.textContent='いま電波がつながりにくいみたい。少し待って、もう一度押してください。心配なときは家族に電話してください。'; p.classList.add('show'); }
+  speak('いま でんぱが つながりにくいみたいです。すこしまって、もういちど おしてください。しんぱいなときは、かぞくに でんわしてください');
 }
 function sendAisatsu(){
   const s=slot();
@@ -2017,7 +2140,7 @@ function sendAisatsu(){
   }
   if(!beginSend()) return;
   feedback();
-  addEvent({type:'aisatsu', text:s.tx, slot:s.key}).then(()=>{
+  addUniqueEvent('aisatsu-'+uid()+'-'+todayStr()+'-'+s.key,{type:'aisatsu', text:s.tx, slot:s.key}).then(()=>{
     endSend(true);
     speak(s.tx+'を、家族の画面に届けました');
     previewStorage.setItem('aisatsu-'+todayStr()+'-'+s.key,'1');
@@ -2051,7 +2174,7 @@ function sendKusuri(slotKey){
   }
   if(!beginSend()) return;
   feedback();
-  addEvent({type:'kusuri', slot:slotKey}).then(()=>{
+  addUniqueEvent('kusuri-'+uid()+'-'+todayStr()+'-'+slotKey,{type:'kusuri', slot:slotKey}).then(()=>{
     endSend(true);
     speak(label+'の薬を飲んだと、家族の画面に届けました');
     previewStorage.setItem('kusuri-'+todayStr()+'-'+slotKey,'1');
@@ -2175,10 +2298,11 @@ function renderPendingCard(elId, snap){
     const id=rememberMember(doc.id, v.name);
     html+='<div style="background:#fff;border:3px solid var(--aomidori);border-radius:18px;padding:15px;margin-bottom:12px;">'+
       '<div style="font-size:1.05rem;font-weight:900;line-height:1.6;margin-bottom:10px;">'+esc(v.name)+'さんを家族として参加させますか?</div>'+
-      '<div style="display:flex;gap:8px;">'+
+      (isManagerClient()?'<div style="display:flex;gap:8px;">'+
       '<button style="flex:1;font-family:inherit;font-size:1rem;font-weight:900;padding:13px;border:none;border-radius:12px;background:#5F7D52;color:#fff;cursor:pointer;" onclick="approveMember(\''+id+'\')">参加を認める</button>'+
       '<button style="flex:1;font-family:inherit;font-size:1rem;font-weight:900;padding:13px;border:2px solid #C9B8A0;border-radius:12px;background:#fff;color:#7A5A34;cursor:pointer;" onclick="denyMember(\''+id+'\')">認めない</button>'+
-      '</div><div style="font-size:.78rem;color:#7A6A55;margin-top:8px;line-height:1.6;">心当たりのない申請は認めないでください。認めるまで、この人は記録を見られません。</div></div>';
+      '</div>':'<div class="note">管理家族の確認を待っています。</div>')+
+      '<div style="font-size:.78rem;color:#7A6A55;margin-top:8px;line-height:1.6;">心当たりのない申請は認めないでください。認めるまで、この人は記録を見られません。</div></div>';
   });
   el.innerHTML=html;
 }
@@ -2255,6 +2379,7 @@ async function openMembers(){
   document.getElementById('members-modal').classList.add('show');
   const box=document.getElementById('members-list');
   try{
+    await loadOwnAccess();
     const snap=await col('members').get();
     if(snap.empty){ box.innerHTML='<div class="empty">まだ登録がありません</div>'; return; }
     let html='';
@@ -2265,8 +2390,9 @@ async function openMembers(){
       if(v.status==='pending'){
         html+='<div class="member-row"><span>'+esc(v.name)+' (承認待ち)</span></div>';
       }else{
-        html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?' (ご本人)':'')+(me?' (あなた)':'')+'</span>'+
-          '<button class="member-del" onclick="honninRemove(\''+id+'\','+(me?'true':'false')+')">'+(me?'共有をやめる':'解除')+'</button></div>';
+        const canRemove=(me&&v.permission!=='owner')||(isManagerClient()&&!me&&v.permission!=='owner');
+        html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?' (ご本人)':'')+((v.permission==='owner'||v.permission==='manager')?'<span class="manager-badge">管理</span>':'')+(me?' (あなた)':'')+'</span>'+
+          (canRemove?'<button class="member-del" onclick="honninRemove(\''+id+'\','+(me?'true':'false')+')">'+(me?'共有をやめる':'解除')+'</button>':'')+'</div>';
       }
     });
     box.innerHTML=html;
@@ -2280,7 +2406,7 @@ async function honninRemove(mid, isMe){
     :'この家族を解除しますか?\n解除すると、この家族はあなたの記録(過去の分も含む)を見られなくなります。';
   if(!confirm(msg)) return;
   try{
-    await col('members').doc(mid).delete();
+    await callServer('removeHouseholdMember',{groupId:gid(),memberId:mid});
     if(isMe){
       previewStorage.removeItem('mainicoGid');
       previewStorage.removeItem('mainicoMode');
@@ -2341,7 +2467,7 @@ function renderFamilySchedule(){
 function initKazoku(){
   const d=new Date();
   const kOnly=isKOnly();
-  document.getElementById('f-lg').textContent=kOnly?'まいにこ ─ 家族のみで記録中':'まいにこ ─ 管理';
+  document.getElementById('f-lg').textContent=kOnly?'まいにこ ─ 家族のみで記録中':'まいにこ ─ 家族の連絡帳';
   document.getElementById('f-title').textContent=dateJp(d);
   document.getElementById('home-date-h3').textContent='ご本人からの連絡';
   document.querySelectorAll('.ab-btn').forEach(b=>b.classList.remove('suggested'));
@@ -2367,11 +2493,12 @@ function initKazoku(){
   if(kOnly)familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading'};
   showTab('t-home');
   if(kOnly) initFamilyOnlyTools();
+  loadOwnAccess().then(function(){applyManagerUi();renderMedicineInfo();migrateLegacyMedicines();loadWatchTag();}).catch(function(e){console.warn('access',e);applyManagerUi();loadWatchTag();});
   initMedicineInfo();
   initDisaster();
-  loadWatchTag();
   if(memWatchUnsub) memWatchUnsub();
-  memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
+  memWatchUnsub=col('members').where('status','==','pending').onSnapshot(async snap=>{
+    try{await loadOwnAccess();}catch(e){}
     renderPendingCard('card-pending', snap);
   }, err=>console.warn('members', err));
   if(evUnsub) evUnsub();
@@ -3645,12 +3772,12 @@ const CARE_DEFAULT=['meal','water','call','visit'];
 let familyOnlyUnsubs=[];
 let familyOnlyData={config:[],notes:[],noteAcks:[],noteReplies:[],tasks:[],taskDone:[],contacts:[]};
 let familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading'};
-let medicineInfoUnsub=null,medicineInfoRows=[],medicineInfoStatus='loading';
+let medicineInfoUnsub=null,medicineInfoRows=[],medicineInfoStatus='loading',medicineEditingId='';
 
 function initMedicineInfo(){
   if(medicineInfoUnsub){try{medicineInfoUnsub();}catch(e){}}
   medicineInfoRows=[];medicineInfoStatus='loading';renderMedicineInfo();
-  medicineInfoUnsub=col('events').where('type','==','medicine-info').onSnapshot({includeMetadataChanges:true},function(snap){
+  medicineInfoUnsub=col('medicines').onSnapshot({includeMetadataChanges:true},function(snap){
     const rows=[];snap.forEach(function(doc){const v=doc.data();v._id=doc.id;rows.push(v);});
     rows.sort(foByNewest);medicineInfoRows=rows;
     medicineInfoStatus=snap.metadata&&snap.metadata.fromCache?'cached':'ready';renderMedicineInfo();
@@ -3669,26 +3796,83 @@ function renderMedicineInfo(){
   }
   medicineInfoRows.forEach(function(v){
     const row=document.createElement('div');row.className='family-tool-row';
-    const name=document.createElement('b');name.textContent=v.medicineName||'お薬';row.appendChild(name);
-    if(v.medicineTiming){const timing=document.createElement('div');timing.textContent='飲む時間・回数：'+v.medicineTiming;row.appendChild(timing);}
+    const statusLabel=v.status==='stopped'?'終了：':(v.status==='needs-review'?'要確認：':'');
+    const name=document.createElement('b');name.textContent=statusLabel+(v.medicineName||v.name||'お薬');row.appendChild(name);
+    const timingValue=v.timing||v.medicineTiming||'';
+    if(timingValue){const timing=document.createElement('div');timing.textContent='飲む時間・回数：'+timingValue;row.appendChild(timing);}
     if(v.note){const note=document.createElement('div');note.textContent='メモ：'+v.note;row.appendChild(note);}
-    const meta=document.createElement('span');meta.className='meta';meta.textContent=(v.name||'家族')+'さんが登録 ・ '+foDateTime(v);row.appendChild(meta);
-    if(v.uid===uid()){
+    const verified=v.verifiedAt&&v.verifiedAt.toDate?v.verifiedAt.toDate():null;
+    const meta=document.createElement('span');meta.className='meta';meta.textContent=(v.medicineName?(v.name||'家族')+'さんが登録 ・ ':'')+'確認日：'+(verified?(verified.getMonth()+1)+'月'+verified.getDate()+'日':'未確認')+' ・ 更新：'+foDateTime(v);row.appendChild(meta);
+    if(typeof isManagerClient==='function'&&isManagerClient()){
       const acts=document.createElement('div');acts.className='family-tool-actions';
-      const del=document.createElement('button');del.type='button';del.className='danger';del.textContent='削除';
-      del.addEventListener('click',function(){deleteFamilyEvent(v._id,'お薬情報');});acts.appendChild(del);row.appendChild(acts);
+      const edit=document.createElement('button');edit.type='button';edit.textContent='内容を変更';edit.addEventListener('click',function(){editMedicine(v._id);});acts.appendChild(edit);
+      if(v.status!=='stopped'){
+        const stop=document.createElement('button');stop.type='button';stop.className='danger';stop.textContent='服用終了';
+        stop.addEventListener('click',function(){stopMedicine(v._id);});acts.appendChild(stop);
+      }
+      row.appendChild(acts);
     }
     box.appendChild(row);
   });
 }
+async function migrateLegacyMedicines(){
+  if(!isManagerClient())return;
+  try{
+    const legacy=await col('events').where('type','==','medicine-info').get();
+    for(const doc of legacy.docs){
+      const target=col('medicines').doc('legacy-'+doc.id);
+      if((await target.get()).exists)continue;
+      const v=doc.data();
+      const verifiedAt=v.at&&v.at.toDate?v.at:firebase.firestore.Timestamp.fromMillis(Number(v.clientAt)||Date.now());
+      await target.set({
+        name:String(v.medicineName||'以前のお薬').slice(0,50),timing:String(v.medicineTiming||'').slice(0,50),
+        note:(String(v.note||'')+'（以前の登録から引継ぎ・要確認）').slice(0,100),status:'needs-review',verifiedAt:verifiedAt,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:uid()
+      });
+    }
+  }catch(e){console.warn('medicine migration',e);}
+}
+function medicineDateValue(ts){
+  if(!ts||!ts.toDate)return todayStr();
+  const d=ts.toDate();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function editMedicine(id){
+  const v=medicineInfoRows.find(function(x){return x._id===id;});if(!v||!isManagerClient())return;
+  medicineEditingId=id;document.getElementById('medicine-name').value=v.name||'';document.getElementById('medicine-timing').value=v.timing||'';
+  document.getElementById('medicine-note').value=v.note||'';document.getElementById('medicine-verified').value=medicineDateValue(v.verifiedAt);
+  document.getElementById('medicine-form-title').textContent='お薬情報を変更';document.getElementById('medicine-info-btn').textContent='変更を保存';
+  document.getElementById('medicine-edit-cancel').style.display='block';document.getElementById('medicine-info-compose').open=true;
+  document.getElementById('medicine-info-compose').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cancelMedicineEdit(){
+  medicineEditingId='';['medicine-name','medicine-timing','medicine-note'].forEach(function(id){const el=document.getElementById(id);if(el)el.value='';});
+  const verified=document.getElementById('medicine-verified');if(verified)verified.value=todayStr();
+  const title=document.getElementById('medicine-form-title');if(title)title.textContent='＋ お薬情報を追加';
+  const save=document.getElementById('medicine-info-btn');if(save)save.textContent='お薬情報を登録';
+  const cancel=document.getElementById('medicine-edit-cancel');if(cancel)cancel.style.display='none';
+}
+async function stopMedicine(id){
+  if(!isManagerClient()||!confirm('この薬を「服用終了」として残しますか？\n履歴は消さず、現在のお薬と区別します。'))return;
+  try{await col('medicines').doc(id).update({status:'stopped',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:uid()});}
+  catch(e){alert('変更できませんでした。通信状態を確認してください。');}
+}
 async function addMedicineInfo(){
   const nameEl=document.getElementById('medicine-name'),timingEl=document.getElementById('medicine-timing'),noteEl=document.getElementById('medicine-note');
-  const medicineName=nameEl.value.trim(),medicineTiming=timingEl.value.trim(),note=noteEl.value.trim();
+  const verifiedEl=document.getElementById('medicine-verified');
+  const medicineName=nameEl.value.trim(),medicineTiming=timingEl.value.trim(),note=noteEl.value.trim(),verifiedValue=verifiedEl?(verifiedEl.value||todayStr()):todayStr();
   if(!medicineName){foState('medicine-info-state','薬の名前を入力してください',true);return;}
+  if(!verifiedValue){foState('medicine-info-state','確認した日を入力してください',true);return;}
+  if(!isManagerClient()){foState('medicine-info-state','お薬情報は管理家族だけが変更できます',true);return;}
   const btn=document.getElementById('medicine-info-btn');btn.disabled=true;foState('medicine-info-state','保存しています…',false);
   try{
-    await addEvent({type:'medicine-info',medicineName:medicineName,medicineTiming:medicineTiming,note:note,name:myName(),clientAt:Date.now()});
-    nameEl.value='';timingEl.value='';noteEl.value='';document.getElementById('medicine-info-compose').open=false;
+    const verifiedAt=firebase.firestore.Timestamp.fromDate(new Date(verifiedValue+'T12:00:00'));
+    if(medicineEditingId){
+      const old=medicineInfoRows.find(function(v){return v._id===medicineEditingId;});
+      await col('medicines').doc(medicineEditingId).update({name:medicineName,timing:medicineTiming,note:note,status:old&&old.status==='stopped'?'stopped':'active',verifiedAt:verifiedAt,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:uid()});
+    }else{
+      await col('medicines').add({name:medicineName,timing:medicineTiming,note:note,status:'active',verifiedAt:verifiedAt,createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:uid()});
+    }
+    cancelMedicineEdit();document.getElementById('medicine-info-compose').open=false;
     foState('medicine-info-state','お薬情報を共有しました',false);
   }catch(e){foState('medicine-info-state','保存できませんでした。入力は残っています',true);}
   finally{btn.disabled=false;}
@@ -3697,6 +3881,8 @@ async function addMedicineInfo(){
 function foMillis(v){
   if(v.at&&v.at.toMillis) return v.at.toMillis();
   if(v.at&&v.at.seconds) return v.at.seconds*1000;
+  if(v.updatedAt&&v.updatedAt.toMillis) return v.updatedAt.toMillis();
+  if(v.createdAt&&v.createdAt.toMillis) return v.createdAt.toMillis();
   return Number(v.clientAt)||0;
 }
 function foDateTime(v){
@@ -4191,15 +4377,34 @@ async function delYotei(id){
 /* ===== 設定(家族) ===== */
 function openSettings(){
   document.getElementById('settings-modal').classList.add('show');
-  renderSetMembers();
-  loadWatchTag();
+  loadOwnAccess().then(function(){applyManagerUi();renderSetMembers();loadWatchTag();}).catch(function(){renderSetMembers();loadWatchTag();});
   const ca=previewStorage.getItem('mainicoConsent-a'), cb=previewStorage.getItem('mainicoConsent-b');
   const info=[];
   if(ca){ const v=JSON.parse(ca); info.push('共用モード同意: '+v.ver+' ('+v.at.slice(0,10)+')'); }
   if(cb){ const v=JSON.parse(cb); info.push('家族記録モード同意: '+v.ver+' ('+v.at.slice(0,10)+')'); }
   document.getElementById('consent-info').textContent=info.length?info.join(' / '):'この端末での同意記録はありません';
+  updateAccountStates();
 }
 function closeSettings(){ document.getElementById('settings-modal').classList.remove('show'); }
+function updateAccountStates(){
+  const recovery=document.getElementById('recovery-email-state'),push=document.getElementById('push-state');
+  if(recovery){
+    const user=auth.currentUser;
+    recovery.textContent=user&&!user.isAnonymous&&user.email?'登録済み：'+user.email:'未登録です。機種変更前に登録してください。';
+  }
+  if(push){
+    if(!('Notification' in window))push.textContent='このブラウザーは通知に対応していません。';
+    else if(Notification.permission==='granted')push.textContent='端末では通知が許可されています。登録更新は上のボタンを押してください。';
+    else if(Notification.permission==='denied')push.textContent='端末の設定で通知が拒否されています。';
+    else push.textContent='まだこの端末の通知を許可していません。';
+  }
+}
+function applyManagerUi(){
+  const manager=isManagerClient();
+  ['invite-section','household-delete-section'].forEach(function(id){const el=document.getElementById(id);if(el)el.style.display=manager?'block':'none';});
+  const select=document.getElementById('invite-target-role');if(select)select.disabled=!manager;
+  const compose=document.getElementById('medicine-info-compose');if(compose)compose.style.display=manager?'block':'none';
+}
 async function renderSetMembers(){
   const box=document.getElementById('set-members');
   try{
@@ -4211,16 +4416,28 @@ async function renderSetMembers(){
       const me=(doc.id===uid());
       const id=rememberMember(doc.id, v.name);
       if(v.status==='pending'){
-        html+='<div class="member-row"><span>'+esc(v.name)+' (承認待ち)</span><span>'+
+        html+='<div class="member-row"><span>'+esc(v.name)+' (承認待ち)</span>'+(isManagerClient()?'<span>'+
           '<button class="member-del" style="border-color:#5F7D52;color:#4C6541;margin-right:6px;" onclick="approveMember(\''+id+'\')">参加を認める</button>'+
-          '<button class="member-del" onclick="denyMember(\''+id+'\')">認めない</button></span></div>';
+          '<button class="member-del" onclick="denyMember(\''+id+'\')">認めない</button></span>':'<span>管理家族の確認待ち</span>')+'</div>';
       }else{
-        html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?' (ご本人)':'')+(me?' (この端末)':'')+'</span>'+
-          '<button class="member-del" onclick="removeMember(\''+id+'\','+(me?'true':'false')+')">解除</button></div>';
+        const isManaged=v.permission==='owner'||v.permission==='manager';
+        let actions='';
+        if(isOwnerClient()&&!me&&v.permission!=='owner'){
+          actions+='<button class="member-del" style="border-color:#5F7D52;color:#4C6541;margin-right:6px;" onclick="setMemberPermission(\''+id+'\',\''+(v.permission==='manager'?'member':'manager')+'\')">'+(v.permission==='manager'?'一般家族に戻す':'管理家族にする')+'</button>';
+        }
+        if(((me&&v.permission!=='owner')||(isManagerClient()&&v.permission!=='owner'&&!me)))actions+='<button class="member-del" onclick="removeMember(\''+id+'\','+(me?'true':'false')+')">解除</button>';
+        html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?' (ご本人)':'')+(isManaged?'<span class="manager-badge">管理</span>':'')+(me?' (この端末)':'')+'</span><span>'+actions+'</span></div>';
       }
     });
     box.innerHTML=html;
   }catch(e){ box.innerHTML='<div class="empty">読み込めませんでした</div>'; }
+}
+async function setMemberPermission(mid,permission){
+  mid=memberRef(mid);
+  const label=permission==='manager'?'管理家族に変更しますか？\n参加承認、接続解除、薬情報、タグ、全削除ができるようになります。':'一般家族に戻しますか？';
+  if(!isOwnerClient()||!confirm(label))return;
+  try{await col('members').doc(mid).update({permission:permission});await loadOwnAccess();renderSetMembers();}
+  catch(e){alert('権限を変更できませんでした。通信状態を確認してください。');}
 }
 /* 家族の設定画面が開いているときだけ描き直す(本人画面からの承認では動かさない) */
 function refreshSetMembersIfOpen(){
@@ -4240,7 +4457,7 @@ async function denyMember(mid){
   mid=memberRef(mid);
   if(!confirm('この参加申請を認めない(削除する)? 相手は記録を見られないまま入口に戻ります。')) return;
   try{
-    await col('members').doc(mid).delete();
+    await callServer('removeHouseholdMember',{groupId:gid(),memberId:mid});
     refreshSetMembersIfOpen();
     alert('参加を認めませんでした。\nこのとき使われた招待コードは、もう使えません。あらためて招待するときは、「家族・本人を招待する」で新しい招待コードを発行してください。');
   }catch(e){ alert('操作できませんでした: '+e.message); }
@@ -4249,7 +4466,7 @@ async function removeMember(mid, isMe){
   mid=memberRef(mid);
   if(!confirm(isMe?'この端末の接続を解除しますか?\n解除すると、この家族の記録は見られなくなります。':'この人の接続を解除しますか?\n解除すると、その人はこの家族の記録(過去の分も含む)を見られなくなります。')) return;
   try{
-    await col('members').doc(mid).delete();
+    await callServer('removeHouseholdMember',{groupId:gid(),memberId:mid});
     if(isMe){
       previewStorage.removeItem('mainicoGid');
       previewStorage.removeItem('mainicoMode');
@@ -4264,13 +4481,16 @@ async function makeInvite(targetId){
   targetId = targetId || 'home-invite-area';
   const area=document.getElementById(targetId);
   try{
+    if(!isManagerClient())throw new Error('管理家族だけが招待コードを発行できます');
     const code=randCode();
+    const targetRole=(document.getElementById('invite-target-role')||{}).value==='honnin'?'honnin':'kazoku';
     await db.collection('invites').doc(code).set({
       groupId: gid(),
       createdBy: uid(),
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       expiresAt: firebase.firestore.Timestamp.fromMillis(Date.now()+24*60*60*1000),
-      used: false
+      used: false,
+      targetRole:targetRole
     });
     if(area){
       const msg='まいにこの招待コードです：'+code+'（24時間・1回有効）\nアプリ：https://pocham4173.github.io/hidamari/\n開いて「招待された方」にこのコードを入れてください。';
@@ -4317,7 +4537,7 @@ function printWatchTag(){
     '<li>開いた画面で、いまの様子を選んで送ってください（ご家族に届きます）</li>'+
     '<li>あなたの個人情報が送られることはありません</li></ol>'+
     '<div class="warn">けが・急病は119番／事件・保護が必要なときは110番</div>'+
-    '<div class="note">このタグに氏名・住所・連絡先は入っていません。<br>まいにこ（家族の見守りアプリ）のおまもりタグです。</div>'+
+    '<div class="note">このタグに氏名・住所・連絡先は入っていません。<br>まいにこ（家族のゆるやかな連絡アプリ）のおまもりタグです。</div>'+
     '<div class="cut">はさみで切って、持ち物に付けられます'+
     '<div class="minis"><div class="mini">'+mini+'<br>見つけたらQRを読み取ってください（家族に知らせが届きます）</div>'+
     '<div class="mini">'+mini+'<br>見つけたらQRを読み取ってください（家族に知らせが届きます）</div></div></div>');
@@ -4490,7 +4710,7 @@ async function loadWatchTag(){
     currentWatchTagId=(v.watchTagActive && v.watchTagId)?v.watchTagId:'';
     if(!currentWatchTagId){
       if(history)history.textContent='';
-      area.innerHTML='<button class="big-btn family" onclick="createWatchTag()">おまもりタグを作る</button>'+
+      area.innerHTML=(isManagerClient()?'<button class="big-btn family" onclick="createWatchTag()">おまもりタグを作る</button>':'<div class="note">タグの作成は管理家族が行います。</div>')+
         '<div class="note">内部確認用の試作品です。本人の同意、実通知、乱用防止、削除機能が完成するまで販売・配布には使いません。作成後も、いつでも停止・再発行できます。</div>';
       return;
     }
@@ -4555,11 +4775,12 @@ function renderWatchTag(id){
     '<div class="tag-qr">'+watchTagQr(url)+'</div>'+
     '<div class="tag-actions"><button class="tag-copy" onclick="printWatchTag()">タグを印刷する</button>'+
     '<button class="tag-copy" onclick="copyWatchTagLink()">リンクをコピー</button></div>'+
-    '<div class="tag-actions"><button class="tag-stop" onclick="stopWatchTag()">このタグを停止</button></div>'+
+    (isManagerClient()?'<div class="tag-actions"><button class="tag-stop" onclick="stopWatchTag()">このタグを停止</button></div>':'')+
     notifyBtn+
     '<div class="note">おまもりタグは緊急通報ではなく、家族が気づくための補助です。お知らせの音と表示は、アプリを開いている間だけ届きます。緊急の対応は、読み取った方からの119番・110番が基本です。</div></div>';
 }
 async function createWatchTag(){
+  if(!isManagerClient()){alert('管理家族だけがタグを作成できます。');return;}
   const area=document.getElementById('watch-tag-area');
   area.innerHTML='<div class="empty">安全なタグを作っています…</div>';
   const id=randWatchTagId();
@@ -4584,6 +4805,7 @@ async function copyWatchTagLink(){
   }catch(e){ alert('コピーできませんでした。QRを画像として保存してお使いください。'); }
 }
 async function stopWatchTag(){
+  if(!isManagerClient()){alert('管理家族だけがタグを停止できます。');return;}
   if(!currentWatchTagId || !confirm('このおまもりタグを停止しますか?\n停止後は、読み取っても家族へお知らせできなくなります。')) return;
   try{
     await db.collection('watchTags').doc(currentWatchTagId).update({active:false,stoppedAt:firebase.firestore.FieldValue.serverTimestamp()});
@@ -4596,7 +4818,7 @@ async function stopWatchTag(){
 async function revokeConsent(){
   if(!confirm('同意を取り消して、この端末での利用をやめますか?\nこの家族との接続も解除されます。')) return;
   try{
-    await col('members').doc(uid()).delete();
+    await callServer('removeHouseholdMember',{groupId:gid(),memberId:uid()});
     previewStorage.removeItem('mainicoConsent-a');
     previewStorage.removeItem('mainicoConsent-b');
     previewStorage.removeItem('mainicoGid');
@@ -4610,31 +4832,73 @@ async function revokeConsent(){
 async function deleteAllData(){
   if(!confirm('この家族の全データ(挨拶・体調・服薬・予定・お願い・メモ・家族の接続)を削除しますか?\nこの操作は元に戻せません。')) return;
   if(!confirm('本当に削除しますか?\n削除後、データは残りません(バックアップは設定されていません)。')) return;
+  const state=document.getElementById('delete-all-state'),btn=document.getElementById('delete-all-btn');
   try{
-    async function wipe(name, skipId){
-      while(true){
-        const snap=await col(name).limit(200).get();
-        if(snap.empty) break;
-        const batch=db.batch();
-        let n=0;
-        snap.forEach(doc=>{ if(doc.id!==skipId){ batch.delete(doc.ref); n++; } });
-        if(n===0) break;
-        await batch.commit();
-      }
-    }
-    await wipe('events');
-    await wipe('yotei');
-    /* 自分のメンバー情報だけ残したままグループを消し、最後に自分を消す */
-    await wipe('members', uid());
-    let grpErr=null;
-    try{ await grp().delete(); }catch(e){ grpErr=e; }
-    try{ await col('members').doc(uid()).delete(); }catch(e){ console.warn('self', e); }
-    if(grpErr) throw grpErr;
+    if(!isManagerClient())throw new Error('管理家族だけが削除できます');
+    if(btn)btn.disabled=true;if(state)state.textContent='サーバーですべてのデータを削除しています…';
+    const result=await callServer('deleteHousehold',{groupId:gid()});
     previewStorage.removeItem('mainicoGid');
     previewStorage.removeItem('mainicoMode');
-    alert('すべてのデータを削除しました。');
+    previewStorage.removeItem('mainicoDeviceLocked');
+    if(result.pendingCleanup){
+      alert('家族の記録と共有情報は削除しました。アカウント情報の一部は削除を再試行中です。完了とは表示しません。');
+    }else alert('家族の記録、接続、招待、タグ、通知、復旧情報を削除しました。');
     location.reload();
-  }catch(e){ alert('削除中にエラーが発生しました: '+e.message+'\nもう一度お試しください。'); }
+  }catch(e){ if(btn)btn.disabled=false;if(state)state.textContent='削除を完了できませんでした。データは削除済みと表示しません。';alert('削除中にエラーが発生しました: '+e.message+'\nもう一度お試しください。'); }
+}
+
+async function sendRecoveryEmail(){
+  const input=document.getElementById('recovery-email'),state=document.getElementById('recovery-email-state'),btn=document.getElementById('recovery-email-btn');
+  const email=(input.value||'').trim();
+  if(!/^\S+@\S+\.\S+$/.test(email)){state.textContent='メールアドレスを確認してください。';return;}
+  btn.disabled=true;state.textContent='復旧用のメールを送っています…';
+  try{
+    await auth.sendSignInLinkToEmail(email,{url:'https://pocham4173.github.io/hidamari/?recover=1',handleCodeInApp:true});
+    previewStorage.setItem('mainicoRecoveryEmail',email);
+    state.textContent='メールを送りました。この端末でメールのリンクを一度開くと登録が完了します。';
+  }catch(e){state.textContent='送れませんでした。通信状態とメール設定を確認してください。';}
+  finally{btn.disabled=false;}
+}
+async function handleRecoveryLink(){
+  if(!auth.isSignInWithEmailLink(location.href))return false;
+  let email=previewStorage.getItem('mainicoRecoveryEmail')||'';
+  if(!email)email=window.prompt('復旧用に登録したメールアドレスを入力してください')||'';
+  if(!email)throw new Error('メールアドレスが必要です');
+  const credential=firebase.auth.EmailAuthProvider.credentialWithLink(email,location.href);
+  const current=auth.currentUser;
+  try{
+    if(current&&current.isAnonymous&&gid())await current.linkWithCredential(credential);
+    else await auth.signInWithCredential(credential);
+  }catch(e){
+    if(e.code==='auth/credential-already-in-use'||e.code==='auth/email-already-in-use')await auth.signInWithCredential(credential);
+    else throw e;
+  }
+  previewStorage.setItem('mainicoRecoveryEmail',email);
+  history.replaceState({},document.title,location.pathname);
+  return true;
+}
+
+function pushPlatform(){return /iPhone|iPad|iPod/.test(navigator.userAgent)?'ios':(/Android/.test(navigator.userAgent)?'android':'web');}
+async function enablePushNotifications(){
+  const state=document.getElementById('push-state'),btn=document.getElementById('push-enable-btn');
+  const supported=('Notification' in window)&&('serviceWorker' in navigator)&&await firebase.messaging.isSupported();
+  if(!supported){
+    state.textContent='このブラウザーは通知に対応していません。iPhoneはホーム画面に追加してから開いてください。';return;
+  }
+  btn.disabled=true;state.textContent='通知の準備をしています…';
+  try{
+    const permission=await Notification.requestPermission();if(permission!=='granted')throw new Error('通知が許可されていません');
+    const reg=await navigator.serviceWorker.ready;
+    const messaging=previewApp.messaging();
+    const options={serviceWorkerRegistration:reg};
+    if(window.MAINICO_VAPID_KEY)options.vapidKey=window.MAINICO_VAPID_KEY;
+    const token=await messaging.getToken(options);if(!token)throw new Error('通知端末を登録できません');
+    let deviceId=previewStorage.getItem('mainicoDeviceId');
+    if(!deviceId){deviceId=randCode()+randCode();previewStorage.setItem('mainicoDeviceId',deviceId);}
+    await col('members').doc(uid()).collection('devices').doc(deviceId).set({token:token,platform:pushPlatform(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    state.textContent='この端末への通知を登録しました。';
+  }catch(e){state.textContent='通知を登録できませんでした。ホーム画面から開き、端末の通知設定を確認してください。';}
+  finally{btn.disabled=false;}
 }
 
 /* ===== 起動 ===== */
@@ -4642,12 +4906,32 @@ window.mainicoStartupStage='ログインの応答待ち';
 try{auth.onAuthStateChanged(async user=>{
   if(!user){
     window.mainicoStartupStage='ログイン確認中';
-    try{ await auth.signInAnonymously(); }
+    try{
+      if(auth.isSignInWithEmailLink(location.href)){
+        await handleRecoveryLink();
+      }else await auth.signInAnonymously();
+    }
     catch(e){
       window.mainicoStartupStage='ログインできませんでした';
       window.showStartupProblem('ログインできませんでした');
     }
     return;
+  }
+  if(auth.isSignInWithEmailLink(location.href)){
+    try{await handleRecoveryLink();return;}catch(e){window.showStartupProblem('復旧用メールを確認できませんでした');return;}
+  }
+  if(!gid()){
+    window.mainicoStartupStage='以前の接続を探しています';
+    try{
+      const profile=await db.collection('userProfiles').doc(user.uid).get({source:'server'});
+      if(profile.exists){
+        const p=profile.data();previewStorage.setItem('mainicoGid',p.groupId);previewStorage.setItem('mainicoName',p.name||'家族');
+        previewStorage.setItem('mainicoMode',p.mode==='honnin'?'honnin':'kazoku');previewStorage.setItem('kazokuOnly',p.mode==='konly'?'1':'');
+        previewStorage.setItem('mainicoDeviceLocked','1');
+      }
+    }catch(e){
+      if(!user.isAnonymous){window.showStartupProblem('以前の家族との接続を確認できませんでした');return;}
+    }
   }
   /* グループ所属の確認 */
   if(gid()){
@@ -4661,6 +4945,8 @@ try{auth.onAuthStateChanged(async user=>{
         document.getElementById('loading').style.display='none';
         showPending();
         return;
+      }else{
+        await saveUserProfile().catch(function(e){console.warn('profile migration',e);});
       }
     }catch(e){
       /* 通信エラーでは接続情報を消さない。表示して再試行できるようにする */

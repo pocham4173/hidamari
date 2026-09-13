@@ -27,6 +27,11 @@ jobs:
       - name: リポジトリを取得
         uses: actions/checkout@v5
 
+      - name: Node.js 22を準備
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Node.js のバージョンを表示
         run: node --version
 
@@ -35,3 +40,7 @@ jobs:
 
       - name: 家族ホーム・通信・伝言の回帰検査
         run: node tests/home-reliability.test.mjs
+
+      - name: サーバー処理の依存関係と構文を検査
+        working-directory: functions
+        run: npm ci --ignore-scripts && npm audit --omit=dev && node --check index.js

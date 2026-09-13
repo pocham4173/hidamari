@@ -1,8 +1,9 @@
 {
   "name": "まいにこ",
   "short_name": "まいにこ",
-  "description": "毎日の挨拶で家族がつながるアプリ",
+  "description": "離れた家族が今日を無理なく伝え合う、ゆるやかな連絡帳",
   "start_url": "./index.html",
+  "id": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#FAF7F0",
