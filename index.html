@@ -204,6 +204,21 @@ table.cal-rec td.pad{background:none;}
 .rg-col b{font-size:.68rem;color:var(--cha);line-height:1.4;}
 .rg-labels{display:flex;gap:4px;padding:2px 2px 0;}
 .rg-labels s{flex:1;text-decoration:none;font-size:.6rem;color:var(--usucha);text-align:center;white-space:nowrap;overflow:hidden;}
+.rg-chart{border:1px solid #DCE4E0;border-radius:12px;background:#fff;overflow:hidden;}
+.rg-chart>summary{display:flex;align-items:center;gap:8px;min-height:58px;padding:12px;cursor:pointer;list-style:none;}
+.rg-chart>summary::-webkit-details-marker{display:none;}
+.rg-chart>summary::after{content:'詳しく見る';font-size:.72rem;color:#315FAE;font-weight:900;}
+.rg-chart[open]>summary::after{content:'閉じる';}
+.rg-chart .rg-open-body{padding:0 12px 14px;border-top:1px solid #E6ECE8;}
+.rg-chart .rg-t{flex:1;display:flex;flex-direction:column;gap:2px;}
+.rg-chart .rg-t span{margin-left:0;}
+.rg-records{margin-top:12px;padding-top:10px;border-top:1px dashed #D9E3DC;}
+.rg-records strong{display:block;font-size:.82rem;margin-bottom:5px;}
+.rg-buckets{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;}
+.rg-bucket{padding:7px 8px;border-radius:8px;background:#F5F8F6;font-size:.75rem;font-weight:800;}
+.rg-record{padding:7px 0;border-bottom:1px solid #EEF1EF;font-size:.78rem;line-height:1.5;}
+.rg-record time{display:block;color:var(--usucha);font-size:.7rem;font-weight:800;}
+.rg-more{margin-top:6px;color:var(--usucha);font-size:.72rem;}
 /* きょうの予定・声・本人の予定入力 */
 .h-today{background:#fff;border:3px solid var(--hi);border-radius:18px;padding:14px 16px;margin-bottom:12px;}
 .h-today .ht-lb{font-size:1rem;font-weight:900;color:var(--hi-koi);}
@@ -231,6 +246,10 @@ table.cal-rec td.pad{background:none;}
 .sum-overview .so-main{font-size:1.65rem;font-weight:900;color:var(--cha);line-height:1.35;margin-top:3px;}
 .sum-overview .so-sub{font-size:.9rem;font-weight:800;color:var(--usucha);margin-top:4px;}
 .sum-points{margin-top:14px;padding:14px;border-radius:14px;background:#F5FAF7;border:2px solid #B9D9C5;}
+.sum-points>summary,.sum-list>summary,.sum-graph>summary{display:flex;align-items:center;justify-content:space-between;min-height:52px;cursor:pointer;list-style:none;font-weight:900;color:var(--cha);}
+.sum-points>summary::-webkit-details-marker,.sum-list>summary::-webkit-details-marker,.sum-graph>summary::-webkit-details-marker{display:none;}
+.sum-points>summary::after,.sum-list>summary::after,.sum-graph>summary::after{content:'＋ 開く';font-size:.72rem;color:#315FAE;}
+.sum-points[open]>summary::after,.sum-list[open]>summary::after,.sum-graph[open]>summary::after{content:'− 閉じる';}
 .sum-points h4{font-size:1.05rem;color:#276445;margin-bottom:4px;}
 .sum-points .sp-intro{font-size:.76rem;color:var(--usucha);line-height:1.5;margin-bottom:10px;}
 .sum-insight{padding:11px 12px;margin-top:8px;border-radius:11px;background:#fff;border-left:6px solid #3F815C;box-shadow:0 1px 0 rgba(40,70,55,.05);}
@@ -413,6 +432,10 @@ table.cal-rec td.pad{background:none;}
 .family-task-preview strong{color:var(--ha-koi);}
 .care-today{margin-top:12px;padding:10px 12px;border-radius:11px;background:#F5FAF7;color:var(--cha);font-size:.83rem;line-height:1.6;}
 .care-today b{display:block;color:#33704D;}
+.medicine-info{margin-top:14px;padding-top:14px;border-top:1px solid #E4EAF0;}
+.medicine-info h4{color:#315FAE;margin-bottom:4px;}
+.medicine-info-grid{display:grid;grid-template-columns:1fr;gap:8px;}
+.medicine-info-grid input{width:100%;}
 .rec-load-error{padding:14px;border:2px solid #D9A274;border-radius:12px;background:#FFF8EE;color:#7B451A;line-height:1.6;font-weight:800;}
 .rec-load-error button{display:block;margin-top:10px;min-height:44px;padding:8px 16px;border:2px solid #B56B37;border-radius:9px;background:#fff;color:#7B451A;font:inherit;cursor:pointer;}
 .care-config{margin-top:10px;padding:10px;border:1px dashed #B8CFC0;border-radius:11px;background:#F6FBF7;}
@@ -583,6 +606,7 @@ table.cal-rec td.pad{background:none;}
     <div class="consent-note">
       <b>大切な注意</b><br>
       ・服薬ボタンは「押した記録」です。実際に薬を飲んだことを保証しません<br>
+      ・お薬情報を登録する場合は、本人の了解を得て必要最小限にし、最新の処方はお薬手帳・薬袋・医師・薬剤師に確認してください<br>
       ・記録の表示は通信状態や端末の設定により、遅れたり届かなかったりする場合があります。記録がないことは、未実施や異常を意味しません<br>
       ・まいにこは24時間の監視、救急通報、医師の診断や治療の代わりではありません<br>
       ・体調の異常時や緊急時は、医療機関または119番へ連絡してください<br>
@@ -606,6 +630,7 @@ table.cal-rec td.pad{background:none;}
     <div class="consent-note">
       <b>大切な注意</b><br>
       ・「本人に薬を飲んだか確認しました」は家族による確認の記録です。服用そのものを証明しません<br>
+      ・お薬情報を登録する場合は、本人の了解を得て必要最小限にし、最新の処方はお薬手帳・薬袋・医師・薬剤師に確認してください<br>
       ・記録がないことは、未実施や異常を意味しません<br>
       ・まいにこは24時間の監視、救急通報、医師の診断や治療の代わりではありません<br>
       ・体調の異常時や緊急時は、医療機関または119番へ連絡してください<br>
@@ -1128,6 +1153,21 @@ table.cal-rec td.pad{background:none;}
           <button type="button" onclick="openDisasterQr()">🪪<br>災害用QRを作る</button>
         </div>
         <div class="note">相談先の確認、日頃の備え、災害時に伝える情報をここでまとめられます。</div>
+        <div class="medicine-info" id="medicine-info-area">
+          <h4>💊 お薬情報（任意）</h4>
+          <div class="note">本人と承認済みの家族だけで共有します。薬の名前と飲む時間を、必要な範囲だけ登録してください。</div>
+          <details class="family-compose" id="medicine-info-compose"><summary>＋ お薬情報を追加</summary>
+            <div class="medicine-info-grid">
+              <input type="text" id="medicine-name" maxlength="50" placeholder="薬の名前" aria-label="薬の名前">
+              <input type="text" id="medicine-timing" maxlength="50" placeholder="例：朝食後・1日1回" aria-label="飲む時間や回数">
+            </div>
+            <div class="in-row"><input type="text" id="medicine-note" maxlength="100" placeholder="注意メモ（任意）"></div>
+            <button class="big-btn family" id="medicine-info-btn" type="button" onclick="addMedicineInfo()">お薬情報を登録</button>
+          </details>
+          <div class="save-state" id="medicine-info-state" aria-live="polite"></div>
+          <div class="family-tool-list" id="medicine-info-list"><div class="empty">読み込み中…</div></div>
+          <div class="note">これは家族の共有メモです。処方の変更や服用方法は、お薬手帳・薬袋・医師・薬剤師の最新の指示を確認してください。おまもりタグや災害用QRには表示しません。</div>
+        </div>
         <div class="set-sec family-only-card" id="family-contact-area">
           <h4>大切な連絡先</h4>
           <div class="note">病院・薬局・ケアマネジャーなど、家族で使う連絡先を登録できます。</div>
@@ -1568,11 +1608,17 @@ function installApp(){
 updateInstallButton();
 
 /* ===== 画面遷移 ===== */
+function resetFamilyScroll(){
+  var body=document.querySelector('.f-body');
+  if(body) body.scrollTop=0;
+  try{window.scrollTo({top:0,left:0,behavior:'auto'});}catch(e){window.scrollTo(0,0);}
+}
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.getElementById('fnav').classList.toggle('show', id==='kazoku');
   document.body.classList.toggle('f-adult', id==='kazoku');
+  if(id==='kazoku') resetFamilyScroll();
 }
 
 /* ===== モード選択→同意→名前→接続 ===== */
@@ -2321,6 +2367,7 @@ function initKazoku(){
   if(kOnly)familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading'};
   showTab('t-home');
   if(kOnly) initFamilyOnlyTools();
+  initMedicineInfo();
   initDisaster();
   loadWatchTag();
   if(memWatchUnsub) memWatchUnsub();
@@ -2467,6 +2514,7 @@ function showTab(t){
     renderFamilySchedule();
     renderFamilyTasks();
   }
+  resetFamilyScroll();
 }
 document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
   b.addEventListener('click',()=>showTab(b.dataset.t));
@@ -2684,6 +2732,7 @@ function recDayStr(y,m,d){ return y+'-'+pad2(m+1)+'-'+pad2(d); }
    利用方法は入力画面だけを変え、これまで共有した履歴を隠しません。 */
 var REC_META_TYPES = {
   'care-config':1,
+  'medicine-info':1,
   'family-note':1,'family-note-ack':1,'family-note-reply':1,
   'family-task':1,'family-task-done':1,
   'family-contact':1
@@ -2732,6 +2781,7 @@ function rgLoad(p){
     var n=buckets.length;
     var M={aisatsu:[], message:[], kusuri:[], kibun:[], onegai:[], care:[]};
     var D={aisatsu:{}, message:{}, kusuri:{}, kibun:{}, onegai:{}, care:{}};
+    var E={aisatsu:[], message:[], kusuri:[], kibun:[], onegai:[], care:[]};
     Object.keys(M).forEach(function(k){ for(var i=0;i<n;i++) M[k].push(0); });
     snap.forEach(function(doc){
       var v=doc.data();
@@ -2747,11 +2797,11 @@ function rgLoad(p){
       else if(t==='kibun'||t==='kibun-kazoku') key='kibun';
       else if(t==='care-log') key='care';
       else if(t==='onegai') key='onegai';
-      if(key){ M[key][b]++; D[key][v.date]=1; }
+      if(key){ M[key][b]++; D[key][v.date]=1; E[key].push(v); }
     });
     if(mySeq!==rgSeq) return;   /* 後から来た古い結果では上書きしない */
     var periodDays=Math.floor((new Date(todayStr()+'T00:00:00')-new Date(rgDs(start)+'T00:00:00'))/86400000)+1;
-    rgRender({buckets:buckets, M:M, D:D, periodDays:periodDays});
+    rgRender({buckets:buckets, M:M, D:D, E:E, periodDays:periodDays});
   }).catch(function(){
     if(mySeq!==rgSeq) return;
     body.innerHTML='<div class="empty">読み込めませんでした。通信状態を確認して、もう一度期間のボタンを押してください。</div>';
@@ -2771,19 +2821,33 @@ function rgRender(d){
     ['ちょっとお願い','onegai','#A34A2E'],
     ['家族の記録','care','#3F815C']
   ];
-  var html='';
+  var html='<div class="note" style="margin:8px 0 2px;">見たい項目を押すと、期間別の件数と記録内容が開きます。</div>';
   series.forEach(function(sc){
     var vals=d.M[sc[1]];
     var sum=vals.reduce(function(a,b){return a+b;},0);
     var mx=Math.max.apply(null, vals.concat([1]));
     var activeDays=Object.keys(d.D[sc[1]]||{}).length;
-    html+='<div class="rg-chart"><div class="rg-t">'+sc[0]+'<span>'+d.periodDays+'日中 '+sum+'件・記録あり'+activeDays+'日</span></div><div class="rg-bars">';
+    if(sum===0)return;
+    html+='<details class="rg-chart"><summary><div class="rg-t">'+sc[0]+'<span>'+d.periodDays+'日中 '+sum+'件・記録あり'+activeDays+'日</span></div></summary><div class="rg-open-body"><div class="rg-bars">';
     vals.forEach(function(v){
       var h=v===0?2:Math.max(8, Math.round(v/mx*100));
       var color=v===0?'#E9E1D2':sc[2];
       html+='<div class="rg-col"><b>'+(v||'')+'</b><i style="height:'+h+'%;background:'+color+';"></i></div>';
     });
-    html+='</div><div class="rg-labels">'+d.buckets.map(function(b){return '<s>'+b.label+'</s>';}).join('')+'</div></div>';
+    html+='</div><div class="rg-labels">'+d.buckets.map(function(b){return '<s>'+b.label+'</s>';}).join('')+'</div>';
+    html+='<div class="rg-buckets">'+d.buckets.map(function(b,i){return '<div class="rg-bucket">'+esc(b.label)+'：'+vals[i]+'件</div>';}).join('')+'</div>';
+    var events=(d.E&&d.E[sc[1]]||[]).slice().sort(function(a,b){return ((b.date||'')+' '+(b.at&&b.at.seconds||0)).localeCompare((a.date||'')+' '+(a.at&&a.at.seconds||0));});
+    if(events.length){
+      html+='<div class="rg-records"><strong>記録内容（新しい順）</strong>';
+      events.slice(0,20).forEach(function(v){
+        var p=REC_LABEL[v.type]?REC_LABEL[v.type](v):['記録','',v.text||'記録がありました'];
+        var time=v.at&&typeof v.at.seconds==='number'?' '+recTime(v):'';
+        html+='<div class="rg-record"><time>'+esc(v.date||'日付不明')+esc(time)+'</time>'+esc(p[2]||p[0])+'</div>';
+      });
+      if(events.length>20)html+='<div class="rg-more">ほか'+(events.length-20)+'件は「日付を選んで見る」で確認できます。</div>';
+      html+='</div>';
+    }
+    html+='</div></details>';
   });
   body.innerHTML=html;
 }
@@ -3281,8 +3345,8 @@ function recDrawSummary(){
     addInsight('服薬に関する記録',medicineText,'blue');
   }
   if(counts.care||counts.memo) addInsight('家族が残した様子','ワンタップ記録'+detailCounts.careK+'件・自由な様子メモ'+detailCounts.memoK+'件が記録されています。具体的な内容は下の項目を押すと確認できます。','blue');
-  var points=document.createElement('div'); points.className='sum-points';
-  var pt=document.createElement('h4'); pt.textContent='記録からわかること'; points.appendChild(pt);
+  var points=document.createElement('details'); points.className='sum-points';
+  var pt=document.createElement('summary'); pt.textContent='記録からわかること（'+insights.length+'項目）'; points.appendChild(pt);
   var pi=document.createElement('div'); pi.className='sp-intro'; pi.textContent='記録された事実を、家族で振り返りやすい形にまとめています。'; points.appendChild(pi);
   insights.forEach(function(v){
     var card=document.createElement('div'); card.className='sum-insight'+(v.tone?' '+v.tone:'');
@@ -3324,8 +3388,8 @@ function recDrawSummary(){
   }
   function addList(title,rows,note){
     if(!rows.length) return;
-    var list=document.createElement('div'); list.className='sum-list';
-    var lt=document.createElement('div'); lt.className='sl-ttl'; lt.textContent=title; list.appendChild(lt);
+    var list=document.createElement('details'); list.className='sum-list';
+    var lt=document.createElement('summary'); lt.className='sl-ttl'; lt.textContent=title+'（'+rows.length+'項目）'; list.appendChild(lt);
     var ls=document.createElement('div'); ls.className='sl-sub'; ls.textContent=note; list.appendChild(ls);
     rows.forEach(function(r){
       var item=document.createElement('details'); item.className='sum-item';
@@ -3341,8 +3405,8 @@ function recDrawSummary(){
 
   function addGraph(title,rows,note){
     if(!rows.length) return;
-    var g=document.createElement('div'); g.className='sum-graph';
-    var gt=document.createElement('div'); gt.className='g-ttl'; gt.textContent=title; g.appendChild(gt);
+    var g=document.createElement('details'); g.className='sum-graph';
+    var gt=document.createElement('summary'); gt.className='g-ttl'; gt.textContent=title; g.appendChild(gt);
     var gs=document.createElement('div'); gs.className='g-sub'; gs.textContent=note||('件数／記録があった日数（'+elapsed+'日中）'); g.appendChild(gs);
     var mx=Math.max.apply(null,rows.map(function(r){return r[1];}).concat([1]));
     rows.forEach(function(r){
@@ -3581,6 +3645,54 @@ const CARE_DEFAULT=['meal','water','call','visit'];
 let familyOnlyUnsubs=[];
 let familyOnlyData={config:[],notes:[],noteAcks:[],noteReplies:[],tasks:[],taskDone:[],contacts:[]};
 let familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading'};
+let medicineInfoUnsub=null,medicineInfoRows=[],medicineInfoStatus='loading';
+
+function initMedicineInfo(){
+  if(medicineInfoUnsub){try{medicineInfoUnsub();}catch(e){}}
+  medicineInfoRows=[];medicineInfoStatus='loading';renderMedicineInfo();
+  medicineInfoUnsub=col('events').where('type','==','medicine-info').onSnapshot({includeMetadataChanges:true},function(snap){
+    const rows=[];snap.forEach(function(doc){const v=doc.data();v._id=doc.id;rows.push(v);});
+    rows.sort(foByNewest);medicineInfoRows=rows;
+    medicineInfoStatus=snap.metadata&&snap.metadata.fromCache?'cached':'ready';renderMedicineInfo();
+  },function(){medicineInfoStatus='error';renderMedicineInfo();});
+}
+function renderMedicineInfo(){
+  const box=document.getElementById('medicine-info-list');if(!box)return;
+  box.textContent='';
+  if(medicineInfoStatus==='loading'){box.textContent='お薬情報を読み込んでいます…';return;}
+  if(medicineInfoStatus==='error'){box.textContent='お薬情報を読み込めませんでした。通信状態を確認してください。';return;}
+  if(medicineInfoStatus==='cached'){
+    const note=document.createElement('div');note.className='note';note.textContent='保存済みのお薬情報です。通信が戻るまで最新かどうか確認できません。';box.appendChild(note);
+  }
+  if(!medicineInfoRows.length){
+    const empty=document.createElement('div');empty.className='empty';empty.textContent=medicineInfoStatus==='cached'?'保存済みの情報はありません（最新情報は通信確認待ち）':'登録されているお薬情報はありません';box.appendChild(empty);return;
+  }
+  medicineInfoRows.forEach(function(v){
+    const row=document.createElement('div');row.className='family-tool-row';
+    const name=document.createElement('b');name.textContent=v.medicineName||'お薬';row.appendChild(name);
+    if(v.medicineTiming){const timing=document.createElement('div');timing.textContent='飲む時間・回数：'+v.medicineTiming;row.appendChild(timing);}
+    if(v.note){const note=document.createElement('div');note.textContent='メモ：'+v.note;row.appendChild(note);}
+    const meta=document.createElement('span');meta.className='meta';meta.textContent=(v.name||'家族')+'さんが登録 ・ '+foDateTime(v);row.appendChild(meta);
+    if(v.uid===uid()){
+      const acts=document.createElement('div');acts.className='family-tool-actions';
+      const del=document.createElement('button');del.type='button';del.className='danger';del.textContent='削除';
+      del.addEventListener('click',function(){deleteFamilyEvent(v._id,'お薬情報');});acts.appendChild(del);row.appendChild(acts);
+    }
+    box.appendChild(row);
+  });
+}
+async function addMedicineInfo(){
+  const nameEl=document.getElementById('medicine-name'),timingEl=document.getElementById('medicine-timing'),noteEl=document.getElementById('medicine-note');
+  const medicineName=nameEl.value.trim(),medicineTiming=timingEl.value.trim(),note=noteEl.value.trim();
+  if(!medicineName){foState('medicine-info-state','薬の名前を入力してください',true);return;}
+  const btn=document.getElementById('medicine-info-btn');btn.disabled=true;foState('medicine-info-state','保存しています…',false);
+  try{
+    await addEvent({type:'medicine-info',medicineName:medicineName,medicineTiming:medicineTiming,note:note,name:myName(),clientAt:Date.now()});
+    nameEl.value='';timingEl.value='';noteEl.value='';document.getElementById('medicine-info-compose').open=false;
+    foState('medicine-info-state','お薬情報を共有しました',false);
+  }catch(e){foState('medicine-info-state','保存できませんでした。入力は残っています',true);}
+  finally{btn.disabled=false;}
+}
 
 function foMillis(v){
   if(v.at&&v.at.toMillis) return v.at.toMillis();
