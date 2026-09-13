@@ -1288,6 +1288,8 @@ setTimeout(function(){
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
+<script src="mainico-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script>
 const previewStorage={
@@ -1303,6 +1305,12 @@ const previewApp=firebase.initializeApp({
   messagingSenderId: "565713968884",
   appId: "1:565713968884:web:0a9665d1fe5e0fa161c8a1"
 });
+if(window.MAINICO_RECAPTCHA_SITE_KEY){
+  previewApp.appCheck().activate(
+    new firebase.appCheck.ReCaptchaEnterpriseProvider(window.MAINICO_RECAPTCHA_SITE_KEY),
+    true
+  );
+}
 const db = previewApp.firestore();
 window.mainicoStartupStage='ログインの準備中';
 if('serviceWorker' in navigator){
