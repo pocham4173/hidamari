@@ -14,6 +14,72 @@ service cloud.firestore {
           .data.get('status', 'approved') == 'approved';
     }
 
+    function member(groupId, uid) {
+      return get(/databases/$(db)/documents/groups/$(groupId)/members/$(uid));
+    }
+
+    function isManager(groupId) {
+      return isApproved(groupId)
+        && (
+          member(groupId, request.auth.uid).data.get('permission', '') == 'owner'
+          || (
+            member(groupId, request.auth.uid).data.get('permission', '') == 'manager'
+            || (!member(groupId, request.auth.uid).data.keys().hasAny(['permission'])
+            && get(/databases/$(db)/documents/groups/$(groupId)).data.createdBy == request.auth.uid
+            )
+          )
+        );
+    }
+
+    function isOwner(groupId) {
+      return isApproved(groupId)
+        && (
+          member(groupId, request.auth.uid).data.get('permission', '') == 'owner'
+          || (!member(groupId, request.auth.uid).data.keys().hasAny(['permission'])
+            && get(/databases/$(db)/documents/groups/$(groupId)).data.createdBy == request.auth.uid)
+        );
+    }
+
+    function validMember(data) {
+      return data.keys().hasOnly([
+          'name', 'role', 'permission', 'status', 'inviteCode', 'joinedAt'
+        ])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 40
+        && data.role in ['honnin', 'kazoku']
+        && data.permission in ['owner', 'manager', 'member']
+        && data.status in ['pending', 'approved']
+        && data.joinedAt == request.time;
+    }
+
+    function validEvent(data) {
+      return data.keys().hasOnly([
+          'type', 'date', 'at', 'uid', 'text', 'slot', 'emoji', 'name',
+          'replyTo', 'clientAt', 'keys', 'items', 'careKey', 'due'
+        ])
+        && data.keys().hasAll(['type', 'date', 'at', 'uid'])
+        && data.type in [
+          'aisatsu', 'kibun', 'kusuri', 'onegai', 'aisatsu-back',
+          'ask-kusuri', 'family-message', 'onegai-back', 'family-message-back',
+          'kibun-kazoku', 'kusuri-kakunin', 'memo', 'care-config', 'care-log',
+          'family-note', 'family-note-ack', 'family-note-reply', 'family-task',
+          'family-task-done', 'family-contact', 'disaster-safe',
+          'disaster-evacuating', 'disaster-help', 'member-joined'
+        ]
+        && data.date is string && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.at == request.time
+        && data.uid == request.auth.uid
+        && (!data.keys().hasAny(['text']) || (data.text is string && data.text.size() <= 120))
+        && (!data.keys().hasAny(['name']) || (data.name is string && data.name.size() <= 40))
+        && (!data.keys().hasAny(['slot']) || data.slot in ['asa', 'hiru', 'yoru'])
+        && (!data.keys().hasAny(['emoji']) || (data.emoji is string && data.emoji.size() <= 8))
+        && (!data.keys().hasAny(['replyTo']) || (data.replyTo is string && data.replyTo.size() <= 128))
+        && (!data.keys().hasAny(['clientAt']) || data.clientAt is int)
+        && (!data.keys().hasAny(['keys']) || (data.keys is list && data.keys.size() <= 20))
+        && (!data.keys().hasAny(['items']) || (data.items is list && data.items.size() <= 20))
+        && (!data.keys().hasAny(['careKey']) || (data.careKey is string && data.careKey.size() <= 60))
+        && (!data.keys().hasAny(['due']) || (data.due is string && data.due.size() <= 10));
+    }
+
     match /groups/{groupId} {
       allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid;
@@ -21,7 +87,7 @@ service cloud.firestore {
       allow get: if isApproved(groupId);
       allow list: if false;
       allow update: if false;
-      allow delete: if isApproved(groupId);
+      allow delete: if isManager(groupId);
 
       match /members/{uid} {
         allow get: if isApproved(groupId)
@@ -30,41 +96,86 @@ service cloud.firestore {
 
         allow create: if signedIn()
           && request.auth.uid == uid
-          && (
-            (
-              get(/databases/$(db)/documents/groups/$(groupId)).data.createdBy
-                == request.auth.uid
-              && request.resource.data.get('status', 'approved') == 'approved'
-            )
-            ||
-            (
-              request.resource.data.status == 'pending'
-              && request.resource.data.inviteCode is string
-              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode))
-                .data.groupId == groupId
-              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode))
-                .data.used == false
-              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode))
-                .data.expiresAt > request.time
-            )
-          );
+          && validMember(request.resource.data)
+          && get(/databases/$(db)/documents/groups/$(groupId)).data.createdBy == request.auth.uid
+          && request.resource.data.status == 'approved'
+          && request.resource.data.permission == 'owner'
+          && !request.resource.data.keys().hasAny(['inviteCode']);
 
-        allow update: if isApproved(groupId)
+        allow update: if (
+          isManager(groupId)
           && resource.data.status == 'pending'
           && request.resource.data.status == 'approved'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        ) || (
+          isOwner(groupId)
+          && resource.data.status == 'approved'
+          && resource.data.get('permission', 'member') != 'owner'
+          && request.resource.data.permission in ['manager', 'member']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['permission'])
+        );
 
-        allow delete: if isApproved(groupId)
-          || (signedIn() && request.auth.uid == uid);
+        /* 端末トークン・復旧情報・Auth利用者も残さないため、解除はCloud Functionsだけで行う。 */
+        allow delete: if false;
+
+        match /devices/{deviceId} {
+          allow read: if false;
+          allow create, update: if signedIn() && request.auth.uid == uid
+            && isApproved(groupId)
+            && request.resource.data.keys().hasOnly(['token', 'platform', 'updatedAt'])
+            && request.resource.data.token is string
+            && request.resource.data.token.size() >= 20
+            && request.resource.data.token.size() <= 4096
+            && request.resource.data.platform in ['web', 'ios', 'android']
+            && request.resource.data.updatedAt == request.time;
+          allow delete: if signedIn() && request.auth.uid == uid;
+        }
       }
 
       match /events/{eventId} {
         allow read: if isApproved(groupId);
-        allow create: if isApproved(groupId)
-          && request.resource.data.uid == request.auth.uid;
+        allow create: if isApproved(groupId) && validEvent(request.resource.data);
         allow update: if false;
         allow delete: if isApproved(groupId)
-          && resource.data.uid == request.auth.uid;
+          && (resource.data.uid == request.auth.uid || isManager(groupId));
+      }
+
+      match /medicines/{medicineId} {
+        allow read: if isApproved(groupId);
+        allow create: if isManager(groupId)
+          && request.resource.data.keys().hasOnly([
+            'name', 'timing', 'note', 'status', 'verifiedAt',
+            'createdAt', 'updatedAt', 'updatedBy'
+          ])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 50
+          && request.resource.data.timing is string
+          && request.resource.data.timing.size() <= 50
+          && request.resource.data.note is string
+          && request.resource.data.note.size() <= 100
+          && request.resource.data.status in ['active', 'needs-review']
+          && request.resource.data.verifiedAt is timestamp
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.updatedBy == request.auth.uid;
+        allow update: if isManager(groupId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'timing', 'note', 'status', 'verifiedAt', 'updatedAt', 'updatedBy'
+          ])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 50
+          && request.resource.data.timing is string
+          && request.resource.data.timing.size() <= 50
+          && request.resource.data.note is string
+          && request.resource.data.note.size() <= 100
+          && request.resource.data.status in ['active', 'stopped', 'needs-review']
+          && request.resource.data.verifiedAt is timestamp
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if false;
       }
 
       match /yotei/{yoteiId} {
@@ -113,7 +224,7 @@ service cloud.firestore {
         allow get: if isApproved(groupId);
         allow list: if false;
 
-        allow create: if isApproved(groupId)
+        allow create: if isManager(groupId)
           && request.resource.data.keys().hasOnly([
             'watchTagId', 'watchTagActive', 'watchTagUpdatedAt'
           ])
@@ -126,7 +237,7 @@ service cloud.firestore {
           && get(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
             .data.active == true;
 
-        allow update: if isApproved(groupId)
+        allow update: if isManager(groupId)
           && request.resource.data.keys().hasOnly([
             'watchTagId', 'watchTagActive', 'watchTagUpdatedAt'
           ])
@@ -142,22 +253,40 @@ service cloud.firestore {
           && get(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
             .data.active == request.resource.data.watchTagActive;
 
-        allow delete: if false;
+        allow delete: if isManager(groupId);
       }
     }
 
+    match /userProfiles/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['groupId', 'mode', 'name', 'updatedAt'])
+        && request.resource.data.groupId is string
+        && request.resource.data.groupId.size() >= 1
+        && request.resource.data.mode in ['honnin', 'kazoku', 'konly']
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
     match /invites/{code} {
-      allow get: if signedIn();
+      allow get: if false;
       allow list: if false;
       allow create: if signedIn()
-        && isApproved(request.resource.data.groupId);
-      allow update: if signedIn()
-        && resource.data.used == false
-        && request.resource.data.used == true
-        && request.resource.data.groupId == resource.data.groupId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used']);
+        && isManager(request.resource.data.groupId)
+        && request.resource.data.keys().hasOnly([
+          'groupId', 'createdBy', 'createdAt', 'expiresAt', 'used', 'targetRole'
+        ])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.used == false
+        && request.resource.data.targetRole in ['honnin', 'kazoku'];
+      allow update: if false;
       allow delete: if signedIn()
-        && isApproved(resource.data.groupId);
+        && isManager(resource.data.groupId);
     }
 
     // QRおまもりタグ本体
@@ -174,9 +303,9 @@ service cloud.firestore {
         && request.resource.data.active == true
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
-        && isApproved(request.resource.data.groupId);
+        && isManager(request.resource.data.groupId);
 
-      allow update: if isApproved(resource.data.groupId)
+      allow update: if isManager(resource.data.groupId)
         && request.resource.data.groupId == resource.data.groupId
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.active == false
@@ -185,7 +314,7 @@ service cloud.firestore {
           'active', 'stoppedAt'
         ]);
 
-      allow delete: if isApproved(resource.data.groupId);
+      allow delete: if isManager(resource.data.groupId);
 
       match /alerts/{alertId} {
         allow create: if signedIn()

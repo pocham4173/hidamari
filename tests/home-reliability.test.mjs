@@ -389,25 +389,26 @@ assert.match(html, /onSnapshot\(\{includeMetadataChanges:true\},snap=>/);
 }
 
 {
-  const ids=Object.fromEntries(['medicine-info-list','medicine-name','medicine-timing','medicine-note',
-    'medicine-info-btn','medicine-info-compose'].map(id=>[id,new Element(id==='medicine-info-list'?'div':'input')]));
+  const ids=Object.fromEntries(['medicine-info-list','medicine-name','medicine-timing','medicine-note','medicine-verified',
+    'medicine-info-btn','medicine-info-compose','medicine-form-title','medicine-edit-cancel'].map(id=>[id,new Element(id==='medicine-info-list'?'div':'input')]));
   ids['medicine-name'].value='血圧の薬';ids['medicine-timing'].value='朝食後';ids['medicine-note'].value='薬袋を確認';
+  ids['medicine-verified'].value='2026-09-13';
   let listener,saved;
   const context={
     document:{getElementById:id=>ids[id],createElement:tag=>new Element(tag)},
-    col:()=>({where(){return this;},onSnapshot(options,next){assert.equal(options.includeMetadataChanges,true);listener=next;return ()=>{};}}),
+    col:()=>({onSnapshot(options,next){assert.equal(options.includeMetadataChanges,true);listener=next;return ()=>{};},add:async v=>{saved=v;}}),
     medicineInfoUnsub:null,medicineInfoRows:[],medicineInfoStatus:'loading',foByNewest:()=>0,
-    foDateTime:()=> '9月13日 8:00',uid:()=> 'mine',deleteFamilyEvent(){},myName:()=> '家族A',
-    foState(){},addEvent:async v=>{saved=v;},Date
+    medicineEditingId:'',foDateTime:()=> '9月13日 8:00',uid:()=> 'mine',isManagerClient:()=>true,todayStr:()=> '2026-09-13',
+    foState(){},firebase:{firestore:{Timestamp:{fromDate:d=>d},FieldValue:{serverTimestamp:()=>({server:true})}}},Date
   };
   vm.runInNewContext(section('function initMedicineInfo(){','function foMillis(v){'),context);
   context.initMedicineInfo();
-  listener({metadata:{fromCache:false},forEach:fn=>fn({id:'med1',data:()=>({uid:'mine',medicineName:'薬A',medicineTiming:'朝',note:'1錠',name:'家族A'})})});
+  listener({metadata:{fromCache:false},forEach:fn=>fn({id:'med1',data:()=>({name:'薬A',timing:'朝',note:'1錠',status:'active'})})});
   assert.match(ids['medicine-info-list'].textContent,/薬A.*飲む時間・回数：朝.*メモ：1錠/);
   await context.addMedicineInfo();
-  assert.equal(saved.type,'medicine-info');
-  assert.equal(saved.medicineName,'血圧の薬');
-  assert.equal(saved.medicineTiming,'朝食後');
+  assert.equal(saved.name,'血圧の薬');
+  assert.equal(saved.timing,'朝食後');
   assert.equal(saved.note,'薬袋を確認');
-  console.log('✅ お薬情報は承認家族の共有データとして登録・確認できる');
+  assert.equal(saved.status,'active');
+  console.log('✅ お薬情報は管理家族が確認日付きで登録・変更できる');
 }

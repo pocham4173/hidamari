@@ -38,5 +38,5 @@ jobs:
       - name: ルール動作検査の依存関係を準備
         run: npm install --no-save firebase@11.10.0 @firebase/rules-unit-testing@4.0.1
 
-      - name: Firestore Emulatorでルールと19件の動作を検査
+      - name: Firestore Emulatorでルールと33件の動作を検査
         run: firebase emulators:exec --only firestore --project demo-mainico "node tests/alerts.test.mjs"

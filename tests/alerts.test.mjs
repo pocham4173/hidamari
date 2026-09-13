@@ -1,6 +1,6 @@
 /* おまもりタグ通知と予定の権限ルール動作検査（19ケース） */
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import fs from 'node:fs';
 
 const env = await initializeTestEnvironment({
@@ -65,8 +65,9 @@ try {
 
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
-    await setDoc(doc(db, 'groups', 'g1', 'members', 'm1'), { status: 'approved' });
-    await setDoc(doc(db, 'groups', 'g1', 'members', 'm2'), { status: 'approved' });
+    await setDoc(doc(db, 'groups', 'g1'), { createdBy: 'm1', createdAt: Timestamp.now() });
+    await setDoc(doc(db, 'groups', 'g1', 'members', 'm1'), { status: 'approved', permission: 'owner', role:'kazoku', name:'管理家族' });
+    await setDoc(doc(db, 'groups', 'g1', 'members', 'm2'), { status: 'approved', permission: 'member', role:'kazoku', name:'一般家族' });
     await setDoc(doc(db, 'groups', 'g1', 'yotei', 'y1'), {
       label: '通院', date: '2026-09-20', uid: 'm1', createdAt: Timestamp.now(),
     });
@@ -167,6 +168,48 @@ try {
   };
   await check('19. 必須項目が欠けた予定の新規作成は拒否される',
     setDoc(doc(m2, 'groups', 'g1', 'yotei', 'yMissing'), missingTime), false);
+
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db,'groups','g2'),{createdBy:'other'});
+    await setDoc(doc(db,'groups','g2','members','other'),{status:'approved',permission:'owner',role:'kazoku',name:'別世帯'});
+    await setDoc(doc(db,'groups','g2','events','secret'),{type:'memo',date:'2026-09-13',at:Timestamp.now(),uid:'other',text:'別世帯の記録'});
+    await setDoc(doc(db,'groups','g1','members','pending'),{status:'pending',permission:'member',role:'kazoku',name:'申請中'});
+  });
+  const event=(uid)=>({type:'memo',date:'2026-09-13',at:serverTimestamp(),uid,text:'共有メモ'});
+  await check('20. 承認済み家族は自世帯へ正しい記録を作成できる',
+    setDoc(doc(m2,'groups','g1','events','valid-event'),event('m2')),true);
+  await check('21. 他人名義の記録は作成できない',
+    setDoc(doc(m2,'groups','g1','events','spoof-event'),event('m1')),false);
+  await check('22. 未許可の項目を含む記録は作成できない',
+    setDoc(doc(m2,'groups','g1','events','extra-event'),{...event('m2'),privateValue:'x'}),false);
+  await check('23. 別世帯の記録は読めない',
+    getDoc(doc(m2,'groups','g2','events','secret')),false);
+  await check('24. 管理家族は参加申請を承認できる',
+    setDoc(doc(m1,'groups','g1','members','pending'),{status:'approved'},{merge:true}),true);
+  await env.withSecurityRulesDisabled(async (context)=>{
+    await setDoc(doc(context.firestore(),'groups','g1','members','pending2'),{status:'pending',permission:'member',role:'kazoku',name:'申請中2'});
+  });
+  await check('25. 一般家族は参加申請を承認できない',
+    setDoc(doc(m2,'groups','g1','members','pending2'),{status:'approved'},{merge:true}),false);
+  await check('26. クライアントからメンバーを削除できない',
+    deleteDoc(doc(m1,'groups','g1','members','m2')),false);
+  const medicine={name:'血圧の薬',timing:'朝食後',note:'薬袋を確認',status:'active',verifiedAt:Timestamp.now(),createdAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedBy:'m1'};
+  await check('27. 管理家族は確認日付きのお薬情報を登録できる',
+    setDoc(doc(m1,'groups','g1','medicines','med1'),medicine),true);
+  await check('28. 一般家族はお薬情報を登録できない',
+    setDoc(doc(m2,'groups','g1','medicines','med2'),{...medicine,updatedBy:'m2'}),false);
+  const invite={groupId:'g1',createdBy:'m1',createdAt:serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+3600000),used:false,targetRole:'kazoku'};
+  await check('29. 管理家族は期限付き招待を発行できる',
+    setDoc(doc(m1,'invites','ABCDEFGH'),invite),true);
+  await check('30. 一般家族は招待を発行できない',
+    setDoc(doc(m2,'invites','ABCDEFGJ'),{...invite,createdBy:'m2'}),false);
+  await check('31. 所有者は一般家族を管理家族に変更できる',
+    setDoc(doc(m1,'groups','g1','members','m2'),{permission:'manager'},{merge:true}),true);
+  await check('32. 一般家族は自分を管理家族に変更できない',
+    setDoc(doc(m2,'groups','g1','members','m2'),{permission:'manager'},{merge:true}),false);
+  await check('33. 招待コードの内容はクライアントから直接読めない',
+    getDoc(doc(m1,'invites','ABCDEFGH')),false);
 
   console.log('\n===== 検査結果 =====');
   for (const [mark, name] of results) console.log(mark, name);

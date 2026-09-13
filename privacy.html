@@ -1,0 +1,10 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>プライバシー｜まいにこ</title><style>body{max-width:720px;margin:auto;padding:24px 18px 60px;font-family:-apple-system,"Noto Sans JP",sans-serif;line-height:1.8;color:#243244}h1{border-left:8px solid #3F8C65;padding-left:12px}h2{margin-top:28px}a{color:#315FAE}li{margin:.45em 0}.notice{background:#FFF4DE;border-radius:12px;padding:14px}</style></head><body>
+<p><a href="index.html">← まいにこへ戻る</a></p><h1>プライバシーについて</h1>
+<p class="notice"><strong>試験運用版（2026年9月13日）</strong><br>正式提供前に、提供者の名称・住所・責任者・個人情報問い合わせ窓口を確定して追記します。これらが未記載の間は販売しません。</p>
+<h2>利用目的</h2><p>離れた家族が、挨拶、予定、体調について選んだ言葉、ボタンを押した服薬記録、メッセージ、家族内の共有メモを無理なく伝え合うために利用します。救急監視、診断、服薬証明、位置追跡には利用しません。</p>
+<h2>保存する情報</h2><ul><li>利用者の表示名、家族グループへの所属と権限</li><li>挨拶・予定・メッセージ・選択した体調・押した服薬記録と日時</li><li>任意で登録した薬の名称、時間、メモ、確認日</li><li>招待・通知端末・おまもりタグに必要な識別情報</li><li>復旧を選んだ場合のメールアドレス（Firebase Authenticationで管理）</li></ul>
+<h2>共有範囲と保存先</h2><p>承認された同じ家族グループの本人と家族だけに共有します。データの保存・認証・通知にはGoogle Firebase（Cloud Firestore、Authentication、Cloud Functions、Cloud Messaging、App Check）を利用します。</p>
+<h2>保存期間・訂正・削除</h2><p>家族グループが利用を続ける間保存します。管理家族は家族全体のデータ削除を実行できます。個別の誤記は、各画面の変更・取消機能で訂正します。薬情報は「服用終了」として履歴を残せます。削除完了を確認できない場合、アプリは完了したとは表示しません。</p>
+<h2>安全管理</h2><p>家族単位のアクセス制御、管理権限の分離、一度限り・期限付きの招待、App Check、通知本文で詳細を表示しない設計を用います。安全性は継続して検証し、問題が確認された場合は公開を止めて修正します。</p>
+<h2>問い合わせ</h2><p>現在の試験窓口は<a href="support.html">問い合わせ案内</a>をご覧ください。公開のGitHub Issueには、氏名、電話番号、薬名、体調などを書かないでください。</p>
+</body></html>
