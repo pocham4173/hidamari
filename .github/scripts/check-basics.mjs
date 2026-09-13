@@ -154,7 +154,7 @@ if (html !== null) {
     /function\s+addList\s*\(title,\s*rows,\s*note\)/.test(html) &&
     html.includes("className='sum-overview'") &&
     html.includes("className='sum-points'") &&
-    html.includes("pt.textContent='記録からわかること'") &&
+    html.includes("pt.textContent='記録からわかること（'+insights.length+'項目）'") &&
     html.includes("addInsight('前月との比較'") &&
     html.includes("addInsight('生活リズム'") &&
     html.includes("addInsight('本人と家族のやり取り'") &&
