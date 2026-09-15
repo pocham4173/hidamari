@@ -120,7 +120,7 @@ async function openRecovery(){
   recoveryState(gid()?'このアカウントに、復旧用のメールアドレスを登録します。確認メールのリンクを開いたあと「確認できたか調べる」を押してください。':'以前に登録・確認したメールアドレスで、家族との接続を復旧します。');
 }
 function closeRecovery(){
-  if(recoveryBusy)return;
+  if(recoveryBusy || accountClosureBusy)return;
   document.getElementById('recovery-password').value='';
   document.getElementById('recovery-modal').classList.remove('show');
 }
@@ -217,7 +217,8 @@ function clearMainicoDeviceData(keep=[]){
   }catch(error){return false;}
 }
 async function bootHouseholdUser(user){
-  if(recoveryBusy)return;
+  if(recoveryBusy || accountClosureBusy)return;
+  if(accountClosureEnded()){showAccountClosed('ログイン登録の削除操作を行いました。再ログインは自動で行いません。完了表示を確認できなかった場合は運営者へ確認してください。');return;}
   const generation=++householdBootGeneration;
   householdVerified=false;
   if(!user){
@@ -237,6 +238,19 @@ async function bootHouseholdUser(user){
       openHouseholdDeletion();return;
     }
     deletionResumeOnly=false;
+    const closure=await db.collection('accountClosures').doc(user.uid).get({source:'server'});
+    if(generation!==householdBootGeneration || uid()!==user.uid)return;
+    if(closure.exists){
+      const owned=await db.collection('groups').where('createdBy','==',user.uid).limit(1).get({source:'server'});
+      if(generation!==householdBootGeneration || uid()!==user.uid)return;
+      if(!owned.empty){
+        previewStorage.setItem('mainicoGid',owned.docs[0].id);
+        await refreshHousehold();document.getElementById('loading').style.display='none';
+        openHouseholdDeletion();return;
+      }
+      showHouseholdBlocked('アカウント削除は未完了です。通常の記録は停止しています。「自分のログイン用アカウントを削除する」から再開してください。');
+      openAccountDeletion();return;
+    }
     if(!gid()){
       const join=JSON.parse(previewStorage.getItem('mainico_join_pending_v1')||'null');
       if(join && join.uid===user.uid && /^[A-Za-z0-9_-]{1,128}$/.test(join.groupId)){
@@ -313,4 +327,56 @@ async function resetDisconnectedDevice(){
     if(!clearMainicoDeviceData())throw new Error('storage');
     location.reload();
   }catch(error){alert('接続や端末保存の確認ができませんでした。削除が途中なら先に再開してください。');}
+}
+
+// 削除成功時のAuthイベントで匿名登録を作り直さない。終了状態だけを端末保存する。
+let accountClosureBusy=false,accountClosureStopping=false,accountClosureService=null;
+const ACCOUNT_CLOSED_KEY='mainico_account_closed_v1';
+function accountClosureEnded(){try{return accountClosureStopping || localStorage.getItem(ACCOUNT_CLOSED_KEY)==='1';}catch(e){return accountClosureStopping;}}
+function showAccountClosed(message){stopHouseholdSubscriptions();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));document.getElementById('loading').style.display='none';showPage('account-closed-page');document.getElementById('account-closed-state').textContent=message;}
+function getAccountClosureService(){
+  if(!accountClosureService)accountClosureService=MainicoAccountDeletion.create({db,auth,
+    serverTimestamp:()=>firebase.firestore.FieldValue.serverTimestamp(),
+    credential:(email,password)=>firebase.auth.EmailAuthProvider.credential(email,password),
+    isOnline:()=>navigator.onLine!==false,
+    beforeDelete:()=>{localStorage.setItem(ACCOUNT_CLOSED_KEY,'1');accountClosureStopping=true;stopHouseholdSubscriptions();},
+    onDeleteFailure:()=>{accountClosureStopping=false;localStorage.removeItem(ACCOUNT_CLOSED_KEY);}
+  });return accountClosureService;
+}
+function openAccountDeletion(){
+  if(deletionBusy || recoveryBusy || accountClosureBusy)return;
+  document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
+  document.getElementById('account-deletion-modal').classList.add('show');
+  document.getElementById('account-deletion-identity').textContent='削除対象：'+(auth.currentUser?.email||'この端末でログインしている、メール未登録のアカウント');
+  document.getElementById('account-deletion-password').value='';document.getElementById('account-deletion-confirm').value='';
+  document.getElementById('account-deletion-finish').disabled=true;
+  document.getElementById('account-deletion-state').textContent='先に共有データ削除・参加解除が済んでいるか確認します。';
+}
+async function closeAccountDeletion(){
+  if(accountClosureBusy)return;
+  document.getElementById('account-deletion-password').value='';
+  document.getElementById('account-deletion-modal').classList.remove('show');
+  const id=uid();
+  try{const lock=await db.collection('accountClosures').doc(id).get({source:'server'});if(uid()!==id)return;if(lock.exists)showHouseholdBlocked('アカウント削除は未完了です。通常の記録は停止しています。「自分のログイン用アカウントを削除する」から再開してください。');}
+  catch(e){if(uid()===id)showHouseholdBlocked('アカウント削除の進行状況を確認できません。通信を確認して「再確認する」を押してください。');}
+}
+async function prepareAccountDeletion(){
+  if(accountClosureBusy)return;accountClosureBusy=true;document.getElementById('account-deletion-finish').disabled=true;
+  try{await getAccountClosureService().prepare(document.getElementById('account-deletion-password').value);document.getElementById('account-deletion-state').textContent='通常の利用を停止しました。ログイン登録の削除はまだ完了していません。確認文字を入力して削除してください。';document.getElementById('account-deletion-finish').disabled=false;}
+  catch(e){document.getElementById('account-deletion-state').textContent=MainicoAccountDeletion.message(e);}
+  finally{document.getElementById('account-deletion-password').value='';accountClosureBusy=false;}
+}
+async function finishAccountDeletion(){
+  if(accountClosureBusy)return;accountClosureBusy=true;document.getElementById('account-deletion-finish').disabled=true;
+  try{
+    await getAccountClosureService().finish(document.getElementById('account-deletion-confirm').value.trim());
+    const cleared=clearMainicoDeviceData([ACCOUNT_CLOSED_KEY]);
+    showAccountClosed('あなたのログイン登録を削除しました。'+(cleared?'この端末のアプリ内保存も削除しました。':'端末内保存の削除を確認できません。ブラウザーのサイトデータを削除してください。')+' 他の家族の登録、紙、他端末のコピー、旧版の残存記録まで削除したことを示すものではありません。');
+  }catch(e){document.getElementById('account-deletion-state').textContent=MainicoAccountDeletion.message(e);document.getElementById('account-deletion-finish').disabled=false;}
+  finally{accountClosureBusy=false;}
+}
+async function restartAfterAccountClosure(){
+  if(!confirm('新しいアカウントで利用を始めますか？ 削除した登録や記録は戻りません。'))return;
+  try{await auth.signOut();localStorage.removeItem(ACCOUNT_CLOSED_KEY);accountClosureStopping=false;location.reload();}
+  catch(e){showAccountClosed('再開できませんでした。通信とブラウザーの保存設定を確認してください。');}
 }

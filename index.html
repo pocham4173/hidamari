@@ -663,6 +663,7 @@ table.cal-rec td.pad{background:none;}
   <div class="setup-ttl">家族との接続</div><p class="setup-lead" id="household-status-text" role="status"></p>
   <button class="entry-btn" onclick="retryHouseholdConnection()">再確認する</button>
   <button class="entry-btn sub" onclick="openRecovery()">アカウントを確認する</button>
+  <button class="entry-btn sub" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
   <button class="consent-back" onclick="resetDisconnectedDevice()">接続が終了した端末を入口に戻す</button>
 </div></div>
 <div class="modal" id="recovery-modal" role="dialog" aria-modal="true" aria-labelledby="recovery-title"><div class="modal-box adult-font">
@@ -682,10 +683,27 @@ table.cal-rec td.pad{background:none;}
   <div class="save-state" id="recovery-state" role="status" aria-live="polite"></div>
   <button class="modal-close" onclick="closeRecovery()">とじる</button>
 </div></div>
+<div class="modal" id="account-deletion-modal" role="dialog" aria-modal="true" aria-labelledby="account-deletion-title"><div class="modal-box adult-font">
+  <div class="ttl" id="account-deletion-title">自分のアカウントを削除する</div>
+  <p class="note" id="account-deletion-identity"></p>
+  <p class="note">先に管理するすべての家庭の共有データ削除、または参加解除を済ませてください。削除の準備が完了すると、このアカウントでの新規登録・通常の記録は停止し、取り消せません。通信が切れた場合は同じアカウントで再開してください。</p>
+  <p class="note">削除するのは今ログイン中のあなたの登録です。他の家族のログイン登録や、旧版で別の家庭に残った記録は削除しません。旧記録の整理は運営者に依頼してください。以前のログイン情報の悪用を防ぐため、識別番号と閉鎖開始日時だけを運営の最終整理まで保管します。</p>
+  <div class="account-fields"><label for="account-deletion-password">現在のパスワード（復旧設定をした方）</label><input id="account-deletion-password" type="password" autocomplete="current-password" maxlength="128"></div>
+  <button class="set-btn warn" onclick="prepareAccountDeletion()">削除の準備をする</button>
+  <div class="account-fields"><label for="account-deletion-confirm">確認のため「アカウントを削除」と入力</label><input id="account-deletion-confirm" autocomplete="off"></div>
+  <button class="set-btn warn" id="account-deletion-finish" onclick="finishAccountDeletion()" disabled>自分のログイン登録を削除する</button>
+  <div class="save-state" id="account-deletion-state" role="status" aria-live="polite"></div>
+  <button class="modal-close" onclick="closeAccountDeletion()">とじる</button>
+</div></div>
+<div class="page" id="account-closed-page"><div class="setup-wrap">
+  <div class="setup-ttl">アカウントの利用終了</div><p id="account-closed-state" role="status" class="setup-lead"></p>
+  <p class="note">利用終了の確認：共有データの削除・参加解除 → 自分のログイン登録の削除 → 印刷した災害QRを読み取れないよう切断して廃棄 → 他の端末のサイト保存・写真・スクリーンショットを各自で削除。紙や他端末のコピーは遠隔では消せません。旧版の記録は運営者に整理を依頼してください。</p>
+  <button class="entry-btn sub" onclick="restartAfterAccountClosure()">新しく利用を始める</button>
+</div></div>
 <div class="modal" id="deletion-modal" role="dialog" aria-modal="true" aria-labelledby="deletion-title"><div class="modal-box adult-font">
   <div class="ttl" id="deletion-title">共有データをすべて削除する</div>
   <p class="note">この家庭の全員の記録・予定・家族との接続・招待・おまもりタグとお知らせ・復旧先登録を共有サーバーから削除します。始めると利用を停止し、取り消せません。通信が切れたら、この画面で再開してください。</p>
-  <p class="note">この端末に保存した災害QRなども削除します。印刷物・他端末の保存内容・撮影したQRは各自で廃棄してください。ログイン用アカウントはこの操作では削除しません。</p>
+  <p class="note">この端末に保存した災害QRなども削除します。印刷物・他端末の保存内容・撮影したQRは各自で廃棄してください。ログイン用アカウントはこの操作では削除しません。共有削除の完了後「自分のログイン用アカウントを削除する」に進んでください。印刷した災害QRは読み取れないよう切断し、他の端末のサイト保存・写真・スクリーンショットも各自で削除してください。旧版で残った記録は運営者に整理を依頼してください。</p>
   <div class="account-fields"><label for="deletion-confirm">確認のため「共有データを削除」と入力</label><input id="deletion-confirm" autocomplete="off" spellcheck="false"></div>
   <button class="set-btn warn" id="deletion-run" onclick="runHouseholdDeletion()">削除を開始・再開する</button>
   <div class="save-state" id="deletion-state" role="status" aria-live="polite"></div>
@@ -800,6 +818,7 @@ table.cal-rec td.pad{background:none;}
   </div>
   <div class="set-sec"><h4>アカウントと家庭の管理</h4>
     <p class="note" data-household-role></p>
+    <button class="set-btn warn" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
     <button class="set-btn" onclick="openRecovery()">端末をなくす前に復旧を設定する</button>
     <div class="note">ご自身のメールアドレスを使います。本人にパスワードを覚えてもらう必要はありません。家族は自分のアカウントで設定してください。</div>
     <button class="set-btn warn" data-owner-only hidden onclick="deleteAllData()">共有データをすべて削除する</button>
@@ -987,6 +1006,7 @@ table.cal-rec td.pad{background:none;}
 
   <div class="set-sec"><h4>アカウントと家庭の管理</h4>
     <p class="note" data-household-role></p>
+    <button class="set-btn warn" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
     <button class="set-btn" onclick="openRecovery()">端末をなくす前に復旧を設定する</button>
     <div class="note">ご自身のメールアドレスを使います。本人にパスワードを覚えてもらう必要はありません。家族は自分のアカウントで設定してください。</div>
     <button class="set-btn warn" data-owner-only hidden onclick="deleteAllData()">共有データをすべて削除する</button>
@@ -1356,6 +1376,7 @@ setTimeout(function(){
 <script src="mainico-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script src="account-recovery.js"></script>
+<script src="account-deletion.js"></script>
 <script src="household-deletion.js"></script>
 <script src="household-ui.js"></script>
 <script>

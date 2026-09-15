@@ -278,3 +278,43 @@ console.log('✅ 削除開始前の失敗を削除中・完了と誤表示せず
   assert.equal(env.element('deletion-modal').classList.contains('show'), true, 'the verified owner can still resume deletion');
 }
 console.log('✅ 管理操作はサーバー確認済み作成者だけに表示し、削除中は通常操作を止めて再開だけを残す');
+
+{
+  const env=harness({mainico_account_closed_v1:'1'});
+  env.auth.currentUser=null;
+  await env.ctx.bootHouseholdUser(null);
+  assert.equal(env.state.pages.at(-1),'account-closed-page');
+  assert.equal(env.state.startupErrors.length,0);
+  assert.equal(env.state.started,0);
+  assert.equal(env.state.reads.length,0);
+  env.storage.removeItem('mainico_account_closed_v1');
+  env.evaluate('accountClosureBusy=true');
+  await env.ctx.bootHouseholdUser(null);
+  assert.equal(env.state.startupErrors.length,0);
+  console.log('✅ Auth削除時と終了後再読込で匿名アカウントを自動再作成しない');
+}
+{
+  const env=harness();
+  env.element('account-deletion-modal').classList.add('show');
+  env.element('account-deletion-password').value='secret-for-test';
+  env.ctx.db.collection=()=>({doc:()=>({get:async options=>{assert.equal(options.source,'server');return snapshot({requestedAt:1});}})});
+  await env.ctx.closeAccountDeletion();
+  assert.equal(env.element('account-deletion-password').value,'');
+  assert.equal(env.state.pages.at(-1),'household-status-page');
+  assert.match(env.element('household-status-text').textContent,/未完了/);
+  assert.match(env.element('household-status-text').textContent,/停止/);
+  console.log('✅ 閉鎖準備後のキャンセルは利用停止・未完了・再開を示し、パスワードを残さない');
+}
+{
+  const env=harness();
+  env.element('account-deletion-password').value='secret-for-test';
+  env.ctx.MainicoAccountDeletion={message:()=> '本人確認できませんでした'};
+  env.ctx.testService={prepare:async()=>{throw Error('reauth');}};
+  env.evaluate('accountClosureService=testService');
+  await env.ctx.prepareAccountDeletion();
+  assert.equal(env.element('account-deletion-password').value,'');
+  assert.equal(env.element('account-deletion-finish').disabled,true);
+  assert.match(env.element('account-deletion-state').textContent,/本人確認/);
+  assert.equal(env.storage.values.has('mainico_account_closed_v1'),false);
+  console.log('✅ 再認証失敗では最終削除を有効にせず、成功を表示せず、入力を消去する');
+}

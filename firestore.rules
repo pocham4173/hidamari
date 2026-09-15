@@ -7,6 +7,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function usableAccount() {
+      return signedIn() && !existsAfter(/databases/$(db)/documents/accountClosures/$(request.auth.uid));
+    }
+
     // 管理者は作成者アカウントだけ。画面の role や自己申告は権限に使わない。
     function isOwner(groupId) {
       return signedIn()
@@ -21,7 +25,7 @@ service cloud.firestore {
 
     // 同じbatchで削除マーク/削除が入った場合も、通常書込を拒否する。
     function writableGroup(groupId) {
-      return getAfter(/databases/$(db)/documents/groups/$(groupId)).data.get('deletionState', '') != 'deleting';
+      return usableAccount() && getAfter(/databases/$(db)/documents/groups/$(groupId)).data.get('deletionState', '') != 'deleting';
     }
 
     function activeOwner(groupId) {
@@ -54,14 +58,14 @@ service cloud.firestore {
     }
 
     function isApproved(groupId) {
-      return signedIn() && isActive(groupId)
+      return signedIn() && !exists(/databases/$(db)/documents/accountClosures/$(request.auth.uid)) && isActive(groupId)
         && exists(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid))
         && get(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid))
           .data.get('status', 'approved') == 'approved';
     }
 
     match /groups/{groupId} {
-      allow create: if signedIn()
+      allow create: if usableAccount()
         && request.resource.data.keys().hasOnly(['createdBy', 'createdAt'])
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
@@ -73,7 +77,7 @@ service cloud.firestore {
       allow get: if signedIn() && (
         !exists(/databases/$(db)/documents/groups/$(groupId))
         || isOwner(groupId) || isApproved(groupId));
-      allow list: if false;
+      allow list: if signedIn() && resource.data.createdBy == request.auth.uid;
       // 削除マークは不可逆。作成者の付け替えや通常の更新を許さない。
       allow update: if isOwner(groupId) && isActive(groupId)
         && request.resource.data.diff(resource.data).affectedKeys()
@@ -126,7 +130,7 @@ service cloud.firestore {
         allow delete: if deletingOwner(groupId)
           || (isActive(groupId)
             && uid != get(/databases/$(db)/documents/groups/$(groupId)).data.createdBy
-            && (isOwner(groupId) || (signedIn() && request.auth.uid == uid)));
+            && (activeOwner(groupId) || (signedIn() && request.auth.uid == uid)));
       }
 
       match /events/{eventId} {
@@ -134,7 +138,7 @@ service cloud.firestore {
         allow create: if isApproved(groupId) && writableGroup(groupId)
           && request.resource.data.uid == request.auth.uid;
         allow update: if false;
-        allow delete: if deletingOwner(groupId) || (isApproved(groupId)
+        allow delete: if deletingOwner(groupId) || (usableAccount() && isApproved(groupId)
           && resource.data.uid == request.auth.uid);
       }
 
@@ -174,7 +178,7 @@ service cloud.firestore {
           );
 
         /* 削除: 登録した本人だけ(名義の無い旧予定は承認済み家族が整理可) */
-        allow delete: if deletingOwner(groupId) || (isApproved(groupId)
+        allow delete: if deletingOwner(groupId) || (usableAccount() && isApproved(groupId)
           && (resource.data.get('uid', null) == null
               || resource.data.get('uid', null) == request.auth.uid));
       }
@@ -217,6 +221,15 @@ service cloud.firestore {
       }
     }
 
+    // Auth削除後も旧IDトークンを拒否する最小の閉鎖記録。クライアントから解除不可。
+    match /accountClosures/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['requestedAt'])
+        && request.resource.data.requestedAt == request.time;
+      allow list, update, delete: if false;
+    }
+
     // 復旧先だけを保存。一般家族に他人の認証UIDの検索は許可しない。
     match /accounts/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
@@ -255,7 +268,7 @@ service cloud.firestore {
         && !exists(/databases/$(db)/documents/groups/$(resource.data.groupId)/members/$(request.auth.uid))
         && getAfter(/databases/$(db)/documents/groups/$(resource.data.groupId)/members/$(request.auth.uid)).data.status == 'pending'
         && getAfter(/databases/$(db)/documents/groups/$(resource.data.groupId)/members/$(request.auth.uid)).data.inviteCode == code;
-      allow delete: if isOwner(resource.data.groupId);
+      allow delete: if activeOwner(resource.data.groupId) || deletingOwner(resource.data.groupId);
     }
 
     // QRおまもりタグ本体
