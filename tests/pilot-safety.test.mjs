@@ -48,5 +48,8 @@ replies.openPersonMessageReply();el('person-message-reply-text').value='入力�
 await replies.sendPersonMessageReply();assert.match(el('person-message-reply-state').textContent,/入力は残っています/);assert.equal(el('person-message-reply-text').value,'入力を残す');
 console.log('✅ 自由返信は入力開始時の伝言に届き、失敗時は入力画面にエラーを表示する');
 
-let alertText='';const deleting={alert:msg=>alertText=msg,col:()=>{throw Error('must not delete');},db:{batch:()=>{throw Error('must not mutate');}}};vm.createContext(deleting);vm.runInContext(section('async function deleteAllData(){','/* 日付単位で伝言を読む。'),deleting);await deleting.deleteAllData();assert.match(alertText,/削除していません/);
-console.log('✅ 不完全な全データ削除は、変更前に止める');
+// 開始ボタンは確認画面を開くだけ。削除の実行は別の明示操作に限る。
+let opened=0;const deleting={openHouseholdDeletion:()=>opened++,col:()=>{throw Error('must not delete');},db:{batch:()=>{throw Error('must not mutate');}}};
+vm.createContext(deleting);vm.runInContext(section('async function deleteAllData(){','/* 日付単位で伝言を読む。'),deleting);
+await deleting.deleteAllData();assert.equal(opened,1);
+console.log('✅ 全体削除の入口は確認画面だけを開き、その場ではデータを変更しない');

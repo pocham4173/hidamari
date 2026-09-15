@@ -78,6 +78,7 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
     col:()=>({doc:()=>({get:async()=>({exists:true,data:()=>({watchTagActive:true,watchTagId:'tag1'})})})}),
     db:{collection:()=>({doc:()=>({collection:()=>({orderBy(){return this;},limit(){return this;},
       onSnapshot(options,callback){assert.equal(options.includeMetadataChanges,true);listener=callback;return ()=>{};}})})})},
+    uid:()=> 'owner', householdBootGeneration:1,householdVerified:true,householdDeleting:false,watchTagLoadGeneration:0,
     renderWatchTag(){},tagLastSeen:()=>0,mirrorTagAlert(){mirrored++;},tagApplyUnread:n=>{ids['watch-tag-home'].style.display=n?'block':'none';},
     tagNotifySound(){notified++;},tagOsNotify(){},esc:v=>v,dateJp:()=> '9月12日',tagNotifiedThrough:0,
     console:{warn(){}},Date
@@ -123,7 +124,7 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
 }
 assert.match(html, /window\.mainicoStartupStage='ログインの応答待ち';/);
 assert.match(html, /try\{ navigator\.serviceWorker\.register\('sw\.js'\)\.catch/);
-assert.match(html, /window\.showStartupProblem\('ログインできませんでした'\)/);
+assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8'), /window\.showStartupProblem\('ログインできませんでした'\)/);
 
 {
   const ids = Object.fromEntries(['rec-cal', 'rec-sum', 'rec-day', 'rec-day-note', 'rec-sum-ttl', 'rec-day-ttl', 'rec-ttl']

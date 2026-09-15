@@ -38,3 +38,10 @@ jobs:
 
       - name: 実証準備の伝言履歴と災害QRの検査
         run: node tests/pilot-safety.test.mjs
+
+      - name: 端末復旧・共有削除・画面接続の検査
+        run: |
+          node tests/account-recovery.test.mjs
+          node tests/household-deletion.test.mjs
+          node tests/household-ui.test.mjs
+          node tests/household-setup.test.mjs

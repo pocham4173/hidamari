@@ -93,7 +93,17 @@ if (html === null) {
 /* ---------- 2. onclick から呼ばれる関数が定義されている ---------- */
 
 if (html !== null) {
-  const js = inlineScripts(html).map((b) => b.code).join('\n');
+  const localScripts=[];
+  for(const match of html.matchAll(/<script\b[^>]*\bsrc="([^\"]+)"/gi)){
+    const src=match[1];
+    if(/^(?:https?:|\/\/)/.test(src))continue;
+    const code=read(src);
+    if(code===null){record(`${src} を読める`,false);continue;}
+    const error=syntaxError(code,src);
+    record(`${src} の JavaScript に構文エラーがない`,!error,error||'');
+    localScripts.push(code);
+  }
+  const js = inlineScripts(html).map((b) => b.code).concat(localScripts).join('\n');
 
   const defined = new Set();
   for (const m of js.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g)) defined.add(m[1]);

@@ -29,6 +29,7 @@ async function check(name, promise, expectOk) {
 try {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
+    await setDoc(doc(db, 'groups', 'g1'), { createdBy: 'm1', createdAt: Timestamp.now() });
     await setDoc(doc(db, 'watchTags', TAG), { active: true, groupId: 'g1' });
     await setDoc(doc(db, 'watchTags', TAG_STOP), { active: false, groupId: 'g1' });
     const old = Timestamp.fromMillis(Date.now() - 11 * 60 * 1000);
