@@ -45,5 +45,6 @@ jobs:
           node tests/household-deletion.test.mjs
           node tests/household-ui.test.mjs
           node tests/household-setup.test.mjs
+          node tests/entry-mode.test.mjs
           node tests/account-deletion.test.mjs
           node tests/legacy-data-cleanup.test.mjs

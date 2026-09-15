@@ -573,6 +573,7 @@ table.cal-rec td.pad{background:none;}
   <div class="note" style="max-width:320px;margin:7px auto 0;color:#5C4E3A;font-weight:700;">本人も家族も、介護の不安を抱え込まない上田へ。</div>
   <button class="install-main" id="install-main" type="button" onclick="installApp()">📲 ホーム画面に追加する<small>次からアプリのようにすぐ開けます</small></button>
   <div class="q">使い方を選んでください</div>
+  <div id="entry-state" class="save-state" role="status" aria-live="polite"></div>
   <div id="select-box">
     <button class="entry-btn" onclick="pickMode('honnin')">本人が使う<small>この端末をご本人が操作します</small></button>
     <button class="entry-btn" onclick="pickMode('kazoku')">本人と家族が使う<small>この端末は家族用です。本人用は上を選びます</small></button>
@@ -1719,18 +1720,32 @@ function showPage(id){
 
 /* ===== モード選択→同意→名前→接続 ===== */
 let pendingMode=null;
+let modeSetupBusy=false;
+function entryState(message){
+  const el=document.getElementById('entry-state');
+  if(el)el.textContent=message;
+}
 function pickMode(m){
-  pendingMode=m;
-  const ckey='mainicoConsent-'+(m==='konly'?'b':'a');
-  if(previewStorage.getItem(ckey)){ afterConsent(); return; }
-  showPage(m==='konly'?'consent-b':'consent-a');
+  if(!['honnin','kazoku','konly'].includes(m))return;
+  if(modeSetupBusy){entryState('利用方法を確認しています。少しお待ちください。');return;}
+  try{
+    pendingMode=m;
+    entryState('');
+    const ckey='mainicoConsent-'+(m==='konly'?'b':'a');
+    if(previewStorage.getItem(ckey)){ afterConsent(); return; }
+    showPage(m==='konly'?'consent-b':'consent-a');
+  }catch(error){
+    entryState('この端末の保存情報を確認できません。保存情報は消さず、Safariなどのブラウザーで開き直してください。');
+  }
 }
 function agreeConsent(kind){
   const cks=document.querySelectorAll(kind==='a'?'.ck-a':'.ck-b');
   let all=true; cks.forEach(c=>{ if(!c.checked) all=false; });
   if(!all){ alert('すべての項目を確認して、チェックを入れてください'); return; }
-  previewStorage.setItem('mainicoConsent-'+kind, JSON.stringify({ver:'段階A v0.3', at:new Date().toISOString()}));
-  afterConsent();
+  try{
+    previewStorage.setItem('mainicoConsent-'+kind, JSON.stringify({ver:'段階A v0.3', at:new Date().toISOString()}));
+    afterConsent();
+  }catch(error){alert('この端末に同意を保存できませんでした。保存情報は消さず、ブラウザーで開き直してください。');}
 }
 function afterConsent(){
   previewStorage.setItem('mainicoPendingMode', pendingMode);
@@ -1757,10 +1772,12 @@ function setupConnectPage(){
 function saveName(){
   const n=document.getElementById('in-name').value.trim();
   if(!n){alert('お名前を入力してください');return;}
-  previewStorage.setItem('mainicoName',n);
-  if(gid()){ finishSetup(); return; }
-  setupConnectPage();
-  showPage('connect-page');
+  try{
+    previewStorage.setItem('mainicoName',n);
+    if(gid()){ finishSetup(); return; }
+    setupConnectPage();
+    showPage('connect-page');
+  }catch(error){alert('この端末に名前を保存できませんでした。保存情報は消さず、ブラウザーで開き直してください。');}
 }
 let groupCreating=false;
 async function createGroup(){
@@ -1853,16 +1870,29 @@ async function joinByCode(){
   finally{joiningGroup=false;}
 }
 async function finishSetup(){
-  const m=previewStorage.getItem('mainicoPendingMode')||pendingMode;
-  previewStorage.setItem('kazokuOnly', m==='konly'?'1':'');
-  previewStorage.setItem('mainicoMode', m==='honnin'?'honnin':'kazoku');
+  if(modeSetupBusy)return;
+  modeSetupBusy=true;
+  let slowTimer;
   try{
-    await refreshHousehold();
+    const accountUid=uid(),groupId=gid();
+    const assertCurrent=()=>{if(uid()!==accountUid || gid()!==groupId)throw new Error('setup-session-changed');};
+    const m=previewStorage.getItem('mainicoPendingMode')||pendingMode;
+    if(!accountUid || !groupId || !['honnin','kazoku','konly'].includes(m))throw new Error('setup-incomplete');
+    showPage('household-status-page');
+    document.getElementById('household-status-text').textContent='利用方法と家族との接続を確認しています…';
+    slowTimer=setTimeout(()=>{
+      if(modeSetupBusy)document.getElementById('household-status-text').textContent='接続の確認に時間がかかっています。通信状態を確認してください。保存情報は消さず、そのままお待ちいただくか、アプリを読み込み直してください。';
+    },10000);
+    await refreshHousehold();assertCurrent();
     if(householdDeleting){openHouseholdDeletion();return;}
-    await col('members').doc(uid()).update({mode:m});
-    await saveRecoveryPointer();
+    await col('members').doc(accountUid).update({mode:m});assertCurrent();
+    await saveRecoveryPointer();assertCurrent();
+    // 接続と保存が確認できるまで、この端末の確定した利用方法を変更しない。
+    previewStorage.setItem('kazokuOnly', m==='konly'?'1':'');
+    previewStorage.setItem('mainicoMode', m==='honnin'?'honnin':'kazoku');
     startMode();watchHouseholdAccess();
-  }catch(error){showHouseholdBlocked('家族との接続・利用方法の保存を確認できませんでした。再確認してください。');}
+  }catch(error){showHouseholdBlocked('家族との接続・利用方法の保存を確認できませんでした。保存情報は消さず、通信を確認して再確認してください。');}
+  finally{clearTimeout(slowTimer);modeSetupBusy=false;}
 }
 let pendingUnsub=null;
 let cancelling=false;

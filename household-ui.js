@@ -295,7 +295,7 @@ async function bootHouseholdUser(user){
   }
   if(generation!==householdBootGeneration)return;
   window.mainicoStartupStage='準備完了';document.getElementById('loading').style.display='none';
-  try{startMode();if(gid())watchHouseholdAccess();}catch(error){window.showStartupProblem('画面を開けませんでした');}
+  try{startMode();if(gid())watchHouseholdAccess();}catch(error){showHouseholdBlocked('画面を開けませんでした。保存情報は消さず、再確認してください。');}
 }
 async function retryHouseholdConnection(){
   document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
