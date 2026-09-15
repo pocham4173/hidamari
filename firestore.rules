@@ -7,71 +7,146 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isApproved(groupId) {
+    function usableAccount() {
+      return signedIn() && !existsAfter(/databases/$(db)/documents/accountClosures/$(request.auth.uid));
+    }
+
+    // 管理者は作成者アカウントだけ。画面の role や自己申告は権限に使わない。
+    function isOwner(groupId) {
       return signedIn()
+        && exists(/databases/$(db)/documents/groups/$(groupId))
+        && get(/databases/$(db)/documents/groups/$(groupId)).data.createdBy == request.auth.uid;
+    }
+
+    function isActive(groupId) {
+      return exists(/databases/$(db)/documents/groups/$(groupId))
+        && get(/databases/$(db)/documents/groups/$(groupId)).data.get('deletionState', '') != 'deleting';
+    }
+
+    // 同じbatchで削除マーク/削除が入った場合も、通常書込を拒否する。
+    function writableGroup(groupId) {
+      return usableAccount() && getAfter(/databases/$(db)/documents/groups/$(groupId)).data.get('deletionState', '') != 'deleting';
+    }
+
+    function activeOwner(groupId) {
+      return isOwner(groupId) && writableGroup(groupId);
+    }
+
+    function approvedAfter(groupId) {
+      return signedIn() && writableGroup(groupId)
+        && getAfter(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid))
+          .data.get('status', 'approved') == 'approved';
+    }
+
+    function deletingOwner(groupId) {
+      return isOwner(groupId)
+        && get(/databases/$(db)/documents/groups/$(groupId)).data.get('deletionState', '') == 'deleting';
+    }
+
+    // 接続が残っている間は復旧先を捨てたり別世帯に付け替えたりできない。
+    // 同じbatchの退会/最終削除は、変更後の状態で判定する。
+    function connectionReleasedAfter(groupId) {
+      return !existsAfter(/databases/$(db)/documents/groups/$(groupId))
+        || (getAfter(/databases/$(db)/documents/groups/$(groupId)).data.createdBy != request.auth.uid
+          && !existsAfter(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid)));
+    }
+
+    function mayChooseGroup(groupId) {
+      return !exists(/databases/$(db)/documents/accounts/$(request.auth.uid))
+        || get(/databases/$(db)/documents/accounts/$(request.auth.uid)).data.groupId == groupId
+        || connectionReleasedAfter(get(/databases/$(db)/documents/accounts/$(request.auth.uid)).data.groupId);
+    }
+
+    function isApproved(groupId) {
+      return signedIn() && !exists(/databases/$(db)/documents/accountClosures/$(request.auth.uid)) && isActive(groupId)
         && exists(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid))
         && get(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid))
           .data.get('status', 'approved') == 'approved';
     }
 
     match /groups/{groupId} {
-      allow create: if signedIn()
-        && request.resource.data.createdBy == request.auth.uid;
+      allow create: if usableAccount()
+        && request.resource.data.keys().hasOnly(['createdBy', 'createdAt'])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && mayChooseGroup(groupId)
+        && getAfter(/databases/$(db)/documents/accounts/$(request.auth.uid)).data.groupId == groupId
+        && getAfter(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.status == 'approved';
 
-      allow get: if isApproved(groupId);
-      allow list: if false;
-      allow update: if false;
-      allow delete: if isApproved(groupId);
+      // 不存在を読み取れることは削除完了確認に必要。存在する世帯は非公開。
+      allow get: if signedIn() && (
+        !exists(/databases/$(db)/documents/groups/$(groupId))
+        || isOwner(groupId) || isApproved(groupId));
+      allow list: if signedIn() && resource.data.createdBy == request.auth.uid;
+      // 削除マークは不可逆。作成者の付け替えや通常の更新を許さない。
+      allow update: if isOwner(groupId) && isActive(groupId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['deletionState', 'deletionStartedAt'])
+        && request.resource.data.deletionState == 'deleting'
+        && request.resource.data.deletionStartedAt == request.time;
+      allow delete: if deletingOwner(groupId);
 
       match /members/{uid} {
-        allow get: if isApproved(groupId)
-          || (signedIn() && request.auth.uid == uid);
-        allow list: if isApproved(groupId);
+        allow get: if isOwner(groupId) || isApproved(groupId)
+          || (signedIn() && isActive(groupId) && request.auth.uid == uid);
+        allow list: if isOwner(groupId) || isApproved(groupId);
 
-        allow create: if signedIn()
+        allow create: if signedIn() && writableGroup(groupId)
           && request.auth.uid == uid
+          && mayChooseGroup(groupId)
+          && request.resource.data.keys().hasOnly([
+            'name', 'role', 'mode', 'status', 'joinedAt', 'inviteCode'
+          ])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.role in ['honnin', 'kazoku']
+          && request.resource.data.get('mode', 'kazoku') in ['honnin', 'kazoku', 'konly']
+          && request.resource.data.joinedAt == request.time
           && (
-            (
-              get(/databases/$(db)/documents/groups/$(groupId)).data.createdBy
-                == request.auth.uid
-              && request.resource.data.get('status', 'approved') == 'approved'
-            )
-            ||
-            (
+            (getAfter(/databases/$(db)/documents/groups/$(groupId)).data.createdBy == request.auth.uid
+              && request.resource.data.status == 'approved')
+            || (
               request.resource.data.status == 'pending'
               && request.resource.data.inviteCode is string
-              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode))
-                .data.groupId == groupId
-              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode))
-                .data.used == false
-              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode))
-                .data.expiresAt > request.time
+              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode)).data.groupId == groupId
+              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode)).data.used == false
+              && get(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode)).data.expiresAt > request.time
+              // 参加申請と使用済み化を同じ batch/transaction に固定する。
+              && getAfter(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode)).data.used == true
+              && getAfter(/databases/$(db)/documents/invites/$(request.resource.data.inviteCode)).data.usedBy == request.auth.uid
             )
           );
 
-        allow update: if isApproved(groupId)
+        allow update: if (activeOwner(groupId)
           && resource.data.status == 'pending'
           && request.resource.data.status == 'approved'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+          || (signedIn() && request.auth.uid == uid
+            && isApproved(groupId) && writableGroup(groupId)
+            && request.resource.data.mode in ['honnin', 'kazoku', 'konly']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mode']));
 
-        allow delete: if isApproved(groupId)
-          || (signedIn() && request.auth.uid == uid);
+        // 作成者は通常退会できない。全体削除は最後まで作成者を識別できる。
+        allow delete: if deletingOwner(groupId)
+          || (isActive(groupId)
+            && uid != get(/databases/$(db)/documents/groups/$(groupId)).data.createdBy
+            && (activeOwner(groupId) || (signedIn() && request.auth.uid == uid)));
       }
 
       match /events/{eventId} {
-        allow read: if isApproved(groupId);
-        allow create: if isApproved(groupId)
+        allow read: if isApproved(groupId) || deletingOwner(groupId);
+        allow create: if isApproved(groupId) && writableGroup(groupId)
           && request.resource.data.uid == request.auth.uid;
         allow update: if false;
-        allow delete: if isApproved(groupId)
-          && resource.data.uid == request.auth.uid;
+        allow delete: if deletingOwner(groupId) || (usableAccount() && isApproved(groupId)
+          && resource.data.uid == request.auth.uid);
       }
 
       match /yotei/{yoteiId} {
-        allow read: if isApproved(groupId);
+        allow read: if isApproved(groupId) || deletingOwner(groupId);
 
         /* 新規作成: 自分名義のみ・9項目限定・作成/更新時刻はサーバー時刻 */
-        allow create: if isApproved(groupId)
+        allow create: if isApproved(groupId) && writableGroup(groupId)
           && request.resource.data.get('uid', null) == request.auth.uid
           && request.resource.data.keys().hasOnly([
             'kind', 'date', 'time', 'label', 'color', 'repeat',
@@ -89,7 +164,7 @@ service cloud.firestore {
            「変更された項目」だけを許可リストで検査する。
            createdAtはリスト外=書き換え不可。
            uidの変更は、名義の無い旧予定を家族が引き継ぐ場合のみ許可。 */
-        allow update: if isApproved(groupId)
+        allow update: if isApproved(groupId) && writableGroup(groupId)
           && (resource.data.get('uid', null) == null
               || resource.data.get('uid', null) == request.auth.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -103,17 +178,17 @@ service cloud.firestore {
           );
 
         /* 削除: 登録した本人だけ(名義の無い旧予定は承認済み家族が整理可) */
-        allow delete: if isApproved(groupId)
+        allow delete: if deletingOwner(groupId) || (usableAccount() && isApproved(groupId)
           && (resource.data.get('uid', null) == null
-              || resource.data.get('uid', null) == request.auth.uid);
+              || resource.data.get('uid', null) == request.auth.uid));
       }
 
       // QRおまもりタグの家族側設定
       match /settings/watchTag {
-        allow get: if isApproved(groupId);
-        allow list: if false;
+        allow get: if isApproved(groupId) || deletingOwner(groupId);
+        allow list: if deletingOwner(groupId);
 
-        allow create: if isApproved(groupId)
+        allow create: if activeOwner(groupId)
           && request.resource.data.keys().hasOnly([
             'watchTagId', 'watchTagActive', 'watchTagUpdatedAt'
           ])
@@ -121,12 +196,12 @@ service cloud.firestore {
           && request.resource.data.watchTagId.matches('^[A-Za-z0-9_-]{32}$')
           && request.resource.data.watchTagActive == true
           && request.resource.data.watchTagUpdatedAt == request.time
-          && get(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
+          && getAfter(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
             .data.groupId == groupId
-          && get(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
+          && getAfter(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
             .data.active == true;
 
-        allow update: if isApproved(groupId)
+        allow update: if activeOwner(groupId)
           && request.resource.data.keys().hasOnly([
             'watchTagId', 'watchTagActive', 'watchTagUpdatedAt'
           ])
@@ -137,33 +212,69 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'watchTagId', 'watchTagActive', 'watchTagUpdatedAt'
           ])
-          && get(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
+          && getAfter(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
             .data.groupId == groupId
-          && get(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
+          && getAfter(/databases/$(db)/documents/watchTags/$(request.resource.data.watchTagId))
             .data.active == request.resource.data.watchTagActive;
 
-        allow delete: if false;
+        allow delete: if deletingOwner(groupId);
       }
     }
 
+    // Auth削除後も旧IDトークンを拒否する最小の閉鎖記録。クライアントから解除不可。
+    match /accountClosures/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['requestedAt'])
+        && request.resource.data.requestedAt == request.time;
+      allow list, update, delete: if false;
+    }
+
+    // 復旧先だけを保存。一般家族に他人の認証UIDの検索は許可しない。
+    match /accounts/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if deletingOwner(resource.data.groupId);
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['groupId', 'updatedAt'])
+        && request.resource.data.groupId is string
+        && request.resource.data.updatedAt == request.time
+        && approvedAfter(request.resource.data.groupId)
+        && mayChooseGroup(request.resource.data.groupId);
+      allow delete: if (signedIn() && request.auth.uid == uid
+          && connectionReleasedAfter(resource.data.groupId))
+        || (signedIn() && request.auth.uid != uid && deletingOwner(resource.data.groupId));
+    }
+
     match /invites/{code} {
-      allow get: if signedIn();
-      allow list: if false;
+      // 招待コードを知っている参加者は、削除中でない有効世帯の申請に使える。
+      allow get: if signedIn() && (isActive(resource.data.groupId) || deletingOwner(resource.data.groupId));
+      allow list: if isOwner(resource.data.groupId);
       allow create: if signedIn()
-        && isApproved(request.resource.data.groupId);
-      allow update: if signedIn()
+        && code.matches('^[A-HJ-NP-Z2-9]{8}$')
+        && request.resource.data.keys().hasOnly(['groupId', 'createdBy', 'createdAt', 'expiresAt', 'used'])
+        && request.resource.data.groupId is string
+        && activeOwner(request.resource.data.groupId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(25, 'h')
+        && request.resource.data.used == false;
+      allow update: if signedIn() && writableGroup(resource.data.groupId)
         && resource.data.used == false
+        && resource.data.expiresAt > request.time
         && request.resource.data.used == true
-        && request.resource.data.groupId == resource.data.groupId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used']);
-      allow delete: if signedIn()
-        && isApproved(resource.data.groupId);
+        && request.resource.data.usedBy == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedBy'])
+        && !exists(/databases/$(db)/documents/groups/$(resource.data.groupId)/members/$(request.auth.uid))
+        && getAfter(/databases/$(db)/documents/groups/$(resource.data.groupId)/members/$(request.auth.uid)).data.status == 'pending'
+        && getAfter(/databases/$(db)/documents/groups/$(resource.data.groupId)/members/$(request.auth.uid)).data.inviteCode == code;
+      allow delete: if activeOwner(resource.data.groupId) || deletingOwner(resource.data.groupId);
     }
 
     // QRおまもりタグ本体
     match /watchTags/{tagId} {
-      allow get: if isApproved(resource.data.groupId);
-      allow list: if false;
+      allow get: if isApproved(resource.data.groupId) || deletingOwner(resource.data.groupId);
+      allow list: if isOwner(resource.data.groupId);
 
       allow create: if signedIn()
         && tagId.matches('^[A-Za-z0-9_-]{32}$')
@@ -174,9 +285,9 @@ service cloud.firestore {
         && request.resource.data.active == true
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
-        && isApproved(request.resource.data.groupId);
+        && activeOwner(request.resource.data.groupId);
 
-      allow update: if isApproved(resource.data.groupId)
+      allow update: if activeOwner(resource.data.groupId)
         && request.resource.data.groupId == resource.data.groupId
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.active == false
@@ -185,13 +296,14 @@ service cloud.firestore {
           'active', 'stoppedAt'
         ]);
 
-      allow delete: if isApproved(resource.data.groupId);
+      allow delete: if deletingOwner(resource.data.groupId);
 
       match /alerts/{alertId} {
         allow create: if signedIn()
           && alertId == request.auth.uid
           && exists(/databases/$(db)/documents/watchTags/$(tagId))
           && get(/databases/$(db)/documents/watchTags/$(tagId)).data.active == true
+          && writableGroup(get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId)
           && request.resource.data.keys().hasOnly([
             'type', 'situation', 'count', 'senderUid', 'createdAt'
           ])
@@ -205,6 +317,7 @@ service cloud.firestore {
           && alertId == request.auth.uid
           && exists(/databases/$(db)/documents/watchTags/$(tagId))
           && get(/databases/$(db)/documents/watchTags/$(tagId)).data.active == true
+          && writableGroup(get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId)
           && request.resource.data.keys().hasOnly([
             'type', 'situation', 'count', 'senderUid', 'createdAt'
           ])
@@ -215,10 +328,9 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time
           && request.time > resource.data.createdAt + duration.value(10, 'm');
 
-        allow read: if isApproved(
-          get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId
-        );
-        allow delete: if false;
+        allow read: if isApproved(get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId)
+          || deletingOwner(get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId);
+        allow delete: if deletingOwner(get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId);
       }
     }
 

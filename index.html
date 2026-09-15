@@ -9,6 +9,11 @@
 <meta name="theme-color" content="#E0711A">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
+[hidden]{display:none!important;}
+.account-fields{display:grid;gap:10px;margin:14px 0;}
+.account-fields input{width:100%;box-sizing:border-box;font:inherit;min-height:48px;border:2px solid #C7CED6;border-radius:10px;padding:10px;}
+.account-fields label{font-weight:700;}
+
 :root{
   --asa:#FFFFFF; --hi:#F28A42; --hi-koi:#D96B24; --hi-usui:#FFF0E4;
   --cha:#263342; --ha:#63A57D; --ha-koi:#3F815C; --ha-usui:#E5F4EA; --usucha:#667085;
@@ -564,18 +569,19 @@ table.cal-rec td.pad{background:none;}
 <div class="page" id="entry">
   <img class="appicon" src="icon-192.png" alt="まいにこ">
   <h1>まいにこ</h1>
-  <div class="entry-catch">押すだけで<em>「今日も元気」</em>が家族に届く</div>
-  <div class="note" style="max-width:320px;margin:7px auto 0;color:#5C4E3A;font-weight:700;">監視ではなく、ご本人から伝える毎日の安心</div>
+  <div class="entry-catch">不安を軽く、安心を深く、<br>上田でつなぐ。</div>
+  <div class="note" style="max-width:320px;margin:7px auto 0;color:#5C4E3A;font-weight:700;">本人も家族も、介護の不安を抱え込まない上田へ。</div>
   <button class="install-main" id="install-main" type="button" onclick="installApp()">📲 ホーム画面に追加する<small>次からアプリのようにすぐ開けます</small></button>
   <div class="q">使い方を選んでください</div>
   <div id="select-box">
-    <button class="entry-btn" onclick="pickMode('honnin')">ご本人が使う</button>
-    <button class="entry-btn" onclick="pickMode('kazoku')">ご家族が使う<small>ご本人もアプリを使う世帯</small></button>
-    <button class="entry-btn" onclick="pickMode('konly')">ご家族が記録して使う<small>ご本人は操作しません</small></button>
+    <button class="entry-btn" onclick="pickMode('honnin')">本人が使う<small>この端末をご本人が操作します</small></button>
+    <button class="entry-btn" onclick="pickMode('kazoku')">本人と家族が使う<small>この端末は家族用です。本人用は上を選びます</small></button>
+    <button class="entry-btn" onclick="pickMode('konly')">家族が記録して使う<small>家族が確認したことを、家族の記録として残します</small></button>
   </div>
   <div class="setup-or">─ または ─</div>
   <button class="entry-btn sub" onclick="pickMode('kazoku')">招待された方<small>招待コードを入力して参加する</small></button>
-  <div class="note" style="max-width:320px;margin:6px auto 0;">ここから家族とつながれます。ご本人がこの端末を使う場合は、上の「ご本人が使う」を選んでください。</div>
+  <div class="note" style="max-width:320px;margin:6px auto 0;">ここから家族とつながれます。ご本人がこの端末を使う場合は、上の「本人が使う」を選んでください。</div>
+  <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
 </div>
 
 <!-- ホーム画面への追加案内 -->
@@ -590,7 +596,7 @@ table.cal-rec td.pad{background:none;}
     </div>
     <div class="note" style="text-align:center;margin-top:12px;">追加後は、ホーム画面の「まいにこ」アイコンから開いてください。</div>
     <button class="modal-close" type="button" onclick="closeInstallGuide()">わかりました</button>
-  </div>
+</div>
 </div>
 
 <!-- ===== 同意(共用) ===== -->
@@ -622,7 +628,7 @@ table.cal-rec td.pad{background:none;}
 <div class="page consent-page" id="consent-b">
   <div class="consent-wrap">
     <div class="consent-ttl">記録をはじめる前に</div>
-    <p class="consent-lead">このモードでは、本人から挨拶や体調は届きません。ご家族が確認した様子、予定、服薬の確認、メモを記録します。本人の情報は、本人の了解を得て、必要な範囲だけ入力してください。</p>
+    <p class="consent-lead">このモードでは、本人から挨拶や体調は届きません。ご家族が確認した様子、予定、服薬の確認、メモを記録します。本人に分かる方法で説明し、意思を確認してください。家族が確認したことを家族自身の記録として残し、本人の入力や意思とは区別します。拒否や続く不快感があれば利用を中止してください。意思確認が難しい場合の利用条件は、専門家への確認が済むまで定められていません。</p>
     <label class="consent-item"><input type="checkbox" class="ck-b"> 本人にこの利用を説明しました</label>
     <label class="consent-item"><input type="checkbox" class="ck-b"> 本人の了解を得ています</label>
     <label class="consent-item"><input type="checkbox" class="ck-b"> 必要以上の情報を入力しません</label>
@@ -646,11 +652,63 @@ table.cal-rec td.pad{background:none;}
   <div class="setup-wrap">
     <div class="setup-ttl">お名前の登録</div>
     <p class="setup-lead">記録に表示される、あなたのお名前(下の名前)を入力してください。</p>
-    <input type="text" id="in-name" class="setup-input" placeholder="例: 理絵">
+    <input type="text" maxlength="80" id="in-name" class="setup-input" placeholder="例: 理絵">
     <button class="entry-btn" onclick="saveName()">つぎへ</button>
     <button class="consent-back" onclick="showPage('entry')">← 入口に戻る</button>
   </div>
 </div>
+
+
+<div class="page" id="household-status-page"><div class="setup-wrap">
+  <div class="setup-ttl">家族との接続</div><p class="setup-lead" id="household-status-text" role="status"></p>
+  <button class="entry-btn" onclick="retryHouseholdConnection()">再確認する</button>
+  <button class="entry-btn sub" onclick="openRecovery()">アカウントを確認する</button>
+  <button class="entry-btn sub" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
+  <button class="consent-back" onclick="resetDisconnectedDevice()">接続が終了した端末を入口に戻す</button>
+</div></div>
+<div class="modal" id="recovery-modal" role="dialog" aria-modal="true" aria-labelledby="recovery-title"><div class="modal-box adult-font">
+  <div class="ttl" id="recovery-title">端末の変更・復旧</div>
+  <p class="note">復旧設定をする前に端末やブラウザーの保存情報を失うと、同じアカウントへ戻せません。端末が使えるうちに設定してください。</p>
+  <div class="account-fields">
+    <label for="recovery-email">ご自身のメールアドレス</label><input id="recovery-email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254">
+    <label for="recovery-password">パスワード（新しく設定するときは12文字以上）</label><input id="recovery-password" type="password" autocomplete="current-password" maxlength="128">
+  </div>
+  <div id="recovery-register">
+    <button class="set-btn" onclick="runRecoveryAction('register')">このアカウントの復旧を設定する</button>
+    <button class="set-btn" onclick="runRecoveryAction('check')">確認できたか調べる</button>
+    <button class="set-btn" onclick="runRecoveryAction('resend')">確認メールを再送する</button>
+  </div>
+  <button class="set-btn" id="recovery-login" onclick="runRecoveryAction('login')">以前のアカウントを復旧する</button>
+  <button class="set-btn" onclick="runRecoveryAction('reset')">パスワードを忘れた方</button>
+  <div class="save-state" id="recovery-state" role="status" aria-live="polite"></div>
+  <button class="modal-close" onclick="closeRecovery()">とじる</button>
+</div></div>
+<div class="modal" id="account-deletion-modal" role="dialog" aria-modal="true" aria-labelledby="account-deletion-title"><div class="modal-box adult-font">
+  <div class="ttl" id="account-deletion-title">自分のアカウントを削除する</div>
+  <p class="note" id="account-deletion-identity"></p>
+  <p class="note">先に管理するすべての家庭の共有データ削除、または参加解除を済ませてください。削除の準備が完了すると、このアカウントでの新規登録・通常の記録は停止し、取り消せません。通信が切れた場合は同じアカウントで再開してください。</p>
+  <p class="note">削除するのは今ログイン中のあなたの登録です。他の家族のログイン登録や、旧版で別の家庭に残った記録は削除しません。旧記録の整理は運営者に依頼してください。以前のログイン情報の悪用を防ぐため、識別番号と閉鎖開始日時だけを運営の最終整理まで保管します。</p>
+  <div class="account-fields"><label for="account-deletion-password">現在のパスワード（復旧設定をした方）</label><input id="account-deletion-password" type="password" autocomplete="current-password" maxlength="128"></div>
+  <button class="set-btn warn" onclick="prepareAccountDeletion()">削除の準備をする</button>
+  <div class="account-fields"><label for="account-deletion-confirm">確認のため「アカウントを削除」と入力</label><input id="account-deletion-confirm" autocomplete="off"></div>
+  <button class="set-btn warn" id="account-deletion-finish" onclick="finishAccountDeletion()" disabled>自分のログイン登録を削除する</button>
+  <div class="save-state" id="account-deletion-state" role="status" aria-live="polite"></div>
+  <button class="modal-close" onclick="closeAccountDeletion()">とじる</button>
+</div></div>
+<div class="page" id="account-closed-page"><div class="setup-wrap">
+  <div class="setup-ttl">アカウントの利用終了</div><p id="account-closed-state" role="status" class="setup-lead"></p>
+  <p class="note">利用終了の確認：共有データの削除・参加解除 → 自分のログイン登録の削除 → 印刷した災害QRを読み取れないよう切断して廃棄 → 他の端末のサイト保存・写真・スクリーンショットを各自で削除。紙や他端末のコピーは遠隔では消せません。旧版の記録は運営者に整理を依頼してください。</p>
+  <button class="entry-btn sub" onclick="restartAfterAccountClosure()">新しく利用を始める</button>
+</div></div>
+<div class="modal" id="deletion-modal" role="dialog" aria-modal="true" aria-labelledby="deletion-title"><div class="modal-box adult-font">
+  <div class="ttl" id="deletion-title">共有データをすべて削除する</div>
+  <p class="note">この家庭の全員の記録・予定・家族との接続・招待・おまもりタグとお知らせ・復旧先登録を共有サーバーから削除します。始めると利用を停止し、取り消せません。通信が切れたら、この画面で再開してください。</p>
+  <p class="note">この端末に保存した災害QRなども削除します。印刷物・他端末の保存内容・撮影したQRは各自で廃棄してください。ログイン用アカウントはこの操作では削除しません。共有削除の完了後「自分のログイン用アカウントを削除する」に進んでください。印刷した災害QRは読み取れないよう切断し、他の端末のサイト保存・写真・スクリーンショットも各自で削除してください。旧版で残った記録は運営者に整理を依頼してください。</p>
+  <div class="account-fields"><label for="deletion-confirm">確認のため「共有データを削除」と入力</label><input id="deletion-confirm" autocomplete="off" spellcheck="false"></div>
+  <button class="set-btn warn" id="deletion-run" onclick="runHouseholdDeletion()">削除を開始・再開する</button>
+  <div class="save-state" id="deletion-state" role="status" aria-live="polite"></div>
+  <button class="modal-close" onclick="closeHouseholdDeletion()">とじる</button>
+</div></div>
 
 <!-- ===== 接続(グループ作成/招待参加) ===== -->
 <div class="page" id="connect-page" style="background:#fff;">
@@ -664,7 +722,8 @@ table.cal-rec td.pad{background:none;}
     <div class="setup-or">─ または ─</div>
     <input type="text" id="in-code" class="setup-input" placeholder="招待コードを入力" autocapitalize="characters" autocomplete="off">
     <button class="entry-btn sub" onclick="joinByCode()">招待コードで参加</button>
-    <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、すでに利用中のご家族の画面の「設定」→「家族・本人を招待する」で発行できます。コードで参加すると「承認待ち」になり、ご本人または管理のご家族が認めると利用できます。招待コードは一度使うと再び使えません。認められなかったときや申請を取り下げたときは、新しいコードを発行してもらってください。<br><br>この端末は一度つながると、モードを切り替えても同じご家族の記録を使います。</div>
+    <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
+    <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、すでに利用中のご家族の画面の「設定」→「家族・本人を招待する」で発行できます。コードで参加すると「承認待ち」になり、最初に家庭を作成した管理者が認めると利用できます。招待コードは一度使うと再び使えません。認められなかったときや申請を取り下げたときは、新しいコードを発行してもらってください。<br><br>この端末は一度つながると、モードを切り替えても同じご家族の記録を使います。</div>
     <button class="consent-back" onclick="showPage('entry')">← 入口に戻る</button>
   </div>
 </div>
@@ -673,7 +732,7 @@ table.cal-rec td.pad{background:none;}
 <div class="page" id="pending-page" style="background:#fff;">
   <div class="setup-wrap">
     <div class="setup-ttl">承認待ちです</div>
-    <p class="setup-lead">参加の申請を送りました。ご本人または管理のご家族が「参加を認める」を押すと、利用をはじめられます。承認されるまで、記録は表示されません。<br>この画面はそのままで大丈夫です。承認されると自動で切り替わります。<br>一度使った招待コードは、もう一度は使えません。申請を取り下げたときや認められなかったときは、新しい招待コードを発行してもらってください。</p>
+    <p class="setup-lead">参加の申請を送りました。最初に家庭を作成した管理者が「参加を認める」を押すと、利用をはじめられます。承認されるまで、記録は表示されません。<br>この画面はそのままで大丈夫です。承認されると自動で切り替わります。<br>一度使った招待コードは、もう一度は使えません。申請を取り下げたときや認められなかったときは、新しい招待コードを発行してもらってください。</p>
     <div class="note" id="pending-err" style="display:none;max-width:320px;margin:0 auto 14px;text-align:left;color:#B0492F;">いまの状態を確認できませんでした。通信環境を確認して、この画面を開き直してください。参加が認められなかったときも、この表示になることがあります。その場合は「申請を取り下げる」を押すと入口に戻れます。</div>
     <button class="entry-btn sub" onclick="cancelJoinRequest()">申請を取り下げる</button>
   </div>
@@ -735,6 +794,7 @@ table.cal-rec td.pad{background:none;}
       </div>
       <div class="note" style="text-align:center;">お薬を飲んだら、朝・昼・夜から選んで押してください。服薬の証明ではありません。</div>
     </div>
+    <button class="cal-open" type="button" onclick="openPersonHistory()">家族からの伝言を日付で見る</button>
     <button class="onegai-btn" onclick="openOnegai()">ちょっとお願い</button>
     <button class="cal-open" onclick="openCal()">カレンダーを見る</button>
     <button class="cal-open" onclick="openHYotei()">予定を入れる</button>
@@ -755,6 +815,13 @@ table.cal-rec td.pad{background:none;}
   <div class="set-sec"><h4>利用方法の変更</h4>
     <div class="note">利用する人を最初から選び直すときだけ使います。普段は変更する必要はありません。</div>
     <button class="set-btn warn" onclick="openBackConfirm()">利用方法を変更する</button>
+  </div>
+  <div class="set-sec"><h4>アカウントと家庭の管理</h4>
+    <p class="note" data-household-role></p>
+    <button class="set-btn warn" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
+    <button class="set-btn" onclick="openRecovery()">端末をなくす前に復旧を設定する</button>
+    <div class="note">ご自身のメールアドレスを使います。本人にパスワードを覚えてもらう必要はありません。家族は自分のアカウントで設定してください。</div>
+    <button class="set-btn warn" data-owner-only hidden onclick="deleteAllData()">共有データをすべて削除する</button>
   </div>
   <button class="modal-close" onclick="closePersonSettings()">とじる</button>
 </div></div>
@@ -798,7 +865,7 @@ table.cal-rec td.pad{background:none;}
 <!-- 家族が「お願い」へ自由に返事を書く -->
 <div class="modal" id="onegai-reply-modal"><div class="modal-box adult-font">
   <div class="ttl">ご本人への返事を書く</div>
-  <div class="note" style="margin-bottom:8px;">60文字まで入力できます。送った文章は本人画面で読み上げられます。</div>
+  <div class="note" style="margin-bottom:8px;">60文字まで入力できます。本人画面を開き、読み上げをオンにしている場合に合成音声で読み上げます。到達は保証しません。</div>
   <input type="text" id="onegai-reply-text" class="setup-input" maxlength="60" placeholder="例：仕事が終わったら電話するね">
   <button class="entry-btn" id="onegai-reply-send" type="button" onclick="sendOnegaiBackFree()">この返事を送る</button>
   <div class="save-state" id="onegai-reply-state" aria-live="polite"></div>
@@ -811,6 +878,16 @@ table.cal-rec td.pad{background:none;}
   <button class="entry-btn" id="person-message-reply-send" type="button" onclick="sendPersonMessageReply()">この返事を送る</button>
   <div class="save-state" id="person-message-reply-state" aria-live="polite"></div>
   <button class="modal-close" onclick="closePersonMessageReply()">やめる</button>
+</div></div>
+<div class="modal" id="person-history-modal"><div class="modal-box">
+  <div class="ttl">家族からの伝言</div>
+  <label for="person-history-date">見たい日を選んでください</label>
+  <input type="date" id="person-history-date" class="setup-input" onchange="loadPersonHistory()">
+  <div class="note">伝言とその返事を確認できます。返信は急がなくて大丈夫です。</div>
+  <div id="person-history-state" class="save-state" role="status"></div>
+  <div id="person-history-list"></div>
+  <button class="set-btn" type="button" onclick="loadPersonHistory()">もう一度読み込む</button>
+  <button class="modal-close" type="button" onclick="closePersonHistory()">とじる</button>
 </div></div>
 <!-- ちょっとお願い -->
 <div class="modal" id="onegai-modal">
@@ -860,7 +937,7 @@ table.cal-rec td.pad{background:none;}
 <div class="modal" id="disaster-qr-modal">
   <div class="modal-box adult-font">
     <div class="ttl">災害用QRを作る</div>
-    <p class="note">このQRは電波がなくても読めます。その代わり、QRを持つ人は誰でも内容を読めます。</p>
+    <p class="note">このQRは、電源のある対応端末なら電波がなくても読めます。誰でも読み取り・撮影・複製でき、作成後のコピーを遠隔で消すことはできません。</p>
     <details class="tag-guide" style="margin:0 0 6px;"><summary>災害用QRとは（説明）</summary>
       <div class="note" style="margin-top:6px;">災害や急な体調不良で、うまく話せない・伝えられないときに、周りの方へ見せるためのカードです。<br>
       ・おまもりタグと違い、通信がなくても読めます<br>
@@ -879,7 +956,10 @@ table.cal-rec td.pad{background:none;}
       <select id="disaster-help"><option value="">選んでください</option><option>ゆっくり話してください</option><option>筆談をお願いします</option><option>歩くときに支えが必要です</option><option>家族・支援者へ連絡してください</option><option>日本語での会話が難しいです</option><option>その他（下の欄に記入）</option></select>
       <label for="disaster-free">その他・伝えたいこと（任意・60文字まで）</label>
       <input id="disaster-free" maxlength="60" autocomplete="off" placeholder="例：右耳のほうが聞こえやすいです">
-      <label class="disaster-consent"><input id="disaster-consent" type="checkbox"><span>この内容は誰でも読み取れることを理解し、QRの作成に同意します</span></label>
+      <label class="disaster-consent"><input id="disaster-consent" type="checkbox"><span>本人に分かる方法で掲載内容を確認し、誰でも読めることとコピーを消せないことについて、本人の同意を得ています</span></label>
+      <label class="disaster-consent"><input id="disaster-contact-consent" type="checkbox"><span>掲載する連絡先の本人から、電話番号をQRに載せる同意を得ています</span></label>
+      <div class="note">更新・紛失時はQRを作り直し、手元の旧QRを廃棄してください。公的な身分証明や医療記録ではなく、救助・連絡を保証しません。現在は試験用の架空情報だけで確認してください。</div>
+      <div class="save-state" id="disaster-qr-state" role="status"></div>
       <button class="big-btn" type="button" onclick="makeDisasterQr()">入力内容を確認してQRを作る</button>
       <div id="disaster-qr-preview" class="disaster-preview"></div>
       <button class="set-btn warn" id="disaster-delete" type="button" onclick="deleteDisasterQr()" style="display:none;">災害用QRを削除する</button>
@@ -895,25 +975,25 @@ table.cal-rec td.pad{background:none;}
       <div class="ttl" style="margin:0;">設定</div>
     </div>
 
-    <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;">
+    <div class="set-sec" data-owner-only hidden style="border-top:none;margin-top:0;padding-top:0;">
       <h4>家族を追加する</h4>
       <div class="note" style="margin-top:0;">離れて暮らす家族も、3つの手順でつながれます。<br>
       ①「招待コードを作る」を押すと、ランダムな英数字8文字のコードが自動で発行されます<br>
       ② そのコードを家族に伝える（電話や紙のメモでOK）<br>
       ③ 家族が自分のスマホでまいにこを開き、入口の「招待された方」にコードを入れる → あなたの画面に出る「参加を認める」を押せば完了<br>
       <span style="color:#8A6F4D;">コードは24時間・1回だけ使えます。</span></div>
-      <button class="set-btn" onclick="makeInvite('settings-invite-area')">招待コードを作る</button>
+      <button data-owner-only hidden class="set-btn" onclick="makeInvite('settings-invite-area')">招待コードを作る</button>
       <div id="settings-invite-area"></div>
     </div>
 
     <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;">
       <h4>つながっている人</h4>
       <div id="set-members"><div class="empty">読み込み中…</div></div>
-      <div class="note">解除すると、その人はこの家族の記録を見られなくなります(過去の記録も含む)。端末を紛失した場合も、ここで解除すれば停止できます。</div>
+      <div class="note">解除すると、その人はこの家族の記録を見られなくなります(過去の記録も含む)。同じアカウントを使う全端末が対象です。既に保存・撮影したコピーを遠隔で消すことはできません。</div>
     </div>
 
     <div class="set-sec"><h4>利用方法の変更</h4>
-      <div class="note">「ご本人が使う」「ご家族が使う」などの選び直しは、ここから行えます。記録は消えません。</div>
+      <div class="note">「本人が使う」「本人と家族が使う」などの選び直しは、ここから行えます。記録は消えません。</div>
       <button class="set-btn warn" onclick="openBackConfirm()">利用方法を変更する</button>
     </div>
 
@@ -924,6 +1004,13 @@ table.cal-rec td.pad{background:none;}
       <div class="note">この端末での利用を終了し、家族との接続を解除します。</div>
     </div>
 
+  <div class="set-sec"><h4>アカウントと家庭の管理</h4>
+    <p class="note" data-household-role></p>
+    <button class="set-btn warn" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
+    <button class="set-btn" onclick="openRecovery()">端末をなくす前に復旧を設定する</button>
+    <div class="note">ご自身のメールアドレスを使います。本人にパスワードを覚えてもらう必要はありません。家族は自分のアカウントで設定してください。</div>
+    <button class="set-btn warn" data-owner-only hidden onclick="deleteAllData()">共有データをすべて削除する</button>
+  </div>
     <button class="modal-close" onclick="closeSettings()">とじる</button>
   </div>
 </div>
@@ -1196,10 +1283,7 @@ table.cal-rec td.pad{background:none;}
         <div class="note" id="sd-region-label" style="margin:0 0 8px;font-weight:700;"></div>
         <p class="sd-lead" id="sd-lead">当てはまるものを選んでください。このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。</p>
         <div class="sd-list" id="sd-list"></div>
-        <div class="note" style="margin-top:18px;font-weight:900;color:var(--cha);">上田市以外にお住まいの方</div>
-        <div class="note" style="margin-top:4px;">国の公式検索で、お住まいの地域の相談先・医療機関を調べられます。</div>
-        <a class="sd-btn" href="https://www.kaigokensaku.mhlw.go.jp/" target="_blank" rel="noopener noreferrer"><span class="l">介護・相談先を探す（厚生労働省）</span><span class="s">介護サービス情報公表システムが新しい画面で開きます</span></a>
-        <a class="sd-btn" href="https://www.iryou.teikyouseido.mhlw.go.jp/znk-web/juminkanja/S2300/initialize" target="_blank" rel="noopener noreferrer"><span class="l">医療機関を探す（厚生労働省）</span><span class="s">医療情報ネットが新しい画面で開きます</span></a>
+        <div class="note">上田市内の相談先をご案内しています。相談はご本人・ご家族から直接行ってください。</div>
         <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
       </div>
       <div class="card dom-soudan" id="sd-detail-card" style="display:none;">
@@ -1291,6 +1375,10 @@ setTimeout(function(){
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
 <script src="mainico-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
+<script src="account-recovery.js"></script>
+<script src="account-deletion.js"></script>
+<script src="household-deletion.js"></script>
+<script src="household-ui.js"></script>
 <script>
 const previewStorage={
   getItem:k=>localStorage.getItem(k),
@@ -1674,51 +1762,107 @@ function saveName(){
   setupConnectPage();
   showPage('connect-page');
 }
+let groupCreating=false;
 async function createGroup(){
+  if(groupCreating || joiningGroup)return;
+  if(gid()){alert('すでに家族と接続しています。新しい家庭は作成していません。');return;}
+  if(!pendingMode){alert('利用方法を選んでください。');return;}
   if(pendingMode==='kazoku' && !document.getElementById('ck-together').checked){
-    alert('ご本人に説明し、了解を得てからチェックを入れてください'); return;
+    alert('ご本人に説明し、了解を得てからチェックを入れてください');return;
   }
+  const accountUid=uid();
+  const assertSameAccount=()=>{if(!accountUid || uid()!==accountUid)throw new Error('アカウントが変わったため中止しました。元のアカウントで再確認してください。');};
+  groupCreating=true;
+  const button=document.getElementById('btn-newgroup');button.disabled=true;
   try{
-    const ref=await db.collection('groups').add({
-      createdBy: uid(),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await ref.collection('members').doc(uid()).set({
-      name: pendingMode==='honnin' ? '本人' : myName(),
-      role: pendingMode==='honnin' ? 'honnin' : 'kazoku',
-      status: 'approved',
-      joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    previewStorage.setItem('mainicoGid', ref.id);
-    finishSetup();
-  }catch(e){ alert('作成できませんでした。通信状態を確認してください。\n'+e.message); }
+    assertSameAccount();
+    const key='mainico_group_setup_v1';
+    const old=JSON.parse(previewStorage.getItem(key)||'null');
+    if(old && old.uid!==uid())throw new Error('この端末で別アカウントの設定が途中です。保存情報を消さず、確認してください。');
+    const ref=old?db.collection('groups').doc(old.groupId):db.collection('groups').doc();
+    const state=old||{uid:uid(),groupId:ref.id,mode:pendingMode,name:pendingMode==='honnin'?'本人':myName()};
+    previewStorage.setItem(key,JSON.stringify(state));
+    const existing=await ref.get({source:'server'});
+    assertSameAccount();
+    if(!existing.exists){
+      const batch=db.batch();
+      batch.set(ref,{createdBy:uid(),createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      batch.set(ref.collection('members').doc(uid()),{
+        name:state.name,role:state.mode==='honnin'?'honnin':'kazoku',mode:state.mode,
+        status:'approved',joinedAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+      batch.set(db.collection('accounts').doc(uid()),{groupId:ref.id,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+      assertSameAccount();
+      await batch.commit();
+      assertSameAccount();
+    }else if(existing.data().createdBy!==uid() || existing.data().deletionState==='deleting'){
+      throw new Error('以前の作成内容を確認できません。家庭は新たに作っていません。');
+    }
+    assertSameAccount();
+    previewStorage.setItem('mainicoPendingMode',state.mode);
+    previewStorage.setItem('mainicoName',state.name);
+    previewStorage.setItem('mainicoGid',ref.id);
+    try{previewStorage.removeItem(key);}catch(ignore){}
+    await finishSetup();
+  }catch(error){alert('作成の完了を確認できませんでした。同じ端末から再試行してください。\n'+error.message);}
+  finally{groupCreating=false;button.disabled=false;}
 }
+let joiningGroup=false;
 async function joinByCode(){
+  if(groupCreating || joiningGroup)return;
+  if(gid()){alert('すでに家族と接続しています。');return;}
   const code=document.getElementById('in-code').value.trim().toUpperCase();
-  if(!code){ alert('招待コードを入力してください'); return; }
+  if(!code){alert('招待コードを入力してください');return;}
+  if(!pendingMode){alert('利用方法を選んでください');return;}
+  const accountUid=uid();
+  const assertSameAccount=()=>{if(!accountUid || uid()!==accountUid)throw new Error('アカウントが変わったため中止しました。元のアカウントで再確認してください。');};
+  joiningGroup=true;
   try{
-    const inv=await db.collection('invites').doc(code).get();
-    if(!inv.exists){ alert('招待コードが見つかりません。コードを確認してください。'); return; }
+    assertSameAccount();
+    const inv=await db.collection('invites').doc(code).get({source:'server'});
+    assertSameAccount();
+    if(!inv.exists){alert('招待コードが見つかりません。コードを確認してください。');return;}
     const v=inv.data();
-    if(v.used){ alert('この招待コードは使用済みです。新しいコードを発行してもらってください。'); return; }
-    if(v.expiresAt && v.expiresAt.toMillis() < Date.now()){ alert('この招待コードは期限切れです。新しいコードを発行してもらってください。'); return; }
-    await db.collection('groups').doc(v.groupId).collection('members').doc(uid()).set({
-      name: pendingMode==='honnin' ? '本人' : myName(),
-      role: pendingMode==='honnin' ? 'honnin' : 'kazoku',
-      status: 'pending',
-      inviteCode: code,
-      joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await db.collection('invites').doc(code).update({used:true});
-    previewStorage.setItem('mainicoGid', v.groupId);
+    const key='mainico_join_pending_v1';
+    const previous=JSON.parse(previewStorage.getItem(key)||'null');
+    let alreadyJoined=false;
+    if(previous && previous.uid===uid() && previous.groupId===v.groupId && previous.code===code){
+      const me=await db.collection('groups').doc(v.groupId).collection('members').doc(uid()).get({source:'server'});
+      assertSameAccount();
+      alreadyJoined=me.exists && me.data().inviteCode===code;
+    }
+    if(!alreadyJoined){
+      if(v.used){alert('この招待コードは使用済みです。新しいコードを発行してもらってください。');return;}
+      if(v.expiresAt && v.expiresAt.toMillis()<Date.now()){alert('この招待コードは期限切れです。新しいコードを発行してもらってください。');return;}
+      previewStorage.setItem(key,JSON.stringify({uid:uid(),groupId:v.groupId,mode:pendingMode,code}));
+      const batch=db.batch();
+      batch.set(db.collection('groups').doc(v.groupId).collection('members').doc(uid()),{
+        name:pendingMode==='honnin'?'本人':myName(),role:pendingMode==='honnin'?'honnin':'kazoku',
+        status:'pending',mode:pendingMode,inviteCode:code,joinedAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+      batch.update(db.collection('invites').doc(code),{used:true,usedBy:uid()});
+      assertSameAccount();
+      await batch.commit();
+      assertSameAccount();
+    }
+    assertSameAccount();
+    previewStorage.setItem('mainicoGid',v.groupId);
+    try{previewStorage.removeItem(key);}catch(ignore){}
     showPending();
-  }catch(e){ alert('参加できませんでした。コードと通信状態を確認してください。\n'+e.message); }
+  }catch(error){alert('参加の完了を確認できませんでした。同じ端末から再確認してください。\n'+error.message);}
+  finally{joiningGroup=false;}
 }
-function finishSetup(){
+async function finishSetup(){
   const m=previewStorage.getItem('mainicoPendingMode')||pendingMode;
   previewStorage.setItem('kazokuOnly', m==='konly'?'1':'');
   previewStorage.setItem('mainicoMode', m==='honnin'?'honnin':'kazoku');
-  startMode();
+  try{
+    await refreshHousehold();
+    if(householdDeleting){openHouseholdDeletion();return;}
+    await col('members').doc(uid()).update({mode:m});
+    await saveRecoveryPointer();
+    startMode();watchHouseholdAccess();
+  }catch(error){showHouseholdBlocked('家族との接続・利用方法の保存を確認できませんでした。再確認してください。');}
 }
 let pendingUnsub=null;
 let cancelling=false;
@@ -1756,6 +1900,15 @@ async function cancelJoinRequest(){
     await col('members').doc(uid()).delete();
   }catch(e){
     /* 失敗したときは何も消さず、承認待ちの画面のまま残す */
+    // 管理者の全体削除が済んだ場合は、既に接続がないことをサーバーで確認する。
+    let disconnected=false;
+    try{const me=await col('members').doc(uid()).get({source:'server'});disconnected=!me.exists;}
+    catch(ignore){try{const group=await grp().get({source:'server'});disconnected=!group.exists;}catch(unconfirmed){}}
+    if(disconnected){
+      if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
+      previewStorage.removeItem('mainicoGid');previewStorage.removeItem('mainicoMode');
+      alert('この家庭との接続は終了しています。入口に戻ります。');location.reload();return;
+    }
     cancelling=false;
     const n=document.getElementById('pending-err');
     if(n) n.style.display='block';
@@ -1774,6 +1927,7 @@ function startMode(){
   if(m==='honnin' && gid()){ showPage('honnin'); initHonnin(); }
   else if(m==='kazoku' && gid()){ showPage('kazoku'); initKazoku(); }
   else showPage('entry');
+  applyHouseholdPermissions();
 }
 function resetMode(){ previewStorage.removeItem('mainicoMode'); location.reload(); }
 function openBackConfirm(){
@@ -1786,7 +1940,7 @@ function openBackConfirm(){
   if(back) requestAnimationFrame(function(){ back.classList.add('show'); speak('利用方法を 変更しますか'); });
 }
 function closeBackConfirm(){ speak('変更を やめました'); document.getElementById('back-modal').classList.remove('show'); }
-function openPersonSettings(){ speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); }
+function openPersonSettings(){ applyHouseholdPermissions(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); }
 function closePersonSettings(){ speak('とじました'); document.getElementById('person-settings-modal').classList.remove('show'); }
 /* ===== 予定 ===== */
 let yoteiCache=[];
@@ -2176,7 +2330,7 @@ let memWatchUnsub=null;
 function renderPendingCard(elId, snap){
   const el=document.getElementById(elId);
   if(!el) return;
-  if(snap.empty){ el.innerHTML=''; return; }
+  if(!isHouseholdOwner() || snap.empty){ el.innerHTML=''; return; }
   let html='';
   snap.forEach(doc=>{
     const v=doc.data();
@@ -2274,21 +2428,25 @@ async function openMembers(){
         html+='<div class="member-row"><span>'+esc(v.name)+' (承認待ち)</span></div>';
       }else{
         html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?' (ご本人)':'')+(me?' (あなた)':'')+'</span>'+
-          '<button class="member-del" onclick="honninRemove(\''+id+'\','+(me?'true':'false')+')">'+(me?'共有をやめる':'解除')+'</button></div>';
+          ((doc.id!==householdOwnerId&&(me||isHouseholdOwner()))?'<button class="member-del" onclick="honninRemove(\''+id+'\','+(me?'true':'false')+')">'+(me?'共有をやめる':'解除')+'</button>':'<small>'+(doc.id===householdOwnerId?'管理者':'参加メンバー')+'</small>')+'</div>';
       }
     });
     box.innerHTML=html;
-    document.getElementById('members-note').textContent='「解除」すると、その家族はあなたの記録を見られなくなります。いつでも解除できます。';
+    document.getElementById('members-note').textContent='解除は管理者、または自分自身に対して行えます。新しい取得・送信を止めます。既に保存・撮影したコピーは各端末で削除してください。';
   }catch(e){ box.innerHTML='<div class="empty">読み込めませんでした</div>'; }
 }
 async function honninRemove(mid, isMe){
   mid=memberRef(mid);
+  isMe=mid===uid();
+  if(mid===householdOwnerId){alert('管理者は参加解除できません。家庭全体の利用を終える場合は共有データの削除を選んでください。');return;}
+  if(!isMe && !requireHouseholdOwner())return;
   const msg=isMe
     ?'家族との共有をやめて、この端末を入口に戻しますか?\nこれまでの記録は消えず、家族の画面には残ります。'
     :'この家族を解除しますか?\n解除すると、この家族はあなたの記録(過去の分も含む)を見られなくなります。';
   if(!confirm(msg)) return;
   try{
-    await col('members').doc(mid).delete();
+    if(isMe){if(!await leaveHouseholdAccount())return;}
+    else await col('members').doc(mid).delete();
     if(isMe){
       previewStorage.removeItem('mainicoGid');
       previewStorage.removeItem('mainicoMode');
@@ -2705,6 +2863,7 @@ function soudanShow(i){
     it.appendChild(sdEl('div','n', t.name));
     it.appendChild(sdEl('div','d', t.desc));
     it.appendChild(sdLink(t.url,'公式ページを見る','上田市のページが新しい画面で開きます'));
+    if(key==='houkatsu')it.appendChild(uedaCenterPicker());
     box.appendChild(it);
   });
 
@@ -3568,20 +3727,22 @@ async function sendOnegaiBackFree(){
 }
 function sendOnegaiBack(onegaiId,text){ feedback(); addEvent({type:'onegai-back', text:text, name:myName(), replyTo:onegaiId}).catch(()=>alert('返信を送信できませんでした。電波状況を確認して、もう一度押してください')); }
 let personMessageReplySending=false;
-async function sendFamilyMessageBack(text){
-  if(!currentFamilyMessageId||personMessageReplySending)return false;
+async function sendFamilyMessageBack(text,replyId=currentFamilyMessageId){
+  if(!replyId||personMessageReplySending)return false;
   personMessageReplySending=true;
   const st=document.getElementById('h-message-reply-state');
   st.classList.remove('err');st.textContent='送信しています…';feedback();
   try{
-    await addEvent({type:'family-message-back',text:text,name:'本人',replyTo:currentFamilyMessageId});
+    await addEvent({type:'family-message-back',text:text,name:'本人',replyTo:replyId});
     st.textContent='家族の画面へ返事を届けました';
     speak('家族の画面へ、'+text+'と とどけました');
     return true;
   }catch(e){st.classList.add('err');st.textContent='送信できませんでした。もう一度お試しください';return false;}
   finally{personMessageReplySending=false;}
 }
+let personMessageReplyTargetId='';
 function openPersonMessageReply(){
+  personMessageReplyTargetId=currentFamilyMessageId;
   document.getElementById('person-message-reply-text').value='';
   document.getElementById('person-message-reply-state').textContent='';
   document.getElementById('person-message-reply-modal').classList.add('show');
@@ -3593,7 +3754,10 @@ async function sendPersonMessageReply(){
   const text=el.value.trim();st.classList.remove('err');
   if(!text){st.classList.add('err');st.textContent='返事を書いてください';return;}
   btn.disabled=true;st.textContent='送信しています…';
-  try{if(await sendFamilyMessageBack(text))closePersonMessageReply();}finally{btn.disabled=false;}
+  try{
+    if(await sendFamilyMessageBack(text,personMessageReplyTargetId))closePersonMessageReply();
+    else{st.classList.add('err');st.textContent='送信できませんでした。入力は残っています。もう一度お試しください。';}
+  }finally{btn.disabled=false;}
 }
 function recKibun(text){ feedback(); addEvent({type:'kibun-kazoku', text:text, name:myName()}).catch(()=>alert('記録できませんでした。電波状況を確認して、もう一度押してください')); }
 let recKusuriSending=false;
@@ -4198,6 +4362,7 @@ async function delYotei(id){
 
 /* ===== 設定(家族) ===== */
 function openSettings(){
+  applyHouseholdPermissions();
   document.getElementById('settings-modal').classList.add('show');
   renderSetMembers();
   loadWatchTag();
@@ -4219,12 +4384,13 @@ async function renderSetMembers(){
       const me=(doc.id===uid());
       const id=rememberMember(doc.id, v.name);
       if(v.status==='pending'){
+        if(!isHouseholdOwner()){html+='<div class="member-row"><span>'+esc(v.name)+' (承認待ち)</span></div>';return;}
         html+='<div class="member-row"><span>'+esc(v.name)+' (承認待ち)</span><span>'+
           '<button class="member-del" style="border-color:#5F7D52;color:#4C6541;margin-right:6px;" onclick="approveMember(\''+id+'\')">参加を認める</button>'+
           '<button class="member-del" onclick="denyMember(\''+id+'\')">認めない</button></span></div>';
       }else{
         html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?' (ご本人)':'')+(me?' (この端末)':'')+'</span>'+
-          '<button class="member-del" onclick="removeMember(\''+id+'\','+(me?'true':'false')+')">解除</button></div>';
+          ((doc.id!==householdOwnerId&&(me||isHouseholdOwner()))?'<button class="member-del" onclick="removeMember(\''+id+'\','+(me?'true':'false')+')">解除</button>':'<small>'+(doc.id===householdOwnerId?'管理者':'参加メンバー')+'</small>')+'</div>';
       }
     });
     box.innerHTML=html;
@@ -4236,6 +4402,7 @@ function refreshSetMembersIfOpen(){
   if(m && m.classList.contains('show')) renderSetMembers();
 }
 async function approveMember(mid){
+  if(!requireHouseholdOwner())return;
   try{
     const mname=memberNames[mid]||'新しい家族';
     mid=memberRef(mid);
@@ -4245,6 +4412,7 @@ async function approveMember(mid){
   }catch(e){ alert('承認できませんでした: '+e.message); }
 }
 async function denyMember(mid){
+  if(!requireHouseholdOwner())return;
   mid=memberRef(mid);
   if(!confirm('この参加申請を認めない(削除する)? 相手は記録を見られないまま入口に戻ります。')) return;
   try{
@@ -4255,9 +4423,13 @@ async function denyMember(mid){
 }
 async function removeMember(mid, isMe){
   mid=memberRef(mid);
+  isMe=mid===uid();
+  if(mid===householdOwnerId){alert('管理者は参加解除できません。家庭全体の利用を終える場合は共有データの削除を選んでください。');return;}
+  if(!isMe && !requireHouseholdOwner())return;
   if(!confirm(isMe?'この端末の接続を解除しますか?\n解除すると、この家族の記録は見られなくなります。':'この人の接続を解除しますか?\n解除すると、その人はこの家族の記録(過去の分も含む)を見られなくなります。')) return;
   try{
-    await col('members').doc(mid).delete();
+    if(isMe){if(!await leaveHouseholdAccount())return;}
+    else await col('members').doc(mid).delete();
     if(isMe){
       previewStorage.removeItem('mainicoGid');
       previewStorage.removeItem('mainicoMode');
@@ -4269,6 +4441,7 @@ async function removeMember(mid, isMe){
   }catch(e){ alert('解除できませんでした: '+e.message); }
 }
 async function makeInvite(targetId){
+  if(!requireHouseholdOwner())return;
   targetId = targetId || 'home-invite-area';
   const area=document.getElementById(targetId);
   try{
@@ -4299,17 +4472,18 @@ async function makeInvite(targetId){
 function printDisasterQr(){
   let v=null; try{ v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null'); }catch(e){}
   if(!v){ alert('先に災害用QRを作ってください。'); return; }
+  if(v.consentVersion!==2){alert('本人と連絡先の同意を確認して、QRを作り直してください。');return;}
   const qr=qrcode(0,'M'); qr.addData(unescape(encodeURIComponent(disasterQrText(v)))); qr.make();
   const img=qr.createImgTag(6,12,'まいにこ 災害用QR');
   openPrintWindow('災害・緊急時支援カード',
     '<h1>災害・緊急時支援カード</h1>'+
     '<div class="cardbox">呼び名：'+esc(v.name)+'<br>必要な支援：'+esc(v.help)+
     (v.free?('<br>メモ：'+esc(v.free)):'')+
-    '<br>緊急連絡先：'+esc(v.relation)+' '+esc(v.phone)+'<br>更新日：'+esc(v.updatedAt)+'</div>'+
+    '<br>緊急連絡先：'+esc(v.relation)+' '+esc(v.phone)+'<br>作成日：'+esc(v.createdAt||'記録なし（旧QR）')+'<br>更新日：'+esc(v.updatedAt)+'</div>'+
     '<div class="qr" style="margin-top:12px;">'+img+'</div>'+
     '<div class="note">QRにも同じ内容が入っています（通信がなくても読めます）。</div>'+
     '<div class="warn">命の危険がある場合は119番へ</div>'+
-    '<div class="note">このカードは本人の同意のもとで作成されています。<br>財布・お薬手帳・非常持出し袋に入れてお使いください。</div>');
+    '<div class="note">作成時に、本人と掲載する連絡先の同意を確認しています。コピーは遠隔で消せません。<br>財布・お薬手帳・非常持出し袋に入れてお使いください。</div>');
 }
 function printWatchTag(){
   if(!currentWatchTagId){ alert('先にタグを作ってください。'); return; }
@@ -4482,7 +4656,10 @@ function watchTagQr(url){
   qr.addData(url); qr.make();
   return qr.createImgTag(6,8,'まいにこ おまもりタグ');
 }
+let watchTagLoadGeneration=0;
 async function loadWatchTag(){
+  const request=++watchTagLoadGeneration,groupId=gid(),userId=uid(),generation=householdBootGeneration;
+  const current=()=>request===watchTagLoadGeneration && groupId===gid() && userId===uid() && generation===householdBootGeneration && householdVerified && !householdDeleting;
   const area=document.getElementById('watch-tag-area');
   const alerts=document.getElementById('watch-tag-alerts');
   const history=document.getElementById('watch-tag-history');
@@ -4494,11 +4671,12 @@ async function loadWatchTag(){
   if(home){ home.style.display='none'; }
   try{
     const g=await col('settings').doc('watchTag').get();
+    if(!current())return;
     const v=g.exists?g.data():{};
     currentWatchTagId=(v.watchTagActive && v.watchTagId)?v.watchTagId:'';
     if(!currentWatchTagId){
       if(history)history.textContent='';
-      area.innerHTML='<button class="big-btn family" onclick="createWatchTag()">おまもりタグを作る</button>'+
+      area.innerHTML=(isHouseholdOwner()?'<button class="big-btn family" onclick="createWatchTag()">おまもりタグを作る</button>':'<div class="note">タグの作成は管理者へ依頼してください。</div>')+
         '<div class="note">内部確認用の試作品です。本人の同意、実通知、乱用防止、削除機能が完成するまで販売・配布には使いません。作成後も、いつでも停止・再発行できます。</div>';
       return;
     }
@@ -4506,6 +4684,7 @@ async function loadWatchTag(){
     if(homeStatus){ homeStatus.textContent='おまもりタグは使用中です。QRの表示・停止は「安心」タブから行えます。'; }
     watchTagUnsub=db.collection('watchTags').doc(currentWatchTagId).collection('alerts')
       .orderBy('createdAt','desc').limit(5).onSnapshot({includeMetadataChanges:true},snap=>{
+        if(!current())return;
         const rows=[];
         const situationLabels={
           lost:'道に迷っているようです',unwell:'体調が心配です',
@@ -4545,12 +4724,14 @@ async function loadWatchTag(){
           tagOsNotify(latestLabel+'（新着'+unread+'件）');
         }
       },()=>{
+        if(!current())return;
         alerts.innerHTML='<div class="note">お知らせを読み込めませんでした。未確認の有無は判断できません。</div>';
         if(history)history.textContent='お知らせを読み込めませんでした。通信状態を確認してください。';
         if(home){home.style.display='block';home.classList.add('tag-unread');}
         if(homeStatus)homeStatus.textContent='お知らせを確認できません。通信状態を確認してください。';
       });
   }catch(e){
+    if(!current())return;
     area.innerHTML='<div class="empty">おまもりタグを確認できませんでした。通信状態を確かめてください。</div>';
     if(history)history.textContent='お知らせを確認できませんでした。通信状態を確認してください。';
   }
@@ -4563,24 +4744,25 @@ function renderWatchTag(id){
     '<div class="tag-qr">'+watchTagQr(url)+'</div>'+
     '<div class="tag-actions"><button class="tag-copy" onclick="printWatchTag()">タグを印刷する</button>'+
     '<button class="tag-copy" onclick="copyWatchTagLink()">リンクをコピー</button></div>'+
-    '<div class="tag-actions"><button class="tag-stop" onclick="stopWatchTag()">このタグを停止</button></div>'+
+    (isHouseholdOwner()?'<div class="tag-actions"><button class="tag-stop" onclick="stopWatchTag()">このタグを停止</button></div>':'')+
     notifyBtn+
     '<div class="note">おまもりタグは緊急通報ではなく、家族が気づくための補助です。お知らせの音と表示は、アプリを開いている間だけ届きます。緊急の対応は、読み取った方からの119番・110番が基本です。</div></div>';
 }
 async function createWatchTag(){
+  if(!requireHouseholdOwner())return;
   const area=document.getElementById('watch-tag-area');
   area.innerHTML='<div class="empty">安全なタグを作っています…</div>';
   const id=randWatchTagId();
   try{
-    await db.collection('watchTags').doc(id).set({
-      groupId:gid(), active:true, createdBy:uid(),
-      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    const batch=db.batch();
+    batch.set(db.collection('watchTags').doc(id),{
+      groupId:gid(),active:true,createdBy:uid(),createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    await col('settings').doc('watchTag').set({watchTagId:id,watchTagActive:true,watchTagUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    batch.set(col('settings').doc('watchTag'),{watchTagId:id,watchTagActive:true,watchTagUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    await batch.commit();
     currentWatchTagId=id;
     loadWatchTag();
   }catch(e){
-    db.collection('watchTags').doc(id).delete().catch(()=>{});
     area.innerHTML='<button class="big-btn family" onclick="createWatchTag()">もう一度作る</button><div class="note">作成できませんでした。設定を確認してください。</div>';
   }
 }
@@ -4592,99 +4774,124 @@ async function copyWatchTagLink(){
   }catch(e){ alert('コピーできませんでした。QRを画像として保存してお使いください。'); }
 }
 async function stopWatchTag(){
+  if(!requireHouseholdOwner())return;
   if(!currentWatchTagId || !confirm('このおまもりタグを停止しますか?\n停止後は、読み取っても家族へお知らせできなくなります。')) return;
   try{
-    await db.collection('watchTags').doc(currentWatchTagId).update({active:false,stoppedAt:firebase.firestore.FieldValue.serverTimestamp()});
-    await col('settings').doc('watchTag').set({watchTagActive:false,watchTagUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    const batch=db.batch();
+    batch.update(db.collection('watchTags').doc(currentWatchTagId),{active:false,stoppedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    batch.set(col('settings').doc('watchTag'),{watchTagActive:false,watchTagUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    await batch.commit();
     currentWatchTagId='';
     loadWatchTag();
     alert('おまもりタグを停止しました');
   }catch(e){ alert('停止できませんでした。通信状態を確認してください。'); }
 }
 async function revokeConsent(){
-  if(!confirm('同意を取り消して、この端末での利用をやめますか?\nこの家族との接続も解除されます。')) return;
-  try{
-    await col('members').doc(uid()).delete();
-    previewStorage.removeItem('mainicoConsent-a');
-    previewStorage.removeItem('mainicoConsent-b');
-    previewStorage.removeItem('mainicoGid');
-    previewStorage.removeItem('mainicoMode');
-    alert('同意を取り消し、この端末の接続を解除しました。');
-    location.reload();
-  }catch(e){
-    alert('同意の取り消しを完了できませんでした。通信状態を確認して、もう一度お試しください。');
+  if(isHouseholdOwner()){
+    alert('管理者が家庭全体の利用を終了するときは「共有データをすべて削除する」を選んでください。自分の端末だけの利用を中断するときは、この画面を閉じてください。');return;
   }
+  if(!confirm('同意を取り消し、このアカウントの家族との接続を解除しますか？ これまでの共有記録は残ります。'))return;
+  try{if(await leaveHouseholdAccount()){alert('参加解除を確認しました。');location.reload();}}
+  catch(error){alert('参加解除を確認できませんでした。通信状態を確認して、もう一度お試しください。');}
 }
 async function deleteAllData(){
-  if(!confirm('この家族の全データ(挨拶・体調・服薬・予定・お願い・メモ・家族の接続)を削除しますか?\nこの操作は元に戻せません。')) return;
-  if(!confirm('本当に削除しますか?\n削除後、データは残りません(バックアップは設定されていません)。')) return;
-  try{
-    async function wipe(name, skipId){
-      while(true){
-        const snap=await col(name).limit(200).get();
-        if(snap.empty) break;
-        const batch=db.batch();
-        let n=0;
-        snap.forEach(doc=>{ if(doc.id!==skipId){ batch.delete(doc.ref); n++; } });
-        if(n===0) break;
-        await batch.commit();
+  openHouseholdDeletion();
+}
+
+/* 日付単位で伝言を読む。画面を閉じたら購読を止め、古い応答を破棄する。 */
+let personHistoryUnsub=null,personHistoryRequest=0,personHistoryReplySending=false;
+function openPersonHistory(){
+  const date=document.getElementById('person-history-date');
+  date.max=todayStr();date.value=todayStr();
+  document.getElementById('person-history-modal').classList.add('show');
+  loadPersonHistory();
+}
+function closePersonHistory(){
+  personHistoryRequest++;
+  if(personHistoryUnsub){personHistoryUnsub();personHistoryUnsub=null;}
+  document.getElementById('person-history-modal').classList.remove('show');
+}
+function loadPersonHistory(){
+  const request=++personHistoryRequest;
+  if(personHistoryUnsub){personHistoryUnsub();personHistoryUnsub=null;}
+  const state=document.getElementById('person-history-state'),list=document.getElementById('person-history-list');
+  const date=document.getElementById('person-history-date').value;
+  list.replaceChildren();state.textContent='伝言を読み込んでいます…';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>todayStr()){state.textContent='今日までの日付を選んでください。';return;}
+  personHistoryUnsub=col('events').where('date','==',date).onSnapshot({includeMetadataChanges:true},snap=>{
+    if(request!==personHistoryRequest)return;
+    const cached=!!snap.metadata?.fromCache,pending=!!snap.metadata?.hasPendingWrites;
+    state.textContent=cached||pending?'通信を確認中です。保存済みの表示には、まだ届いていない伝言がある場合があります。':'この日の伝言を確認しました。';
+    const items=[];snap.forEach(doc=>items.push({...doc.data(),_id:doc.id}));
+    const messages=items.filter(v=>['family-message','aisatsu-back','onegai-back','ask-kusuri','family-message-back'].includes(v.type));
+    messages.sort((a,b)=>(b.at?.seconds||0)-(a.at?.seconds||0)||a._id.localeCompare(b._id));
+    list.replaceChildren();
+    if(!messages.length){list.textContent=cached||pending?'まだ通信を確認できていないため、伝言がないかは分かりません。':'この日に記録された伝言はありません。';return;}
+    messages.forEach(v=>{
+      const item=document.createElement('section');item.className='set-sec';
+      const when=v.at?.seconds?new Date(v.at.seconds*1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'時刻確認中';
+      const title=document.createElement('h4');title.textContent=(v.type==='family-message-back'?'本人からの返事':(v.name||'家族')+'さんから')+' '+when;item.appendChild(title);
+      const text=document.createElement('p');text.textContent=v.type==='ask-kusuri'?kusuriQuestion(v.slot):(v.text||'');item.appendChild(text);
+      const read=document.createElement('button');read.type='button';read.className='set-btn';read.textContent='声で読む';read.addEventListener('click',()=>speak(title.textContent+'、'+text.textContent));item.appendChild(read);
+      if(v.type==='family-message'){
+        const reply=document.createElement('button');reply.type='button';reply.className='set-btn';reply.textContent='この伝言に「読んだよ」と返す';
+        const status=document.createElement('div');status.className='save-state';status.setAttribute('role','status');
+        reply.addEventListener('click',()=>replyToHistory(v._id,reply,status));item.appendChild(reply);item.appendChild(status);
       }
-    }
-    await wipe('events');
-    await wipe('yotei');
-    /* 自分のメンバー情報だけ残したままグループを消し、最後に自分を消す */
-    await wipe('members', uid());
-    let grpErr=null;
-    try{ await grp().delete(); }catch(e){ grpErr=e; }
-    try{ await col('members').doc(uid()).delete(); }catch(e){ console.warn('self', e); }
-    if(grpErr) throw grpErr;
-    previewStorage.removeItem('mainicoGid');
-    previewStorage.removeItem('mainicoMode');
-    alert('すべてのデータを削除しました。');
-    location.reload();
-  }catch(e){ alert('削除中にエラーが発生しました: '+e.message+'\nもう一度お試しください。'); }
+      list.appendChild(item);
+    });
+  },()=>{
+    if(request!==personHistoryRequest)return;
+    list.replaceChildren();state.textContent='伝言を読み込めませんでした。通信状態を確認して、もう一度読み込んでください。';
+  });
+}
+async function replyToHistory(id,button,state){
+  if(personHistoryReplySending)return;
+  personHistoryReplySending=true;button.disabled=true;state.textContent='送信しています…';
+  try{await addEvent({type:'family-message-back',text:'読んだよ',name:'本人',replyTo:id});state.textContent='返事を記録しました。家族がアプリを開くと確認できます。';}
+  catch(e){state.textContent='送信できませんでした。もう一度お試しください。';}
+  finally{personHistoryReplySending=false;button.disabled=false;}
+}
+
+/* 出典 https://www.city.ueda.nagano.jp/soshiki/korei/2610.html 2026-09-15確認。
+   同名地区の分担条件を省略しない。地区名から自動で担当を断定しない。 */
+const UEDA_CENTERS=[
+  {name:'神川',area:'東部地区・神川地区',phone:'0268-29-2266'},
+  {name:'中央',area:'南部地区・中央地区・北部地区',phone:'0268-26-7788'},
+  {name:'西部',area:'西部地区・塩尻地区',phone:'0268-71-5712'},
+  {name:'城下',area:'城下地区・川辺地区・泉田地区（半過、下之条、川辺町）',phone:'0268-22-2360'},
+  {name:'神科',area:'神科地区・豊殿地区',phone:'0268-27-2881'},
+  {name:'塩田',area:'塩田地区',phone:'0268-37-1537'},
+  {name:'川西',area:'川西地区・川辺地区・泉田地区（半過、下之条、川辺町以外）',phone:'0268-26-1172'},
+  {name:'丸子',area:'丸子地域（東内、西内、腰越以外）',phone:'0268-42-0015'},
+  {name:'真田',area:'真田地域',phone:'0268-72-8055'},
+  {name:'武石',area:'武石地域・丸子地域（東内、西内、腰越）',phone:'0268-41-4055'}
+];
+function uedaCenterPicker(){
+  const root=sdEl('div','set-sec'),label=sdEl('label','','お住まいの地区と相談先を選ぶ');
+  label.htmlFor='ueda-center-select';root.appendChild(label);
+  const select=sdEl('select','setup-input');select.id='ueda-center-select';
+  const empty=sdEl('option','','地区が分からない・公式一覧で確認する');empty.value='';select.appendChild(empty);
+  UEDA_CENTERS.forEach((c,i)=>{const o=sdEl('option','',c.area+' ／ '+c.name);o.value=String(i);select.appendChild(o);});root.appendChild(select);
+  const result=sdEl('div');result.setAttribute('aria-live','polite');root.appendChild(result);
+  select.addEventListener('change',()=>{
+    result.replaceChildren();if(select.value==='')return;
+    const c=UEDA_CENTERS[Number(select.value)];if(!c)return;
+    result.appendChild(sdEl('h4','',c.name+'地域包括支援センター'));
+    result.appendChild(sdEl('p','',c.area));
+    result.appendChild(sdTel(c.phone,c.phone+' に電話する','電話アプリが開きます。相談時間・担当は公式一覧で確認してください。'));
+  });
+  root.appendChild(sdEl('p','note','掲載元：上田市「地域包括支援センター」。この一覧と電話番号の確認日：2026年9月15日。来所前に電話で確認してください。'));
+  root.appendChild(sdLink(SOUDAN_SAKI.houkatsu.url,'地区・相談時間を公式一覧で確認する','担当が分からない場合も、こちらで確認できます。'));
+  const report=sdEl('a','sd-btn');report.href='https://github.com/pocham4173/hidamari/issues/new';report.target='_blank';report.rel='noopener noreferrer';
+  report.appendChild(sdEl('span','l','掲載情報の誤りを知らせる'));
+  report.appendChild(sdEl('span','s','GitHubへのログインが必要です。投稿は公開されるため、本人の氏名・病状・個人の電話番号は書かないでください。'));
+  root.appendChild(report);return root;
 }
 
 /* ===== 起動 ===== */
 window.mainicoStartupStage='ログインの応答待ち';
-try{auth.onAuthStateChanged(async user=>{
-  if(!user){
-    window.mainicoStartupStage='ログイン確認中';
-    try{ await auth.signInAnonymously(); }
-    catch(e){
-      window.mainicoStartupStage='ログインできませんでした';
-      window.showStartupProblem('ログインできませんでした');
-    }
-    return;
-  }
-  /* グループ所属の確認 */
-  if(gid()){
-    window.mainicoStartupStage='家族との接続確認中';
-    try{
-      const me=await col('members').doc(user.uid).get({source:'server'});
-      if(!me.exists){
-        previewStorage.removeItem('mainicoGid');
-        previewStorage.removeItem('mainicoMode');
-      }else if(me.data().status==='pending'){
-        document.getElementById('loading').style.display='none';
-        showPending();
-        return;
-      }
-    }catch(e){
-      /* 通信エラーでは接続情報を消さない。表示して再試行できるようにする */
-      window.showStartupProblem('家族との接続を確認できませんでした');
-      return;
-    }
-  }
-  window.mainicoStartupStage='準備完了';
-  document.getElementById('loading').style.display='none';
-  try{startMode();}catch(e){
-    console.warn('start mode',e);
-    document.getElementById('loading').style.display='flex';
-    window.mainicoStartupStage='画面の表示中';
-    window.showStartupProblem('画面を開けませんでした');
-  }
-},function(e){
+try{auth.onAuthStateChanged(bootHouseholdUser,function(e){
   window.mainicoStartupStage='ログイン情報の読み込みに失敗しました';
   console.warn('auth startup',e);
   window.showStartupProblem('ログイン情報を読み込めませんでした');
@@ -4695,13 +4902,71 @@ try{auth.onAuthStateChanged(async user=>{
 
 /* ===== 災害用QR（端末内保存・オフライン読取） ===== */
 const DISASTER_QR_KEY='mainico_preview_disaster_qr_v1';
-function openDisasterQr(){const m=document.getElementById('disaster-qr-modal');if(!m)return;m.classList.add('show');try{const v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null');if(v){document.getElementById('disaster-name').value=v.name||'';document.getElementById('disaster-relation').value=v.relation||'';document.getElementById('disaster-phone').value=v.phone||'';document.getElementById('disaster-help').value=v.help||'';document.getElementById('disaster-free').value=v.free||'';renderDisasterQr(v);}}catch(e){}}
+function resetDisasterConsent(){
+  ['disaster-consent','disaster-contact-consent'].forEach(id=>document.getElementById(id).checked=false);
+}
+function disasterQrState(text,error=false){
+  const state=document.getElementById('disaster-qr-state');
+  state.textContent=text;state.classList.toggle('err',error);
+}
+function openDisasterQr(){
+  const m=document.getElementById('disaster-qr-modal');if(!m)return;
+  m.classList.add('show');resetDisasterConsent();disasterQrState('');
+  try{
+    const v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null');
+    if(v){
+      ['name','relation','phone','help','free'].forEach(key=>document.getElementById('disaster-'+key).value=v[key]||'');
+      renderDisasterQr(v);
+    }
+  }catch(e){disasterQrState('保存内容を開けませんでした。この端末の保存設定を確認してください。',true);}
+}
 function closeDisasterQr(){document.getElementById('disaster-qr-modal')?.classList.remove('show');}
 function disasterUpdatedAt(){const d=new Date();return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日';}
-function disasterQrText(v){var L=['まいにこ 災害・緊急時支援カード','呼び名：'+v.name,'必要な支援：'+v.help];if(v.free)L.push('メモ：'+v.free);L.push('緊急連絡先：'+v.relation+' '+v.phone,'更新日：'+v.updatedAt,'命の危険がある場合は119番へ');return L.join('\n');}
-function renderDisasterQr(v){const p=document.getElementById('disaster-qr-preview');if(!p)return;if(typeof qrcode!=='function'){p.innerHTML='<div class="note">QRを表示できませんでした。</div>';return;}const qr=qrcode(0,'M');qr.addData(unescape(encodeURIComponent(disasterQrText(v))));qr.make();p.innerHTML='<h4>作成した災害用QR</h4><div class="tag-qr">'+qr.createImgTag(6,8,'まいにこ 災害用QR')+'</div><button class="set-btn" type="button" onclick="printDisasterQr()">災害用QRを印刷する</button><div class="note">更新日：'+esc(v.updatedAt)+'<br>端末内に保存しました。印刷前に別の端末で読み取って確認してください。</div>';const b=document.getElementById('disaster-delete');if(b)b.style.display='block';}
-function makeDisasterQr(){const name=document.getElementById('disaster-name').value.trim(),relation=document.getElementById('disaster-relation').value,phone=document.getElementById('disaster-phone').value.trim(),help=document.getElementById('disaster-help').value,free=document.getElementById('disaster-free').value.trim(),consent=document.getElementById('disaster-consent').checked;if(!name||!relation||!phone||!help){alert('4項目をすべて入力してください。');return;}if(!/^[0-9+()\-\s]{8,20}$/.test(phone)){alert('緊急連絡先の電話番号を確認してください。');return;}if(help==='その他（下の欄に記入）'&&!free){alert('「その他」を選んだ場合は、自由記入の欄に内容を書いてください。');return;}if(!consent){alert('誰でも読み取れることへの同意が必要です。');return;}const v={name,relation,phone,help,free,updatedAt:disasterUpdatedAt()};localStorage.setItem(DISASTER_QR_KEY,JSON.stringify(v));renderDisasterQr(v);}
-function deleteDisasterQr(){if(!confirm('この端末に保存した災害用QRを削除しますか？\n印刷済みのQRは消えません。'))return;localStorage.removeItem(DISASTER_QR_KEY);['disaster-name','disaster-phone','disaster-free'].forEach(id=>document.getElementById(id).value='');['disaster-relation','disaster-help'].forEach(id=>document.getElementById(id).value='');document.getElementById('disaster-consent').checked=false;document.getElementById('disaster-qr-preview').innerHTML='';document.getElementById('disaster-delete').style.display='none';}
+function disasterQrText(v){
+  const lines=['まいにこ 災害・緊急時支援カード','呼び名：'+v.name,'必要な支援：'+v.help];
+  if(v.free)lines.push('メモ：'+v.free);
+  lines.push('緊急連絡先：'+v.relation+' '+v.phone,'作成日：'+(v.createdAt||'記録なし（旧QR）'),'更新日：'+v.updatedAt,'命の危険がある場合は119番へ');
+  return lines.join('\n');
+}
+function disasterQrMarkup(v){
+  if(typeof qrcode!=='function')throw new Error('QR library unavailable');
+  const qr=qrcode(0,'M');qr.addData(unescape(encodeURIComponent(disasterQrText(v))));qr.make();
+  return '<h4>作成した災害用QR</h4><div class="tag-qr">'+qr.createImgTag(6,8,'まいにこ 災害用QR')+'</div>'+
+    (v.consentVersion===2?'<button class="set-btn" type="button" onclick="printDisasterQr()">災害用QRを印刷する</button>':'<div class="note">以前のQRです。本人と連絡先の同意を確認して作り直してください。</div>')+
+    '<div class="note">作成日：'+esc(v.createdAt||'記録なし（旧QR）')+'<br>更新日：'+esc(v.updatedAt)+'<br>この端末に保存した内容です。印刷前に別の端末で読み取り、内容を確認してください。</div>';
+}
+function renderDisasterQr(v,markup){
+  document.getElementById('disaster-qr-preview').innerHTML=markup||disasterQrMarkup(v);
+  document.getElementById('disaster-delete').style.display='block';
+}
+function makeDisasterQr(){
+  disasterQrState('');
+  const values={};['name','relation','phone','help','free'].forEach(key=>values[key]=document.getElementById('disaster-'+key).value.trim());
+  const {name,relation,phone,help,free}=values;
+  if(!name||!relation||!phone||!help){disasterQrState('4項目をすべて入力してください。',true);return;}
+  if(name.length>20||free.length>60||!/^\+?[0-9()\-\s]{8,20}$/.test(phone)||phone.replace(/\D/g,'').length<8){disasterQrState('文字数と緊急連絡先の電話番号を確認してください。',true);return;}
+  if(help==='その他（下の欄に記入）'&&!free){disasterQrState('その他の内容を入力してください。',true);return;}
+  if(!document.getElementById('disaster-consent').checked||!document.getElementById('disaster-contact-consent').checked){disasterQrState('本人と、掲載する連絡先の本人の同意を両方確認してください。',true);return;}
+  try{
+    const previous=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null');
+    const date=disasterUpdatedAt();
+    const v={...values,createdAt:previous?(previous.createdAt||'記録なし（旧QR）'):date,updatedAt:date,consentVersion:2,consentedAt:date};
+    const markup=disasterQrMarkup(v);
+    localStorage.setItem(DISASTER_QR_KEY,JSON.stringify(v));
+    renderDisasterQr(v,markup);resetDisasterConsent();
+    disasterQrState('この端末に保存しました。更新した場合は、手元の旧QRを廃棄してください。');
+  }catch(e){disasterQrState('QRを作成・保存できませんでした。入力は残っています。通信と端末の保存設定を確認して、もう一度お試しください。',true);}
+}
+function deleteDisasterQr(){
+  if(!confirm('この端末に保存した災害用QRを削除しますか？\n印刷済み・撮影済みのQRは消えません。'))return;
+  try{localStorage.removeItem(DISASTER_QR_KEY);}
+  catch(e){disasterQrState('削除できませんでした。保存内容は消去できていません。',true);return;}
+  ['name','phone','free','relation','help'].forEach(key=>document.getElementById('disaster-'+key).value='');
+  resetDisasterConsent();document.getElementById('disaster-qr-preview').innerHTML='';
+  document.getElementById('disaster-delete').style.display='none';
+  disasterQrState('この端末の保存内容を削除しました。印刷・撮影したQRは別途廃棄してください。');
+}
+
 
 </script>
 </body>

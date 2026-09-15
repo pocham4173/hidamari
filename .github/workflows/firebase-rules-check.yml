@@ -6,6 +6,12 @@ on:
       - 'firestore.rules'
       - 'firebase.json'
       - 'tests/alerts.test.mjs'
+      - 'tests/lifecycle-rules.test.mjs'
+      - 'tests/lifecycle-integration.test.mjs'
+      - 'household-deletion.js'
+      - 'account-recovery.js'
+      - 'account-deletion.js'
+      - 'tests/account-closure-integration.test.mjs'
       - '.github/workflows/firebase-rules-check.yml'
   workflow_dispatch:
 
@@ -38,5 +44,5 @@ jobs:
       - name: ルール動作検査の依存関係を準備
         run: npm install --no-save firebase@11.10.0 @firebase/rules-unit-testing@4.0.1
 
-      - name: Firestore Emulatorでルールと19件の動作を検査
-        run: firebase emulators:exec --only firestore --project demo-mainico "node tests/alerts.test.mjs"
+      - name: Firestore Emulatorで通知・予定・権限・復旧・削除を検査
+        run: firebase emulators:exec --only firestore --project demo-mainico "node tests/alerts.test.mjs && node tests/lifecycle-rules.test.mjs && node tests/lifecycle-integration.test.mjs && node tests/account-closure-integration.test.mjs"
