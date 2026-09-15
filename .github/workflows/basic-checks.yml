@@ -46,5 +46,12 @@ jobs:
           node tests/household-ui.test.mjs
           node tests/household-setup.test.mjs
           node tests/entry-mode.test.mjs
+          node tests/handoff-summary.test.mjs
+          node tests/notebook-integration.test.mjs
           node tests/account-deletion.test.mjs
           node tests/legacy-data-cleanup.test.mjs
+
+      - name: 端末内お薬手帳の保存・隔離・容量を検査
+        run: |
+          npm install --no-save --package-lock=false fake-indexeddb@6.2.4
+          node --test tests/medicine-notebook.test.mjs

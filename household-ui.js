@@ -21,6 +21,7 @@ function applyHouseholdPermissions(){
     :'あなたは参加メンバーです。招待や参加承認は、最初に家庭を作成した管理者へ依頼してください。');
 }
 function stopHouseholdSubscriptions(){
+  if(window.mainicoNotebookClose)window.mainicoNotebookClose();
   householdBootGeneration++;
   [householdUnsub,ownMemberUnsub,memWatchUnsub,honninUnsub,yoteiUnsub,evUnsub,ytListUnsub,watchTagUnsub,medicineInfoUnsub,personHistoryUnsub,pendingUnsub].forEach(fn=>{try{if(fn)fn();}catch(e){}});
   householdUnsub=ownMemberUnsub=null;
@@ -146,7 +147,7 @@ async function runRecoveryAction(action){
     }else if(action==='login'){
       const result=await service.recover({email,password});
       applyRecoveryJournal();
-      recoveryState('接続を復旧しました。画面を開きます。');
+      recoveryState('共有記録への接続を復旧しました。写真の控えは端末内だけに保存され、別端末へは復旧しません。画面を開きます。');
       document.getElementById('recovery-modal').classList.remove('show');
       recoveryBusy=false;
       await bootHouseholdUser(auth.currentUser);
@@ -190,6 +191,7 @@ async function runHouseholdDeletion(){
   if(deletionBusy || (!isHouseholdOwner() && !deletionResumeOnly))return;
   const confirmation=document.getElementById('deletion-confirm').value.trim();
   if(confirmation!==MainicoDeletion.CONFIRMATION){document.getElementById('deletion-state').textContent='「共有データを削除」と入力してください。';return;}
+  const notebookScope={uid:uid(),groupId:gid()};
   deletionBusy=true;
   document.querySelectorAll('#deletion-modal button').forEach(el=>el.disabled=true);
   stopHouseholdSubscriptions();
@@ -198,9 +200,10 @@ async function runHouseholdDeletion(){
   try{
     await getDeletionService().run({groupId:gid(),confirmation});
     householdDeleting=true;
-    const localCleared=clearMainicoDeviceData();
+    const notebookCleared=await clearNotebookForExit(notebookScope);
+    const localCleared=clearMainicoDeviceData() && notebookCleared;
     document.getElementById('deletion-modal').classList.remove('show');
-    showHouseholdBlocked('共有サーバーの記録・予定・招待・タグとお知らせ・家族との接続・復旧先登録を削除したことを確認しました。'+(localCleared?'この端末のアプリ内保存も削除しました。':'この端末の保存内容は消去を確認できません。ブラウザーのサイトデータを削除してください。')+' 印刷物・撮影済みQR・他端末のコピーと、ログイン用アカウントは別に残ります。');
+    showHouseholdBlocked('共有サーバーの記録・予定・招待・タグとお知らせ・家族との接続・復旧先登録を削除したことを確認しました。'+(localCleared?'この端末の、この家庭・アカウントのお薬手帳の控えとアプリ内設定を削除しました。他の家庭・アカウントの控えは別に残ります。':'この端末の保存内容は消去を確認できません。ブラウザーのサイトデータを削除してください。')+' 印刷物・撮影済みQR・他端末のコピーと、ログイン用アカウントは別に残ります。');
   }catch(error){
     try{const group=await refreshHousehold();householdDeleting=!!group&&group.deletionState==='deleting';}catch(ignore){}
     document.getElementById('deletion-state').textContent='削除の完了は確認できません。'+(error.message||'通信を確認して再開してください。')+(error.backendCode==='permission-denied'?' 管理者の確認またはサービスの設定確認が必要です。':'');
@@ -208,6 +211,9 @@ async function runHouseholdDeletion(){
     deletionBusy=false;
     document.querySelectorAll('#deletion-modal button').forEach(el=>el.disabled=false);
   }
+}
+async function clearNotebookForExit(scope,allUid=false){
+  try{return !!window.mainicoNotebookCleanup && await window.mainicoNotebookCleanup(scope,allUid)===true;}catch(error){return false;}
 }
 function clearMainicoDeviceData(keep=[]){
   try{
@@ -217,6 +223,7 @@ function clearMainicoDeviceData(keep=[]){
   }catch(error){return false;}
 }
 async function bootHouseholdUser(user){
+  if(window.mainicoNotebookClose)window.mainicoNotebookClose();
   if(recoveryBusy || accountClosureBusy)return;
   if(accountClosureEnded()){showAccountClosed('ログイン登録の削除操作を行いました。再ログインは自動で行いません。完了表示を確認できなかった場合は運営者へ確認してください。');return;}
   const generation=++householdBootGeneration;
@@ -306,13 +313,17 @@ async function leaveHouseholdAccount(){
   if(isHouseholdOwner()){
     alert('管理者だけを参加解除すると家庭を管理できなくなるため、解除できません。家庭全体の利用を終了する場合は「共有データをすべて削除する」を選んでください。');return false;
   }
+  const notebookScope={uid:uid(),groupId:gid()};
   const batch=db.batch();batch.delete(col('members').doc(uid()));batch.delete(db.collection('accounts').doc(uid()));await batch.commit();
   stopHouseholdSubscriptions();
-  if(!clearMainicoDeviceData())alert('参加解除は完了しました。端末内の保存は消せなかったため、ブラウザーのサイトデータを削除してください。');
+  const notebookCleared=await clearNotebookForExit(notebookScope);
+  const settingsCleared=clearMainicoDeviceData();
+  if(!notebookCleared || !settingsCleared)alert('参加解除は完了しました。端末内のお薬手帳の控え・設定の削除を確認できません。入口の「端末内の控えを削除」から再確認してください。');
   return true;
 }
 async function resetDisconnectedDevice(){
-  if(!confirm('この端末に保存した家庭の設定と災害QRを消して、入口に戻りますか？ サーバーの共有記録は消しません。'))return;
+  const notebookScope={uid:uid(),groupId:gid()};
+  if(!confirm('この端末の現在の家庭の設定・災害QR・お薬手帳の控えを消して、入口に戻りますか？ サーバーの共有記録は消しません。'))return;
   try{
     if(getDeletionService().getPending())throw new Error('deletion-pending');
     if(gid()){
@@ -324,6 +335,7 @@ async function resetDisconnectedDevice(){
     }
     await db.collection('accounts').doc(uid()).delete();
     stopHouseholdSubscriptions();
+    if(!await clearNotebookForExit(notebookScope))throw new Error('notebook-storage');
     if(!clearMainicoDeviceData())throw new Error('storage');
     location.reload();
   }catch(error){alert('接続や端末保存の確認ができませんでした。削除が途中なら先に再開してください。');}
@@ -367,11 +379,14 @@ async function prepareAccountDeletion(){
   finally{document.getElementById('account-deletion-password').value='';accountClosureBusy=false;}
 }
 async function finishAccountDeletion(){
-  if(accountClosureBusy)return;accountClosureBusy=true;document.getElementById('account-deletion-finish').disabled=true;
+  if(accountClosureBusy)return;
+  const notebookScope={uid:uid(),groupId:gid()};
+  accountClosureBusy=true;document.getElementById('account-deletion-finish').disabled=true;
   try{
     await getAccountClosureService().finish(document.getElementById('account-deletion-confirm').value.trim());
-    const cleared=clearMainicoDeviceData([ACCOUNT_CLOSED_KEY]);
-    showAccountClosed('あなたのログイン登録を削除しました。'+(cleared?'この端末のアプリ内保存も削除しました。':'端末内保存の削除を確認できません。ブラウザーのサイトデータを削除してください。')+' 他の家族の登録、紙、他端末のコピー、旧版の残存記録まで削除したことを示すものではありません。');
+    const notebookCleared=await clearNotebookForExit(notebookScope,true);
+    const cleared=clearMainicoDeviceData([ACCOUNT_CLOSED_KEY]) && notebookCleared;
+    showAccountClosed('あなたのログイン登録を削除しました。'+(cleared?'この端末の、このアカウントのお薬手帳の控えとアプリ内設定を削除しました。他のアカウントの控えは別に残ります。':'端末内保存の削除を確認できません。ブラウザーのサイトデータを削除してください。')+' 他の家族の登録、紙、他端末のコピー、旧版の残存記録まで削除したことを示すものではありません。');
   }catch(e){document.getElementById('account-deletion-state').textContent=MainicoAccountDeletion.message(e);document.getElementById('account-deletion-finish').disabled=false;}
   finally{accountClosureBusy=false;}
 }
