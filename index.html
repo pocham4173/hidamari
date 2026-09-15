@@ -564,18 +564,18 @@ table.cal-rec td.pad{background:none;}
 <div class="page" id="entry">
   <img class="appicon" src="icon-192.png" alt="まいにこ">
   <h1>まいにこ</h1>
-  <div class="entry-catch">押すだけで<em>「今日も元気」</em>が家族に届く</div>
-  <div class="note" style="max-width:320px;margin:7px auto 0;color:#5C4E3A;font-weight:700;">監視ではなく、ご本人から伝える毎日の安心</div>
+  <div class="entry-catch">不安を軽く、安心を深く、<br>上田でつなぐ。</div>
+  <div class="note" style="max-width:320px;margin:7px auto 0;color:#5C4E3A;font-weight:700;">本人も家族も、介護の不安を抱え込まない上田へ。</div>
   <button class="install-main" id="install-main" type="button" onclick="installApp()">📲 ホーム画面に追加する<small>次からアプリのようにすぐ開けます</small></button>
   <div class="q">使い方を選んでください</div>
   <div id="select-box">
-    <button class="entry-btn" onclick="pickMode('honnin')">ご本人が使う</button>
-    <button class="entry-btn" onclick="pickMode('kazoku')">ご家族が使う<small>ご本人もアプリを使う世帯</small></button>
-    <button class="entry-btn" onclick="pickMode('konly')">ご家族が記録して使う<small>ご本人は操作しません</small></button>
+    <button class="entry-btn" onclick="pickMode('honnin')">本人が使う<small>この端末をご本人が操作します</small></button>
+    <button class="entry-btn" onclick="pickMode('kazoku')">本人と家族が使う<small>この端末は家族用です。本人用は上を選びます</small></button>
+    <button class="entry-btn" onclick="pickMode('konly')">家族が記録して使う<small>家族が確認したことを、家族の記録として残します</small></button>
   </div>
   <div class="setup-or">─ または ─</div>
   <button class="entry-btn sub" onclick="pickMode('kazoku')">招待された方<small>招待コードを入力して参加する</small></button>
-  <div class="note" style="max-width:320px;margin:6px auto 0;">ここから家族とつながれます。ご本人がこの端末を使う場合は、上の「ご本人が使う」を選んでください。</div>
+  <div class="note" style="max-width:320px;margin:6px auto 0;">ここから家族とつながれます。ご本人がこの端末を使う場合は、上の「本人が使う」を選んでください。</div>
 </div>
 
 <!-- ホーム画面への追加案内 -->
@@ -622,7 +622,7 @@ table.cal-rec td.pad{background:none;}
 <div class="page consent-page" id="consent-b">
   <div class="consent-wrap">
     <div class="consent-ttl">記録をはじめる前に</div>
-    <p class="consent-lead">このモードでは、本人から挨拶や体調は届きません。ご家族が確認した様子、予定、服薬の確認、メモを記録します。本人の情報は、本人の了解を得て、必要な範囲だけ入力してください。</p>
+    <p class="consent-lead">このモードでは、本人から挨拶や体調は届きません。ご家族が確認した様子、予定、服薬の確認、メモを記録します。本人に分かる方法で説明し、意思を確認してください。家族が確認したことを家族自身の記録として残し、本人の入力や意思とは区別します。拒否や続く不快感があれば利用を中止してください。意思確認が難しい場合の利用条件は、専門家への確認が済むまで定められていません。</p>
     <label class="consent-item"><input type="checkbox" class="ck-b"> 本人にこの利用を説明しました</label>
     <label class="consent-item"><input type="checkbox" class="ck-b"> 本人の了解を得ています</label>
     <label class="consent-item"><input type="checkbox" class="ck-b"> 必要以上の情報を入力しません</label>
@@ -735,6 +735,7 @@ table.cal-rec td.pad{background:none;}
       </div>
       <div class="note" style="text-align:center;">お薬を飲んだら、朝・昼・夜から選んで押してください。服薬の証明ではありません。</div>
     </div>
+    <button class="cal-open" type="button" onclick="openPersonHistory()">家族からの伝言を日付で見る</button>
     <button class="onegai-btn" onclick="openOnegai()">ちょっとお願い</button>
     <button class="cal-open" onclick="openCal()">カレンダーを見る</button>
     <button class="cal-open" onclick="openHYotei()">予定を入れる</button>
@@ -798,7 +799,7 @@ table.cal-rec td.pad{background:none;}
 <!-- 家族が「お願い」へ自由に返事を書く -->
 <div class="modal" id="onegai-reply-modal"><div class="modal-box adult-font">
   <div class="ttl">ご本人への返事を書く</div>
-  <div class="note" style="margin-bottom:8px;">60文字まで入力できます。送った文章は本人画面で読み上げられます。</div>
+  <div class="note" style="margin-bottom:8px;">60文字まで入力できます。本人画面を開き、読み上げをオンにしている場合に合成音声で読み上げます。到達は保証しません。</div>
   <input type="text" id="onegai-reply-text" class="setup-input" maxlength="60" placeholder="例：仕事が終わったら電話するね">
   <button class="entry-btn" id="onegai-reply-send" type="button" onclick="sendOnegaiBackFree()">この返事を送る</button>
   <div class="save-state" id="onegai-reply-state" aria-live="polite"></div>
@@ -811,6 +812,16 @@ table.cal-rec td.pad{background:none;}
   <button class="entry-btn" id="person-message-reply-send" type="button" onclick="sendPersonMessageReply()">この返事を送る</button>
   <div class="save-state" id="person-message-reply-state" aria-live="polite"></div>
   <button class="modal-close" onclick="closePersonMessageReply()">やめる</button>
+</div></div>
+<div class="modal" id="person-history-modal"><div class="modal-box">
+  <div class="ttl">家族からの伝言</div>
+  <label for="person-history-date">見たい日を選んでください</label>
+  <input type="date" id="person-history-date" class="setup-input" onchange="loadPersonHistory()">
+  <div class="note">伝言とその返事を確認できます。返信は急がなくて大丈夫です。</div>
+  <div id="person-history-state" class="save-state" role="status"></div>
+  <div id="person-history-list"></div>
+  <button class="set-btn" type="button" onclick="loadPersonHistory()">もう一度読み込む</button>
+  <button class="modal-close" type="button" onclick="closePersonHistory()">とじる</button>
 </div></div>
 <!-- ちょっとお願い -->
 <div class="modal" id="onegai-modal">
@@ -860,7 +871,7 @@ table.cal-rec td.pad{background:none;}
 <div class="modal" id="disaster-qr-modal">
   <div class="modal-box adult-font">
     <div class="ttl">災害用QRを作る</div>
-    <p class="note">このQRは電波がなくても読めます。その代わり、QRを持つ人は誰でも内容を読めます。</p>
+    <p class="note">このQRは、電源のある対応端末なら電波がなくても読めます。誰でも読み取り・撮影・複製でき、作成後のコピーを遠隔で消すことはできません。</p>
     <details class="tag-guide" style="margin:0 0 6px;"><summary>災害用QRとは（説明）</summary>
       <div class="note" style="margin-top:6px;">災害や急な体調不良で、うまく話せない・伝えられないときに、周りの方へ見せるためのカードです。<br>
       ・おまもりタグと違い、通信がなくても読めます<br>
@@ -879,7 +890,10 @@ table.cal-rec td.pad{background:none;}
       <select id="disaster-help"><option value="">選んでください</option><option>ゆっくり話してください</option><option>筆談をお願いします</option><option>歩くときに支えが必要です</option><option>家族・支援者へ連絡してください</option><option>日本語での会話が難しいです</option><option>その他（下の欄に記入）</option></select>
       <label for="disaster-free">その他・伝えたいこと（任意・60文字まで）</label>
       <input id="disaster-free" maxlength="60" autocomplete="off" placeholder="例：右耳のほうが聞こえやすいです">
-      <label class="disaster-consent"><input id="disaster-consent" type="checkbox"><span>この内容は誰でも読み取れることを理解し、QRの作成に同意します</span></label>
+      <label class="disaster-consent"><input id="disaster-consent" type="checkbox"><span>本人に分かる方法で掲載内容を確認し、誰でも読めることとコピーを消せないことについて、本人の同意を得ています</span></label>
+      <label class="disaster-consent"><input id="disaster-contact-consent" type="checkbox"><span>掲載する連絡先の本人から、電話番号をQRに載せる同意を得ています</span></label>
+      <div class="note">更新・紛失時はQRを作り直し、手元の旧QRを廃棄してください。公的な身分証明や医療記録ではなく、救助・連絡を保証しません。現在は試験用の架空情報だけで確認してください。</div>
+      <div class="save-state" id="disaster-qr-state" role="status"></div>
       <button class="big-btn" type="button" onclick="makeDisasterQr()">入力内容を確認してQRを作る</button>
       <div id="disaster-qr-preview" class="disaster-preview"></div>
       <button class="set-btn warn" id="disaster-delete" type="button" onclick="deleteDisasterQr()" style="display:none;">災害用QRを削除する</button>
@@ -913,7 +927,7 @@ table.cal-rec td.pad{background:none;}
     </div>
 
     <div class="set-sec"><h4>利用方法の変更</h4>
-      <div class="note">「ご本人が使う」「ご家族が使う」などの選び直しは、ここから行えます。記録は消えません。</div>
+      <div class="note">「本人が使う」「本人と家族が使う」などの選び直しは、ここから行えます。記録は消えません。</div>
       <button class="set-btn warn" onclick="openBackConfirm()">利用方法を変更する</button>
     </div>
 
@@ -1196,10 +1210,7 @@ table.cal-rec td.pad{background:none;}
         <div class="note" id="sd-region-label" style="margin:0 0 8px;font-weight:700;"></div>
         <p class="sd-lead" id="sd-lead">当てはまるものを選んでください。このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。</p>
         <div class="sd-list" id="sd-list"></div>
-        <div class="note" style="margin-top:18px;font-weight:900;color:var(--cha);">上田市以外にお住まいの方</div>
-        <div class="note" style="margin-top:4px;">国の公式検索で、お住まいの地域の相談先・医療機関を調べられます。</div>
-        <a class="sd-btn" href="https://www.kaigokensaku.mhlw.go.jp/" target="_blank" rel="noopener noreferrer"><span class="l">介護・相談先を探す（厚生労働省）</span><span class="s">介護サービス情報公表システムが新しい画面で開きます</span></a>
-        <a class="sd-btn" href="https://www.iryou.teikyouseido.mhlw.go.jp/znk-web/juminkanja/S2300/initialize" target="_blank" rel="noopener noreferrer"><span class="l">医療機関を探す（厚生労働省）</span><span class="s">医療情報ネットが新しい画面で開きます</span></a>
+        <div class="note">上田市内の相談先をご案内しています。相談はご本人・ご家族から直接行ってください。</div>
         <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
       </div>
       <div class="card dom-soudan" id="sd-detail-card" style="display:none;">
@@ -2705,6 +2716,7 @@ function soudanShow(i){
     it.appendChild(sdEl('div','n', t.name));
     it.appendChild(sdEl('div','d', t.desc));
     it.appendChild(sdLink(t.url,'公式ページを見る','上田市のページが新しい画面で開きます'));
+    if(key==='houkatsu')it.appendChild(uedaCenterPicker());
     box.appendChild(it);
   });
 
@@ -3568,20 +3580,22 @@ async function sendOnegaiBackFree(){
 }
 function sendOnegaiBack(onegaiId,text){ feedback(); addEvent({type:'onegai-back', text:text, name:myName(), replyTo:onegaiId}).catch(()=>alert('返信を送信できませんでした。電波状況を確認して、もう一度押してください')); }
 let personMessageReplySending=false;
-async function sendFamilyMessageBack(text){
-  if(!currentFamilyMessageId||personMessageReplySending)return false;
+async function sendFamilyMessageBack(text,replyId=currentFamilyMessageId){
+  if(!replyId||personMessageReplySending)return false;
   personMessageReplySending=true;
   const st=document.getElementById('h-message-reply-state');
   st.classList.remove('err');st.textContent='送信しています…';feedback();
   try{
-    await addEvent({type:'family-message-back',text:text,name:'本人',replyTo:currentFamilyMessageId});
+    await addEvent({type:'family-message-back',text:text,name:'本人',replyTo:replyId});
     st.textContent='家族の画面へ返事を届けました';
     speak('家族の画面へ、'+text+'と とどけました');
     return true;
   }catch(e){st.classList.add('err');st.textContent='送信できませんでした。もう一度お試しください';return false;}
   finally{personMessageReplySending=false;}
 }
+let personMessageReplyTargetId='';
 function openPersonMessageReply(){
+  personMessageReplyTargetId=currentFamilyMessageId;
   document.getElementById('person-message-reply-text').value='';
   document.getElementById('person-message-reply-state').textContent='';
   document.getElementById('person-message-reply-modal').classList.add('show');
@@ -3593,7 +3607,10 @@ async function sendPersonMessageReply(){
   const text=el.value.trim();st.classList.remove('err');
   if(!text){st.classList.add('err');st.textContent='返事を書いてください';return;}
   btn.disabled=true;st.textContent='送信しています…';
-  try{if(await sendFamilyMessageBack(text))closePersonMessageReply();}finally{btn.disabled=false;}
+  try{
+    if(await sendFamilyMessageBack(text,personMessageReplyTargetId))closePersonMessageReply();
+    else{st.classList.add('err');st.textContent='送信できませんでした。入力は残っています。もう一度お試しください。';}
+  }finally{btn.disabled=false;}
 }
 function recKibun(text){ feedback(); addEvent({type:'kibun-kazoku', text:text, name:myName()}).catch(()=>alert('記録できませんでした。電波状況を確認して、もう一度押してください')); }
 let recKusuriSending=false;
@@ -4299,17 +4316,18 @@ async function makeInvite(targetId){
 function printDisasterQr(){
   let v=null; try{ v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null'); }catch(e){}
   if(!v){ alert('先に災害用QRを作ってください。'); return; }
+  if(v.consentVersion!==2){alert('本人と連絡先の同意を確認して、QRを作り直してください。');return;}
   const qr=qrcode(0,'M'); qr.addData(unescape(encodeURIComponent(disasterQrText(v)))); qr.make();
   const img=qr.createImgTag(6,12,'まいにこ 災害用QR');
   openPrintWindow('災害・緊急時支援カード',
     '<h1>災害・緊急時支援カード</h1>'+
     '<div class="cardbox">呼び名：'+esc(v.name)+'<br>必要な支援：'+esc(v.help)+
     (v.free?('<br>メモ：'+esc(v.free)):'')+
-    '<br>緊急連絡先：'+esc(v.relation)+' '+esc(v.phone)+'<br>更新日：'+esc(v.updatedAt)+'</div>'+
+    '<br>緊急連絡先：'+esc(v.relation)+' '+esc(v.phone)+'<br>作成日：'+esc(v.createdAt||'記録なし（旧QR）')+'<br>更新日：'+esc(v.updatedAt)+'</div>'+
     '<div class="qr" style="margin-top:12px;">'+img+'</div>'+
     '<div class="note">QRにも同じ内容が入っています（通信がなくても読めます）。</div>'+
     '<div class="warn">命の危険がある場合は119番へ</div>'+
-    '<div class="note">このカードは本人の同意のもとで作成されています。<br>財布・お薬手帳・非常持出し袋に入れてお使いください。</div>');
+    '<div class="note">作成時に、本人と掲載する連絡先の同意を確認しています。コピーは遠隔で消せません。<br>財布・お薬手帳・非常持出し袋に入れてお使いください。</div>');
 }
 function printWatchTag(){
   if(!currentWatchTagId){ alert('先にタグを作ってください。'); return; }
@@ -4616,33 +4634,100 @@ async function revokeConsent(){
   }
 }
 async function deleteAllData(){
-  if(!confirm('この家族の全データ(挨拶・体調・服薬・予定・お願い・メモ・家族の接続)を削除しますか?\nこの操作は元に戻せません。')) return;
-  if(!confirm('本当に削除しますか?\n削除後、データは残りません(バックアップは設定されていません)。')) return;
-  try{
-    async function wipe(name, skipId){
-      while(true){
-        const snap=await col(name).limit(200).get();
-        if(snap.empty) break;
-        const batch=db.batch();
-        let n=0;
-        snap.forEach(doc=>{ if(doc.id!==skipId){ batch.delete(doc.ref); n++; } });
-        if(n===0) break;
-        await batch.commit();
+  // 現行ルールでは他人の記録・タグ通知などを一括削除できない。
+  // 途中削除で接続や記録だけを失わないよう、書き込み前に止める。
+  alert('この試作品では、世帯の全データを安全に削除する機能がまだ完成していません。データは削除していません。個別の記録は登録した本人が取り消せます。世帯全体の削除には運営者による確認が必要です。');
+}
+
+/* 日付単位で伝言を読む。画面を閉じたら購読を止め、古い応答を破棄する。 */
+let personHistoryUnsub=null,personHistoryRequest=0,personHistoryReplySending=false;
+function openPersonHistory(){
+  const date=document.getElementById('person-history-date');
+  date.max=todayStr();date.value=todayStr();
+  document.getElementById('person-history-modal').classList.add('show');
+  loadPersonHistory();
+}
+function closePersonHistory(){
+  personHistoryRequest++;
+  if(personHistoryUnsub){personHistoryUnsub();personHistoryUnsub=null;}
+  document.getElementById('person-history-modal').classList.remove('show');
+}
+function loadPersonHistory(){
+  const request=++personHistoryRequest;
+  if(personHistoryUnsub){personHistoryUnsub();personHistoryUnsub=null;}
+  const state=document.getElementById('person-history-state'),list=document.getElementById('person-history-list');
+  const date=document.getElementById('person-history-date').value;
+  list.replaceChildren();state.textContent='伝言を読み込んでいます…';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>todayStr()){state.textContent='今日までの日付を選んでください。';return;}
+  personHistoryUnsub=col('events').where('date','==',date).onSnapshot({includeMetadataChanges:true},snap=>{
+    if(request!==personHistoryRequest)return;
+    const cached=!!snap.metadata?.fromCache,pending=!!snap.metadata?.hasPendingWrites;
+    state.textContent=cached||pending?'通信を確認中です。保存済みの表示には、まだ届いていない伝言がある場合があります。':'この日の伝言を確認しました。';
+    const items=[];snap.forEach(doc=>items.push({...doc.data(),_id:doc.id}));
+    const messages=items.filter(v=>['family-message','aisatsu-back','onegai-back','ask-kusuri','family-message-back'].includes(v.type));
+    messages.sort((a,b)=>(b.at?.seconds||0)-(a.at?.seconds||0)||a._id.localeCompare(b._id));
+    list.replaceChildren();
+    if(!messages.length){list.textContent=cached||pending?'まだ通信を確認できていないため、伝言がないかは分かりません。':'この日に記録された伝言はありません。';return;}
+    messages.forEach(v=>{
+      const item=document.createElement('section');item.className='set-sec';
+      const when=v.at?.seconds?new Date(v.at.seconds*1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'時刻確認中';
+      const title=document.createElement('h4');title.textContent=(v.type==='family-message-back'?'本人からの返事':(v.name||'家族')+'さんから')+' '+when;item.appendChild(title);
+      const text=document.createElement('p');text.textContent=v.type==='ask-kusuri'?kusuriQuestion(v.slot):(v.text||'');item.appendChild(text);
+      const read=document.createElement('button');read.type='button';read.className='set-btn';read.textContent='声で読む';read.addEventListener('click',()=>speak(title.textContent+'、'+text.textContent));item.appendChild(read);
+      if(v.type==='family-message'){
+        const reply=document.createElement('button');reply.type='button';reply.className='set-btn';reply.textContent='この伝言に「読んだよ」と返す';
+        const status=document.createElement('div');status.className='save-state';status.setAttribute('role','status');
+        reply.addEventListener('click',()=>replyToHistory(v._id,reply,status));item.appendChild(reply);item.appendChild(status);
       }
-    }
-    await wipe('events');
-    await wipe('yotei');
-    /* 自分のメンバー情報だけ残したままグループを消し、最後に自分を消す */
-    await wipe('members', uid());
-    let grpErr=null;
-    try{ await grp().delete(); }catch(e){ grpErr=e; }
-    try{ await col('members').doc(uid()).delete(); }catch(e){ console.warn('self', e); }
-    if(grpErr) throw grpErr;
-    previewStorage.removeItem('mainicoGid');
-    previewStorage.removeItem('mainicoMode');
-    alert('すべてのデータを削除しました。');
-    location.reload();
-  }catch(e){ alert('削除中にエラーが発生しました: '+e.message+'\nもう一度お試しください。'); }
+      list.appendChild(item);
+    });
+  },()=>{
+    if(request!==personHistoryRequest)return;
+    list.replaceChildren();state.textContent='伝言を読み込めませんでした。通信状態を確認して、もう一度読み込んでください。';
+  });
+}
+async function replyToHistory(id,button,state){
+  if(personHistoryReplySending)return;
+  personHistoryReplySending=true;button.disabled=true;state.textContent='送信しています…';
+  try{await addEvent({type:'family-message-back',text:'読んだよ',name:'本人',replyTo:id});state.textContent='返事を記録しました。家族がアプリを開くと確認できます。';}
+  catch(e){state.textContent='送信できませんでした。もう一度お試しください。';}
+  finally{personHistoryReplySending=false;button.disabled=false;}
+}
+
+/* 出典 https://www.city.ueda.nagano.jp/soshiki/korei/2610.html 2026-09-15確認。
+   同名地区の分担条件を省略しない。地区名から自動で担当を断定しない。 */
+const UEDA_CENTERS=[
+  {name:'神川',area:'東部地区・神川地区',phone:'0268-29-2266'},
+  {name:'中央',area:'南部地区・中央地区・北部地区',phone:'0268-26-7788'},
+  {name:'西部',area:'西部地区・塩尻地区',phone:'0268-71-5712'},
+  {name:'城下',area:'城下地区・川辺地区・泉田地区（半過、下之条、川辺町）',phone:'0268-22-2360'},
+  {name:'神科',area:'神科地区・豊殿地区',phone:'0268-27-2881'},
+  {name:'塩田',area:'塩田地区',phone:'0268-37-1537'},
+  {name:'川西',area:'川西地区・川辺地区・泉田地区（半過、下之条、川辺町以外）',phone:'0268-26-1172'},
+  {name:'丸子',area:'丸子地域（東内、西内、腰越以外）',phone:'0268-42-0015'},
+  {name:'真田',area:'真田地域',phone:'0268-72-8055'},
+  {name:'武石',area:'武石地域・丸子地域（東内、西内、腰越）',phone:'0268-41-4055'}
+];
+function uedaCenterPicker(){
+  const root=sdEl('div','set-sec'),label=sdEl('label','','お住まいの地区と相談先を選ぶ');
+  label.htmlFor='ueda-center-select';root.appendChild(label);
+  const select=sdEl('select','setup-input');select.id='ueda-center-select';
+  const empty=sdEl('option','','地区が分からない・公式一覧で確認する');empty.value='';select.appendChild(empty);
+  UEDA_CENTERS.forEach((c,i)=>{const o=sdEl('option','',c.area+' ／ '+c.name);o.value=String(i);select.appendChild(o);});root.appendChild(select);
+  const result=sdEl('div');result.setAttribute('aria-live','polite');root.appendChild(result);
+  select.addEventListener('change',()=>{
+    result.replaceChildren();if(select.value==='')return;
+    const c=UEDA_CENTERS[Number(select.value)];if(!c)return;
+    result.appendChild(sdEl('h4','',c.name+'地域包括支援センター'));
+    result.appendChild(sdEl('p','',c.area));
+    result.appendChild(sdTel(c.phone,c.phone+' に電話する','電話アプリが開きます。相談時間・担当は公式一覧で確認してください。'));
+  });
+  root.appendChild(sdEl('p','note','掲載元：上田市「地域包括支援センター」。この一覧と電話番号の確認日：2026年9月15日。来所前に電話で確認してください。'));
+  root.appendChild(sdLink(SOUDAN_SAKI.houkatsu.url,'地区・相談時間を公式一覧で確認する','担当が分からない場合も、こちらで確認できます。'));
+  const report=sdEl('a','sd-btn');report.href='https://github.com/pocham4173/hidamari/issues/new';report.target='_blank';report.rel='noopener noreferrer';
+  report.appendChild(sdEl('span','l','掲載情報の誤りを知らせる'));
+  report.appendChild(sdEl('span','s','GitHubへのログインが必要です。投稿は公開されるため、本人の氏名・病状・個人の電話番号は書かないでください。'));
+  root.appendChild(report);return root;
 }
 
 /* ===== 起動 ===== */
@@ -4695,13 +4780,71 @@ try{auth.onAuthStateChanged(async user=>{
 
 /* ===== 災害用QR（端末内保存・オフライン読取） ===== */
 const DISASTER_QR_KEY='mainico_preview_disaster_qr_v1';
-function openDisasterQr(){const m=document.getElementById('disaster-qr-modal');if(!m)return;m.classList.add('show');try{const v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null');if(v){document.getElementById('disaster-name').value=v.name||'';document.getElementById('disaster-relation').value=v.relation||'';document.getElementById('disaster-phone').value=v.phone||'';document.getElementById('disaster-help').value=v.help||'';document.getElementById('disaster-free').value=v.free||'';renderDisasterQr(v);}}catch(e){}}
+function resetDisasterConsent(){
+  ['disaster-consent','disaster-contact-consent'].forEach(id=>document.getElementById(id).checked=false);
+}
+function disasterQrState(text,error=false){
+  const state=document.getElementById('disaster-qr-state');
+  state.textContent=text;state.classList.toggle('err',error);
+}
+function openDisasterQr(){
+  const m=document.getElementById('disaster-qr-modal');if(!m)return;
+  m.classList.add('show');resetDisasterConsent();disasterQrState('');
+  try{
+    const v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null');
+    if(v){
+      ['name','relation','phone','help','free'].forEach(key=>document.getElementById('disaster-'+key).value=v[key]||'');
+      renderDisasterQr(v);
+    }
+  }catch(e){disasterQrState('保存内容を開けませんでした。この端末の保存設定を確認してください。',true);}
+}
 function closeDisasterQr(){document.getElementById('disaster-qr-modal')?.classList.remove('show');}
 function disasterUpdatedAt(){const d=new Date();return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日';}
-function disasterQrText(v){var L=['まいにこ 災害・緊急時支援カード','呼び名：'+v.name,'必要な支援：'+v.help];if(v.free)L.push('メモ：'+v.free);L.push('緊急連絡先：'+v.relation+' '+v.phone,'更新日：'+v.updatedAt,'命の危険がある場合は119番へ');return L.join('\n');}
-function renderDisasterQr(v){const p=document.getElementById('disaster-qr-preview');if(!p)return;if(typeof qrcode!=='function'){p.innerHTML='<div class="note">QRを表示できませんでした。</div>';return;}const qr=qrcode(0,'M');qr.addData(unescape(encodeURIComponent(disasterQrText(v))));qr.make();p.innerHTML='<h4>作成した災害用QR</h4><div class="tag-qr">'+qr.createImgTag(6,8,'まいにこ 災害用QR')+'</div><button class="set-btn" type="button" onclick="printDisasterQr()">災害用QRを印刷する</button><div class="note">更新日：'+esc(v.updatedAt)+'<br>端末内に保存しました。印刷前に別の端末で読み取って確認してください。</div>';const b=document.getElementById('disaster-delete');if(b)b.style.display='block';}
-function makeDisasterQr(){const name=document.getElementById('disaster-name').value.trim(),relation=document.getElementById('disaster-relation').value,phone=document.getElementById('disaster-phone').value.trim(),help=document.getElementById('disaster-help').value,free=document.getElementById('disaster-free').value.trim(),consent=document.getElementById('disaster-consent').checked;if(!name||!relation||!phone||!help){alert('4項目をすべて入力してください。');return;}if(!/^[0-9+()\-\s]{8,20}$/.test(phone)){alert('緊急連絡先の電話番号を確認してください。');return;}if(help==='その他（下の欄に記入）'&&!free){alert('「その他」を選んだ場合は、自由記入の欄に内容を書いてください。');return;}if(!consent){alert('誰でも読み取れることへの同意が必要です。');return;}const v={name,relation,phone,help,free,updatedAt:disasterUpdatedAt()};localStorage.setItem(DISASTER_QR_KEY,JSON.stringify(v));renderDisasterQr(v);}
-function deleteDisasterQr(){if(!confirm('この端末に保存した災害用QRを削除しますか？\n印刷済みのQRは消えません。'))return;localStorage.removeItem(DISASTER_QR_KEY);['disaster-name','disaster-phone','disaster-free'].forEach(id=>document.getElementById(id).value='');['disaster-relation','disaster-help'].forEach(id=>document.getElementById(id).value='');document.getElementById('disaster-consent').checked=false;document.getElementById('disaster-qr-preview').innerHTML='';document.getElementById('disaster-delete').style.display='none';}
+function disasterQrText(v){
+  const lines=['まいにこ 災害・緊急時支援カード','呼び名：'+v.name,'必要な支援：'+v.help];
+  if(v.free)lines.push('メモ：'+v.free);
+  lines.push('緊急連絡先：'+v.relation+' '+v.phone,'作成日：'+(v.createdAt||'記録なし（旧QR）'),'更新日：'+v.updatedAt,'命の危険がある場合は119番へ');
+  return lines.join('\n');
+}
+function disasterQrMarkup(v){
+  if(typeof qrcode!=='function')throw new Error('QR library unavailable');
+  const qr=qrcode(0,'M');qr.addData(unescape(encodeURIComponent(disasterQrText(v))));qr.make();
+  return '<h4>作成した災害用QR</h4><div class="tag-qr">'+qr.createImgTag(6,8,'まいにこ 災害用QR')+'</div>'+
+    (v.consentVersion===2?'<button class="set-btn" type="button" onclick="printDisasterQr()">災害用QRを印刷する</button>':'<div class="note">以前のQRです。本人と連絡先の同意を確認して作り直してください。</div>')+
+    '<div class="note">作成日：'+esc(v.createdAt||'記録なし（旧QR）')+'<br>更新日：'+esc(v.updatedAt)+'<br>この端末に保存した内容です。印刷前に別の端末で読み取り、内容を確認してください。</div>';
+}
+function renderDisasterQr(v,markup){
+  document.getElementById('disaster-qr-preview').innerHTML=markup||disasterQrMarkup(v);
+  document.getElementById('disaster-delete').style.display='block';
+}
+function makeDisasterQr(){
+  disasterQrState('');
+  const values={};['name','relation','phone','help','free'].forEach(key=>values[key]=document.getElementById('disaster-'+key).value.trim());
+  const {name,relation,phone,help,free}=values;
+  if(!name||!relation||!phone||!help){disasterQrState('4項目をすべて入力してください。',true);return;}
+  if(name.length>20||free.length>60||!/^\+?[0-9()\-\s]{8,20}$/.test(phone)||phone.replace(/\D/g,'').length<8){disasterQrState('文字数と緊急連絡先の電話番号を確認してください。',true);return;}
+  if(help==='その他（下の欄に記入）'&&!free){disasterQrState('その他の内容を入力してください。',true);return;}
+  if(!document.getElementById('disaster-consent').checked||!document.getElementById('disaster-contact-consent').checked){disasterQrState('本人と、掲載する連絡先の本人の同意を両方確認してください。',true);return;}
+  try{
+    const previous=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null');
+    const date=disasterUpdatedAt();
+    const v={...values,createdAt:previous?(previous.createdAt||'記録なし（旧QR）'):date,updatedAt:date,consentVersion:2,consentedAt:date};
+    const markup=disasterQrMarkup(v);
+    localStorage.setItem(DISASTER_QR_KEY,JSON.stringify(v));
+    renderDisasterQr(v,markup);resetDisasterConsent();
+    disasterQrState('この端末に保存しました。更新した場合は、手元の旧QRを廃棄してください。');
+  }catch(e){disasterQrState('QRを作成・保存できませんでした。入力は残っています。通信と端末の保存設定を確認して、もう一度お試しください。',true);}
+}
+function deleteDisasterQr(){
+  if(!confirm('この端末に保存した災害用QRを削除しますか？\n印刷済み・撮影済みのQRは消えません。'))return;
+  try{localStorage.removeItem(DISASTER_QR_KEY);}
+  catch(e){disasterQrState('削除できませんでした。保存内容は消去できていません。',true);return;}
+  ['name','phone','free','relation','help'].forEach(key=>document.getElementById('disaster-'+key).value='');
+  resetDisasterConsent();document.getElementById('disaster-qr-preview').innerHTML='';
+  document.getElementById('disaster-delete').style.display='none';
+  disasterQrState('この端末の保存内容を削除しました。印刷・撮影したQRは別途廃棄してください。');
+}
+
 
 </script>
 </body>

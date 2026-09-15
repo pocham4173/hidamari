@@ -35,3 +35,6 @@ jobs:
 
       - name: 家族ホーム・通信・伝言の回帰検査
         run: node tests/home-reliability.test.mjs
+
+      - name: 実証準備の伝言履歴と災害QRの検査
+        run: node tests/pilot-safety.test.mjs
