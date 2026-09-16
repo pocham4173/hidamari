@@ -15,7 +15,7 @@ function fixture(){
  vm.createContext(c);vm.runInContext(source,c);return{c,el,writes,messages};
 }
 {
- const e=fixture();e.el('family-task-input').value=' 薬局へ行く ';e.el('family-task-assignee').value=' 相談済みの家族 ';e.el('family-task-date').value='2026-09-20';await e.c.addFamilyTask();
+ const e=fixture();e.el('family-task-kind').value='family';e.el('family-task-input').value=' 薬局へ行く ';e.el('family-task-assignee').value=' 相談済みの家族 ';e.el('family-task-date').value='2026-09-20';await e.c.addFamilyTask();
  assert.equal(e.writes[0].assignee,'相談済みの家族');assert.equal(e.writes[0].type,'family-task');assert.equal(e.el('family-task-assignee').value,'');
 }
 {
@@ -72,4 +72,14 @@ assert.match(html,/\n  initFamilyOnlyTools\(\);/);assert.doesNotMatch(html,/if\(
  const e=fixture();e.c.familyOnlyData.tasks=[{_id:'x',text:'<script>alert(1)</script>',due:'2026-09-14'}];e.c.familyOnlyData.taskHelpers=[{replyTo:'x',uid:'other',name:'<img onerror=bad>'}];e.c.renderFamilyTasks();
  assert.match(e.el('family-tasks-preview').textContent,/期限超過 1件/);assert.match(e.el('family-tasks-preview').textContent,/<img onerror=bad>/);
 }
-console.log('handoff summary: 12 groups passed');
+
+{
+ const e=fixture();e.el('family-task-input').value='自分の通院準備';await e.c.addFamilyTask();assert.equal(e.writes[0].taskKind,'self');
+ e.c.familyOnlyData.tasks=[{_id:'mine',taskKind:'self',uid:'me',text:'自分の通院準備'},{_id:'other',taskKind:'self',uid:'other',text:'別の人の用事'},{_id:'legacy',text:'旧版のお願い'}];
+ e.c.renderFamilyTasks();assert.match(e.el('family-tasks-preview').textContent,/引受け待ち 1件/);
+ e.c.changeFamilyTaskList('self');assert.match(e.el('family-task-list').textContent,/自分の通院準備/);assert.doesNotMatch(e.el('family-task-list').textContent,/別の人の用事|旧版のお願い|私が引き受ける/);
+ e.c.changeFamilyTaskList('family');assert.match(e.el('family-task-list').textContent,/旧版のお願い/);assert.doesNotMatch(e.el('family-task-list').textContent,/自分の通院準備/);
+ const n=e.writes.length;await e.c.changeFamilyTaskHelp('mine',false);await e.c.finishFamilyTask('other');assert.equal(e.writes.length,n);
+ await e.c.finishFamilyTask('mine');assert.equal(e.writes.at(-1).type,'family-task-done');
+}
+console.log('handoff summary: 13 groups passed');

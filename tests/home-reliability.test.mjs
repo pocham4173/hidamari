@@ -365,6 +365,7 @@ assert.match(html, /onSnapshot\(\{includeMetadataChanges:true\},snap=>/);
     todayStr: () => '2026-09-12',dateOnly: s => new Date(s+'T00:00:00'),
     dateJp: d => `${d.getMonth()+1}月${d.getDate()}日`,foByNewest: () => 0
   };
+  vm.runInNewContext(section('function isSelfTask(task){','function renderFamilyTasks(){'),context);
   vm.runInNewContext(section('function renderFamilyTasksPreview(done){','async function finishFamilyTask(id){'),context);
   context.renderFamilyTasksPreview({done:true});
   assert.match(preview.textContent,/未完了 2件/);
