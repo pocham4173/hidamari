@@ -21,6 +21,8 @@ function applyHouseholdPermissions(){
     :'あなたは参加メンバーです。招待や参加承認は、最初に家庭を作成した管理者へ依頼してください。');
 }
 function stopHouseholdSubscriptions(){
+  if(typeof stopFamilyConnection==='function')stopFamilyConnection();
+  if(typeof closePersonTasks==='function')closePersonTasks();
   if(window.mainicoNotebookClose)window.mainicoNotebookClose();
   householdBootGeneration++;
   [householdUnsub,ownMemberUnsub,memWatchUnsub,honninUnsub,yoteiUnsub,evUnsub,ytListUnsub,watchTagUnsub,medicineInfoUnsub,personHistoryUnsub,pendingUnsub].forEach(fn=>{try{if(fn)fn();}catch(e){}});
