@@ -828,7 +828,20 @@ table.cal-rec td.pad{background:none;}
     <div class="note">利用する人を最初から選び直すときだけ使います。普段は変更する必要はありません。</div>
     <button class="set-btn warn" onclick="openBackConfirm()">利用方法を変更する</button>
   </div>
-  <div class="set-sec"><h4>使い方と端末の控え</h4><a class="set-btn" href="help.html" target="_blank" rel="noopener">共通の使い方・困ったとき・企業向け案内</a><button class="set-btn" type="button" onclick="openNotebookCleanup()">この端末に保存した控えの整理</button></div>
+  <div class="set-sec"><h4>使い方・困ったとき</h4>
+    <div class="note">ボタンの押し方や、予定・やることリストの使い方を確認できます。</div>
+    <a class="set-btn" href="help.html#daily" target="_blank" rel="noopener">まいにこの使い方を見る</a>
+    <a class="set-btn" href="help.html#trouble" target="_blank" rel="noopener">動かない・保存できないとき</a>
+  </div>
+  <div class="set-sec"><h4>このスマホのお薬手帳</h4>
+    <div class="note">ここに保存した写真やPDFを見たり、拡大したりできます。家族への自動共有や、機種変更時の自動引継ぎはありません。</div>
+    <button class="set-btn" type="button" onclick="openMedicineNotebook()">お薬手帳を開く・保存する</button>
+    <a class="set-btn" href="help.html#medicine" target="_blank" rel="noopener">保存・別のスマホへの移し方</a>
+    <details style="margin-top:16px;"><summary style="cursor:pointer;padding:10px 0;">保存したお薬手帳をすべて削除したいとき</summary>
+      <p class="note">このブラウザーに保存した、別の家庭の分も含むすべてのお薬手帳が対象です。写真アプリや、書き出したファイル、別のスマホのコピーは消えません。１件ずつ消す場合は「お薬手帳を開く・保存する」から選んでください。</p>
+      <button class="set-btn warn" type="button" onclick="openNotebookCleanup()">すべて削除する前に確認する</button>
+    </details>
+  </div>
   <div class="set-sec"><h4>アカウントと家庭の管理</h4>
     <p class="note" data-household-role></p>
     <button class="set-btn warn" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
@@ -836,8 +849,6 @@ table.cal-rec td.pad{background:none;}
     <div class="note">ご自身のメールアドレスを使います。本人にパスワードを覚えてもらう必要はありません。家族は自分のアカウントで設定してください。</div>
     <button class="set-btn warn" data-owner-only hidden onclick="deleteAllData()">共有データをすべて削除する</button>
   </div>
-  <button class="set-btn" onclick="openMedicineNotebook()">お薬手帳の控え（この端末）</button>
-  <a class="set-btn" href="help.html" target="_blank" rel="noopener">使い方・問い合わせの準備</a>
   <button class="modal-close" onclick="closePersonSettings()">とじる</button>
 </div></div>
 
@@ -1020,7 +1031,20 @@ table.cal-rec td.pad{background:none;}
       <div class="note">この端末での利用を終了し、家族との接続を解除します。</div>
     </div>
 
-  <div class="set-sec"><h4>使い方と端末の控え</h4><a class="set-btn" href="help.html" target="_blank" rel="noopener">共通の使い方・困ったとき・企業向け案内</a><button class="set-btn" type="button" onclick="openNotebookCleanup()">この端末に保存した控えの整理</button></div>
+  <div class="set-sec"><h4>使い方・困ったとき</h4>
+    <div class="note">ボタンの押し方や、予定・やることリストの使い方を確認できます。</div>
+    <a class="set-btn" href="help.html#daily" target="_blank" rel="noopener">まいにこの使い方を見る</a>
+    <a class="set-btn" href="help.html#trouble" target="_blank" rel="noopener">動かない・保存できないとき</a>
+  </div>
+  <div class="set-sec"><h4>このスマホのお薬手帳</h4>
+    <div class="note">ここに保存した写真やPDFを見たり、拡大したりできます。家族への自動共有や、機種変更時の自動引継ぎはありません。</div>
+    <button class="set-btn" type="button" onclick="openMedicineNotebook()">お薬手帳を開く・保存する</button>
+    <a class="set-btn" href="help.html#medicine" target="_blank" rel="noopener">保存・別のスマホへの移し方</a>
+    <details style="margin-top:16px;"><summary style="cursor:pointer;padding:10px 0;">保存したお薬手帳をすべて削除したいとき</summary>
+      <p class="note">このブラウザーに保存した、別の家庭の分も含むすべてのお薬手帳が対象です。写真アプリや、書き出したファイル、別のスマホのコピーは消えません。１件ずつ消す場合は「お薬手帳を開く・保存する」から選んでください。</p>
+      <button class="set-btn warn" type="button" onclick="openNotebookCleanup()">すべて削除する前に確認する</button>
+    </details>
+  </div>
   <div class="set-sec"><h4>アカウントと家庭の管理</h4>
     <p class="note" data-household-role></p>
     <button class="set-btn warn" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
