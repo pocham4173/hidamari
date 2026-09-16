@@ -82,4 +82,18 @@ assert.match(html,/\n  initFamilyOnlyTools\(\);/);assert.doesNotMatch(html,/if\(
  const n=e.writes.length;await e.c.changeFamilyTaskHelp('mine',false);await e.c.finishFamilyTask('other');assert.equal(e.writes.length,n);
  await e.c.finishFamilyTask('mine');assert.equal(e.writes.at(-1).type,'family-task-done');
 }
-console.log('handoff summary: 13 groups passed');
+{
+ const e=fixture();e.c.familyOnlyData.tasks=[{_id:'x',text:'お願い',assignee:'花子'}];
+ e.c.renderFamilyTasks();assert.match(e.el('family-task-list').textContent,/お願い中・引受け待ち/);
+ assert.doesNotMatch(e.el('family-task-list').textContent,/引受けあり/,'担当メモだけでは引受けにならない');
+ e.c.familyOnlyData.taskHelpers=[{replyTo:'x',uid:'other',name:'花子'}];
+ e.c.renderFamilyTasks();assert.match(e.el('family-tasks-preview').textContent,/引受けあり・まだ未完了/);
+ e.c.familyOnlyData.taskDone=[{replyTo:'x',name:'花子',time:'9月16日 12:00'}];
+ e.c.renderFamilyTasks();assert.match(e.el('family-task-list').textContent,/対応済み/);
+ assert.doesNotMatch(e.el('family-task-list').textContent,/まだ未完了|引受け待ち/,'完了後に未完了の案内を残さない');
+ e.c.familyOnlyData.taskDone=[];e.c.familyOnlyData.taskHelpers=[];
+ e.c.familyOnlyData.tasks[0].taskKind='self';e.c.familyOnlyData.tasks[0].uid='me';
+ e.c.renderFamilyTasks();assert.match(e.el('family-task-list').textContent,/自分でやる・未完了/);
+ assert.doesNotMatch(e.el('family-task-list').textContent,/お願い中/);
+}
+console.log('handoff summary: 14 groups passed');

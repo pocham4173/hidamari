@@ -410,6 +410,7 @@ table.cal-rec td.pad{background:none;}
 .family-tool-btn:disabled{opacity:.55;}
 .family-tool-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
 .family-tool-row{border:1px solid #DDE7E1;border-radius:11px;background:#FAFCFB;padding:10px 11px;line-height:1.55;}
+.family-task-status{display:block;width:fit-content;border:2px solid currentColor;border-radius:8px;padding:3px 9px;margin:7px 0;font-size:.86rem;font-weight:900;color:#385C4A;background:#EDF6F0;}
 .family-tool-row:focus{outline:3px solid #4F7FD3;outline-offset:2px;scroll-margin-top:18px;}
 .family-needs-check{display:inline-block;margin-bottom:6px;color:#315FAE;font-size:.84rem;}
 .family-tool-row .meta{display:block;color:var(--usucha);font-size:.76rem;font-weight:700;margin-top:3px;}
@@ -4270,9 +4271,12 @@ function renderFamilyTasks(){
     const row=document.createElement('div');row.className='family-tool-row';
     const finished=done[v._id];
     row.appendChild(document.createTextNode((finished?'✅ ':'□ ')+(v.text||'')));
+    appendFamilyTaskStatus(row,v,finished);
     const meta=document.createElement('span');meta.className='meta';
     meta.textContent=(v.due?'期限 '+v.due+'・':'')+(isSelfTask(v)?'自分でやること':'担当メモ：'+(v.assignee||'未定'))+'・追加 '+(v.name||'家族')+'・'+foDateTime(v);row.appendChild(meta);
-    const helpers=document.createElement('span');helpers.className='meta';helpers.textContent=isSelfTask(v)?'自分でやる：'+(v.name||'登録した人')+'さん':familyTaskHelperLabel(v._id);row.appendChild(helpers);
+    if(!finished){
+      const helpers=document.createElement('span');helpers.className='meta';helpers.textContent=isSelfTask(v)?'自分でやる：'+(v.name||'登録した人')+'さん':familyTaskHelperLabel(v._id);row.appendChild(helpers);
+    }
     const acts=document.createElement('div');acts.className='family-tool-actions';
     if(finished){
       const s=document.createElement('span');s.className='meta';s.textContent=(finished.name||'家族')+'さんが対応済み'+(foDateTime(finished)?'・'+foDateTime(finished):'・時刻を確認中');acts.appendChild(s);
@@ -4306,6 +4310,7 @@ function renderFamilyTasksPreview(done){
   pending.slice(0,4).forEach(function(v){
     const item=document.createElement('div');item.className='handoff-request';box.appendChild(item);
     const row=document.createElement('span');row.textContent='□ '+(v.text||'（内容なし）');item.appendChild(row);
+    appendFamilyTaskStatus(item,v,null);
     const assignee=document.createElement('span');assignee.className='meta';assignee.textContent=isSelfTask(v)?'自分でやること':'担当メモ：'+(v.assignee||'未定');item.appendChild(assignee);
     const helpers=document.createElement('span');helpers.className='meta';helpers.textContent=isSelfTask(v)?'自分でやる：'+(v.name||'登録した人')+'さん':familyTaskHelperLabel(v._id);item.appendChild(helpers);
     const actions=document.createElement('div');actions.className='family-tool-actions';appendFamilyTaskActions(actions,v);item.appendChild(actions);
@@ -4314,6 +4319,12 @@ function renderFamilyTasksPreview(done){
       due.textContent=(v.due<todayStr()?'期限が過ぎています：':'期限：')+dateJp(dateOnly(v.due));item.appendChild(due);
     }
   });
+}
+function appendFamilyTaskStatus(box,task,finished){
+  const status=document.createElement('strong');status.className='family-task-status';
+  status.textContent=finished?'対応済み':isSelfTask(task)?'自分でやる・未完了':
+    familyTaskHelpers(task._id).length?'引受けあり・まだ未完了':'お願い中・引受け待ち';
+  box.appendChild(status);
 }
 function familyTasksReady(){
   return ['tasks','taskDone','taskHelpers'].every(key=>familyOnlyLoad[key]==='ready');
