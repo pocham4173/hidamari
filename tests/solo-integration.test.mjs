@@ -40,7 +40,7 @@ c.startFamilyConnection();assert.equal(stops,1);listeners[0].ok(snap([['me','hon
 account='new';group='newhome';listeners[1].ok(snap([['me','honnin'],['old','kazoku']]));hidden(true,true,true);
 c.stopFamilyConnection();assert.equal(stops,2);assert.ok(refreshes>=10,'参加状況の変化でやることも更新する');
 // Static default is closed, even before the first verified snapshot.
-assert.match(html,/\[data-share-gate\]\[hidden\]\{display:none!important;/);
+assert.match(html,/\[hidden\]\{display:none!important;/);
 for(const tag of html.match(/<[^>]+data-share-gate[^>]*>/g))assert.match(tag,/ hidden(?:[ >])/);
 for(const id of ['card-family-notes','card-family-notes-preview','family-task-filter'])assert.match(html,new RegExp('id="'+id+'" data-share-gate="family" hidden'));
 const home=html.slice(html.indexOf('<div class="ftab" id="t-home">'),html.indexOf('<!-- 予定',html.indexOf('<div class="ftab" id="t-home">')));

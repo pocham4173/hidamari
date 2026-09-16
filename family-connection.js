@@ -6,6 +6,16 @@
 })(typeof window==='undefined'?globalThis:window,function(){
   'use strict';
   function unknown(){return {status:'unknown',others:null,familyOthers:null,personOthers:null};}
+  function recipient(member){
+    // role is the original registration role. mode is the screen the member uses now.
+    // Only records from before mode existed may fall back to role; an invalid mode
+    // must not enable sending to a screen that the member may no longer use.
+    if(Object.prototype.hasOwnProperty.call(member,'mode')){
+      return member.mode==='honnin'?'honnin':
+        member.mode==='kazoku'||member.mode==='konly'?'kazoku':null;
+    }
+    return member.role==='honnin'||member.role==='kazoku'?member.role:null;
+  }
   function classify(snapshot,ownUid){
     // Cached or locally pending membership must not claim that nobody else is connected.
     if(typeof ownUid!=='string'||!ownUid.trim()||!snapshot||
@@ -23,14 +33,14 @@
         if(!member||typeof member!=='object'){invalid=true;return;}
         if(member.status!=='approved')return;
         if(doc.id===ownUid){ownApproved=true;return;}
-        approved.set(doc.id,member.role);
+        approved.set(doc.id,recipient(member));
       });
     }catch(_){return unknown();}
     if(invalid||!ownApproved)return unknown();
     let familyOthers=0,personOthers=0;
-    approved.forEach(role=>{
-      if(role==='kazoku')familyOthers++;
-      else if(role==='honnin')personOthers++;
+    approved.forEach(audience=>{
+      if(audience==='kazoku')familyOthers++;
+      else if(audience==='honnin')personOthers++;
     });
     return {status:approved.size?'shared':'solo',others:approved.size,familyOthers,personOthers};
   }

@@ -50,6 +50,7 @@ jobs:
           node tests/person-button-feedback.test.mjs
           node tests/family-connection.test.mjs
           node tests/solo-integration.test.mjs
+          node tests/communication-flow.test.mjs
           node tests/person-tasks.test.mjs
           node tests/notebook-integration.test.mjs
           node tests/account-deletion.test.mjs
