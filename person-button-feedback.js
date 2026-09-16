@@ -3,7 +3,7 @@
   'use strict';
   const replaying=new WeakSet();
   let held=null,pending=null;
-  const selector='#btn-a,.kibun-btn,.kusuri-btn,.onegai-btn,.onegai-item,.cal-open,#onegai-free-btn';
+  const selector='#btn-a,.kibun-btn,.kusuri-btn,.onegai-btn,.onegai-item,.cal-open,#onegai-free-btn,.person-press-target,.ht-yomi';
   function context(){return [typeof window.uid==='function'?window.uid():'',typeof window.gid==='function'?window.gid():''].join(':');}
   function buttonFor(event){
     const button=event.target.closest&&event.target.closest(selector);
@@ -24,6 +24,12 @@
   document.addEventListener('pointercancel',release,true);
   window.addEventListener('blur',cancel);
   document.addEventListener('visibilitychange',function(){if(document.hidden)cancel();});
+  document.addEventListener('keydown',function(event){
+    if(event.key!=='Enter'&&event.key!==' ')return;
+    const target=buttonFor(event);
+    if(!target||target!==event.target||target.getAttribute('role')!=='button')return;
+    event.preventDefault();if(!event.repeat)target.click();
+  },true);
   document.addEventListener('click',function(event){
     const button=buttonFor(event);if(!button||replaying.has(button))return;
     event.preventDefault();event.stopImmediatePropagation();

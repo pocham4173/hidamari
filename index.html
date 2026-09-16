@@ -562,8 +562,8 @@ table.cal-rec td.pad{background:none;}
 
 
 /* Press feedback is independent of successful saving. */
-button.person-press-held,button.person-press-latched{transform:translateY(8px) scale(.97)!important;outline:4px solid #205B45!important;outline-offset:3px;filter:brightness(.87);box-shadow:inset 0 3px 0 rgba(0,0,0,.2)!important;}
-@media(prefers-reduced-motion:reduce){button.person-press-held,button.person-press-latched{transform:none!important;}}
+.person-press-held,.person-press-latched{transform:translateY(8px) scale(.97)!important;outline:4px solid #205B45!important;outline-offset:3px;filter:brightness(.87);box-shadow:inset 0 3px 0 rgba(0,0,0,.2)!important;}
+@media(prefers-reduced-motion:reduce){.person-press-held,.person-press-latched{transform:none!important;}}
 </style>
 </head>
 <body>
@@ -752,18 +752,18 @@ button.person-press-held,button.person-press-latched{transform:translateY(8px) s
 
 <!-- ===== 本人 ===== -->
 <div class="page" id="honnin">
-  <div class="h-date-wrap" onclick="speakDateHeader()" style="cursor:pointer;">
+  <div class="h-date-wrap person-press-target" role="button" tabindex="0" aria-label="日付と時刻を音声で聞く" onclick="speakDateHeader()" style="cursor:pointer;">
     <div class="h-wareki" id="h-wareki"></div>
     <div class="h-date" id="h-date"></div>
     <div class="h-time" id="h-time"></div>
   </div>
   <div class="h-body">
-    <div class="h-today" id="h-today" style="display:none;cursor:pointer;" onclick="speakToday()">
+    <div class="h-today person-press-target" id="h-today" style="display:none;cursor:pointer;" onclick="speakToday()">
       <div class="ht-lb">今日の予定</div>
       <div id="h-today-list"></div>
       <button class="ht-yomi" type="button" onclick="event.stopPropagation();speakToday()">🔊 音声で聞く</button>
     </div>
-    <div class="yotei-card" onclick="speakNextYotei()" style="cursor:pointer;">
+    <div class="yotei-card person-press-target" role="button" tabindex="0" aria-label="これからの予定を音声で聞く" onclick="speakNextYotei()" style="cursor:pointer;">
       <div class="lb">予定</div>
       <div class="days" id="y-days">-</div>
       <div class="pl" id="y-label">これからの予定はありません</div>
