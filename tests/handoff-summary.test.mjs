@@ -6,12 +6,12 @@ const source=html.slice(html.indexOf('async function addFamilyTask(){'),html.ind
 class Element{
  constructor(){this.children=[];this._text='';this.value='';this.style={};this.disabled=false;this.open=true;}
  set textContent(v){this._text=String(v);this.children=[];}get textContent(){return this._text+this.children.map(x=>x.textContent).join('');}
- appendChild(v){this.children.push(v);return v;}addEventListener(k,v){this[k]=v;}
+ appendChild(v){this.children.push(v);return v;}addEventListener(k,v){this[k]=v;}focus(){this.focused=true;}scrollIntoView(){}
 }
 function fixture(){
  const els=new Map(),writes=[],messages=[];
  const el=id=>{if(!els.has(id))els.set(id,new Element());return els.get(id);};
- const c={document:{getElementById:el,createElement:()=>new Element(),createTextNode:t=>Object.assign(new Element(),{textContent:t})},familyOnlyData:{tasks:[],taskDone:[]},familyOnlyLoad:{tasks:'ready',taskDone:'ready'},foState:(id,text)=>messages.push(text),myName:()=> '記録者',uid:()=> 'me',foDateTime:v=>v.time||'',foByNewest:(a,b)=>b.n-a.n,todayStr:()=> '2026-09-15',dateOnly:v=>v,dateJp:v=>v,addEvent:async v=>writes.push(v),alert:m=>messages.push(m),deleteFamilyEvent:()=>{}};
+ const c={document:{getElementById:el,createElement:()=>new Element(),createTextNode:t=>Object.assign(new Element(),{textContent:t})},familyOnlyData:{tasks:[],taskDone:[],taskHelpers:[]},familyOnlyLoad:{tasks:'ready',taskDone:'ready',taskHelpers:'ready'},foState:(id,text)=>messages.push(text),myName:()=> '記録者',uid:()=> 'me',gid:()=> 'group',confirm:()=>true,col:()=>({doc:id=>id}),foDateTime:v=>v.time||'',foByNewest:(a,b)=>b.n-a.n,todayStr:()=> '2026-09-15',dateOnly:v=>v,dateJp:v=>v,addEvent:async v=>writes.push(v),alert:m=>messages.push(m),deleteFamilyEvent:()=>{}};
  vm.createContext(c);vm.runInContext(source,c);return{c,el,writes,messages};
 }
 {
@@ -40,4 +40,36 @@ function fixture(){
 }
 for(const id of ['card-family-notes-preview','card-family-tasks-preview','card-family-notes','card-family-tasks'])assert.match(html,new RegExp('class="card dom-record family-shared-card" id="'+id+'"'));
 assert.match(html,/\n  initFamilyOnlyTools\(\);/);assert.doesNotMatch(html,/if\(kOnly\)renderFamilySchedule\(\)/);assert.doesNotMatch(html,/function renderFamilySchedule\(\)\{\s*if\(!isKOnly\(\)\)/);
-console.log('handoff summary: 7 groups passed');
+
+{
+ const e=fixture();e.c.familyOnlyData.tasks=[{_id:'x',text:'通院',due:'2026-09-15'}];
+ e.c.familyOnlyData.taskHelpers=[{_id:'a',replyTo:'x',uid:'other',name:'花子'},{_id:'b',replyTo:'x',uid:'me',name:'太郎'},{_id:'c',replyTo:'x',uid:'me',name:'太郎'}];
+ e.c.renderFamilyTasks();assert.match(e.el('family-tasks-preview').textContent,/今日 1件 ／ 引受け待ち 0件/);
+ assert.equal(e.c.familyTaskHelpers('x').length,2);assert.match(e.el('family-task-list').textContent,/花子さん・太郎さん/);
+ const deleted=[];e.c.db={batch:()=>({delete:r=>deleted.push(r),commit:async()=>{}})};
+ await e.c.changeFamilyTaskHelp('x',true);assert.deepEqual(deleted,['b','c']);
+ await e.c.changeFamilyTaskHelp('x',false);assert.equal(e.writes.length,0);
+}
+{
+ const e=fixture();e.c.familyOnlyData.tasks=[{_id:'x'}];let release,attempts=0;
+ e.c.addEvent=v=>{attempts++;return new Promise(r=>release=r);};
+ const first=e.c.changeFamilyTaskHelp('x',false);await e.c.changeFamilyTaskHelp('x',false);assert.equal(attempts,1);release();await first;
+ e.c.addEvent=async()=>{throw Error('offline');};await e.c.changeFamilyTaskHelp('x',false);assert.match(e.messages.at(-1),/保存できません/);
+ e.c.addEvent=async v=>e.writes.push(v);await e.c.changeFamilyTaskHelp('x',false);assert.equal(e.writes[0].type,'family-task-help');
+}
+{
+ const e=fixture();e.c.familyOnlyData.tasks=[{_id:'x'}];
+ for(const state of ['cached','loading','error']){e.c.familyOnlyLoad.taskHelpers=state;e.c.renderFamilyTasks();await e.c.changeFamilyTaskHelp('x',false);await e.c.finishFamilyTask('x');assert.equal(e.writes.length,0);assert.doesNotMatch(e.el('family-tasks-preview').textContent,/未完了 0件/);}
+ e.c.familyOnlyLoad.taskHelpers='ready';e.c.familyOnlyData.taskDone=[{replyTo:'x'}];await e.c.changeFamilyTaskHelp('x',false);assert.equal(e.writes.length,0);
+}
+{
+ const e=fixture();e.c.openFamilyRequest();assert.equal(e.el('family-task-date').value,'2026-09-15');assert.equal(e.el('family-task-compose').open,true);
+ e.c.setFamilyRequestTemplate('買い物');assert.equal(e.el('family-task-input').value,'買い物');
+ e.c.confirm=()=>false;e.c.setFamilyRequestTemplate('通院');assert.equal(e.el('family-task-input').value,'買い物');
+ e.c.openFamilyRequest();assert.equal(e.el('family-task-input').value,'買い物');
+}
+{
+ const e=fixture();e.c.familyOnlyData.tasks=[{_id:'x',text:'<script>alert(1)</script>',due:'2026-09-14'}];e.c.familyOnlyData.taskHelpers=[{replyTo:'x',uid:'other',name:'<img onerror=bad>'}];e.c.renderFamilyTasks();
+ assert.match(e.el('family-tasks-preview').textContent,/期限超過 1件/);assert.match(e.el('family-tasks-preview').textContent,/<img onerror=bad>/);
+}
+console.log('handoff summary: 12 groups passed');

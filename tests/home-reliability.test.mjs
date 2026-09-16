@@ -357,8 +357,9 @@ assert.match(html, /onSnapshot\(\{includeMetadataChanges:true\},snap=>/);
   const preview = new Element();
   const context = {
     document: {getElementById: () => preview, createElement: tag => new Element(tag)},
-    familyOnlyLoad: {tasks:'ready',taskDone:'ready'},
-    familyOnlyData: {tasks:[{_id:'late',text:'薬局',due:'2026-09-11'},
+    familyOnlyLoad: {tasks:'ready',taskDone:'ready',taskHelpers:'ready'},
+    uid:()=> 'me',gid:()=> 'group',
+    familyOnlyData: {taskHelpers:[],tasks:[{_id:'late',text:'薬局',due:'2026-09-11'},
       {_id:'done',text:'完了した用事',due:'2026-09-12'},
       {_id:'later',text:'訪問',due:'2026-09-14'}]},
     todayStr: () => '2026-09-12',dateOnly: s => new Date(s+'T00:00:00'),
