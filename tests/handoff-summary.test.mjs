@@ -6,6 +6,7 @@ const source=html.slice(html.indexOf('async function addFamilyTask(){'),html.ind
 class Element{
  constructor(){this.children=[];this._text='';this.value='';this.style={};this.disabled=false;this.open=true;}
  set textContent(v){this._text=String(v);this.children=[];}get textContent(){return this._text+this.children.map(x=>x.textContent).join('');}
+ setAttribute(k,v){this[k]=String(v);}
  appendChild(v){this.children.push(v);return v;}addEventListener(k,v){this[k]=v;}focus(){this.focused=true;}scrollIntoView(){}
 }
 function fixture(){
@@ -96,4 +97,22 @@ assert.match(html,/\n  initFamilyOnlyTools\(\);/);assert.doesNotMatch(html,/if\(
  e.c.renderFamilyTasks();assert.match(e.el('family-task-list').textContent,/自分でやる・未完了/);
  assert.doesNotMatch(e.el('family-task-list').textContent,/お願い中/);
 }
-console.log('handoff summary: 14 groups passed');
+{
+ const e=fixture();
+ e.el('family-task-details').open=false;
+ e.el('family-task-input').value='入力中の用事';
+ e.c.openFamilyTasks();assert.equal(e.el('family-task-summary').focused,true);
+ e.c.openFamilyRequest();assert.equal(e.el('family-task-details').open,true);assert.equal(e.el('family-task-compose').open,true);
+ for(const selected of ['self','family','all','invalid']){
+   e.c.changeFamilyTaskList(selected);
+   const active=selected==='invalid'?'all':selected;
+   for(const mode of ['all','self','family'])assert.equal(e.el('family-task-filter-'+mode)['aria-pressed'],String(mode===active));
+   assert.equal(e.el('family-task-input').value,'入力中の用事','切替で入力中の内容を消さない');
+ }
+ assert.match(e.el('family-task-filter-description').textContent,/すべて/);
+ e.c.familyOnlyData.tasks=Array.from({length:5},(_,i)=>({_id:String(i),text:'用事'+i}));
+ e.c.renderFamilyTasks();
+ assert.equal(e.el('family-tasks-preview').children.filter(x=>x.className==='handoff-request').length,2);
+ assert.match(e.el('family-tasks-preview').textContent,/ほか3件/);
+}
+console.log('handoff summary: 15 groups passed');

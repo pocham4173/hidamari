@@ -194,7 +194,8 @@ assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8
   assert.doesNotMatch(list.children.find(x=>x.id==='family-note-note1').textContent, /自分が確認しました/);
   viewer = 'author';
   context.renderFamilyNotes();
-  assert.equal(previewCard.style.display, 'none');
+  assert.equal(previewCard.style.display, 'block');
+  assert.match(preview.textContent,/あなたが未確認の伝言はありません/);
   assert.match(list.textContent, /自分が書いた伝言/);
   assert.doesNotMatch(list.textContent, /自分が確認しました/);
   viewer = 'familyA';
@@ -413,4 +414,16 @@ assert.match(html, /onSnapshot\(\{includeMetadataChanges:true\},snap=>/);
   assert.equal(saved.medicineTiming,'朝食後');
   assert.equal(saved.note,'薬袋を確認');
   console.log('✅ お薬情報は承認家族の共有データとして登録・確認できる');
+}
+
+{
+ const ids=Object.fromEntries(['family-note-details','family-note-summary','family-note-compose','family-note-input','card-family-notes'].map(id=>[id,new Element()]));
+ const context={document:{getElementById:id=>ids[id]}};
+ vm.runInNewContext(section('function openFamilyNotes(id){','const familyAckSending=new Set();'),context);
+ ids['family-note-details'].open=false;ids['family-note-compose'].open=false;ids['family-note-input'].value='入力中の伝言';
+ context.openFamilyNotes();assert.equal(ids['family-note-summary'].focused,true);
+ context.composeFamilyNote();
+ assert.equal(ids['family-note-details'].open,true);assert.equal(ids['family-note-compose'].open,true);
+ assert.equal(ids['family-note-input'].focused,true);assert.equal(ids['family-note-input'].value,'入力中の伝言');
+ console.log('✅ 家族への伝言入口は一覧と入力欄を開き、入力内容を保持する');
 }
