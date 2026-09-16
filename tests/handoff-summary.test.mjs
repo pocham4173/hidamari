@@ -12,8 +12,8 @@ class Element{
 function fixture(){
  const els=new Map(),writes=[],messages=[];
  const el=id=>{if(!els.has(id))els.set(id,new Element());return els.get(id);};
- const c={document:{getElementById:el,createElement:()=>new Element(),createTextNode:t=>Object.assign(new Element(),{textContent:t})},familyOnlyData:{tasks:[],taskDone:[],taskHelpers:[]},familyOnlyLoad:{tasks:'ready',taskDone:'ready',taskHelpers:'ready'},foState:(id,text)=>messages.push(text),myName:()=> '記録者',uid:()=> 'me',gid:()=> 'group',confirm:()=>true,col:()=>({doc:id=>id}),foDateTime:v=>v.time||'',foByNewest:(a,b)=>b.n-a.n,todayStr:()=> '2026-09-15',dateOnly:v=>v,dateJp:v=>v,addEvent:async v=>writes.push(v),alert:m=>messages.push(m),deleteFamilyEvent:()=>{}};
- vm.createContext(c);vm.runInContext(source,c);return{c,el,writes,messages};
+ const c={familyConnection:{status:'shared',others:1,familyOthers:1,personOthers:0},document:{getElementById:el,createElement:()=>new Element(),createTextNode:t=>Object.assign(new Element(),{textContent:t})},familyOnlyData:{tasks:[],taskDone:[],taskHelpers:[]},familyOnlyLoad:{tasks:'ready',taskDone:'ready',taskHelpers:'ready'},foState:(id,text)=>messages.push(text),myName:()=> '記録者',uid:()=> 'me',gid:()=> 'group',confirm:()=>true,col:()=>({doc:id=>id}),foDateTime:v=>v.time||'',foByNewest:(a,b)=>b.n-a.n,todayStr:()=> '2026-09-15',dateOnly:v=>v,dateJp:v=>v,addEvent:async v=>writes.push(v),alert:m=>messages.push(m),deleteFamilyEvent:()=>{}};
+ vm.createContext(c);vm.runInContext(html.slice(html.indexOf("function canUseFamilyFeature("),html.indexOf("function requestAudienceText(){")),c);vm.runInContext(source,c);return{c,el,writes,messages};
 }
 {
  const e=fixture();e.el('family-task-kind').value='family';e.el('family-task-input').value=' 薬局へ行く ';e.el('family-task-assignee').value=' 相談済みの家族 ';e.el('family-task-date').value='2026-09-20';await e.c.addFamilyTask();
@@ -116,3 +116,28 @@ assert.match(html,/\n  initFamilyOnlyTools\(\);/);assert.doesNotMatch(html,/if\(
  assert.match(e.el('family-tasks-preview').textContent,/ほか3件/);
 }
 console.log('handoff summary: 15 groups passed');
+
+// A solo home retains only the owner's self tasks. Membership changes never delete data.
+{
+ const e=fixture();e.c.familyConnection={status:'solo',others:0,familyOthers:0,personOthers:0};
+ e.c.familyOnlyData.tasks=[{_id:'mine',taskKind:'self',uid:'me',text:'自分の買い物'},
+   {_id:'other',taskKind:'self',uid:'other',text:'別の人の用事'}, {_id:'shared',taskKind:'family',uid:'me',text:'以前のお願い'}];
+ e.c.renderFamilyTasks();assert.match(e.el('family-task-list').textContent,/自分の買い物/);
+ for(const id of ['family-task-list','family-tasks-preview'])assert.doesNotMatch(e.el(id).textContent,/以前のお願い|別の人の用事|引受け待ち/);
+ const original=JSON.stringify(e.c.familyOnlyData.tasks);
+ e.el('family-task-input').value='入力中のお願い';e.el('family-task-kind').value='family';
+ await e.c.addFamilyTask();await e.c.changeFamilyTaskHelp('shared',false);await e.c.finishFamilyTask('shared');
+ assert.equal(e.writes.length,0);assert.equal(e.el('family-task-input').value,'入力中のお願い');
+ assert.equal(e.el('family-task-kind').value,'family','家族へのお願いを勝手に自分の用事に変えない');
+ e.c.changeFamilyTaskList('family');assert.equal(e.el('family-task-filter-all')['aria-pressed'],'true');
+ assert.match(e.el('family-task-filter-description').textContent,/あなたが登録/);
+ e.el('family-task-kind').value='self';await e.c.addFamilyTask();await e.c.finishFamilyTask('mine');
+ assert.equal(e.writes.length,2,'一人でも保存と完了ができる');
+ e.c.familyConnection={status:'shared',others:1,familyOthers:1,personOthers:0};e.c.renderFamilyTasks();
+ assert.match(e.el('family-task-list').textContent,/以前のお願い|別の人の用事/);
+ assert.equal(JSON.stringify(e.c.familyOnlyData.tasks),original,'表示の切替で以前の記録を変えない');
+ await e.c.changeFamilyTaskHelp('shared',false);assert.equal(e.writes.at(-1).type,'family-task-help');
+ e.c.familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};
+ const n=e.writes.length;await e.c.finishFamilyTask('shared');assert.equal(e.writes.length,n);
+}
+console.log('solo task gate: approval, disconnection, preserved drafts/history, and self completion passed');

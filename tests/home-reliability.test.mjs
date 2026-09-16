@@ -40,7 +40,7 @@ assert.match(html, /get\(\{source:'server'\}\)/);
 assert.match(html, /id="medicine-info-area"[\s\S]*?id="medicine-name"[\s\S]*?id="medicine-timing"/);
 assert.match(html, /'medicine-info':1/);
 assert.match(html, /function showTab\(t\)[\s\S]*?resetFamilyScroll\(\);\s*\}/);
-assert.match(html, /id="card-care-quick"[\s\S]*?家族のワンタップ記録/);
+assert.match(html, /id="card-care-quick"[\s\S]*?確認したことを記録する/);
 assert.doesNotMatch(html, /家庭で選ぶ介護の記録|家族の介護記録/);
 console.log('✅ 家族ホームはワンタップ記録を先に、補助入力を開閉式に表示');
 
@@ -165,7 +165,7 @@ assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8
     document: { getElementById: id => id === 'family-notes-preview' ? preview : id === 'card-family-notes-preview' ? previewCard :
       id.startsWith('family-note-') && id !== 'family-note-list' ? list.children.find(x=>x.id===id) : list,
       createElement: tag => new Element(tag), createTextNode: text => ({ textContent: text }) },
-    familyOnlyData: data, familyOnlyLoad: {notes:'ready',noteAcks:'ready',noteReplies:'ready'}, uid: () => viewer, foDateTime: () => '9月12日 10:00', foByNewest: (a,b) => b.at.seconds-a.at.seconds,
+    requireFamilyFeature:()=>true,familyOnlyData: data, familyOnlyLoad: {notes:'ready',noteAcks:'ready',noteReplies:'ready'}, uid: () => viewer, foDateTime: () => '9月12日 10:00', foByNewest: (a,b) => b.at.seconds-a.at.seconds,
     ackFamilyNote() {}, replyFamilyNote() {}, deleteFamilyEvent() {}, Object
   };
   vm.runInNewContext(section('function renderFamilyNotes(){', 'async function ackFamilyNote(id){'), context);
@@ -210,7 +210,7 @@ assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8
   assert.equal(previewCard.style.display,'block');
   assert.doesNotMatch(preview.textContent, /0件/);
   let sent = 0;
-  const ackContext = {
+  const ackContext = {requireFamilyFeature:()=>true,
     familyOnlyData: data, uid: () => viewer, myName: () => '家族B',
     addEvent: async () => { sent++; }, Date, Set,
     alert: () => { throw new Error('unexpected send failure'); }
@@ -358,7 +358,7 @@ assert.match(html, /onSnapshot\(\{includeMetadataChanges:true\},snap=>/);
   const preview = new Element();
   const context = {
     document: {getElementById: () => preview, createElement: tag => new Element(tag)},
-    familyOnlyLoad: {tasks:'ready',taskDone:'ready',taskHelpers:'ready'},
+    canUseFamilyFeature:()=>true,familyOnlyLoad: {tasks:'ready',taskDone:'ready',taskHelpers:'ready'},
     uid:()=> 'me',gid:()=> 'group',
     familyOnlyData: {taskHelpers:[],tasks:[{_id:'late',text:'薬局',due:'2026-09-11'},
       {_id:'done',text:'完了した用事',due:'2026-09-12'},
@@ -419,6 +419,7 @@ assert.match(html, /onSnapshot\(\{includeMetadataChanges:true\},snap=>/);
 {
  const ids=Object.fromEntries(['family-note-details','family-note-summary','family-note-compose','family-note-input','card-family-notes'].map(id=>[id,new Element()]));
  const context={document:{getElementById:id=>ids[id]}};
+ context.requireFamilyFeature=()=>true;
  vm.runInNewContext(section('function openFamilyNotes(id){','const familyAckSending=new Set();'),context);
  ids['family-note-details'].open=false;ids['family-note-compose'].open=false;ids['family-note-input'].value='入力中の伝言';
  context.openFamilyNotes();assert.equal(ids['family-note-summary'].focused,true);
