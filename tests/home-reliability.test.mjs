@@ -268,6 +268,7 @@ assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8
 
 {
   const context = vm.createContext({});
+  vm.runInContext(section('function compareConversationEvents(a,b){','function personReplyDone(id){'), context);
   vm.runInContext(section('function homeAttentionRows(items,replies,kOnly){', "let familyYoteiStatus='loading';"), context);
   const events = [
     { _id:'answered', type:'onegai', text:'お願いA', at:{seconds:1} },
@@ -280,6 +281,15 @@ assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8
   assert.deepEqual(Array.from(context.homeAttentionRows(events,{answered:[{type:'onegai-back'}]},false),v=>v._id),
     ['ordinary','new-reply','quiet','open']);
   assert.ok(context.homeAttentionRows(events,{},true).some(v=>v.type==='aisatsu'),'本人が後から参加した家庭でも会話を残す');
+  const sameSecond=[
+    {_id:'a-newer',type:'aisatsu',at:{seconds:10,nanoseconds:900}},
+    {_id:'z-older',type:'aisatsu',at:{seconds:10,nanoseconds:100}}
+  ];
+  for(const input of [sameSecond,sameSecond.slice().reverse()]){
+    assert.deepEqual(Array.from(context.homeAttentionRows(input,{},false),v=>v._id),['a-newer'],'同じ秒でもナノ秒が新しい挨拶を残す');
+  }
+  const exactTie=sameSecond.map(v=>({...v,at:{seconds:10,nanoseconds:100}}));
+  assert.deepEqual(Array.from(context.homeAttentionRows(exactTie,{},false),v=>v._id),Array.from(context.homeAttentionRows(exactTie.slice().reverse(),{},false),v=>v._id),'時刻が完全一致しても入力順で表示を変えない');
   console.log('✅ ホームには直近の挨拶・体調・服薬と返事を残す');
 }
 
