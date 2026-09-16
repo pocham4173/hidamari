@@ -561,6 +561,10 @@ table.cal-rec td.pad{background:none;}
 .local-source span{font-size:.78rem;color:var(--usucha);}
 
 
+/* Press feedback is independent of successful saving. */
+button.person-press-held,button.person-press-latched{transform:translateY(4px)!important;outline:4px solid #205B45!important;outline-offset:3px;filter:brightness(.87);box-shadow:inset 0 3px 0 rgba(0,0,0,.2)!important;}
+#person-tap-feedback{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:12000;background:#203E31;color:#fff;padding:14px 24px;border:2px solid #fff;border-radius:14px;font-size:1.2rem;font-weight:800;pointer-events:none;box-shadow:0 4px 14px #0003;}
+@media(prefers-reduced-motion:reduce){button.person-press-held,button.person-press-latched{transform:none!important;}}
 </style>
 </head>
 <body>
@@ -901,12 +905,7 @@ table.cal-rec td.pad{background:none;}
   <button class="set-btn" type="button" onclick="loadPersonHistory()">もう一度読み込む</button>
   <button class="modal-close" type="button" onclick="closePersonHistory()">とじる</button>
 </div></div>
-<dialog id="person-confirm-dialog" aria-labelledby="person-confirm-title" style="border:0;border-radius:20px;padding:24px;width:calc(100% - 40px);max-width:400px;">
-  <h2 id="person-confirm-title">この内容で記録しますか？</h2><p id="person-confirm-text" style="font-size:1.3rem;line-height:1.7;overflow-wrap:anywhere;"></p>
-  <p>まだ送っていません。内容を確認してから押してください。</p>
-  <button class="big-btn record" type="button" onclick="confirmPersonAction()">この内容で記録する</button>
-  <button class="modal-close" type="button" onclick="cancelPersonAction()">やめる・選び直す</button>
-</dialog>
+
 <!-- ちょっとお願い -->
 <div class="modal" id="onegai-modal">
   <div class="modal-box">
@@ -1408,6 +1407,8 @@ setTimeout(function(){
 <script src="household-ui.js"></script>
 <script src="medicine-notebook.js"></script>
 <script src="notebook-integration.js"></script>
+<div id="person-tap-feedback" hidden aria-live="polite" role="status"></div>
+<script src="person-button-feedback.js"></script>
 <script>
 const previewStorage={
   getItem:k=>localStorage.getItem(k),
@@ -2228,31 +2229,13 @@ function honninSendFail(){
   if(p){ p.textContent='電波が届きませんでした。もう一度押してください'; p.classList.add('show'); }
   speak('でんぱが とどきませんでした。もういちど おしてください');
 }
-let pendingPersonAction=null;
-function requestPersonAction(text,action){
-  if(honninSending||pendingPersonAction)return;
-  pendingPersonAction={action:action,uid:uid(),gid:gid()};
-  const dialog=document.getElementById('person-confirm-dialog');
-  document.getElementById('person-confirm-text').textContent=text;
-  dialog.oncancel=()=>{pendingPersonAction=null;};
-  dialog.showModal();speak(text+'。この内容で記録しますか');
-}
-function cancelPersonAction(){
-  pendingPersonAction=null;document.getElementById('person-confirm-dialog').close();
-}
-function confirmPersonAction(){
-  const pending=pendingPersonAction;cancelPersonAction();
-  if(!pending||pending.uid!==uid()||pending.gid!==gid())return;
-  pending.action();
-}
-function sendAisatsu(confirmed){
+function sendAisatsu(){
   const s=slot();
   if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)){
     feedback();
     speak(s.tx+'は、家族の画面に届けましたよ', true);
     return;
   }
-  if(!confirmed){requestPersonAction(s.tx,()=>sendAisatsu(true));return;}
   if(!beginSend()) return;
   feedback();
   addEvent({type:'aisatsu', text:s.tx, slot:s.key}).then(()=>{
@@ -2264,8 +2247,7 @@ function sendAisatsu(confirmed){
       document.getElementById('kibun-box').style.display='block';
   }).catch(()=>{ endSend(false); honninSendFail(); });
 }
-function sendKibun(text,emoji,confirmed){
-  if(!confirmed){requestPersonAction('今日の気分：'+text,()=>sendKibun(text,emoji,true));return;}
+function sendKibun(text,emoji){
   if(!beginSend()) return;
   feedback();
   addEvent({type:'kibun', text:text, emoji:emoji}).then(()=>{
@@ -2280,7 +2262,7 @@ function skipKibun(){
   previewStorage.setItem('kibun-'+todayStr(),'1');
   document.getElementById('kibun-box').style.display='none';
 }
-function sendKusuri(slotKey,confirmed){
+function sendKusuri(slotKey){
   if(!validKusuriSlot(slotKey)) return;
   const label=kusuriSlotName(slotKey);
   if(previewStorage.getItem('kusuri-'+todayStr()+'-'+slotKey)){
@@ -2288,7 +2270,6 @@ function sendKusuri(slotKey,confirmed){
     speak(label+'の薬を飲んだと、家族の画面に届けています', true);
     return;
   }
-  if(!confirmed){requestPersonAction(label+'の薬を飲みました',()=>sendKusuri(slotKey,true));return;}
   if(!beginSend()) return;
   feedback();
   addEvent({type:'kusuri', slot:slotKey}).then(()=>{
@@ -2319,8 +2300,7 @@ function sendOnegaiFree(){
   }
   sendOnegai(text,'onegai-free');
 }
-function sendOnegai(text, inputId,confirmed){
-  if(!confirmed){requestPersonAction('お願い：'+text,()=>sendOnegai(text,inputId,true));return;}
+function sendOnegai(text, inputId){
   if(!beginSend()) return;
   const freeState=document.getElementById('onegai-free-state');
   const freeBtn=document.getElementById('onegai-free-btn');
