@@ -419,6 +419,8 @@ table.cal-rec td.pad{background:none;}
 .family-tool-actions button:disabled{opacity:.55;cursor:wait;}
 .family-tool-actions button.danger{border-color:#D8A69A;color:var(--aka-koi);}
 
+.connection-note{margin:12px 4px;padding:12px;border:1px solid #CCDCD1;border-radius:10px;background:#F4F8F5;color:#344F40;font-size:.95rem;line-height:1.65;}
+#person-tasks-modal .family-tool-actions button{min-height:48px;font-size:1.05rem;}
 .family-section-heading{font-size:1.2rem;margin:20px 4px 12px;color:var(--sumi);}
 .family-home-details>summary{font-size:1.05rem;font-weight:900;color:var(--sumi);cursor:pointer;min-height:48px;line-height:1.5;padding:10px 4px;}
 .family-home-details[open]>summary{margin-bottom:12px;border-bottom:1px solid #DDE7E1;}
@@ -593,13 +595,13 @@ table.cal-rec td.pad{background:none;}
   <div class="q">使い方を選んでください</div>
   <div id="entry-state" class="save-state" role="status" aria-live="polite"></div>
   <div id="select-box">
-    <button class="entry-btn" onclick="pickMode('honnin')">本人が使う<small>この端末をご本人が操作します</small></button>
+    <button class="entry-btn" onclick="pickMode('honnin')">本人が使う<small>一人でも使えます。この端末をご本人が操作します</small></button>
     <button class="entry-btn" onclick="pickMode('kazoku')">本人と家族が使う<small>この端末は家族用です。本人用は上を選びます</small></button>
-    <button class="entry-btn" onclick="pickMode('konly')">家族が記録して使う<small>家族が確認したことを、家族の記録として残します</small></button>
+    <button class="entry-btn" onclick="pickMode('konly')">家族が記録して使う<small>家族一人でも、本人の様子を記録できます</small></button>
   </div>
   <div class="setup-or">─ または ─</div>
   <button class="entry-btn sub" onclick="pickMode('kazoku')">招待された方<small>招待コードを入力して参加する</small></button>
-  <div class="note" style="max-width:320px;margin:6px auto 0;">ここから家族とつながれます。ご本人がこの端末を使う場合は、上の「本人が使う」を選んでください。</div>
+  <div class="note" style="max-width:320px;margin:6px auto 0;">招待せずに一人で始められます。家族との連携はあとから追加できます。本人が操作する端末では「本人が使う」を選んでください。</div>
   <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
   <a class="consent-back" href="help.html" target="_blank" rel="noopener">使い方・困ったときの案内</a>
   <button class="consent-back" type="button" onclick="openNotebookCleanup()">端末内の控えを削除</button>
@@ -625,13 +627,13 @@ table.cal-rec td.pad{background:none;}
   <div class="consent-wrap">
     <div class="consent-ttl">まいにこを使う前に</div>
     <p class="consent-lead">まいにこは、あなたとご家族が毎日の様子を無理なく伝え合うためのアプリです。カメラで監視したり、知らない人へ情報を公開したりするものではありません。次の内容を確認し、よければチェックしてください。</p>
-    <label class="consent-item"><input type="checkbox" class="ck-a"> 挨拶ボタンを押したことと、その時刻を家族の画面に記録します</label>
-    <label class="consent-item"><input type="checkbox" class="ck-a"> 登録した予定を家族に見せます</label>
-    <label class="consent-item"><input type="checkbox" class="ck-a"> 服薬ボタンを押したことと、その時刻を家族の画面に記録します</label>
-    <label class="consent-item"><input type="checkbox" class="ck-a"> 選んだ体調を家族の画面に記録します</label>
+    <label class="consent-item"><input type="checkbox" class="ck-a"> 挨拶ボタンを押したことと、その時刻を保存します</label>
+    <label class="consent-item"><input type="checkbox" class="ck-a"> 登録した予定を保存します</label>
+    <label class="consent-item"><input type="checkbox" class="ck-a"> 服薬ボタンを押したことと、その時刻を保存します</label>
+    <label class="consent-item"><input type="checkbox" class="ck-a"> 選んだ体調を保存します</label>
     <label class="consent-item"><input type="checkbox" class="ck-a"> 下の説明を読みました</label>
     <div class="consent-note">
-      <b>大切な注意</b><br>
+      <b>共有される範囲</b><br>一人でも使えます。あとから参加を承認した家族には、これまでの予定・記録・やることも共有されます。端末内のお薬手帳の写真は別で、自動共有されません。<br><b>大切な注意</b><br>
       ・服薬ボタンは「押した記録」です。実際に薬を飲んだことを保証しません<br>
       ・お薬情報を登録する場合は、本人の了解を得て必要最小限にし、最新の処方はお薬手帳・薬袋・医師・薬剤師に確認してください<br>
       ・記録の表示は通信状態や端末の設定により、遅れたり届かなかったりする場合があります。記録がないことは、未実施や異常を意味しません<br>
@@ -655,7 +657,7 @@ table.cal-rec td.pad{background:none;}
     <label class="consent-item"><input type="checkbox" class="ck-b"> 必要以上の情報を入力しません</label>
     <label class="consent-item"><input type="checkbox" class="ck-b"> 記録は医療判断や服薬の証明にならないことを理解しました</label>
     <div class="consent-note">
-      <b>大切な注意</b><br>
+      <b>共有される範囲</b><br>一人でも使えます。あとから参加を承認した家族には、これまでの予定・記録・やることも共有されます。端末内のお薬手帳の写真は別で、自動共有されません。<br><b>大切な注意</b><br>
       ・「本人に薬を飲んだか確認しました」は家族による確認の記録です。服用そのものを証明しません<br>
       ・お薬情報を登録する場合は、本人の了解を得て必要最小限にし、最新の処方はお薬手帳・薬袋・医師・薬剤師に確認してください<br>
       ・記録がないことは、未実施や異常を意味しません<br>
@@ -770,6 +772,7 @@ table.cal-rec td.pad{background:none;}
     <div class="h-time" id="h-time"></div>
   </div>
   <div class="h-body">
+    <p class="connection-note" data-connection-state aria-live="polite">連携状況を確認しています。一人でも記録できます。</p>
     <div class="h-today person-press-target" id="h-today" style="display:none;cursor:pointer;" onclick="speakToday()">
       <div class="ht-lb">今日の予定</div>
       <div id="h-today-list"></div>
@@ -796,7 +799,7 @@ table.cal-rec td.pad{background:none;}
     <button class="aisatsu" id="btn-a" onclick="sendAisatsu()">
       <div class="ic" id="a-ic">☀️</div>
       <div class="tx" id="a-tx">おはよう</div>
-      <div class="sb" id="a-sb">押すと家族の画面に記録されます</div>
+      <div class="sb" id="a-sb">押すと記録を保存します</div>
     </button>
     <div class="kibun" id="kibun-box" style="display:none;">
       <div class="q">今日の調子はどうですか?</div>
@@ -820,6 +823,7 @@ table.cal-rec td.pad{background:none;}
     </div>
     <button class="cal-open" type="button" onclick="openPersonHistory()">家族からの伝言を日付で見る</button>
     <button class="onegai-btn" onclick="openOnegai()">ちょっとお願い</button>
+    <button class="cal-open" type="button" onclick="openPersonTasks()">自分のやること</button>
     <button class="cal-open" onclick="openCal()">カレンダーを見る</button>
     <button class="cal-open" onclick="openHYotei()">予定を入れる</button>
     <div class="h-links">
@@ -829,6 +833,17 @@ table.cal-rec td.pad{background:none;}
     </div>
   </div>
 </div>
+
+<div class="modal" id="person-tasks-modal" role="dialog" aria-modal="true" aria-labelledby="person-tasks-title"><div class="modal-box adult-font">
+  <div class="ttl" id="person-tasks-title">自分のやること</div>
+  <p class="note">自分の用事を追加し、終わったら「できた」を押します。招待は不要です。あとから参加を承認した家族にも、この用事が表示されます。</p>
+  <label for="person-task-input">やること</label><div class="in-row"><input id="person-task-input" maxlength="80" placeholder="例：通院の準備をする"></div>
+  <label for="person-task-date">期限（決まっているとき）</label><div class="in-row"><input type="date" id="person-task-date"></div>
+  <button class="set-btn person-press-target" type="button" id="person-task-save">やることを保存する</button>
+  <div class="save-state" id="person-task-state" aria-live="polite"></div>
+  <div class="family-tool-list" id="person-task-list"></div>
+  <button class="modal-close" type="button" id="person-task-close">とじる</button>
+</div></div>
 
 <div class="modal" id="person-settings-modal"><div class="modal-box adult-font">
   <div class="ttl">その他の設定</div>
@@ -886,7 +901,7 @@ table.cal-rec td.pad{background:none;}
   <input type="time" id="hy-time">
   <button class="hy-save" id="hy-save-btn" type="button" onclick="hySave()">この予定を保存する</button>
   <button class="set-btn warn" id="hy-delete-btn" type="button" onclick="hyDelete()" style="display:none;">この予定を削除する</button>
-  <div class="note" id="hy-note">保存すると、ご家族の画面にも出ます。</div>
+  <div class="note" id="hy-note">予定を保存します。参加を承認した家族にも表示されます。</div>
   <button class="modal-close" onclick="closeHYotei()">とじる</button>
 </div></div>
 
@@ -931,6 +946,7 @@ table.cal-rec td.pad{background:none;}
 <!-- ちょっとお願い -->
 <div class="modal" id="onegai-modal">
   <div class="modal-box">
+    <p class="connection-note" data-request-audience>相手が確認したことは保証されません。急ぎは電話などで連絡してください。</p>
     <div class="ttl">ちょっとお願い</div>
     <div class="onegai-grid">
       <button class="onegai-item" onclick="sendOnegai('話したい')">話したい</button>
@@ -1071,7 +1087,7 @@ table.cal-rec td.pad{background:none;}
 <!-- ===== 家族 ===== -->
 <div class="page" id="kazoku">
   <div class="f-head">
-    <div class="lg" id="f-lg">まいにこ ─ 家族</div>
+    <div class="lg" id="f-lg">まいにこ ─ ホーム</div>
     <div class="tt" id="f-title"></div>
   </div>
   <div class="f-body">
@@ -1079,6 +1095,8 @@ table.cal-rec td.pad{background:none;}
     <!-- ホーム -->
     <div class="ftab" id="t-home">
       <div id="card-pending"></div>
+      <p class="connection-note" data-connection-state aria-live="polite">連携状況を確認しています。一人でも記録できます。</p>
+      <p class="note" id="home-operator-note"></p>
       <div id="family-handoff-heading"><h2 style="font-size:1.2rem;margin:16px 4px 4px;">いま確認すること</h2><p class="note" style="margin:0 4px 12px;">家族の伝言、予定、残っている用事を確認できます。</p></div>
       <div class="card dom-record family-shared-card" id="card-family-notes-preview">
         <h3>家族からの伝言</h3>
@@ -1160,7 +1178,7 @@ table.cal-rec td.pad{background:none;}
 
       <h2 class="family-section-heading">伝える・記録する</h2>
       <div class="card dom-record" id="card-actions">
-        <details class="family-home-details" id="family-person-contact"><summary>本人へ挨拶・メッセージを送る</summary><p class="note">本人の画面へ届ける連絡です。家族同士の連絡は「家族に伝言を書く」を使います。</p>
+        <details class="family-home-details" id="family-person-contact"><summary>本人へ挨拶・メッセージを送る</summary><p class="note" data-person-audience></p><p class="note">本人の画面へ届ける連絡です。家族同士の連絡は「家族に伝言を書く」を使います。</p>
         <h4 style="font-size:.9rem;margin:2px 0 8px;color:var(--usucha);">挨拶</h4>
         <div class="ab-grid">
           <button class="ab-btn" id="btn-ab-asa" onclick="sendAisatsuBack('asa')"><span class="ic">☀️</span><span class="tx">おはよう</span></button>
@@ -1376,7 +1394,7 @@ table.cal-rec td.pad{background:none;}
           ・印刷して、バッグ・杖・キーホルダーなど普段の持ち物に付けて使います<br>
           ・緊急通報ではありません。危険なときは、読み取った方が119番・110番へ連絡します</div>
         </details>
-        <div id="watch-tag-area"><div class="empty">状態を確認しています…</div></div>
+        <p class="note" data-request-audience>連携状況を確認しています。おまもりタグは常時の見守りではありません。</p><div id="watch-tag-area"><div class="empty">状態を確認しています…</div></div>
         <div id="watch-tag-history" class="family-tool-list" aria-live="polite"></div>
         <div class="note">読み取られた内容は、家族のまいにこに記録されます。</div>
         <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
@@ -1454,6 +1472,8 @@ setTimeout(function(){
 <script src="medicine-notebook.js"></script>
 <script src="notebook-integration.js"></script>
 <script src="person-button-feedback.js"></script>
+<script src="family-connection.js"></script>
+<script src="person-tasks.js"></script>
 <script>
 const previewStorage={
   getItem:k=>localStorage.getItem(k),
@@ -1490,6 +1510,7 @@ function rokuyoOf(d){
   return ROKUYO_NAMES[Number(ROKUYO_TABLE[i])];
 }
 function goHome(){
+  closePersonTasks();
   document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show'));
   try{ if(typeof openAnshin==='function' && document.getElementById('anshin-home')) openAnshin('home'); }catch(e){}
   try{ var kz=document.getElementById('kazoku'); if(kz && getComputedStyle(kz).display!=='none' && typeof showTab==='function') showTab('t-home'); }catch(e){}
@@ -1601,7 +1622,7 @@ function openHYotei(id){
     document.getElementById('hy-date').value=v.date||todayStr();
     document.getElementById('hy-free').value=v.label||'';
     document.getElementById('hy-time').value=v.time||'';
-    note.textContent='変更すると、ご家族の画面にも反映されます。';
+    note.textContent='予定を変更します。参加を承認した家族にも反映されます。';
     document.getElementById('cal-modal').classList.remove('show');
     speak('予定の 変更を ひらきました');
   }else{
@@ -1611,7 +1632,7 @@ function openHYotei(id){
     document.getElementById('hy-date').value=todayStr();
     document.getElementById('hy-free').value='';
     document.getElementById('hy-time').value='';
-    note.textContent='保存すると、ご家族の画面にも出ます。';
+    note.textContent='予定を保存します。参加を承認した家族にも表示されます。';
     speak('予定の 入力を ひらきました');
   }
   document.getElementById('h-yotei-modal').classList.add('show');
@@ -1725,6 +1746,59 @@ function addEvent(data){
     date:todayStr(), at:firebase.firestore.FieldValue.serverTimestamp(), uid:uid()
   },data));
 }
+let familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};
+let familyConnectionUnsub=null,familyConnectionGeneration=0;
+function stopFamilyConnection(){
+  familyConnectionGeneration++;
+  if(familyConnectionUnsub){familyConnectionUnsub();familyConnectionUnsub=null;}
+  familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};
+  renderFamilyConnection();
+}
+function requestAudienceText(){
+  if(familyConnection.status==='unknown')return '連携状況を確認できません。相手の確認は保証されません。急ぎは電話などで連絡してください。';
+  if(!familyConnection.familyOthers)return '現在、お願いを受け取る家族の参加は確認されていません。必要な連絡は電話などを使ってください。';
+  return '参加している家族が開いて確認できます。確認や対応は保証されません。急ぎは電話などで連絡してください。';
+}
+function renderFamilyConnection(){
+  const state=familyConnection;
+  const text=state.status==='unknown'?'連携状況を確認できません。一人でも記録できます。':state.status==='solo'?
+    '今はほかの承認済み参加者はいません。招待せずに使えます。':
+    'ほかの承認済み参加者 '+state.others+'人と記録を共有しています。相手の確認・対応を示すものではありません。';
+  document.querySelectorAll('[data-connection-state]').forEach(el=>el.textContent=text);
+  document.querySelectorAll('[data-request-audience]').forEach(el=>el.textContent=requestAudienceText());
+  document.querySelectorAll('[data-person-audience]').forEach(el=>el.textContent=state.status==='unknown'?
+    '本人用の参加状況は確認できません。保存と相手の確認は別です。':!state.personOthers?
+    '現在、本人用の参加者は確認されていません。本人がアプリを使わなくても、予定や様子の記録はできます。':
+    '本人用の画面で開いて確認できます。保存は、本人が読んだことを意味しません。');
+  const home=document.getElementById('t-home'),notes=document.getElementById('card-family-notes-preview');
+  const tasks=document.getElementById('card-family-tasks-preview'),plans=document.getElementById('card-next-yotei');
+  if(home&&notes&&tasks&&plans&&notes.parentNode===home&&tasks.parentNode===home&&plans.parentNode===home){
+    if(state.status==='solo')home.insertBefore(notes,tasks.nextSibling);
+    else home.insertBefore(notes,plans);
+  }
+}
+function startFamilyConnection(){
+  stopFamilyConnection();
+  const generation=familyConnectionGeneration,owner=uid(),group=gid(),boot=householdBootGeneration;
+  const current=()=>generation===familyConnectionGeneration&&owner===uid()&&group===gid()&&boot===householdBootGeneration;
+  familyConnectionUnsub=col('members').onSnapshot({includeMetadataChanges:true},snap=>{
+    if(!current())return;
+    familyConnection=MainicoFamilyConnection.classify(snap,owner);renderFamilyConnection();
+  },()=>{if(current()){familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};renderFamilyConnection();}});
+}
+let personTasksController=null;
+function openPersonTasks(){
+  if(!personTasksController)personTasksController=MainicoPersonTasks.create({
+    document:document,getContext:()=>({uid:uid(),gid:gid()}),
+    subscribe:(type,onData,onError)=>col('events').where('type','==',type).onSnapshot({includeMetadataChanges:true},snap=>{
+      const rows=[];snap.forEach(doc=>rows.push(Object.assign({},doc.data(),{_id:doc.id})));
+      onData(rows,snap.metadata);
+    },onError),
+    addEvent:data=>addEvent(Object.assign({},data,{name:myName()}))
+  });
+  personTasksController.open();
+}
+function closePersonTasks(){if(personTasksController)personTasksController.close();}
 function randCode(){
   const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let s=''; const a=new Uint8Array(8); crypto.getRandomValues(a);
@@ -2134,7 +2208,7 @@ function refreshSlotUI(){
   if(ba) ba.classList.remove('done');
   document.getElementById('a-ic').textContent=s.ic;
   document.getElementById('a-tx').textContent=s.tx;
-  document.getElementById('a-sb').textContent='押すと家族の画面に記録されます';
+  document.getElementById('a-sb').textContent='押すと記録を保存します';
   ['asa','hiru','yoru'].forEach(function(k){
     const b=document.getElementById('btn-k-'+k);
     if(!b) return;
@@ -2145,6 +2219,7 @@ function refreshSlotUI(){
   if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)) markAisatsuDone();
 }
 function initHonnin(){
+  startFamilyConnection();
   hBootDay=todayStr(); hCurSlot=slot().key;
   const upd=()=>{
     if(todayStr()!==hBootDay){
@@ -2169,7 +2244,7 @@ function initHonnin(){
   document.getElementById('a-ic').textContent=s.ic;
   document.getElementById('a-tx').textContent=s.tx;
   document.getElementById('a-sb').style.display='block';
-  document.getElementById('a-sb').textContent='押すと家族の画面に記録されます';
+  document.getElementById('a-sb').textContent='押すと記録を保存します';
   if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)) markAisatsuDone();
   ['asa','hiru','yoru'].forEach(function(k){
     if(previewStorage.getItem('kusuri-'+todayStr()+'-'+k)) markKusuriDone(k);
@@ -2244,7 +2319,7 @@ function initHonnin(){
 function markAisatsuDone(){
   document.getElementById('btn-a').classList.add('done');
   document.getElementById('a-ic').textContent=greetingFlower();
-  document.getElementById('a-tx').textContent='家族の画面に記録されました';
+  document.getElementById('a-tx').textContent='記録しました';
   document.getElementById('a-sb').textContent='今日もありがとう。押せる日にお使いください。もう一度押すと声で確認できます';
 }
 function markKusuriDone(slotKey){
@@ -2278,14 +2353,14 @@ function sendAisatsu(){
   const s=slot();
   if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)){
     feedback();
-    speak(s.tx+'は、家族の画面に届けましたよ', true);
+    speak(s.tx+'は、記録してあります', true);
     return;
   }
   if(!beginSend()) return;
   feedback();
   addEvent({type:'aisatsu', text:s.tx, slot:s.key}).then(()=>{
     endSend(true);
-    speak(s.tx+'を、家族の画面に届けました');
+    speak(s.tx+'を、記録しました');
     previewStorage.setItem('aisatsu-'+todayStr()+'-'+s.key,'1');
     markAisatsuDone();
     if(!previewStorage.getItem('kibun-'+todayStr()))
@@ -2297,7 +2372,7 @@ function sendKibun(text,emoji){
   feedback();
   addEvent({type:'kibun', text:text, emoji:emoji}).then(()=>{
     endSend(true);
-    speak(text+'を おくりました');
+    speak(text+'を 記録しました');
     previewStorage.setItem('kibun-'+todayStr(),'1');
     document.getElementById('kibun-box').style.display='none';
   }).catch(()=>{ endSend(false); honninSendFail(); });
@@ -2312,14 +2387,14 @@ function sendKusuri(slotKey){
   const label=kusuriSlotName(slotKey);
   if(previewStorage.getItem('kusuri-'+todayStr()+'-'+slotKey)){
     feedback();
-    speak(label+'の薬を飲んだと、家族の画面に届けています', true);
+    speak(label+'の薬を飲んだ記録があります', true);
     return;
   }
   if(!beginSend()) return;
   feedback();
   addEvent({type:'kusuri', slot:slotKey}).then(()=>{
     endSend(true);
-    speak(label+'の薬を飲んだと、家族の画面に届けました');
+    speak(label+'の薬を飲んだ記録を保存しました');
     previewStorage.setItem('kusuri-'+todayStr()+'-'+slotKey,'1');
     markKusuriDone(slotKey);
   }).catch(()=>{ endSend(false); honninSendFail(); });
@@ -2362,12 +2437,12 @@ function sendOnegai(text, inputId){
       if(input && input.value.trim()===text) input.value='';
     }
     closeOnegai(true);
-    speak(text+'を おくりました');
+    speak(text+'を 記録しました');
     const p=document.getElementById('pop-msg');
     if(text==='今日はそっとしておいて'){
-      p.textContent='家族の画面に伝えました。今日はゆっくりお過ごしください';
+      p.textContent='記録しました。今日はゆっくりお過ごしください';
     }else{
-      p.textContent='家族の画面にお願いを記録しました。返事が届かない場合もあります。急ぐときは電話を使ってください';
+      p.textContent='お願いを記録しました。'+requestAudienceText();
     }
     p.classList.add('show');
   }).catch(()=>{
@@ -2608,10 +2683,12 @@ function renderFamilySchedule(){
     (familyYoteiStatus==='cached'?'保存済みの予定はありません（通信確認待ち）':'登録された予定はありません');
 }
 function initKazoku(){
+  startFamilyConnection();
   const d=new Date();
   const kOnly=isKOnly();
-  document.getElementById('f-lg').textContent=kOnly?'まいにこ ─ 家族のみで記録中':'まいにこ ─ 家族';
+  document.getElementById('f-lg').textContent='まいにこ ─ ホーム';
   document.getElementById('f-title').textContent=dateJp(d);
+  document.getElementById('home-operator-note').textContent=kOnly?'本人の様子を、あなたが確認した記録として残します。家族一人でも使えます。':'予定や用事を整理できます。本人・家族の参加はあとから追加できます。';
   document.getElementById('home-date-h3').textContent='ご本人からの連絡';
   document.querySelectorAll('.ab-btn').forEach(b=>b.classList.remove('suggested'));
   const curAb=document.getElementById('btn-ab-'+slot().key);
@@ -3838,7 +3915,7 @@ async function sendFamilyMessageBack(text,replyId=currentFamilyMessageId){
   st.classList.remove('err');st.textContent='送信しています…';feedback();
   try{
     await addEvent({type:'family-message-back',text:text,name:'本人',replyTo:replyId});
-    st.textContent='家族の画面へ返事を届けました';
+    st.textContent='返事を記録しました';
     speak('家族の画面へ、'+text+'と とどけました');
     return true;
   }catch(e){st.classList.add('err');st.textContent='送信できませんでした。もう一度お試しください';return false;}
@@ -3965,7 +4042,7 @@ async function addMedicineInfo(){
   try{
     await addEvent({type:'medicine-info',medicineName:medicineName,medicineTiming:medicineTiming,note:note,name:myName(),clientAt:Date.now()});
     nameEl.value='';timingEl.value='';noteEl.value='';document.getElementById('medicine-info-compose').open=false;
-    foState('medicine-info-state','お薬情報を共有しました',false);
+    foState('medicine-info-state','お薬情報を保存しました',false);
   }catch(e){foState('medicine-info-state','保存できませんでした。入力は残っています',true);}
   finally{btn.disabled=false;}
 }
@@ -4119,7 +4196,7 @@ async function addFamilyNote(){
     await addEvent({type:'family-note',text:t,name:myName(),clientAt:Date.now()});
     if(el.value.trim()===t) el.value='';
     document.getElementById('family-note-compose').open=false;
-    foState('family-note-state','家族へ伝言を共有しました',false);
+    foState('family-note-state','伝言を保存しました',false);
   }catch(e){ foState('family-note-state','保存できませんでした。入力は残っています',true); }
   finally{btn.disabled=false;}
 }
@@ -4275,7 +4352,7 @@ async function addFamilyTask(){
     if(assigneeEl.value.trim()===assignee)assigneeEl.value='';
     if(document.getElementById('family-task-date').value===due)document.getElementById('family-task-date').value='';
     document.getElementById('family-task-compose').open=false;
-    foState('family-task-state',taskKind==='self'?'自分でやることに保存しました':'家族へのお願いを共有しました',false);
+    foState('family-task-state',taskKind==='self'?'自分でやることに保存しました':'お願いを保存しました',false);
   }catch(e){if(uid()===requestUid&&gid()===requestGroup)foState('family-task-state','保存できませんでした。入力は残っています',true);}
   finally{btn.disabled=false;}
 }
@@ -4412,7 +4489,7 @@ async function changeFamilyTaskHelp(id,cancel){
     }else{
       await addEvent({type:'family-task-help',replyTo:id,name:myName(),clientAt:Date.now()});
     }
-    if(uid()===owner&&gid()===group)foState('family-task-state',cancel?'自分の引受けを取り消しました':'引受けを家族に共有しました',false);
+    if(uid()===owner&&gid()===group)foState('family-task-state',cancel?'自分の引受けを取り消しました':'引受けを記録しました',false);
   }catch(e){if(uid()===owner&&gid()===group)alert('引受けを保存できませんでした。通信を確認して、もう一度お試しください');}
   finally{familyTaskHelping.delete(key);if(uid()===owner&&gid()===group)renderFamilyTasks();}
 }

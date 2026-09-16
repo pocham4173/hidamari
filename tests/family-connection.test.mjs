@@ -1,0 +1,41 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+const {classify}=require('../family-connection.js');
+const unknown={status:'unknown',others:null,familyOthers:null,personOthers:null};
+const member=(id,role='kazoku',status='approved')=>({id,data:()=>({role,status})});
+const snapshot=(docs,metadata={fromCache:false,hasPendingWrites:false})=>({metadata,forEach:fn=>docs.forEach(fn)});
+
+test('Only a verified approved self with no other approved member is solo',()=>{
+  assert.deepEqual(classify(snapshot([member('me')]),'me'),{status:'solo',others:0,familyOthers:0,personOthers:0});
+  assert.deepEqual(classify(snapshot([member('me'),member('waiting','kazoku','pending')]),'me'),{status:'solo',others:0,familyOthers:0,personOthers:0});
+});
+test('Count distinct approved identities and distinguish family from person',()=>{
+  const docs=[member('me','honnin'),member('family'),member('person','honnin'),member('waiting','kazoku','pending')];
+  assert.deepEqual(classify(snapshot(docs),'me'),{status:'shared',others:2,familyOthers:1,personOthers:1});
+  assert.deepEqual(classify(snapshot([...docs,member('family')]),'me'),{status:'shared',others:2,familyOthers:1,personOthers:1});
+});
+test('Unknown or legacy roles are connections but not confirmed family recipients',()=>{
+  assert.deepEqual(classify(snapshot([member('me'),member('legacy',null)]),'me'),{status:'shared',others:1,familyOthers:0,personOthers:0});
+});
+test('Cached empty and cached populated lists never assert zero or a known audience',()=>{
+  for(const docs of [[],[member('me')],[member('me'),member('family')]]){
+    assert.deepEqual(classify(snapshot(docs,{fromCache:true}),'me'),unknown);
+  }
+});
+test('Missing, unapproved, or mismatched current identity stays unknown',()=>{
+  for(const docs of [[],[member('other')],[member('me','honnin','pending')]]){
+    assert.deepEqual(classify(snapshot(docs),'me'),unknown);
+  }
+  for(const uid of [null,undefined,'',' ',42])assert.deepEqual(classify(snapshot([member('me')]),uid),unknown);
+});
+test('Unconfirmed local writes cannot declare a new sharing arrangement',()=>{
+  assert.deepEqual(classify(snapshot([member('me')],{fromCache:false,hasPendingWrites:true}),'me'),unknown);
+  assert.deepEqual(classify(snapshot([{...member('me'),metadata:{hasPendingWrites:true}}]),'me'),unknown);
+});
+test('Absent metadata, malformed documents, and failed snapshot access stay unknown',()=>{
+  for(const source of [null,{},snapshot([member('me')],{}),snapshot([member('me')],null),snapshot([member('me'),{}]),snapshot([member('me'),{id:'x',data:()=>null}]),{metadata:{fromCache:false},forEach:()=>{throw Error('unavailable');}}]){
+    assert.deepEqual(classify(source,'me'),unknown);
+  }
+});
