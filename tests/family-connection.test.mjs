@@ -5,6 +5,7 @@ const require=createRequire(import.meta.url);
 const {classify}=require('../family-connection.js');
 const unknown={status:'unknown',others:null,familyOthers:null,personOthers:null};
 const member=(id,role='kazoku',status='approved')=>({id,data:()=>({role,status})});
+const memberWithMode=(id,role,mode,status='approved')=>({id,data:()=>({role,mode,status})});
 const snapshot=(docs,metadata={fromCache:false,hasPendingWrites:false})=>({metadata,forEach:fn=>docs.forEach(fn)});
 
 test('Only a verified approved self with no other approved member is solo',()=>{
@@ -18,6 +19,32 @@ test('Count distinct approved identities and distinguish family from person',()=
 });
 test('Unknown or legacy roles are connections but not confirmed family recipients',()=>{
   assert.deepEqual(classify(snapshot([member('me'),member('legacy',null)]),'me'),{status:'shared',others:1,familyOthers:0,personOthers:0});
+});
+test('Changing the selected screen changes its audience without changing the registration role',()=>{
+  for(const originalRole of ['honnin','kazoku']){
+    for(const [mode,familyOthers,personOthers] of [['honnin',0,1],['kazoku',1,0],['konly',1,0]]){
+      assert.deepEqual(classify(snapshot([member('me'),memberWithMode('other',originalRole,mode)]),'me'),
+        {status:'shared',others:1,familyOthers,personOthers});
+    }
+  }
+});
+test('A valid selected screen supplies the audience even when the old role is unknown',()=>{
+  assert.deepEqual(classify(snapshot([member('me'),memberWithMode('person',null,'honnin'),memberWithMode('family',null,'konly')]),'me'),
+    {status:'shared',others:2,familyOthers:1,personOthers:1});
+});
+test('Only absent mode falls back to role; an explicitly invalid mode cannot enable either recipient',()=>{
+  assert.deepEqual(classify(snapshot([member('me'),member('family','kazoku'),member('person','honnin')]),'me'),
+    {status:'shared',others:2,familyOthers:1,personOthers:1});
+  for(const role of ['honnin','kazoku']){
+    for(const mode of [null,undefined,'','unknown',0,{},[]]){
+      assert.deepEqual(classify(snapshot([member('me'),memberWithMode('other',role,mode)]),'me'),
+        {status:'shared',others:1,familyOthers:0,personOthers:0});
+    }
+  }
+});
+test('Selected screens never turn pending members or the current account into recipients',()=>{
+  assert.deepEqual(classify(snapshot([memberWithMode('me','kazoku','honnin'),memberWithMode('waiting','kazoku','honnin','pending')]),'me'),
+    {status:'solo',others:0,familyOthers:0,personOthers:0});
 });
 test('Cached empty and cached populated lists never assert zero or a known audience',()=>{
   for(const docs of [[],[member('me')],[member('me'),member('family')]]){
@@ -33,6 +60,9 @@ test('Missing, unapproved, or mismatched current identity stays unknown',()=>{
 test('Unconfirmed local writes cannot declare a new sharing arrangement',()=>{
   assert.deepEqual(classify(snapshot([member('me')],{fromCache:false,hasPendingWrites:true}),'me'),unknown);
   assert.deepEqual(classify(snapshot([{...member('me'),metadata:{hasPendingWrites:true}}]),'me'),unknown);
+  const changedScreen=memberWithMode('other','kazoku','honnin');
+  assert.deepEqual(classify(snapshot([member('me'),changedScreen],{fromCache:true}),'me'),unknown);
+  assert.deepEqual(classify(snapshot([member('me'),{...changedScreen,metadata:{hasPendingWrites:true}}]),'me'),unknown);
 });
 test('Absent metadata, malformed documents, and failed snapshot access stay unknown',()=>{
   for(const source of [null,{},snapshot([member('me')],{}),snapshot([member('me')],null),snapshot([member('me'),{}]),snapshot([member('me'),{id:'x',data:()=>null}]),{metadata:{fromCache:false},forEach:()=>{throw Error('unavailable');}}]){

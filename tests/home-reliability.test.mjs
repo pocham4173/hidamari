@@ -32,8 +32,8 @@ assert.match(html, /id="card-next-yotei"[\s\S]*?id="family-today-tomorrow"[\s\S]
 assert.match(html, /id="card-family-tasks-preview"[\s\S]*?onclick="openFamilyTasks\(\)"/);
 assert.ok(html.indexOf('id="card-family-notes-preview"')<html.indexOf('id="card-next-yotei"'));
 assert.ok(html.indexOf('id="card-next-yotei"')<html.indexOf('id="card-family-tasks-preview"'));
-assert.match(html, /id="card-today-records" style="display:none;"[\s\S]*?ご本人からの連絡/);
-assert.match(html, /今日の記録をふり返りで見る/);
+assert.match(html, /id="card-today-records"[\s\S]*?本人からの連絡/);
+assert.match(html, /以前のやりとりをふり返りで見る/);
 assert.match(html, /id="watch-tag-history"/);
 assert.match(html, /この端末で確認しました/);
 assert.match(html, /get\(\{source:'server'\}\)/);
@@ -278,9 +278,9 @@ assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8
     { _id:'ordinary', type:'aisatsu', at:{seconds:6} }
   ];
   assert.deepEqual(Array.from(context.homeAttentionRows(events,{answered:[{type:'onegai-back'}]},false),v=>v._id),
-    ['open','quiet','new-reply']);
-  assert.equal(context.homeAttentionRows(events,{},true).length,0);
-  console.log('✅ ホームには未回答のお願いと直近の返事だけを残し、家族のみの全件記録を隠す');
+    ['ordinary','new-reply','quiet','open']);
+  assert.ok(context.homeAttentionRows(events,{},true).some(v=>v.type==='aisatsu'),'本人が後から参加した家庭でも会話を残す');
+  console.log('✅ ホームには直近の挨拶・体調・服薬と返事を残す');
 }
 
 {

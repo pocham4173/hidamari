@@ -29,7 +29,7 @@ saved=JSON.stringify({name:'旧QR',updatedAt:'2026年9月1日'});el('disaster-co
 console.log('✅ 災害QRは双方の同意・保存失敗・削除失敗・日付継承・旧形式を処理する');
 
 let listens=[],unsubscribed=0,received=[],resolveWrite;
-const historyContext={document:{getElementById:el,createElement:()=>new Element()},todayStr:()=> '2026-09-15',col:()=>({where:()=>({onSnapshot:(options,ok,error)=>{assert.equal(options.includeMetadataChanges,true);listens.push({ok,error});return ()=>unsubscribed++;}})}),kusuriQuestion:()=> '薬は飲みましたか',speak(){},addEvent:payload=>{received.push(payload);return new Promise(resolve=>resolveWrite=resolve);}};
+const historyContext={requireFamilyFeature:()=>true,document:{getElementById:el,createElement:()=>new Element()},todayStr:()=> '2026-09-15',col:()=>({where:()=>({onSnapshot:(options,ok,error)=>{assert.equal(options.includeMetadataChanges,true);listens.push({ok,error});return ()=>unsubscribed++;}})}),kusuriQuestion:()=> '薬は飲みましたか',speak(){},addEvent:payload=>{received.push(payload);return new Promise(resolve=>resolveWrite=resolve);}};
 vm.createContext(historyContext);vm.runInContext(section('let personHistoryUnsub=', '/* 出典 https://www.city.ueda'),historyContext);
 historyContext.openPersonHistory();const snap=(data,cached=false)=>({metadata:{fromCache:cached},forEach:fn=>data.forEach(v=>fn({id:v.id,data:()=>v}))});
 listens[0].ok(snap([],true));assert.match(el('person-history-list').textContent,/分かりません/);
@@ -40,7 +40,7 @@ listens[1].error();assert.equal(el('person-history-list').children.length,0);ass
 console.log('✅ 日付別伝言は古い応答・キャッシュ・通信失敗を区別し、返信先を固定して連打を防ぐ');
 
 let replyPayload,replyFailure=false;
-const replies={requireFamilyFeature:()=>true,document:{getElementById:el},currentFamilyMessageId:'original-message',feedback(){},speak(){},addEvent:async payload=>{if(replyFailure)throw Error('offline');replyPayload=payload;}};
+const replies={communicationSession:()=>()=>true,requireFamilyFeature:()=>true,updateCommunicationAvailability(){},document:{getElementById:el},currentFamilyMessageId:'original-message',feedback(){},speak(){},addEvent:async payload=>{if(replyFailure)throw Error('offline');replyPayload=payload;}};
 vm.createContext(replies);vm.runInContext(section('let personMessageReplySending=false;', 'function recKibun(text)'),replies);
 replies.openPersonMessageReply();replies.currentFamilyMessageId='new-message';el('person-message-reply-text').value='ありがとう';
 await replies.sendPersonMessageReply();assert.equal(replyPayload.replyTo,'original-message');
