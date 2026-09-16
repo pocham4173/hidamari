@@ -7,19 +7,23 @@ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const source=html.slice(html.indexOf("let familyConnection={"),html.indexOf('let personTasksController=null;'));
 const labels=[{textContent:''}],requests=[{textContent:''}],people=[{textContent:''}];
 const gates=['family','person','shared'].map(kind=>({dataset:{shareGate:kind},hidden:true}));
-const els=Object.fromEntries(['home-summary-description','home-record-heading','family-task-kind-family','family-task-sharing-note','family-task-kind'].map(id=>[id,{textContent:'',value:'self',hidden:false,disabled:false}]));
-const selectors={'[data-connection-state]':labels,'[data-request-audience]':requests,'[data-person-audience]':people,'[data-share-gate]':gates};
+const els=Object.fromEntries(['home-summary-description','home-record-heading','family-task-kind-family','family-task-sharing-note','family-task-kind','person-contact-state','h-contact-state'].map(id=>[id,{textContent:'',value:'self',hidden:false,disabled:false}]));
+const conversations=['person','family'].map(kind=>({dataset:{communicationGate:kind},hidden:true}));
+const sends=['person','family'].map(kind=>({dataset:{sendAudience:kind},disabled:true}));
+const selectors={'[data-connection-state]':labels,'[data-request-audience]':requests,'[data-person-audience]':people,'[data-share-gate]':gates,'[data-communication-gate]':conversations,'[data-send-audience]':sends};
 let account='me',group='home',listeners=[],stops=0,refreshes=0;
-const c={document:{querySelectorAll:sel=>selectors[sel]||[],getElementById:id=>els[id]||null},uid:()=>account,gid:()=>group,householdBootGeneration:1,MainicoFamilyConnection:require('../family-connection.js'),col:()=>({onSnapshot:(opt,ok,err)=>{listeners.push({ok,err});return ()=>stops++;}}),familyTaskListMode:'all',changeFamilyTaskList:()=>refreshes++,alert:()=>{}};
+const c={document:{querySelectorAll:sel=>selectors[sel]||[],getElementById:id=>els[id]||null},uid:()=>account,gid:()=>group,householdBootGeneration:1,MainicoFamilyConnection:require('../family-connection.js'),col:()=>({onSnapshot:(opt,ok,err)=>{listeners.push({ok,err});return ()=>stops++;}}),familyTaskListMode:'all',changeFamilyTaskList:()=>refreshes++,alert:()=>{},isKOnly:()=>false,currentFamilyMessageId:'',familyHomeEventStatus:'loading',personConversationStatus:'loading',familyQuickReplySending:new Set(),familyReplyStates:new Map(),aisatsuBackSending:false,askKusuriSending:false,familyMessageSending:false,personMessageReplySending:false};
 vm.createContext(c);vm.runInContext(source,c);
-const snap=(members,cache=false,pending=false)=>({metadata:{fromCache:cache,hasPendingWrites:pending},forEach:fn=>members.forEach(([id,role,status='approved'])=>fn({id,data:()=>({role,status})}))});
+const snap=(members,cache=false,pending=false)=>({metadata:{fromCache:cache,hasPendingWrites:pending},forEach:fn=>members.forEach(([id,role,status='approved',mode])=>fn({id,data:()=>({...{role,status},...(mode===undefined?{}:{mode})})}))});
 const hidden=(family,person,shared)=>assert.deepEqual(gates.map(v=>v.hidden),[family,person,shared]);
 c.startFamilyConnection();assert.match(labels[0].textContent,/確認できません/);hidden(true,true,true);
+assert.equal(conversations[0].hidden,false);assert.equal(sends[0].disabled,true,'初回の通信待ちは会話の位置を残して送信しない');
 listeners[0].ok(snap([['me','kazoku']]));assert.match(labels[0].textContent,/ほかの承認済み参加者はいません/);hidden(true,true,true);
 assert.equal(els['family-task-kind-family'].disabled,true);
 assert.doesNotMatch(els['home-summary-description'].textContent,/家族/);
 // Code redeemed, but not approved: no premature collaboration UI.
 listeners[0].ok(snap([['me','kazoku'],['invited','kazoku','pending']]));hidden(true,true,true);
+assert.equal(conversations[0].hidden,true);assert.equal(conversations[1].hidden,true);assert.ok(sends.every(button=>button.disabled));
 assert.equal(c.requireFamilyFeature(),false);
 listeners[0].ok(snap([['me','kazoku'],['family','kazoku']]));hidden(false,true,false);
 assert.equal(c.requireFamilyFeature(),true);assert.equal(els['family-task-kind-family'].disabled,false);
@@ -27,6 +31,14 @@ assert.match(labels[0].textContent,/1人/);assert.match(requests[0].textContent,
 assert.match(els['home-summary-description'].textContent,/家族の伝言/);
 // A person recipient and a family recipient enable their respective controls.
 listeners[0].ok(snap([['me','kazoku'],['person','honnin']]));hidden(true,false,false);
+assert.equal(conversations[0].hidden,false);assert.equal(sends[0].disabled,false);
+listeners[0].ok(snap([['me','kazoku'],['person','honnin']],true));hidden(true,true,true);
+assert.equal(conversations[0].hidden,false,'確認済みのやりとり欄は通信待ちで消さない');assert.equal(sends[0].disabled,true);
+// Switching the selected screen is reflected even though the original registration role is unchanged.
+listeners[0].ok(snap([['me','kazoku'],['person','kazoku','approved','honnin']]));hidden(true,false,false);
+assert.equal(sends[0].disabled,false);
+listeners[0].ok(snap([['me','kazoku'],['person','honnin','approved','konly']]));hidden(false,true,false);
+assert.equal(sends[0].disabled,true);assert.equal(sends[1].disabled,false);
 listeners[0].ok(snap([['me','kazoku'],['person','honnin'],['family','kazoku']]));hidden(false,false,false);
 // Membership removal updates the open page and preserves an unfinished request draft.
 els['family-task-kind'].value='family';listeners[0].ok(snap([['me','kazoku']]));hidden(true,true,true);

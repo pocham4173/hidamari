@@ -790,15 +790,16 @@ table.cal-rec td.pad{background:none;}
     </div>
     <div id="h-approve"></div>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
+    <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
     <p class="communication-status" id="h-contact-state" aria-live="polite"></p>
     <div class="kibun" id="h-message-reply" data-communication-gate="family" hidden style="display:none;">
       <div class="q">家族へ返事を送れます</div><p class="note" id="h-reply-context"></p>
       <div class="note" style="text-align:center;margin:0 0 10px;">返事は急がなくて大丈夫です。送りたいときだけ選んでください。</div>
       <div class="kibun-grid">
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('読んだよ')">読んだよ</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('ありがとう')">ありがとう</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('あとで電話するね')">あとで電話するね</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="openPersonMessageReply()">自分で返事を書く</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('読んだよ',this.dataset.replyTo)">読んだよ</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('ありがとう',this.dataset.replyTo)">ありがとう</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('あとで電話するね',this.dataset.replyTo)">あとで電話するね</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="openPersonMessageReply(this.dataset.replyTo)">自分で返事を書く</button>
       </div>
       <div class="save-state" id="h-message-reply-state" aria-live="polite"></div>
     </div>
@@ -829,8 +830,8 @@ table.cal-rec td.pad{background:none;}
     </div>
     <button class="cal-open" type="button" data-share-gate="family" hidden onclick="openPersonHistory()">家族からの伝言を日付で見る</button>
     <button class="onegai-btn" data-share-gate="family" hidden onclick="openOnegai()">ちょっとお願い</button>
-    <button class="cal-open" type="button" onclick="openPersonTasks()">自分のやること</button>
     <button class="cal-open" onclick="openCal()">カレンダーを見る</button>
+    <button class="cal-open" type="button" onclick="openPersonTasks()">自分のやること</button>
     <button class="cal-open" onclick="openHYotei()">予定を入れる</button>
     <div class="h-links">
       <button data-share-gate="shared" hidden onclick="openMembers()">つながっている家族</button>
@@ -1581,6 +1582,10 @@ function speakPopMessage(){
   const t=p&&p.textContent?p.textContent.trim():'';
   if(t) speak(t, true);
 }
+function speakIncomingMessage(){
+  const message=document.getElementById('h-incoming-message');
+  if(message&&message.textContent)speak(message.textContent,true);
+}
 function toggleSpeech(){
   const on = !speechOn();
   previewStorage.setItem('mainicoSpeechOn', on?'1':'0');
@@ -1788,7 +1793,10 @@ function updateCommunicationAvailability(){
   document.querySelectorAll('[data-send-audience]').forEach(el=>{
     const kind=el.dataset.sendAudience;
     const busy=kind==='person'?(aisatsuBackSending||askKusuriSending||familyMessageSending||familyQuickReplySending.size>0):personMessageReplySending;
-    el.disabled=!canUseFamilyFeature(kind)||busy||(!!el.dataset.replyTo&&familyHomeEventStatus!=='ready');
+    const id=el.dataset.replyTo;
+    const sourceReady=!id||(kind==='person'?familyHomeEventStatus==='ready':personConversationStatus==='ready');
+    const answered=id&&(kind==='person'?familyReplyStates.get(id)?.status==='sent':personReplyDone(id));
+    el.disabled=!canUseFamilyFeature(kind)||busy||!sourceReady||!!answered;
   });
   const state=document.getElementById('person-contact-state');
   if(state)state.textContent=!canUseFamilyFeature('person')?'つながりを確認しています。通信が確認できると返事を送れます。':
@@ -1796,7 +1804,11 @@ function updateCommunicationAvailability(){
     familyHomeEventStatus==='error'?'今日の連絡を読み込めませんでした。通信状態を確認してください。':
     familyHomeEventStatus==='loading'?'今日の連絡を読み込んでいます…':'本人からの連絡のすぐ下で返事できます。';
   const person=document.getElementById('h-contact-state');
-  if(person)person.textContent=showCommunication('family')&&!canUseFamilyFeature('family')?'通信を確認しています。確認できると返事を送れます。':'';
+  if(person)person.textContent=!showCommunication('family')?'':!canUseFamilyFeature('family')?'通信を確認しています。確認できると返事を送れます。':
+    personConversationStatus==='error'?'家族からの連絡を確認できませんでした。通信状態を確認してください。':
+    personConversationStatus==='cached'?'保存した連絡です。通信が確認できると返事を送れます。':
+    personConversationStatus==='loading'?'家族からの連絡を確認しています…':'';
+  if(typeof refreshPersonHistoryReplyButtons==='function')refreshPersonHistoryReplyButtons();
 }
 function requireFamilyFeature(kind='family'){
   if(canUseFamilyFeature(kind))return true;
@@ -2282,49 +2294,45 @@ function refreshSlotUI(){
   if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)) markAisatsuDone();
 }
 function renderPersonConversation(items,metadata={}){
-      const msgs=[];
-      items.forEach(v=>{
-        if(v.type==='aisatsu-back')
-          msgs.push({at:v.at, id:v._id, type:v.type, text:(v.name||'家族')+'さんから「'+(v.text||'こんにちは')+'」が届きました'});
-        if(v.type==='onegai-back')
-          msgs.push({at:v.at, id:v._id, type:v.type, text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
-        if(v.type==='family-message')
-          msgs.push({at:v.at, id:v._id, type:'family-message', text:(v.name||'家族')+'さんから「'+(v.text||'')+'」のメッセージが来ました'});
-        if(v.type==='ask-kusuri'){
-          const askedSlot=validKusuriSlot(v.slot)?v.slot:slot().key;
-          if(!previewStorage.getItem('kusuri-'+todayStr()+'-'+askedSlot)){
-            msgs.push({at:v.at, id:v._id, type:v.type, text:(v.name||'家族')+'さんから「'+kusuriSlotName(askedSlot)+'の薬は飲みましたか？」'});
-          }
-        }
-        if(v.type==='member-joined')
-          msgs.push({at:v.at, id:v._id, type:v.type, text:(v.text||'')+'さんが家族として参加しました'});
-      });
-      if(msgs.length>0){
-        msgs.sort((a,b)=>(b.at?b.at.seconds:0)-(a.at?a.at.seconds:0));
-        const p=document.getElementById('pop-msg');
-        p.textContent=msgs[0].text;
-        p.classList.add('show');
-        const target=msgs.find(v=>['family-message','aisatsu-back','onegai-back'].includes(v.type));
-        currentFamilyMessageId=target?target.id:'';
-        document.getElementById('h-reply-context').textContent=target?target.text+'（この連絡への返事）':'';
-        personIncomingShown=true;
-        const replyBox=document.getElementById('h-message-reply');
-        if(replyBox) replyBox.style.display=currentFamilyMessageId?'block':'none';
-        const ts=msgs[0].at?msgs[0].at.seconds:0;
-        if(!metadata.fromCache&&!metadata.hasPendingWrites&&ts>hMsgSpokenThrough){
-          hMsgSpokenThrough=ts;
-          previewStorage.setItem('mainicoMessageSpokenThrough',String(ts));
-          const received=ts?new Date(ts*1000):null;
-          const receivedTime=received?timeYomi(received.getHours()+':'+String(received.getMinutes()).padStart(2,'0'))+'、':'';
-          speak(receivedTime+msgs[0].text);
-        }
+  personConversationItems=items;
+  personConversationStatus=metadata.fromCache||metadata.hasPendingWrites?'cached':'ready';
+  const msgs=[];
+  items.forEach(v=>{
+    let text='';
+    if(['aisatsu-back','onegai-back','family-message'].includes(v.type))text=(v.name||'家族')+'さんから「'+(v.text||'こんにちは')+'」が届きました';
+    if(v.type==='ask-kusuri'){
+      const askedSlot=validKusuriSlot(v.slot)?v.slot:slot().key;
+      if(!previewStorage.getItem('kusuri-'+todayStr()+'-'+askedSlot))text=(v.name||'家族')+'さんから「'+kusuriSlotName(askedSlot)+'の薬は飲みましたか？」';
+    }
+    if(v.type==='member-joined')text=(v.text||'')+'さんが家族として参加しました';
+    if(text)msgs.push({...v,text});
+  });
+  msgs.sort((a,b)=>compareConversationEvents(b,a));
+  const incoming=document.getElementById('h-incoming-message');
+  const target=msgs.find(v=>['family-message','aisatsu-back','onegai-back'].includes(v.type));
+  currentFamilyMessageId=target?target._id:'';
+  document.getElementById('h-reply-context').textContent=target?(target===msgs[0]?'上の連絡への返事です。':target.text+'（この連絡への返事）'):'';
+  const replyBox=document.getElementById('h-message-reply');
+  if(replyBox)replyBox.style.display=target?'block':'none';
+  document.querySelectorAll('#h-message-reply [data-send-audience="family"]').forEach(button=>button.dataset.replyTo=currentFamilyMessageId);
+  incoming.textContent=msgs[0]?.text||'';
+  incoming.classList.toggle('show',!!msgs.length);
+  personIncomingShown=!!msgs.length;
+  renderPersonReplyState();
+  if(msgs.length&&personConversationStatus==='ready'){
+    const latest=msgs[0],key='mainicoMessageCursor:'+gid()+':'+uid();
+    let previous=null;
+    try{previous=JSON.parse(previewStorage.getItem(key)||'null');}catch(e){}
+    if(latest.at&&(!previous||compareConversationEvents(latest,previous)>0)){
+      try{previewStorage.setItem(key,JSON.stringify({_id:latest._id,at:{seconds:latest.at.seconds,nanoseconds:latest.at.nanoseconds||0}}));}catch(e){}
+      if(!personSpokenMessages.has(latest._id)){
+        personSpokenMessages.add(latest._id);
+        const received=new Date(latest.at.seconds*1000);
+        speak(timeYomi(received.getHours()+':'+String(received.getMinutes()).padStart(2,'0'))+'、'+latest.text);
       }
-      else{
-        currentFamilyMessageId='';document.getElementById('h-message-reply').style.display='none';
-        document.getElementById('h-reply-context').textContent='';
-        if(personIncomingShown){document.getElementById('pop-msg').textContent='';document.getElementById('pop-msg').classList.remove('show');personIncomingShown=false;}
-      }
-      updateCommunicationAvailability();
+    }
+  }
+  updateCommunicationAvailability();
 }
 function initHonnin(){
   startFamilyConnection();
@@ -2366,14 +2374,13 @@ function initHonnin(){
     renderPendingCard('h-approve', snap);
   }, err=>console.warn('members', err));
   if(honninUnsub) honninUnsub();
-  hMsgSpokenThrough=Number(previewStorage.getItem('mainicoMessageSpokenThrough')||0);   /* 前回までに読んだ時刻を端末に保存 */
   const personConversationCurrent=communicationSession();
   honninUnsub=col('events').where('date','==',todayStr())
     .onSnapshot({includeMetadataChanges:true},snap=>{
       if(!personConversationCurrent())return;
       const items=[];snap.forEach(doc=>items.push(Object.assign({},doc.data(),{_id:doc.id})));
       renderPersonConversation(items,snap.metadata);
-    }, err=>{if(personConversationCurrent()){console.warn('events',err);const state=document.getElementById('h-contact-state');if(state)state.textContent='家族からの連絡を確認できませんでした。通信状態を確認してください。';}});
+    }, err=>{if(personConversationCurrent()){console.warn('events',err);personConversationStatus='error';updateCommunicationAvailability();}});
 
   if(yoteiUnsub) yoteiUnsub();
   yoteiUnsub=subscribeYotei(()=>{
@@ -2427,32 +2434,50 @@ function honninSendFail(){
   speak('でんぱが とどきませんでした。もういちど おしてください');
 }
 function sendAisatsu(){
-  const s=slot();
-  if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)){
-    feedback();
-    speak(s.tx+'は、記録してあります', true);
-    return;
+  const date=todayStr(),s=slot();
+  if(previewStorage.getItem('aisatsu-'+date+'-'+s.key)){
+    feedback();speak(s.tx+'は、記録してあります',true);return;
   }
-  if(!beginSend()) return;
+  if(!beginSend())return;
+  const current=communicationSession();
   feedback();
-  addEvent({type:'aisatsu', text:s.tx, slot:s.key}).then(()=>{
+  return addEvent({type:'aisatsu',text:s.tx,slot:s.key,date}).then(()=>{
+    if(!current())return;
     endSend(true);
+    try{previewStorage.setItem('aisatsu-'+date+'-'+s.key,'1');}catch(e){console.warn('greeting display cache',e);}
+    if(todayStr()!==date){
+      refreshSlotUI();
+      document.getElementById('pop-msg').textContent=date+'の挨拶を記録しました。';
+      speak(date+'の挨拶を記録しました');return;
+    }
+    if(slot().key===s.key)markAisatsuDone();else refreshSlotUI();
     speak(s.tx+'を、記録しました');
-    previewStorage.setItem('aisatsu-'+todayStr()+'-'+s.key,'1');
-    markAisatsuDone();
-    if(!previewStorage.getItem('kibun-'+todayStr()))
-      document.getElementById('kibun-box').style.display='block';
-  }).catch(()=>{ endSend(false); honninSendFail(); });
+    if(!previewStorage.getItem('kibun-'+date))document.getElementById('kibun-box').style.display='block';
+  },()=>{
+    if(!current())return;
+    endSend(false);honninSendFail();
+  });
 }
 function sendKibun(text,emoji){
-  if(!beginSend()) return;
+  const date=todayStr();
+  if(!beginSend())return;
+  const current=communicationSession();
   feedback();
-  addEvent({type:'kibun', text:text, emoji:emoji}).then(()=>{
+  return addEvent({type:'kibun',text,emoji,date}).then(()=>{
+    if(!current())return;
     endSend(true);
-    speak(text+'を 記録しました');
-    previewStorage.setItem('kibun-'+todayStr(),'1');
+    try{previewStorage.setItem('kibun-'+date,'1');}catch(e){console.warn('condition display cache',e);}
+    if(todayStr()!==date){
+      refreshSlotUI();
+      document.getElementById('pop-msg').textContent=date+'の調子を記録しました。';
+      speak(date+'の調子を記録しました');return;
+    }
     document.getElementById('kibun-box').style.display='none';
-  }).catch(()=>{ endSend(false); honninSendFail(); });
+    speak(text+'を 記録しました');
+  },()=>{
+    if(!current())return;
+    endSend(false);honninSendFail();
+  });
 }
 function skipKibun(){
   speak('今日は 答えないに しました');
@@ -2460,21 +2485,29 @@ function skipKibun(){
   document.getElementById('kibun-box').style.display='none';
 }
 function sendKusuri(slotKey){
-  if(!validKusuriSlot(slotKey)) return;
-  const label=kusuriSlotName(slotKey);
-  if(previewStorage.getItem('kusuri-'+todayStr()+'-'+slotKey)){
-    feedback();
-    speak(label+'の薬を飲んだ記録があります', true);
-    return;
+  if(!validKusuriSlot(slotKey))return;
+  const date=todayStr(),label=kusuriSlotName(slotKey);
+  if(previewStorage.getItem('kusuri-'+date+'-'+slotKey)){
+    feedback();speak(label+'の薬を飲んだ記録があります',true);return;
   }
-  if(!beginSend()) return;
+  if(!beginSend())return;
+  const current=communicationSession();
   feedback();
-  addEvent({type:'kusuri', slot:slotKey}).then(()=>{
+  return addEvent({type:'kusuri',slot:slotKey,date}).then(()=>{
+    if(!current())return;
     endSend(true);
-    speak(label+'の薬を飲んだ記録を保存しました');
-    previewStorage.setItem('kusuri-'+todayStr()+'-'+slotKey,'1');
+    try{previewStorage.setItem('kusuri-'+date+'-'+slotKey,'1');}catch(e){console.warn('medicine display cache',e);}
+    if(todayStr()!==date){
+      refreshSlotUI();
+      document.getElementById('pop-msg').textContent=date+'の'+label+'の薬の記録を保存しました。';
+      speak(date+'の'+label+'の薬の記録を保存しました');return;
+    }
     markKusuriDone(slotKey);
-  }).catch(()=>{ endSend(false); honninSendFail(); });
+    speak(label+'の薬を飲んだ記録を保存しました');
+  },()=>{
+    if(!current())return;
+    endSend(false);honninSendFail();
+  });
 }
 
 /* ちょっとお願い */
@@ -2500,40 +2533,40 @@ function sendOnegaiFree(){
 }
 function sendOnegai(text, inputId){
   if(!requireFamilyFeature('family'))return;
-  if(!beginSend()) return;
+  const date=todayStr();
+  if(!beginSend())return;
+  const current=communicationSession();
   const freeState=document.getElementById('onegai-free-state');
   const freeBtn=document.getElementById('onegai-free-btn');
-  if(inputId && freeState){
-    freeState.classList.remove('err');
-    freeState.textContent='送信しています…';
-    if(freeBtn) freeBtn.disabled=true;
+  if(inputId&&freeState){
+    freeState.classList.remove('err');freeState.textContent='送信しています…';
+    if(freeBtn)freeBtn.disabled=true;
   }
   feedback();
-  addEvent({type:'onegai', text:text}).then(()=>{
+  return addEvent({type:'onegai',text,date}).then(()=>{
+    if(!current())return;
     endSend(true);
-    if(inputId){
-      const input=document.getElementById(inputId);
-      if(input && input.value.trim()===text) input.value='';
-    }
-    closeOnegai(true);
-    speak(text+'を 記録しました');
+    const input=inputId?document.getElementById(inputId):null;
+    const newerDraft=input&&input.value.trim()!==text;
+    if(input&&!newerDraft)input.value='';
+    if(!newerDraft)closeOnegai(true);
+    else if(freeState)freeState.textContent='お願いを記録しました。書きかけの文章は残っています。';
     const p=document.getElementById('pop-msg');
-    if(text==='今日はそっとしておいて'){
-      p.textContent='記録しました。今日はゆっくりお過ごしください';
+    if(todayStr()!==date){
+      p.textContent=date+'のお願いを記録しました。';
+      speak(date+'のお願いを記録しました');
     }else{
-      p.textContent='お願いを記録しました。'+requestAudienceText();
+      p.textContent=text==='今日はそっとしておいて'?'記録しました。今日はゆっくりお過ごしください':
+        'お願いを記録しました。'+requestAudienceText();
+      speak(text+'を 記録しました');
     }
     p.classList.add('show');
-  }).catch(()=>{
+  },()=>{
+    if(!current())return;
     endSend(false);
-    if(inputId && freeState){
-      freeState.classList.add('err');
-      freeState.textContent='送信できませんでした。入力は残っています';
-    }
+    if(inputId&&freeState){freeState.classList.add('err');freeState.textContent='送信できませんでした。入力は残っています';}
     honninSendFail();
-  }).finally(()=>{
-    if(freeBtn) freeBtn.disabled=false;
-  });
+  }).finally(()=>{if(current()&&freeBtn)freeBtn.disabled=false;});
 }
 
 /* カレンダー */
@@ -2719,23 +2752,50 @@ function closeMembers(){ speak('とじました'); document.getElementById('memb
 /* Conversation state is scoped to the current household, never a delivery guarantee. */
 let communicationGeneration=0,familyHomeItems=[],familyHomeEventStatus='loading';
 let familyMessageReplyTarget='',personIncomingShown=false;
-const familyQuickReplySending=new Set();
+const familyQuickReplySending=new Set(),familyReplyStates=new Map(),personReplyStates=new Map(),personSpokenMessages=new Set();
+let personConversationItems=[],personConversationStatus='loading';
+let familyConversationDay='',familyConversationRequest=0,familyDayVisibility=null;
+function compareConversationEvents(a,b){
+  return (a.at?.seconds||0)-(b.at?.seconds||0)||(a.at?.nanoseconds||0)-(b.at?.nanoseconds||0)||String(a._id||'').localeCompare(String(b._id||''));
+}
+function personReplyDone(id){
+  return personReplyStates.get(id)?.status==='sent'||personConversationItems.some(v=>v.type==='family-message-back'&&v.replyTo===id&&v.uid===uid());
+}
+function renderPersonReplyState(){
+  const state=document.getElementById('h-message-reply-state'),id=currentFamilyMessageId;
+  const result=personReplyStates.get(id);
+  state.classList.toggle('err',result?.status==='error');
+  state.textContent=!id?'':personReplyDone(id)?'この連絡には返事を送りました':result?.text||'';
+}
+function familyMessageTarget(id){
+  if(!requireFamilyFeature('family'))return null;
+  const target=personConversationItems.find(v=>v._id===id&&['family-message','aisatsu-back','onegai-back'].includes(v.type));
+  if(personConversationStatus!=='ready'||!target){
+    alert('元の連絡を確認できません。通信を確認して、もう一度お試しください。入力した内容は残っています。');return null;
+  }
+  return target;
+}
 function communicationSession(){
   const generation=communicationGeneration,boot=householdBootGeneration,owner=uid(),group=gid();
   return ()=>generation===communicationGeneration&&boot===householdBootGeneration&&owner===uid()&&group===gid();
 }
 function resetCommunication(){
   communicationGeneration++;familyHomeItems=[];familyHomeEventStatus='loading';
+  personConversationItems=[];personConversationStatus='loading';
+  familyReplyStates.clear();personReplyStates.clear();personSpokenMessages.clear();
+  familyConversationDay='';familyConversationRequest++;
+  if(familyDayVisibility){document.removeEventListener('visibilitychange',familyDayVisibility);familyDayVisibility=null;}
+  if(typeof closePersonHistory==='function')closePersonHistory();
   // Old writes may still finish; their session guards must not own this new UI.
-  aisatsuBackSending=false;askKusuriSending=false;familyMessageSending=false;personMessageReplySending=false;
+  honninSending=false;aisatsuBackSending=false;askKusuriSending=false;familyMessageSending=false;personMessageReplySending=false;
   familyQuickReplySending.clear();
   onegaiBackFreeId='';personMessageReplyTargetId='';
   ['in-family-message','onegai-reply-text','person-message-reply-text'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   familyMessageReplyTarget='';currentFamilyMessageId='';personIncomingShown=false;
-  ['ev-list','h-reply-context','h-message-reply-state','family-message-state','family-message-target','note-aisatsu-back','note-ask','pop-msg'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
-  ['onegai-reply-send','person-message-reply-send'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=false;});
+  ['ev-list','h-reply-context','h-message-reply-state','family-message-state','family-message-target','note-aisatsu-back','note-ask','pop-msg','h-incoming-message'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
+  ['onegai-reply-send','person-message-reply-send','onegai-free-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=false;});
   ['onegai-reply-modal','person-message-reply-modal'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('show');});
-  const pop=document.getElementById('pop-msg');if(pop)pop.classList.remove('show');
+  ['pop-msg','h-incoming-message'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('show');});
   const reply=document.getElementById('h-message-reply');if(reply)reply.style.display='none';
   ['family-message-target','family-message-reply-cancel'].forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=true;});
 }
@@ -2749,18 +2809,17 @@ async function replyToPersonEvent(id){
   const original=personReplyTarget(id);if(!original)return;
   const text=original.type==='aisatsu'?(original.text||'おはよう'):'ありがとう';
   const key=communicationGeneration+':'+gid()+':'+uid()+':'+id;
-  if(familyQuickReplySending.has(key)||familyHomeItems.some(v=>v.replyTo===id&&v.uid===uid()&&['aisatsu-back','family-message'].includes(v.type)))return;
-  const current=communicationSession();familyQuickReplySending.add(key);updateCommunicationAvailability();
-  const state=document.getElementById('person-reply-state-'+id);
-  if(state){state.textContent='返事を送っています…';state.classList.remove('err');}
+  if(familyQuickReplySending.has(key)||familyReplyStates.get(id)?.status==='sent'||familyHomeItems.some(v=>v.replyTo===id&&v.uid===uid()&&['aisatsu-back','family-message'].includes(v.type)))return;
+  const current=communicationSession();familyQuickReplySending.add(key);
+  familyReplyStates.set(id,{status:'sending',text:'返事を送っています…'});renderFamilyConversation();
   const payload={type:original.type==='aisatsu'?'aisatsu-back':'family-message',text,name:myName(),replyTo:id};
   if(original.type==='aisatsu'&&validKusuriSlot(original.slot))payload.slot=original.slot;
   feedback();
   try{
     await addEvent(payload);
-    if(current()&&state)state.textContent='返事を送りました';
-  }catch(e){if(current()&&state){state.classList.add('err');state.textContent='送れませんでした。もう一度押してお試しください。';}}
-  finally{familyQuickReplySending.delete(key);if(current())updateCommunicationAvailability();}
+    if(current())familyReplyStates.set(id,{status:'sent',text:'返事を送りました'});
+  }catch(e){if(current())familyReplyStates.set(id,{status:'error',text:'送れませんでした。もう一度押してお試しください。'});}
+  finally{familyQuickReplySending.delete(key);if(current())renderFamilyConversation();}
 }
 function openPersonContactReply(id){
   const original=personReplyTarget(id);if(!original)return;
@@ -2809,18 +2868,19 @@ function renderFamilyConversation(){
         'disaster-help':v=>(v.name||'家族')+'さんが「助けが必要です」と記録しました（緊急通報ではありません）',
         'tag-alert':v=>'おまもりタグが読み取られました: '+(v.text||'')
       };
-      box.innerHTML=vis.map(v=>{
+      const markup=vis.map(v=>{
         const t=new Date(v.at.seconds*1000);
         const tm=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
         if(['aisatsu','kibun','kusuri'].includes(v.type)){
           const answered=replies[v._id]||[];
           const result=answered.map(r=>'<div class="reply-log">'+esc(r.name||'家族')+'さんの返事：「'+esc(r.text||'')+'」</div>').join('');
-          const mine=answered.some(r=>r.uid===uid());
+          const replyState=familyReplyStates.get(v._id);
+          const mine=answered.some(r=>r.uid===uid())||replyState?.status==='sent';
           const quick=v.type==='aisatsu'?(v.text||'おはよう'):'ありがとう';
           return '<div class="ev '+eventWhoClass(v)+'"><div class="tm">'+tm+'</div><b>'+esc(label[v.type](v))+'</b>'+result+
             (mine?'<div class="reply-log">あなたは返事を送りました</div>':'<div class="reply-row"><button class="reply-btn" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="replyToPersonEvent(\''+jsArg(v._id)+'\')">'+esc('「'+quick+'」を返す')+'</button>'+ 
             '<button class="reply-btn" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="openPersonContactReply(\''+jsArg(v._id)+'\')">言葉を書いて返す</button></div>')+
-            '<div class="save-state" id="person-reply-state-'+esc(v._id)+'" aria-live="polite"></div></div>';
+            '<div class="save-state'+(replyState?.status==='error'?' err':'')+'" id="person-reply-state-'+esc(v._id)+'" aria-live="polite">'+esc(replyState?.text||'')+'</div></div>';
         }
         if(v.type==='onegai'){
           const soto=(v.text==='今日はそっとしておいて');
@@ -2851,15 +2911,21 @@ function renderFamilyConversation(){
           ? ' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\''+jsArg(v.type)+'\',\''+jsArg(v.slot)+'\')">とりけす</button>' : '';
         return '<div class="ev '+eventWhoClass(v)+'"><div class="tm">'+tm+'</div>'+esc(label[v.type]?label[v.type](v):'')+own+'</div>';
       }).join('');
+      if(box.innerHTML!==markup){
+        const active=document.activeElement;
+        const focusAction=active&&box.contains(active)?active.getAttribute('onclick'):null;
+        box.innerHTML=markup;
+        if(focusAction){const next=Array.from(box.querySelectorAll('button')).find(button=>button.getAttribute('onclick')===focusAction);if(next)next.focus({preventScroll:true});}
+      }
       updateCommunicationAvailability();
 
 }
 function homeAttentionRows(items,replies,kOnly){
-  const sorted=items.slice().sort((a,b)=>(a.at?.seconds||0)-(b.at?.seconds||0));
+  const sorted=items.slice().sort(compareConversationEvents);
   const requests=sorted.filter(v=>v.type==='onegai' &&
     (v.text==='今日はそっとしておいて'||!(replies[v._id]||[]).length));
   const recent=['aisatsu','kibun','kusuri','family-message-back'].flatMap(type=>sorted.filter(v=>v.type===type).slice(-1));
-  return requests.concat(recent).sort((a,b)=>(b.at?.seconds||0)-(a.at?.seconds||0));
+  return requests.concat(recent).sort((a,b)=>compareConversationEvents(b,a));
 }
 let familyYoteiStatus='loading';
 function renderFamilySchedule(){
@@ -2897,6 +2963,54 @@ function renderFamilySchedule(){
   next.textContent=later?(dateJp(dateOnly(later.date))+' '+(later.item.label||'予定')):
     (familyYoteiStatus==='cached'?'保存済みの予定はありません（通信確認待ち）':'登録された予定はありません');
 }
+function subscribeFamilyConversation(){
+  if(evUnsub) evUnsub();
+  const session=communicationSession(),day=todayStr(),request=++familyConversationRequest;
+  familyConversationDay=day;familyHomeItems=[];familyHomeEventStatus='loading';renderFamilyConversation();
+  if(!aisatsuBackSending){const note=document.getElementById('note-aisatsu-back');note.textContent='';note.style.display='none';}
+  if(!askKusuriSending){const note=document.getElementById('note-ask');note.textContent='';note.style.display='none';}
+  if(isKOnly())document.getElementById('care-today').textContent='今日の記録を読み込んでいます…';
+  const conversationCurrent=()=>session()&&request===familyConversationRequest&&day===todayStr();
+  evUnsub=col('events').where('date','==',day)
+    .onSnapshot({includeMetadataChanges:true},snap=>{
+      if(!conversationCurrent())return;
+      const items=[];
+      let sentBack=null, sentBackAt=0;
+      const sentAskSlots={};
+      snap.forEach(doc=>{
+        const v=doc.data(); v._id=doc.id;
+        if(v.at)items.push(v);
+        if(v.type==='aisatsu-back' && v.at && v.at.seconds>sentBackAt){
+          sentBack={name:v.name||'家族', text:v.text||''};
+          sentBackAt=v.at.seconds;
+        }
+        if(v.type==='ask-kusuri'){
+          sentAskSlots[validKusuriSlot(v.slot)?v.slot:'other']=v.name||'家族';
+        }
+      });
+      const nb=document.getElementById('note-aisatsu-back');
+      const na=document.getElementById('note-ask');
+      if(!aisatsuBackSending){
+        if(sentBack){nb.classList.remove('err');nb.textContent='本日 '+sentBack.name+'さんが「'+sentBack.text+'」を送信済み';nb.style.display='block';}else{nb.style.display='none';}
+      }
+      const sentAskKeys=['asa','hiru','yoru'].filter(function(k){return sentAskSlots[k];});
+      if(sentAskKeys.length || sentAskSlots.other){
+        const parts=sentAskKeys.map(function(k){return kusuriSlotName(k);});
+        if(sentAskSlots.other) parts.push('時間帯指定なし');
+        na.textContent='本日 '+parts.join('・')+'の声かけを送信済み';
+        na.style.display='block';
+      }else{na.style.display='none';}
+      items.sort(compareConversationEvents);
+      if(isKOnly()) renderTodayQuickRecords(items);
+      familyHomeItems=items;familyHomeEventStatus=snap.metadata.fromCache||snap.metadata.hasPendingWrites?'cached':'ready';
+      renderFamilyConversation();
+    }, err=>{
+      if(!conversationCurrent())return;
+      console.warn('events',err);familyHomeEventStatus='error';
+      if(isKOnly()){const care=document.getElementById('care-today');if(care)care.textContent='今日の記録を読み込めませんでした。';}
+      updateCommunicationAvailability();
+    });
+}
 function initKazoku(){
   startFamilyConnection();
   const d=new Date();
@@ -2933,47 +3047,19 @@ function initKazoku(){
   memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
     renderPendingCard('card-pending', snap);
   }, err=>console.warn('members', err));
-  if(evUnsub) evUnsub();
-  const conversationCurrent=communicationSession();
-  evUnsub=col('events').where('date','==',todayStr())
-    .onSnapshot({includeMetadataChanges:true},snap=>{
-      if(!conversationCurrent())return;
-      const items=[];
-      let sentBack=null, sentBackAt=0;
-      const sentAskSlots={};
-      snap.forEach(doc=>{
-        const v=doc.data(); v._id=doc.id;
-        if(v.at)items.push(v);
-        if(v.type==='aisatsu-back' && v.at && v.at.seconds>sentBackAt){
-          sentBack={name:v.name||'家族', text:v.text||''};
-          sentBackAt=v.at.seconds;
-        }
-        if(v.type==='ask-kusuri'){
-          sentAskSlots[validKusuriSlot(v.slot)?v.slot:'other']=v.name||'家族';
-        }
-      });
-      const nb=document.getElementById('note-aisatsu-back');
-      const na=document.getElementById('note-ask');
-      if(!aisatsuBackSending){
-        if(sentBack){nb.classList.remove('err');nb.textContent='本日 '+sentBack.name+'さんが「'+sentBack.text+'」を送信済み';nb.style.display='block';}else{nb.style.display='none';}
-      }
-      const sentAskKeys=['asa','hiru','yoru'].filter(function(k){return sentAskSlots[k];});
-      if(sentAskKeys.length || sentAskSlots.other){
-        const parts=sentAskKeys.map(function(k){return kusuriSlotName(k);});
-        if(sentAskSlots.other) parts.push('時間帯指定なし');
-        na.textContent='本日 '+parts.join('・')+'の声かけを送信済み';
-        na.style.display='block';
-      }else{na.style.display='none';}
-      items.sort((a,b)=>a.at.seconds-b.at.seconds);
-      if(kOnly) renderTodayQuickRecords(items);
-      familyHomeItems=items;familyHomeEventStatus=snap.metadata.fromCache||snap.metadata.hasPendingWrites?'cached':'ready';
-      renderFamilyConversation();
-    }, err=>{
-      if(!conversationCurrent())return;
-      console.warn('events',err);familyHomeEventStatus='error';
-      if(kOnly){const care=document.getElementById('care-today');if(care)care.textContent='今日の記録を読み込めませんでした。';}
-      updateCommunicationAvailability();
-    });
+  subscribeFamilyConversation();
+  const daySession=communicationSession();
+  const refreshDay=()=>{
+    if(!daySession()||familyConversationDay===todayStr())return;
+    document.getElementById('f-title').textContent=dateJp(new Date());
+    subscribeFamilyConversation();renderFamilySchedule();renderFamilyTasks();
+    document.querySelectorAll('.ab-btn').forEach(b=>b.classList.remove('suggested'));
+    const suggested=document.getElementById('btn-ab-'+slot().key);if(suggested)suggested.classList.add('suggested');
+  };
+  if(clockTimer)clearInterval(clockTimer);
+  clockTimer=setInterval(refreshDay,15000);
+  familyDayVisibility=()=>{if(!document.hidden)refreshDay();};
+  document.addEventListener('visibilitychange',familyDayVisibility);
   if(ytListUnsub) ytListUnsub();
   ytListUnsub=subscribeYotei((list,metadata)=>{
     familyYoteiStatus=metadata&&metadata.fromCache?'cached':'ready';
@@ -4085,25 +4171,28 @@ function sendOnegaiBack(onegaiId,text){
 }
 let personMessageReplySending=false;
 async function sendFamilyMessageBack(text,replyId=currentFamilyMessageId){
-  if(!requireFamilyFeature('family'))return;
+  if(!familyMessageTarget(replyId))return false;
   if(!replyId||personMessageReplySending)return false;
-  const current=communicationSession();
-  personMessageReplySending=true;
-  const st=document.getElementById('h-message-reply-state');
-  st.classList.remove('err');st.textContent='送信しています…';feedback();
+  if(personReplyDone(replyId)){renderPersonReplyState();return false;}
+  const current=communicationSession();personMessageReplySending=true;
+  personReplyStates.set(replyId,{status:'sending',text:'送信しています…'});
+  renderPersonReplyState();updateCommunicationAvailability();feedback();
   try{
-    await addEvent({type:'family-message-back',text:text,name:'本人',replyTo:replyId});
+    await addEvent({type:'family-message-back',text,name:'本人',replyTo:replyId});
     if(!current())return false;
-    st.textContent='返事を記録しました';
+    personReplyStates.set(replyId,{status:'sent',text:'返事を送りました'});
+    renderPersonReplyState();
     speak(text+'という返事を 記録しました');
     return true;
-  }catch(e){if(current()){st.classList.add('err');st.textContent='送信できませんでした。もう一度お試しください';}return false;}
-  finally{if(current()){personMessageReplySending=false;updateCommunicationAvailability();}}
+  }catch(e){
+    if(current()){personReplyStates.set(replyId,{status:'error',text:'送信できませんでした。もう一度お試しください'});renderPersonReplyState();}
+    return false;
+  }finally{if(current()){personMessageReplySending=false;updateCommunicationAvailability();}}
 }
 let personMessageReplyTargetId='';
-function openPersonMessageReply(){
-  if(!requireFamilyFeature('family'))return;
-  personMessageReplyTargetId=currentFamilyMessageId;
+function openPersonMessageReply(replyId=currentFamilyMessageId){
+  if(!familyMessageTarget(replyId)||personReplyDone(replyId))return;
+  personMessageReplyTargetId=replyId;
   document.getElementById('person-message-reply-text').value='';
   document.getElementById('person-message-reply-state').textContent='';
   document.getElementById('person-message-reply-modal').classList.add('show');
@@ -4114,13 +4203,13 @@ async function sendPersonMessageReply(){
   const el=document.getElementById('person-message-reply-text'),st=document.getElementById('person-message-reply-state'),btn=document.getElementById('person-message-reply-send');
   const text=el.value.trim();st.classList.remove('err');
   if(!text){st.classList.add('err');st.textContent='返事を書いてください';return;}
-  const current=communicationSession();
+  const current=communicationSession(),replyId=personMessageReplyTargetId;
   btn.disabled=true;st.textContent='送信しています…';
   try{
-    const sent=await sendFamilyMessageBack(text,personMessageReplyTargetId);
-    if(!current())return;
+    const sent=await sendFamilyMessageBack(text,replyId);
+    if(!current()||personMessageReplyTargetId!==replyId)return;
     if(sent)closePersonMessageReply();
-    else{st.classList.add('err');st.textContent='送信できませんでした。入力は残っています。もう一度お試しください。';}
+    else{st.classList.add('err');st.textContent=personReplyDone(replyId)?'この連絡にはすでに返事を送りました。入力した文章は残っています。':'送信できませんでした。入力は残っています。もう一度お試しください。';}
   }finally{if(current())btn.disabled=false;}
 }
 function recKibun(text){ feedback(); addEvent({type:'kibun-kazoku', text:text, name:myName()}).catch(()=>alert('記録できませんでした。電波状況を確認して、もう一度押してください')); }
@@ -5035,7 +5124,7 @@ function mirrorTagAlert(senderId, d, label){
   }catch(e){}
 }
 let tagNotifiedThrough=0;
-let hMsgSpokenThrough=0;
+
 let currentFamilyMessageId='';
 const YOBI_KANJI=['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
 let greetedThisOpen=false;
@@ -5293,7 +5382,22 @@ async function deleteAllData(){
 }
 
 /* 日付単位で伝言を読む。画面を閉じたら購読を止め、古い応答を破棄する。 */
-let personHistoryUnsub=null,personHistoryRequest=0,personHistoryReplySending=false;
+let personHistoryUnsub=null,personHistoryRequest=0,personHistoryStatus='closed';
+let personHistoryItems=[],personHistoryViewCurrent=()=>false;
+const personHistoryReplyControls=new Map(),personHistoryPendingReplies=new Set(),personHistorySentReplies=new Set(),personHistoryReplyErrors=new Map();
+function personHistoryReplyKey(id){return gid()+'\n'+uid()+'\n'+id;}
+function historyOwnReply(id){
+  return personHistorySentReplies.has(personHistoryReplyKey(id))||personHistoryItems.some(v=>v.type==='family-message-back'&&v.replyTo===id&&v.uid===uid());
+}
+function refreshPersonHistoryReplyButtons(){
+  personHistoryReplyControls.forEach(({button,state},id)=>{
+    const answered=historyOwnReply(id);
+    button.disabled=!personHistoryViewCurrent()||personHistoryStatus!=='ready'||!canUseFamilyFeature('family')||answered||personHistoryPendingReplies.has(personHistoryReplyKey(id));
+    if(answered){button.textContent='この伝言には返事を送りました';state.textContent='あなたの返事を記録しています。';}
+    else if(personHistoryPendingReplies.has(personHistoryReplyKey(id)))state.textContent='送信しています…';
+    else if(personHistoryReplyErrors.has(personHistoryReplyKey(id)))state.textContent=personHistoryReplyErrors.get(personHistoryReplyKey(id));
+  });
+}
 function openPersonHistory(){
   const date=document.getElementById('person-history-date');
   date.max=todayStr();date.value=todayStr();
@@ -5303,49 +5407,92 @@ function openPersonHistory(){
 function closePersonHistory(){
   personHistoryRequest++;
   if(personHistoryUnsub){personHistoryUnsub();personHistoryUnsub=null;}
+  personHistoryStatus='closed';personHistoryItems=[];personHistoryViewCurrent=()=>false;personHistoryReplyControls.clear();personHistoryReplyErrors.clear();
+  document.getElementById('person-history-list').replaceChildren();
+  document.getElementById('person-history-state').textContent='';
   document.getElementById('person-history-modal').classList.remove('show');
 }
 function loadPersonHistory(){
   const request=++personHistoryRequest;
   if(personHistoryUnsub){personHistoryUnsub();personHistoryUnsub=null;}
+  personHistoryStatus='loading';personHistoryItems=[];personHistoryReplyControls.clear();
   const state=document.getElementById('person-history-state'),list=document.getElementById('person-history-list');
   const date=document.getElementById('person-history-date').value;
+  const session=communicationSession(),owner=uid(),group=gid();
+  const current=()=>request===personHistoryRequest&&session()&&owner===uid()&&group===gid()&&document.getElementById('person-history-date').value===date;
+  personHistoryViewCurrent=current;
   list.replaceChildren();state.textContent='伝言を読み込んでいます…';
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>todayStr()){state.textContent='今日までの日付を選んでください。';return;}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>todayStr()){personHistoryStatus='invalid';state.textContent='今日までの日付を選んでください。';return;}
   personHistoryUnsub=col('events').where('date','==',date).onSnapshot({includeMetadataChanges:true},snap=>{
-    if(request!==personHistoryRequest)return;
-    const cached=!!snap.metadata?.fromCache,pending=!!snap.metadata?.hasPendingWrites;
-    state.textContent=cached||pending?'通信を確認中です。保存済みの表示には、まだ届いていない伝言がある場合があります。':'この日の伝言を確認しました。';
-    const items=[];snap.forEach(doc=>items.push({...doc.data(),_id:doc.id}));
+    if(!current())return;
+    const verified=snap.metadata?.fromCache===false&&snap.metadata?.hasPendingWrites!==true;
+    personHistoryStatus=verified?'ready':'cached';
+    state.textContent=verified?'この日の伝言を確認しました。':'通信を確認中です。保存済みの表示には、まだ届いていない伝言がある場合があります。';
+    const items=[];snap.forEach(doc=>items.push({...doc.data(),_id:doc.id}));personHistoryItems=items;
     const messages=items.filter(v=>['family-message','aisatsu-back','onegai-back','ask-kusuri','family-message-back'].includes(v.type));
-    messages.sort((a,b)=>(b.at?.seconds||0)-(a.at?.seconds||0)||a._id.localeCompare(b._id));
-    list.replaceChildren();
-    if(!messages.length){list.textContent=cached||pending?'まだ通信を確認できていないため、伝言がないかは分かりません。':'この日に記録された伝言はありません。';return;}
+    messages.sort((a,b)=>compareConversationEvents(b,a));
+    list.replaceChildren();personHistoryReplyControls.clear();
+    if(!messages.length){list.textContent=verified?'この日に記録された伝言はありません。':'まだ通信を確認できていないため、伝言がないかは分かりません。';return;}
     messages.forEach(v=>{
       const item=document.createElement('section');item.className='set-sec';
       const when=v.at?.seconds?new Date(v.at.seconds*1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'時刻確認中';
       const title=document.createElement('h4');title.textContent=(v.type==='family-message-back'?'本人からの返事':(v.name||'家族')+'さんから')+' '+when;item.appendChild(title);
       const text=document.createElement('p');text.textContent=v.type==='ask-kusuri'?kusuriQuestion(v.slot):(v.text||'');item.appendChild(text);
-      const read=document.createElement('button');read.type='button';read.className='set-btn';read.textContent='声で読む';read.addEventListener('click',()=>speak(title.textContent+'、'+text.textContent));item.appendChild(read);
+      const read=document.createElement('button');read.type='button';read.className='set-btn';read.textContent='声で読む';read.addEventListener('click',()=>{if(current())speak(title.textContent+'、'+text.textContent);});item.appendChild(read);
       if(['family-message','aisatsu-back','onegai-back'].includes(v.type)){
         const reply=document.createElement('button');reply.type='button';reply.className='set-btn';reply.textContent='この伝言に「読んだよ」と返す';
         const status=document.createElement('div');status.className='save-state';status.setAttribute('role','status');
-        reply.addEventListener('click',()=>replyToHistory(v._id,reply,status));item.appendChild(reply);item.appendChild(status);
+        reply.addEventListener('click',()=>{if(current())replyToHistory(v._id,reply,status);});item.appendChild(reply);item.appendChild(status);
+        personHistoryReplyControls.set(v._id,{button:reply,state:status});
       }
       list.appendChild(item);
     });
+    refreshPersonHistoryReplyButtons();
   },()=>{
-    if(request!==personHistoryRequest)return;
+    if(!current())return;
+    personHistoryStatus='error';personHistoryItems=[];personHistoryReplyControls.clear();
     list.replaceChildren();state.textContent='伝言を読み込めませんでした。通信状態を確認して、もう一度読み込んでください。';
   });
 }
 async function replyToHistory(id,button,state){
   if(!requireFamilyFeature('family'))return;
-  if(personHistoryReplySending)return;
-  personHistoryReplySending=true;button.disabled=true;state.textContent='送信しています…';
-  try{await addEvent({type:'family-message-back',text:'読んだよ',name:'本人',replyTo:id});state.textContent='返事を記録しました。家族がアプリを開くと確認できます。';}
-  catch(e){state.textContent='送信できませんでした。もう一度お試しください。';}
-  finally{personHistoryReplySending=false;button.disabled=false;}
+  const request=personHistoryRequest,session=communicationSession(),owner=uid(),group=gid();
+  const current=()=>request===personHistoryRequest&&session()&&owner===uid()&&group===gid()&&personHistoryViewCurrent();
+  const target=()=>personHistoryItems.find(v=>v._id===id&&['family-message','aisatsu-back','onegai-back'].includes(v.type));
+  if(!current()||personHistoryStatus!=='ready'||!target()){
+    state.textContent='元の伝言を確認できません。通信を確認して、もう一度お試しください。';button.disabled=true;return;
+  }
+  const key=personHistoryReplyKey(id);
+  if(historyOwnReply(id)){refreshPersonHistoryReplyButtons();button.disabled=true;state.textContent='あなたの返事を記録しています。';return;}
+  if(personHistoryPendingReplies.has(key))return;
+  personHistoryReplyErrors.delete(key);personHistoryPendingReplies.add(key);button.disabled=true;state.textContent='送信しています…';refreshPersonHistoryReplyButtons();
+  const events=col('events');
+  try{
+    // A historical message may have been answered on a later date, outside this view's query.
+    const [original,replies]=await Promise.all([
+      events.doc(id).get({source:'server'}),events.where('replyTo','==',id).get({source:'server'})
+    ]);
+    if(!current())return;
+    if(personHistoryStatus!=='ready'||!target()||!canUseFamilyFeature('family'))throw new Error('history-not-ready');
+    const originalData=original.exists?original.data():null;
+    if(!originalData||!['family-message','aisatsu-back','onegai-back'].includes(originalData.type)||original.metadata?.fromCache===true||original.metadata?.hasPendingWrites===true||replies.metadata?.fromCache===true||replies.metadata?.hasPendingWrites===true)throw new Error('history-target-unavailable');
+    let answered=false;
+    replies.forEach(doc=>{const v=doc.data();if(v.type==='family-message-back'&&v.replyTo===id&&v.uid===owner)answered=true;});
+    if(answered){personHistorySentReplies.add(key);state.textContent='あなたの返事を記録しています。';return;}
+    await addEvent({type:'family-message-back',text:'読んだよ',name:'本人',replyTo:id});
+    // Keep a successful acknowledgement through a same-household date change until its snapshot arrives.
+    if(session()&&owner===uid()&&group===gid())personHistorySentReplies.add(key);
+    if(current())state.textContent='返事を記録しました。家族がアプリを開くと確認できます。';
+  }catch(e){if(current()){
+    const message='送信できませんでした。元の伝言と通信状態を確認して、もう一度お試しください。';
+    personHistoryReplyErrors.set(key,message);
+    const active=personHistoryReplyControls.get(id);
+    (active?active.state:state).textContent=message;
+  }}
+  finally{
+    personHistoryPendingReplies.delete(key);
+    if(current()){button.disabled=historyOwnReply(id)||personHistoryStatus!=='ready'||!canUseFamilyFeature('family');refreshPersonHistoryReplyButtons();}
+  }
 }
 
 /* 出典 https://www.city.ueda.nagano.jp/soshiki/korei/2610.html 2026-09-15確認。
