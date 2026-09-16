@@ -562,8 +562,7 @@ table.cal-rec td.pad{background:none;}
 
 
 /* Press feedback is independent of successful saving. */
-button.person-press-held,button.person-press-latched{transform:translateY(4px)!important;outline:4px solid #205B45!important;outline-offset:3px;filter:brightness(.87);box-shadow:inset 0 3px 0 rgba(0,0,0,.2)!important;}
-#person-tap-feedback{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:12000;background:#203E31;color:#fff;padding:14px 24px;border:2px solid #fff;border-radius:14px;font-size:1.2rem;font-weight:800;pointer-events:none;box-shadow:0 4px 14px #0003;}
+button.person-press-held,button.person-press-latched{transform:translateY(8px) scale(.97)!important;outline:4px solid #205B45!important;outline-offset:3px;filter:brightness(.87);box-shadow:inset 0 3px 0 rgba(0,0,0,.2)!important;}
 @media(prefers-reduced-motion:reduce){button.person-press-held,button.person-press-latched{transform:none!important;}}
 </style>
 </head>
@@ -1407,7 +1406,6 @@ setTimeout(function(){
 <script src="household-ui.js"></script>
 <script src="medicine-notebook.js"></script>
 <script src="notebook-integration.js"></script>
-<div id="person-tap-feedback" hidden aria-live="polite" role="status"></div>
 <script src="person-button-feedback.js"></script>
 <script>
 const previewStorage={
@@ -2221,7 +2219,7 @@ function endSend(ok){
   honninSending=false;
   if(ok){
     const p=document.getElementById('pop-msg');
-    if(p && p.textContent==='送信しています…'){ p.textContent='記録しました。ゆっくり確認してください。'; p.classList.add('show'); }
+    if(p && p.textContent==='送信しています…'){ p.textContent='記録しました。'; p.classList.add('show'); }
   }
 }
 function honninSendFail(){
