@@ -40,7 +40,7 @@ listens[1].error();assert.equal(el('person-history-list').children.length,0);ass
 console.log('✅ 日付別伝言は古い応答・キャッシュ・通信失敗を区別し、返信先を固定して連打を防ぐ');
 
 let replyPayload,replyFailure=false;
-const replies={document:{getElementById:el},currentFamilyMessageId:'original-message',feedback(){},speak(){},addEvent:async payload=>{if(replyFailure)throw Error('offline');replyPayload=payload;}};
+const replies={requireFamilyFeature:()=>true,document:{getElementById:el},currentFamilyMessageId:'original-message',feedback(){},speak(){},addEvent:async payload=>{if(replyFailure)throw Error('offline');replyPayload=payload;}};
 vm.createContext(replies);vm.runInContext(section('let personMessageReplySending=false;', 'function recKibun(text)'),replies);
 replies.openPersonMessageReply();replies.currentFamilyMessageId='new-message';el('person-message-reply-text').value='ありがとう';
 await replies.sendPersonMessageReply();assert.equal(replyPayload.replyTo,'original-message');
