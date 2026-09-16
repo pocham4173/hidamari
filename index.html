@@ -414,7 +414,8 @@ table.cal-rec td.pad{background:none;}
 .family-needs-check{display:inline-block;margin-bottom:6px;color:#315FAE;font-size:.84rem;}
 .family-tool-row .meta{display:block;color:var(--usucha);font-size:.76rem;font-weight:700;margin-top:3px;}
 .family-tool-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px;}
-.family-tool-actions button{min-height:38px;background:#fff;border:1.5px solid #B9CABB;border-radius:9px;color:var(--ha-koi);font:inherit;font-size:.82rem;font-weight:800;padding:6px 10px;cursor:pointer;}
+.family-tool-actions button{min-height:44px;background:#fff;border:1.5px solid #B9CABB;border-radius:9px;color:var(--ha-koi);font:inherit;font-size:.82rem;font-weight:800;padding:6px 10px;cursor:pointer;}
+.family-tool-actions button:disabled{opacity:.55;cursor:wait;}
 .family-tool-actions button.danger{border-color:#D8A69A;color:var(--aka-koi);}
 .family-compose{margin:10px 0;border:1px solid #C8D9D0;border-radius:11px;background:#F8FBF9;padding:10px;}
 .family-compose summary{cursor:pointer;font-weight:900;color:var(--ha-koi);min-height:34px;line-height:34px;}
@@ -435,6 +436,7 @@ table.cal-rec td.pad{background:none;}
 .family-day-plan .day-empty{font-size:.85rem;color:var(--usucha);}
 .family-upcoming{margin-top:11px;font-size:.81rem;color:var(--usucha);line-height:1.5;overflow-wrap:anywhere;}
 .family-task-preview{background:#F5FAF7;border-color:#BBD9C5;}
+.handoff-request{border-top:1px solid #BBD9C5;margin-top:10px;padding-top:10px;}
 .family-task-preview strong{color:var(--ha-koi);}
 .care-today{margin-top:12px;padding:10px 12px;border-radius:11px;background:#F5FAF7;color:var(--cha);font-size:.83rem;line-height:1.6;}
 .care-today b{display:block;color:#33704D;}
@@ -1037,7 +1039,7 @@ table.cal-rec td.pad{background:none;}
     <!-- ホーム -->
     <div class="ftab" id="t-home">
       <div id="card-pending"></div>
-      <div id="family-handoff-heading"><h2 style="font-size:1.2rem;margin:16px 4px 4px;">家族への引き継ぎ</h2><p class="note" style="margin:0 4px 12px;">伝言・予定・やることを、家族で確認できます。</p></div>
+      <div id="family-handoff-heading"><h2 style="font-size:1.2rem;margin:16px 4px 4px;">今日の引継ぎ</h2><p class="note" style="margin:0 4px 12px;">伝言・今日の予定・誰が対応するかを、ここで確認できます。</p></div>
       <div class="card dom-record family-shared-card" id="card-family-notes-preview">
         <h3>未確認の伝言</h3>
         <div class="family-preview" id="family-notes-preview" aria-live="polite">伝言を読み込んでいます…</div>
@@ -1052,9 +1054,10 @@ table.cal-rec td.pad{background:none;}
       </div>
 
       <div class="card dom-record family-shared-card" id="card-family-tasks-preview">
-        <h3>家族のやること</h3>
+        <h3>今日のお願い・残っていること</h3>
         <div class="family-preview family-task-preview" id="family-tasks-preview" aria-live="polite">やることを読み込んでいます…</div>
-        <button class="family-jump" type="button" onclick="openFamilyTasks()">やることをすべて見る・追加する</button>
+        <button class="family-jump" type="button" onclick="openFamilyTasks()">すべてのお願いを見る</button>
+        <button class="family-jump" type="button" onclick="openFamilyRequest()">＋ 今日はお願い</button>
       </div>
 
       <div class="card tag-home" id="watch-tag-home" style="display:none;">
@@ -1164,12 +1167,13 @@ table.cal-rec td.pad{background:none;}
 
       <div class="card dom-record family-shared-card" id="card-family-tasks">
         <h3>家族のやることリスト</h3>
-        <div class="note" style="margin-top:0;">家族で相談した担当をメモできます。担当欄は通知や割り当てではありません。できる家族が「対応済み」にできます。</div>
-        <details class="family-compose" id="family-task-compose"><summary>＋ やることを追加</summary>
+        <div class="note" style="margin-top:0;">できる人が「私が引き受ける」を押してください。複数人で協力できます。終わったら「対応済み」に。アプリを閉じている家族への通知は届かないため、急ぎは電話などで連絡してください。</div>
+        <details class="family-compose" id="family-task-compose"><summary>＋ 家族にお願いする</summary>
+          <div class="family-tool-actions"><button type="button" onclick="setFamilyRequestTemplate('通院の付き添い')">通院</button><button type="button" onclick="setFamilyRequestTemplate('買い物')">買い物</button><button type="button" onclick="setFamilyRequestTemplate('電話で様子を聞く')">電話</button></div>
           <div class="in-row"><input type="date" id="family-task-date" aria-label="期限（任意）"></div>
           <div class="in-row"><input type="text" id="family-task-input" maxlength="80" placeholder="例：薬局へ処方箋を取りに行く"></div>
-          <div class="in-row"><label for="family-task-assignee">担当（任意）</label><input type="text" id="family-task-assignee" maxlength="40" placeholder="例：相談して決めた家族の呼び名"></div>
-          <button class="big-btn record" id="family-task-btn" type="button" onclick="addFamilyTask()">やることを追加</button>
+          <div class="in-row"><label for="family-task-assignee">相談済みの担当メモ（任意）</label><input type="text" id="family-task-assignee" maxlength="40" placeholder="例：相談して決めた家族の呼び名"></div>
+          <button class="big-btn record" id="family-task-btn" type="button" onclick="addFamilyTask()">お願いを共有する</button>
         </details>
         <div class="save-state" id="family-task-state" aria-live="polite"></div>
         <div class="family-tool-list" id="family-task-list"><div class="empty">読み込み中…</div></div>
@@ -2575,7 +2579,7 @@ function initKazoku(){
   document.getElementById('yt-note').textContent=kOnly
     ?'登録した予定は、ホームとカレンダーに表示されます。'
     :'本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。';
-  familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading'};
+  familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading',taskHelpers:'loading'};
   showTab('t-home');
   initFamilyOnlyTools();
   initMedicineInfo();
@@ -2946,7 +2950,7 @@ var REC_META_TYPES = {
   'care-config':1,
   'medicine-info':1,
   'family-note':1,'family-note-ack':1,'family-note-reply':1,
-  'family-task':1,'family-task-done':1,
+  'family-task':1,'family-task-done':1,'family-task-help':1,
   'family-contact':1
 };
 function recVisible(v){
@@ -3285,6 +3289,7 @@ var REC_LABEL = {
   'family-note':     function(v){ return ['家族の伝言','', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
   'family-note-reply':function(v){ return ['伝言への返事','', (v.name||'家族')+'さん「'+(v.text||'')+'」']; },
   'family-task':     function(v){ return ['家族のやること','', (v.name||'家族')+'さんが追加: '+(v.text||'')+(v.due?'（期限 '+v.due+'）':'')+(v.assignee?'（担当メモ '+v.assignee+'）':'')]; },
+  'family-task-help':function(v){return ['お願いの引受け','',(v.name||'家族')+'さんが引き受けました'];},
   'family-task-done':function(v){ return ['やることの対応済み','', (v.name||'家族')+'さんがやることを対応済みにしました']; },
   'tag-alert':      function(v){ return ['タグ','k-tag', 'おまもりタグが読み取られました: '+(v.text||'')]; },
   'kusuri-kakunin': function(v){ return ['家族の服薬確認','k-kusuri', (v.name||'家族')+'さんが'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の':'')+'服薬を確認しました']; },
@@ -3404,7 +3409,7 @@ function recDrawSummary(){
   var now=new Date();
   var elapsed=(recY===now.getFullYear()&&recM===now.getMonth())?now.getDate():new Date(recY,recM+1,0).getDate();
   /* 家族間の連絡は生活記録の合計には混ぜず、別枠で日時と内容を残す。 */
-  var sharedTypes=['family-note','family-note-reply','family-task','family-task-done'];
+  var sharedTypes=['family-note','family-note-reply','family-task','family-task-done','family-task-help'];
   var familyShared=recEvents.filter(function(v){return sharedTypes.includes(v.type);});
   var familySharedDays={};familyShared.forEach(function(v){familySharedDays[v.date]=1;});
   var totalN=0, allDays={}, dayTotals={};
@@ -3860,8 +3865,8 @@ const CARE_OPTIONS=[
 ];
 const CARE_DEFAULT=['meal','water','call','visit'];
 let familyOnlyUnsubs=[];
-let familyOnlyData={config:[],notes:[],noteAcks:[],noteReplies:[],tasks:[],taskDone:[],contacts:[]};
-let familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading'};
+let familyOnlyData={config:[],notes:[],noteAcks:[],noteReplies:[],tasks:[],taskDone:[],taskHelpers:[],contacts:[]};
+let familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading',taskHelpers:'loading'};
 let medicineInfoUnsub=null,medicineInfoRows=[],medicineInfoStatus='loading';
 
 function initMedicineInfo(){
@@ -3941,7 +3946,7 @@ function foWatch(type,key,draw){
     if(key in familyOnlyLoad){
       familyOnlyLoad[key]='error';
       if(key==='notes'||key==='noteAcks'||key==='noteReplies')renderFamilyNotes();
-      if(key==='tasks'||key==='taskDone')renderFamilyTasks();
+      if(key==='tasks'||key==='taskDone'||key==='taskHelpers')renderFamilyTasks();
     }
     if(key==='notes'){
       const preview=document.getElementById('family-notes-preview');
@@ -3949,7 +3954,7 @@ function foWatch(type,key,draw){
     }
     foState(key==='config'?'care-config-state':
       key==='contacts'?'family-contact-state':
-      key==='tasks'||key==='taskDone'?'family-task-state':'family-note-state',
+      key==='tasks'||key==='taskDone'||key==='taskHelpers'?'family-task-state':'family-note-state',
       '読み込めませんでした。通信状態を確認してください',true);
   });
   familyOnlyUnsubs.push(unsub);
@@ -3957,7 +3962,7 @@ function foWatch(type,key,draw){
 function initFamilyOnlyTools(){
   familyOnlyUnsubs.forEach(function(u){try{u();}catch(e){}});
   familyOnlyUnsubs=[];
-  familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading'};
+  familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading',taskHelpers:'loading'};
   renderCareConfigChecks(CARE_DEFAULT);
   foWatch('care-config','config',renderCareTools);
   foWatch('family-note','notes',renderFamilyNotes);
@@ -3965,6 +3970,7 @@ function initFamilyOnlyTools(){
   foWatch('family-note-reply','noteReplies',renderFamilyNotes);
   foWatch('family-task','tasks',renderFamilyTasks);
   foWatch('family-task-done','taskDone',renderFamilyTasks);
+  foWatch('family-task-help','taskHelpers',renderFamilyTasks);
   foWatch('family-contact','contacts',renderFamilyContacts);
 }
 function currentCareItems(){
@@ -4187,32 +4193,36 @@ async function replyFamilyNote(id,input,button){
   finally{button.disabled=false;}
 }
 async function addFamilyTask(){
+  if(document.getElementById('family-task-btn').disabled)return;
   const el=document.getElementById('family-task-input'), due=document.getElementById('family-task-date').value;
   const t=el.value.trim();
+  if(due && !/^\d{4}-\d{2}-\d{2}$/.test(due)){foState('family-task-state','期限を確認してください',true);return;}
   const assigneeEl=document.getElementById('family-task-assignee');
   const assignee=assigneeEl.value.trim();
   if(t.length>80 || assignee.length>40){foState('family-task-state','やることは80文字、担当は40文字以内で入力してください',true);return;}
   if(!t){foState('family-task-state','やることを入力してください',true);return;}
+  const requestUid=uid(),requestGroup=gid();
   const btn=document.getElementById('family-task-btn');btn.disabled=true;
   foState('family-task-state','保存しています…',false);
   try{
     await addEvent({type:'family-task',text:t,due:due,assignee:assignee,name:myName(),clientAt:Date.now()});
+    if(uid()!==requestUid||gid()!==requestGroup)return;
     if(el.value.trim()===t)el.value='';
     if(assigneeEl.value.trim()===assignee)assigneeEl.value='';
     if(document.getElementById('family-task-date').value===due)document.getElementById('family-task-date').value='';
     document.getElementById('family-task-compose').open=false;
     foState('family-task-state','やることを共有しました',false);
-  }catch(e){foState('family-task-state','保存できませんでした。入力は残っています',true);}
+  }catch(e){if(uid()===requestUid&&gid()===requestGroup)foState('family-task-state','保存できませんでした。入力は残っています',true);}
   finally{btn.disabled=false;}
 }
 function renderFamilyTasks(){
   const box=document.getElementById('family-task-list');if(!box)return;
   const done={};familyOnlyData.taskDone.forEach(function(v){if(v.replyTo&&!done[v.replyTo])done[v.replyTo]=v;});
   renderFamilyTasksPreview(done);
-  if(familyOnlyLoad.tasks!=='ready'||familyOnlyLoad.taskDone!=='ready'){
-    box.textContent=familyOnlyLoad.tasks==='error'||familyOnlyLoad.taskDone==='error'?
+  if(!familyTasksReady()){
+    box.textContent=familyOnlyLoad.tasks==='error'||familyOnlyLoad.taskDone==='error'||familyOnlyLoad.taskHelpers==='error'?
       'やることの対応状況を読み込めませんでした。通信状態を確認して、画面を開き直してください。':
-      familyOnlyLoad.tasks==='cached'||familyOnlyLoad.taskDone==='cached'?
+      familyOnlyLoad.tasks==='cached'||familyOnlyLoad.taskDone==='cached'||familyOnlyLoad.taskHelpers==='cached'?
       '保存済みのやることはありますが、最新の対応状況は通信が戻るまで確定できません。':'やることの対応状況を読み込んでいます…';
     return;
   }
@@ -4225,11 +4235,12 @@ function renderFamilyTasks(){
     row.appendChild(document.createTextNode((finished?'✅ ':'□ ')+(v.text||'')));
     const meta=document.createElement('span');meta.className='meta';
     meta.textContent=(v.due?'期限 '+v.due+'・':'')+'担当メモ：'+(v.assignee||'未定')+'・追加 '+(v.name||'家族')+'・'+foDateTime(v);row.appendChild(meta);
+    const helpers=document.createElement('span');helpers.className='meta';helpers.textContent=familyTaskHelperLabel(v._id);row.appendChild(helpers);
     const acts=document.createElement('div');acts.className='family-tool-actions';
     if(finished){
       const s=document.createElement('span');s.className='meta';s.textContent=(finished.name||'家族')+'さんが対応済み'+(foDateTime(finished)?'・'+foDateTime(finished):'・時刻を確認中');acts.appendChild(s);
     }else{
-      const b=document.createElement('button');b.type='button';b.textContent='対応済みにする';b.addEventListener('click',function(){finishFamilyTask(v._id);});acts.appendChild(b);
+      appendFamilyTaskActions(acts,v);
     }
     if(v.uid===uid()){
       const d=document.createElement('button');d.type='button';d.className='danger';d.textContent='削除';d.addEventListener('click',function(){deleteFamilyEvent(v._id,'やること');});acts.appendChild(d);
@@ -4240,27 +4251,86 @@ function renderFamilyTasks(){
 function renderFamilyTasksPreview(done){
   const box=document.getElementById('family-tasks-preview');if(!box)return;
   box.textContent='';
-  if(familyOnlyLoad.tasks==='error'||familyOnlyLoad.taskDone==='error'){
+  if(familyOnlyLoad.tasks==='error'||familyOnlyLoad.taskDone==='error'||familyOnlyLoad.taskHelpers==='error'){
     box.textContent='未完了のやることを読み込めませんでした。通信状態を確認して、画面を開き直してください。';return;
   }
-  if(familyOnlyLoad.tasks!=='ready'||familyOnlyLoad.taskDone!=='ready'){
-    box.textContent=familyOnlyLoad.tasks==='cached'||familyOnlyLoad.taskDone==='cached'?
+  if(!familyTasksReady()){
+    box.textContent=familyOnlyLoad.tasks==='cached'||familyOnlyLoad.taskDone==='cached'||familyOnlyLoad.taskHelpers==='cached'?
       '通信を確認できません。未完了の件数は今は判断できません。':'未完了のやることを読み込んでいます…';return;
   }
   const pending=familyOnlyData.tasks.filter(function(v){return !done[v._id];})
     .sort(function(a,b){return (a.due||'9999-12-31').localeCompare(b.due||'9999-12-31')||foByNewest(a,b);});
   const count=document.createElement('strong');count.textContent='未完了 '+pending.length+'件';box.appendChild(count);
+  const summary=document.createElement('span');summary.textContent='期限超過 '+pending.filter(v=>v.due&&v.due<todayStr()).length+'件 ／ 今日 '+pending.filter(v=>v.due===todayStr()).length+'件 ／ 引受け待ち '+pending.filter(v=>!familyTaskHelpers(v._id).length).length+'件';box.appendChild(summary);
+  const completed=document.createElement('span');completed.className='meta';completed.textContent='今日の対応済み '+familyOnlyData.tasks.filter(v=>done[v._id]&&done[v._id].date===todayStr()).length+'件';box.appendChild(completed);
   if(!pending.length){
     const empty=document.createElement('span');empty.textContent='今、残っているやることはありません。';box.appendChild(empty);
   }
-  pending.slice(0,2).forEach(function(v){
-    const row=document.createElement('span');row.textContent='□ '+(v.text||'（内容なし）');box.appendChild(row);
-    const assignee=document.createElement('span');assignee.className='meta';assignee.textContent='担当メモ：'+(v.assignee||'未定');box.appendChild(assignee);
+  pending.slice(0,4).forEach(function(v){
+    const item=document.createElement('div');item.className='handoff-request';box.appendChild(item);
+    const row=document.createElement('span');row.textContent='□ '+(v.text||'（内容なし）');item.appendChild(row);
+    const assignee=document.createElement('span');assignee.className='meta';assignee.textContent='担当メモ：'+(v.assignee||'未定');item.appendChild(assignee);
+    const helpers=document.createElement('span');helpers.className='meta';helpers.textContent=familyTaskHelperLabel(v._id);item.appendChild(helpers);
+    const actions=document.createElement('div');actions.className='family-tool-actions';appendFamilyTaskActions(actions,v);item.appendChild(actions);
     if(v.due){
       const due=document.createElement('span');due.className='meta';
-      due.textContent=(v.due<todayStr()?'期限が過ぎています：':'期限：')+dateJp(dateOnly(v.due));box.appendChild(due);
+      due.textContent=(v.due<todayStr()?'期限が過ぎています：':'期限：')+dateJp(dateOnly(v.due));item.appendChild(due);
     }
   });
+}
+function familyTasksReady(){
+  return ['tasks','taskDone','taskHelpers'].every(key=>familyOnlyLoad[key]==='ready');
+}
+function familyTaskHelpers(id){
+  const seen=new Set();
+  return familyOnlyData.taskHelpers.filter(v=>{
+    if(v.replyTo!==id||!v.uid||seen.has(v.uid))return false;
+    seen.add(v.uid);return true;
+  });
+}
+function familyTaskHelperLabel(id){
+  const helpers=familyTaskHelpers(id);
+  return helpers.length?'引受け：'+helpers.map(v=>(v.name||'家族')+'さん').join('・'):'引受け待ち（まだ引受けの記録がありません）';
+}
+function appendFamilyTaskActions(box,task){
+  const mine=familyTaskHelpers(task._id).some(v=>v.uid===uid());
+  const key=gid()+':'+uid()+':'+task._id;
+  const button=document.createElement('button');button.type='button';
+  button.textContent=mine?'引受けを取り消す':'私が引き受ける';button.disabled=familyTaskHelping.has(key);
+  button.addEventListener('click',()=>changeFamilyTaskHelp(task._id,mine));box.appendChild(button);
+  const done=document.createElement('button');done.type='button';done.textContent='対応済みにする';done.disabled=familyTaskFinishing.has(task._id);
+  done.addEventListener('click',()=>finishFamilyTask(task._id));box.appendChild(done);
+}
+const familyTaskHelping=new Set();
+async function changeFamilyTaskHelp(id,cancel){
+  if(!familyTasksReady()){alert('最新の引受け状況を確認してから、もう一度お試しください');return;}
+  if(!familyOnlyData.tasks.some(v=>v._id===id)||familyOnlyData.taskDone.some(v=>v.replyTo===id))return;
+  const owner=uid(),group=gid(),key=group+':'+owner+':'+id;
+  if(!owner||!group||familyTaskHelping.has(key))return;
+  const mine=familyOnlyData.taskHelpers.filter(v=>v.replyTo===id&&v.uid===owner);
+  if(!cancel&&mine.length)return;
+  if(cancel&&!confirm('自分の引受けを取り消しますか？ 他の家族の引受けは残ります。'))return;
+  const events=col('events');
+  familyTaskHelping.add(key);renderFamilyTasks();
+  try{
+    if(cancel){
+      const batch=db.batch();mine.forEach(v=>batch.delete(events.doc(v._id)));await batch.commit();
+    }else{
+      await addEvent({type:'family-task-help',replyTo:id,name:myName(),clientAt:Date.now()});
+    }
+    if(uid()===owner&&gid()===group)foState('family-task-state',cancel?'自分の引受けを取り消しました':'引受けを家族に共有しました',false);
+  }catch(e){if(uid()===owner&&gid()===group)alert('引受けを保存できませんでした。通信を確認して、もう一度お試しください');}
+  finally{familyTaskHelping.delete(key);if(uid()===owner&&gid()===group)renderFamilyTasks();}
+}
+function openFamilyRequest(){
+  openFamilyTasks();document.getElementById('family-task-compose').open=true;
+  const date=document.getElementById('family-task-date');if(!date.value)date.value=todayStr();
+  document.getElementById('family-task-input').focus();
+}
+function setFamilyRequestTemplate(text){
+  const input=document.getElementById('family-task-input');
+  if(input.value.trim()&&input.value.trim()!==text&&!confirm('入力中のお願いを「'+text+'」に置き換えますか？'))return;
+  input.value=text;input.focus();
 }
 function openFamilyTasks(){
   const card=document.getElementById('card-family-tasks');
@@ -4269,12 +4339,13 @@ function openFamilyTasks(){
 const familyTaskFinishing=new Set();
 async function finishFamilyTask(id){
   if(familyTaskFinishing.has(id)||familyOnlyData.taskDone.some(function(v){return v.replyTo===id;}))return;
-  if(familyOnlyLoad.tasks!=='ready'||familyOnlyLoad.taskDone!=='ready'){alert('最新の対応状況を確認してから、もう一度お試しください');return;}
+  if(!familyTasksReady()){alert('最新の対応状況を確認してから、もう一度お試しください');return;}
   if(!familyOnlyData.tasks.some(function(v){return v._id===id;}))return;
-  familyTaskFinishing.add(id);
+  const requestUid=uid(),requestGroup=gid();
+  familyTaskFinishing.add(id);renderFamilyTasks();
   try{await addEvent({type:'family-task-done',replyTo:id,name:myName(),clientAt:Date.now()});}
-  catch(e){alert('対応済みを記録できませんでした。通信状態を確認してください');}
-  finally{familyTaskFinishing.delete(id);}
+  catch(e){if(uid()===requestUid&&gid()===requestGroup)alert('対応済みを記録できませんでした。通信状態を確認してください');}
+  finally{familyTaskFinishing.delete(id);if(uid()===requestUid&&gid()===requestGroup)renderFamilyTasks();}
 }
 async function addFamilyContact(){
   const kindEl=document.getElementById('family-contact-kind');
