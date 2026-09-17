@@ -9,7 +9,11 @@
     function el(id){return doc.getElementById(id);}
     function valid(token){var now=options.getContext();return token===generation&&context&&now&&now.uid===context.uid&&now.gid===context.gid;}
     function ready(){return fresh.tasks&&fresh.done;}
-    function state(message){el('person-task-state').textContent=message;}
+    function announce(message){
+      if(typeof options.speak!=='function')return;
+      try{options.speak(message);}catch(error){/* Voice availability must not change a saved result. */}
+    }
+    function state(message,read){el('person-task-state').textContent=message;if(read)announce(message);}
     function render(){
       var list=el('person-task-list');list.textContent='';
       el('person-task-save').disabled=!ready()||saving;
@@ -22,7 +26,7 @@
         if(task.due){var date=doc.createElement('div');date.textContent='日付：'+task.due;row.appendChild(date);}
         var complete=done.some(function(v){return v.replyTo===task._id;});
         var label=doc.createElement('p');label.textContent=complete?'できました':'これから';row.appendChild(label);
-        if(!complete){var button=doc.createElement('button');button.type='button';button.className='set-btn person-press-target';button.textContent='できた';button.disabled=!ready()||finishing.has(task._id);button.addEventListener('click',function(){finish(task._id);});row.appendChild(button);}
+        if(!complete){var button=doc.createElement('button');button.type='button';button.className='set-btn person-press-target';button.textContent='できた';button.disabled=!ready()||finishing.has(task._id);button.addEventListener('click',function(){return finish(task._id);});row.appendChild(button);}
         list.appendChild(row);
       });
     }
@@ -30,25 +34,26 @@
       var token=generation;
       if(!valid(token)||!ready()||saving)return;
       var input=el('person-task-input'),date=el('person-task-date'),text=input.value.trim(),due=date.value;
-      if(!text){state('やることを入力してください。');return;}
-      if(text.length>80){state('やることは80文字以内で入力してください。');return;}
-      if(due&&!/^\d{4}-\d{2}-\d{2}$/.test(due)){state('期限を確認してください。');return;}
-      saving=true;render();state('保存しています…');
+      if(!text){state('やることを入力してください。',true);return;}
+      if(text.length>80){state('やることは80文字以内で入力してください。',true);return;}
+      if(due&&!/^\d{4}-\d{2}-\d{2}$/.test(due)){state('期限を確認してください。',true);return;}
+      saving=true;render();state('保存しています…',true);
       try{
         await options.addEvent({type:'family-task',text:text,due:due,taskKind:'self',assignee:'',clientAt:Date.now()});
         if(!valid(token))return;
         if(input.value.trim()===text&&date.value===due){input.value='';date.value='';}
-        state('やることを保存しました。');
-      }catch(error){if(valid(token))state('保存できませんでした。入力は残っています。');}
+        state('やること「'+text+'」を保存しました。',true);
+      }catch(error){if(valid(token))state('保存できませんでした。入力は残っています。',true);}
       finally{if(valid(token)){saving=false;render();}}
     }
     async function finish(id){
       var token=generation;
       if(!valid(token)||!ready()||finishing.has(id)||done.some(function(v){return v.replyTo===id;}))return;
-      if(!rows.some(function(v){return v._id===id&&v.uid===context.uid&&v.taskKind==='self';}))return;
-      finishing.add(id);var succeeded=false;render();state('記録しています…');
-      try{await options.addEvent({type:'family-task-done',replyTo:id,clientAt:Date.now()});succeeded=true;if(valid(token))state('できたことを記録しました。');}
-      catch(error){if(valid(token))state('記録できませんでした。通信を確認して、もう一度押してください。');}
+      var task=rows.find(function(v){return v._id===id&&v.uid===context.uid&&v.taskKind==='self';});
+      if(!task)return;
+      finishing.add(id);var succeeded=false;render();state('記録しています…',true);
+      try{await options.addEvent({type:'family-task-done',replyTo:id,clientAt:Date.now()});succeeded=true;if(valid(token))state('「'+(task.text||'やること')+'」ができたことを記録しました。',true);}
+      catch(error){if(valid(token))state('記録できませんでした。通信を確認して、もう一度押してください。',true);}
       finally{if(valid(token)){if(!succeeded)finishing.delete(id);render();}}
     }
     function close(){
@@ -64,6 +69,7 @@
       el('person-tasks-modal').classList.add('show');
       el('person-task-save').addEventListener('click',save);el('person-task-close').addEventListener('click',close);
       state('最新の記録を確認しています…');render();
+      announce('自分のやることをひらきました。やることを追加し、終わったら、できたを押します。');
       [['family-task','tasks'],['family-task-done','done']].forEach(function(entry){
         try{var unsubscribe=options.subscribe(entry[0],function(data,metadata){
           if(!valid(token))return;
