@@ -89,3 +89,56 @@ function source(start,end){
   f.close();
 }
 console.log('Simple navigation: quiet entry, recipient-safe reply choices, retained result, everyday notebook and visible telephone actions passed');
+
+// Exercise the real entry click, persistence and screen selection for all mode pairs.
+for(const previous of ['honnin','kazoku','konly']){
+  for(const selected of ['honnin','kazoku','konly']){
+    const f=homeFixture(),saved=f.c.previewStorage,memberWrites=[];
+    saved.setItem('mainicoPendingMode',previous);
+    saved.setItem('mainicoName','テスト');
+    saved.setItem('mainicoConsent-a','yes');saved.setItem('mainicoConsent-b','yes');
+    f.dom.window.scrollTo=()=>{};
+    let stopped=0,started='',finished;
+    Object.assign(f.c,{
+      refreshHousehold:async()=>({}),householdDeleting:false,
+      col:()=>({doc:()=>({update:async data=>memberWrites.push(data)})}),
+      saveRecoveryPointer:async()=>{},watchHouseholdAccess:()=>{},applyHouseholdPermissions:()=>{},
+      stopHouseholdSubscriptions:()=>{stopped++;f.c.stopFamilyConnection();},
+      showHouseholdBlocked:message=>{throw new Error(message);},
+      initHonnin:()=>{started='honnin';f.c.renderFamilyConnection();},
+      initKazoku:()=>{
+        started=f.c.isKOnly()?'konly':'kazoku';
+        vm.runInContext("{const kOnly=isKOnly();"+source("document.getElementById('card-krec').style.display",'/* おまもりタグ')+'}',f.c);
+        f.c.renderFamilyConnection();
+      }
+    });
+    vm.runInContext(source('function isKOnly(){','/* 画面表示用のエスケープ'),f.c);
+    vm.runInContext(source('function resetFamilyScroll(){','/* ===== モード選択'),f.c);
+    vm.runInContext(source('let pendingMode=null;','function agreeConsent('),f.c);
+    vm.runInContext(source('function afterConsent(){','function setupConnectPage(){'),f.c);
+    vm.runInContext(source('async function finishSetup(){','async function copyPendingHelp(){'),f.c);
+    vm.runInContext(source('function startMode(){','function resetMode(){'),f.c);
+    const finish=f.c.finishSetup;f.c.finishSetup=()=>{finished=finish();return finished;};
+    saved.setItem('mainicoMode','honnin');saved.setItem('kazokuOnly','1');
+    assert.equal(f.c.isKOnly(),false,'stale proxy flag never applies to the person');
+    saved.setItem('mainicoMode',previous==='honnin'?'honnin':'kazoku');
+    saved.setItem('kazokuOnly',previous==='konly'?'1':'');
+    f.c.showPage('entry');
+    await f.click(f.document.querySelector(`[onclick="pickMode('${selected}')"]`));await finished;
+    assert.equal(started,selected,`${previous} -> ${selected} opens chosen mode`);
+    assert.equal(memberWrites[0].mode,selected);
+    assert.equal(stopped,1,'previous screen subscriptions are retired');
+    assert.equal(f.visible(f.document.getElementById('btn-a')),selected==='honnin');
+    assert.equal(f.visible(f.document.getElementById('btn-k-asa')),selected==='honnin');
+    assert.equal(f.visible(f.document.getElementById('card-krec')),selected==='konly');
+    assert.equal(f.visible(f.document.getElementById('card-care-quick')),selected==='konly');
+    for(const status of ['unknown','solo','shared']){
+      f.state({status,others:2,personOthers:1,familyOthers:1});
+      f.c.testRows=[];vm.runInContext('familyHomeItems=testRows;renderFamilyConversation();',f.c);
+      assert.equal(f.visible(f.document.getElementById('card-actions')),selected==='kazoku','membership updates respect the selected screen');
+      assert.equal(f.visible(f.document.getElementById('person-conversation-panel')),selected==='honnin');
+    }
+    f.close();
+  }
+}
+console.log('All 9 mode transitions: person buttons, family replies and proxy recording remain separate');
