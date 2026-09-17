@@ -22,6 +22,7 @@
   function explainChangedReply(){
     const state=document.getElementById('h-message-reply-state');
     if(state)state.textContent='新しい連絡が届きました。内容を確認してから押してください';
+    if(typeof window.speak==='function')window.speak('新しい連絡が届きました。内容を確認してから押してください');
   }
   function cancel(){
     release();pressed=null;if(!pending)return;
@@ -51,6 +52,9 @@
     pressed=null;
     if(context()!==item.context)return;
     if(replyChanged(item)){explainChangedReply();return;}
+    // Start the voice inside the user's click, before the visual press delay.
+    // This cue never performs a write or claims that a write has completed.
+    try{if(typeof window.announcePersonPress==='function')window.announcePersonPress(button);}catch(e){}
     button.classList.add('person-press-latched');
     pending=item;
     item.timer=setTimeout(function(){

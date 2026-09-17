@@ -10,12 +10,12 @@ class Element {
   removeEventListener(k,f){this.listeners[k]?.delete(f);}
   async click(){await Promise.all([...(this.listeners.click||[])].map(f=>f()));}
 }
-function fixture(){
-  const elements={},subs=[],writes=[];let ctx={uid:'one',gid:'home'},unsubscribed=0,writer=async()=>{};
+function fixture(voice=true){
+  const elements={},subs=[],writes=[],spoken=[];let ctx={uid:'one',gid:'home'},unsubscribed=0,writer=async()=>{};
   const document={getElementById:id=>elements[id]??=new Element(),createElement:()=>new Element()};
-  const app=create({document,getContext:()=>ctx,subscribe:(type,data,error)=>{subs.push({type,data,error});return ()=>unsubscribed++;},addEvent:async v=>{writes.push(v);await writer(v);}});
+  const app=create({document,getContext:()=>ctx,speak:voice===false?undefined:typeof voice==='function'?voice:message=>spoken.push(message),subscribe:(type,data,error)=>{subs.push({type,data,error});return ()=>unsubscribed++;},addEvent:async v=>{writes.push(v);await writer(v);}});
   const push=(i,rows=[],meta={fromCache:false,hasPendingWrites:false})=>subs[i].data(rows,meta);
-  return {app,e:id=>document.getElementById('person-task-'+id),subs,writes,push,context:v=>ctx=v,writer:v=>writer=v,unsubs:()=>unsubscribed};
+  return {app,e:id=>document.getElementById('person-task-'+id),subs,writes,spoken,push,context:v=>ctx=v,writer:v=>writer=v,unsubs:()=>unsubscribed};
 }
 const task={_id:'a',uid:'one',taskKind:'self',text:'買い物'};
 {
@@ -50,3 +50,40 @@ const task={_id:'a',uid:'one',taskKind:'self',text:'買い物'};
  f.app.close();f.push(0,[task]);assert.equal(f.e('list').children.length,0);
  console.log('PASS unknown metadata and invalid inputs fail closed');
 }
+{
+ const f=fixture();f.app.open();assert.match(f.spoken[0],/自分のやることをひらきました/);
+ f.push(0);f.push(1);f.push(0,[],{fromCache:true});f.push(0);assert.equal(f.spoken.length,1,'自動更新では繰り返し読み上げない');
+ await f.e('save').click();assert.equal(f.spoken.at(-1),'やることを入力してください。');
+ f.e('input').value='あ'.repeat(81);await f.e('save').click();assert.match(f.spoken.at(-1),/80文字以内/);
+ f.e('input').value='買い物';f.e('date').value='bad';await f.e('save').click();assert.equal(f.spoken.at(-1),'期限を確認してください。');
+ f.e('date').value='';let resolve;f.writer(()=>new Promise(r=>resolve=r));const pending=f.e('save').click();
+ assert.equal(f.spoken.at(-1),'保存しています…');assert.equal(f.spoken.some(message=>message.includes('保存しました')),false,'完了前に保存したとは読み上げない');
+ const count=f.spoken.length;await f.e('save').click();assert.equal(f.spoken.length,count,'処理中の連打では読み上げも重複しない');
+ resolve();await pending;assert.equal(f.spoken.at(-1),'やること「買い物」を保存しました。');
+ assert.equal(f.spoken.at(-1),f.e('state').textContent,'音声と画面の保存結果が一致する');
+ f.e('input').value='通院の準備';f.writer(async()=>{throw new Error('offline');});await f.e('save').click();
+ assert.equal(f.spoken.at(-1),'保存できませんでした。入力は残っています。');assert.equal(f.e('input').value,'通院の準備');
+ console.log('PASS task open, validation, saving and failed drafts have accurate speech without snapshot chatter');
+}
+{
+ const f=fixture();f.app.open();f.push(0,[task]);f.push(1);let resolve;f.writer(()=>new Promise(r=>resolve=r));
+ const pending=f.e('list').children[0].children.at(-1).click();assert.equal(f.spoken.at(-1),'記録しています…');
+ resolve();await pending;assert.equal(f.spoken.at(-1),'「買い物」ができたことを記録しました。');
+ assert.equal(f.spoken.at(-1),f.e('state').textContent);
+ const g=fixture();g.app.open();g.push(0,[task]);g.push(1);g.writer(async()=>{throw new Error('offline');});
+ await g.e('list').children[0].children.at(-1).click();assert.match(g.spoken.at(-1),/記録できませんでした/);
+ assert.equal(g.e('list').children[0].children.at(-1).disabled,false,'失敗時には再試行できる');
+ console.log('PASS completion speech waits for the saved result and failures remain retryable');
+}
+for(const reason of ['close','different-household']){
+ const f=fixture();f.app.open();f.push(0);f.push(1);f.e('input').value='家族の用事';let resolve;
+ f.writer(()=>new Promise(r=>resolve=r));const pending=f.e('save').click();const count=f.spoken.length;
+ if(reason==='close')f.app.close();else f.context({uid:'two',gid:'other'});
+ resolve();await pending;assert.equal(f.spoken.length,count,'古い画面・家庭の保存結果を読み上げない: '+reason);
+}
+for(const voice of [false,()=>{throw new Error('voice unavailable');}]){
+ const f=fixture(voice);f.app.open();f.push(0);f.push(1);f.e('input').value='買い物';await f.e('save').click();
+ assert.equal(f.writes.length,1);assert.match(f.e('state').textContent,/保存しました/);assert.equal(f.e('input').value,'');
+ assert.equal(f.e('save').disabled,false,'音声がなくても正常に操作を続けられる');
+}
+console.log('PASS stale speech is suppressed and unavailable speech cannot turn a saved task into failure');

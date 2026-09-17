@@ -173,7 +173,7 @@ for(const fail of [false,true]){
  assert.equal(f.el('h-message-reply-state').textContent,'','Aの送信結果をBの下に表示しない');
  assert.match(f.el('h-incoming-message').textContent,/Bの連絡/);assert.equal(f.el('person-thanks').disabled,false);
  f.c.renderPersonConversation([first],{fromCache:false});
- assert.match(f.el('h-message-reply-state').textContent,fail?/送信できません/:/この連絡には返事を送りました/,'元の連絡に戻れば対応する結果を表示する');
+ assert.match(f.el('h-message-reply-state').textContent,fail?/まだ送れていません/:/「ありがとう」と返事を送りました/,'元の連絡に戻れば送った本文と結果を表示する');
  if(!fail){await f.c.sendFamilyMessageBack('ありがとう');assert.equal(f.writes.length,1,'本人の成功も購読反映前の重複送信を防ぐ');}
 }
 {
