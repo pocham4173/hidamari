@@ -116,12 +116,13 @@ const greeting={_id:'hello-1',type:'aisatsu',text:'おはよう',slot:'asa',uid:
 }
 {
  const f=fixture();f.setAccount('person');f.state(family);
- vm.runInContext(section('function beginSend(){','function sendAisatsu(){'),f.c);
+ f.c.setTimeout=()=>1;f.c.clearTimeout=()=>{};
+ vm.runInContext(section('let personSendWaitTimer=','function sendAisatsu(){'),f.c);
  const message={_id:'earlier-message',type:'family-message',text:'前に届いた家族の連絡',name:'家族',at:{seconds:2}};
  f.c.renderPersonConversation([message],{fromCache:false});
- f.c.beginSend();assert.equal(f.el('pop-msg').textContent,'送信しています…');
+ f.c.beginSend();assert.equal(f.el('pop-msg').textContent,'記録を保存しています…');
  f.c.renderPersonConversation([message],{fromCache:false});
- assert.equal(f.el('pop-msg').textContent,'送信しています…','自分の保存中に旧受信内容で保存表示を上書きしない');
+ assert.equal(f.el('pop-msg').textContent,'記録を保存しています…','自分の保存中に旧受信内容で保存表示を上書きしない');
  assert.match(f.el('h-incoming-message').textContent,/前に届いた家族の連絡/);
  f.c.endSend(true);assert.equal(f.el('pop-msg').textContent,'記録しました。');
  f.c.renderPersonConversation([message],{fromCache:false});assert.equal(f.el('pop-msg').textContent,'記録しました。');

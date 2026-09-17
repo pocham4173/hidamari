@@ -251,3 +251,74 @@ function failGidOnce(env) {
   console.log('OK journal後片付けだけの失敗では正しく接続・承認待ちへ進む');
 }
 console.log('\n9組の初期設定・参加の失敗復旧検査が通過。');
+
+// A previous, unresolved path must be checked before starting a different one.
+{
+ const join={uid:'owner',groupId:'previous-home',mode:'kazoku',code:'PREVIOUS'};
+ for(const next of ['createGroup','joinByCode']){
+  const env=setup({saved:{[JOIN_JOURNAL]:JSON.stringify(join)},seed:{'groups/previous-home/members/owner':{status:'pending',inviteCode:'PREVIOUS'}}});
+  env.el('in-code').value='DIFFERENT';await env.context[next]();
+  assert.equal(env.generated,0);assert.equal(env.commits.length,0);assert.equal(env.pendingShown,1);
+  assert.equal(env.values.get('mainicoGid'),'previous-home');assert.equal(env.context.pendingMode,'kazoku');
+ }
+}
+{
+ const group={uid:'owner',groupId:'created-home',mode:'konly',name:'元の名前'};
+ const env=setup({saved:{[GROUP_JOURNAL]:JSON.stringify(group)},seed:{'groups/created-home':{createdBy:'owner'}}});
+ env.el('in-code').value='DIFFERENT';await env.context.joinByCode();
+ assert.equal(env.finished,1);assert.equal(env.commits.length,0);assert.equal(env.values.get('mainicoGid'),'created-home');
+}
+for(const journalType of ['join','group']){
+ const key=journalType==='join'?JOIN_JOURNAL:GROUP_JOURNAL;
+ const stored=JSON.stringify({uid:'owner',groupId:'previous-home',mode:'kazoku',code:'PREVIOUS'});
+ const env=setup({saved:{[key]:stored}});env.el('in-code').value='DIFFERENT';
+ env.hooks.beforeGet=()=>{throw new Error('offline');};
+ await env.context[journalType==='join'?'createGroup':'joinByCode']();
+ assert.equal(env.commits.length,0);assert.equal(env.generated,0);assert.equal(env.values.get(key),stored);
+ assert.equal(env.pendingShown+env.finished,0,'通信不明を終了や未申請と扱わない');
+}
+{
+ const join={uid:'owner',groupId:'previous-home',mode:'kazoku',code:'PREVIOUS'};
+ const env=setup({saved:{[JOIN_JOURNAL]:JSON.stringify(join)}});
+ await env.context.createGroup();assert.equal(env.generated,1);assert.equal(env.finished,1,'前の申請の不存在をサーバー確認してから新経路へ進む');assert.equal(env.values.has(JOIN_JOURNAL),false);
+}
+{
+ const stored=JSON.stringify({uid:'owner',groupId:'previous-home',mode:'kazoku',code:'PREVIOUS'});
+ const env=setup({saved:{[JOIN_JOURNAL]:stored},seed:{'groups/previous-home/members/owner':{status:'pending'}}}),gate=deferred();
+ env.hooks.beforeGet=()=>gate.promise;
+ const work=env.context.createGroup();env.setUid('different-user');gate.resolve();await work;
+ assert.equal(env.values.get(JOIN_JOURNAL),stored);assert.equal(env.values.has('mainicoGid'),false);assert.equal(env.commits.length,0);
+}
+console.log('OK 未完了の別経路を確認し、通信不明や旧UIDで新家庭を増やさない');
+{
+ const stored=JSON.stringify({uid:'owner',groupId:'deleted-home',mode:'kazoku',code:'PREVIOUS'});
+ const env=setup({saved:{[JOIN_JOURNAL]:stored}});
+ env.hooks.beforeGet=path=>{if(path.includes('/members/'))throw Object.assign(new Error('permission denied'),{code:'permission-denied'});};
+ await env.context.createGroup();
+ assert.ok(env.reads.includes('groups/deleted-home'),'memberが読めない場合は家庭の不存在を別途確認');
+ assert.equal(env.finished,1);assert.equal(env.values.has(JOIN_JOURNAL),false);
+}
+{
+ const stored=JSON.stringify({uid:'owner',groupId:'still-there',mode:'kazoku',code:'PREVIOUS'});
+ const env=setup({saved:{[JOIN_JOURNAL]:stored},seed:{'groups/still-there':{createdBy:'other'}}});
+ env.hooks.beforeGet=path=>{if(path.includes('/members/'))throw Error('permission denied');};
+ await env.context.createGroup();assert.equal(env.commits.length,0);assert.equal(env.values.get(JOIN_JOURNAL),stored,'存在する家庭の読込不明を終了扱いしない');
+}
+console.log('OK 削除済み家庭の申請は別途不存在確認、存在する家庭の不明は保持');
+
+// A retry must not turn a person membership into a family UI after changing the entry selection.
+{
+  const env = setup({ seed: inviteSeed(), mode: 'honnin' }); failGidOnce(env);
+  env.el('in-code').value = 'JNNN2222';
+  await env.context.joinByCode();
+  assert.equal(env.commits.length, 1);
+  env.context.pendingMode = 'konly';
+  env.values.set('mainicoPendingMode', 'konly');
+  await env.context.joinByCode();
+  assert.equal(env.commits.length, 1);
+  assert.equal(env.records.get('groups/invited-home/members/owner').role, 'honnin');
+  assert.equal(env.context.pendingMode, 'honnin');
+  assert.equal(env.values.get('mainicoPendingMode'), 'honnin');
+  assert.equal(env.pendingShown, 1);
+  console.log('OK 同じコードの再開でも元の本人用の利用方法を復元する');
+}
