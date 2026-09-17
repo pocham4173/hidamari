@@ -40,7 +40,10 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  const f=homeFixture('honnin');f.state(family);f.events([greeting,reply]);
  const panel=f.document.getElementById('person-conversation-panel');assert.ok(f.visible(panel));
  assert.equal(f.document.querySelector('.h-body').firstElementChild,panel,'person conversation precedes schedules');
- assert.match(f.document.getElementById('h-incoming-message').textContent,/9月17日.*おはよう/,'yesterday is clearly dated on home');
+ assert.equal(f.document.getElementById('h-incoming-message').textContent,'','yesterday is kept off today’s home');
+ assert.ok(f.visible(f.document.getElementById('person-history-open')));
+ f.events([greeting,{...reply,date:'2026-09-18',at:{seconds:1789722010}}]);
+ assert.match(f.document.getElementById('h-incoming-message').textContent,/9月18日.*おはよう/);
  const button=[...f.document.querySelectorAll('#h-message-reply button')].find(b=>b.textContent==='ありがとう');
  await f.click(button);assert.equal(f.writes[0].replyTo,'reply');assert.equal(f.writes[0].text,'ありがとう');
  f.state(unknown);assert.ok(f.visible(panel));assert.ok(button.disabled);
@@ -52,8 +55,8 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  f.events([reply,question]);assert.match(f.document.getElementById('h-incoming-message').textContent,/朝の薬は飲みましたか/);
  await f.click(f.document.querySelector('#h-message-reply button'));
  assert.equal(f.writes[0].replyTo,'question');assert.equal(f.writes[0].type,'family-message-back','acknowledgement is a reply, not a medication record');
- f.events([reply,{...question,date:'2026-09-17'}]);assert.match(f.document.getElementById('h-incoming-message').textContent,/おはよう/,'old medication question is not shown as a current instruction');
+ f.events([reply,{...question,date:'2026-09-17'}]);assert.equal(f.document.getElementById('h-incoming-message').textContent,'','neither yesterday’s greeting nor its medication question stays on home');
  f.close();
 }
 assert.ok(html.indexOf('id="card-actions"')<html.indexOf('id="family-handoff-heading"'));
-console.log('Production DOM: visible home conversations, latest reply first, inline continuation, previous-day contact, hidden ancestors, bounded home, retry and XSS passed');
+console.log('Production DOM: visible home conversations, latest reply first, inline continuation, today-only contact and previous-day history access, hidden ancestors, bounded home, retry and XSS passed');

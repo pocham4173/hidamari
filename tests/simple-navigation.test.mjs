@@ -18,7 +18,15 @@ function source(start,end){
   for(const [i,mode] of ['honnin','kazoku','konly'].entries()){
     assert.equal(modes[i].getAttribute('onclick'),`pickMode('${mode}')`,'simplifying labels preserves mode choice');
   }
-  assert.match(modes[1].textContent,/家族が使う/);
+  assert.match(modes[1].textContent,/本人と家族が使う/);
+  assert.match(modes[2].textContent,/家族だけで使う/);
+  assert.doesNotMatch(entry.textContent,/家族が記録する/);
+  const styles=modes.map(b=>f.dom.window.getComputedStyle(b));
+  for(const style of styles){
+    assert.equal(style.backgroundColor,styles[0].backgroundColor);
+    assert.equal(style.boxShadow,styles[0].boxShadow);
+    assert.equal(style.fontSize,styles[0].fontSize);
+  }
   assert.doesNotMatch(entry.textContent,/本人も家族も、介護の不安/);
   const install=entry.querySelector('#install-main');
   const installStyle=f.dom.window.getComputedStyle(install);
@@ -142,3 +150,51 @@ for(const previous of ['honnin','kazoku','konly']){
   }
 }
 console.log('All 9 mode transitions: person buttons, family replies and proxy recording remain separate');
+
+// An old greeting must not return to the home when the server replays history.
+for(const status of ['ready','cached','error']){
+  const f=homeFixture('honnin');let day='2026-09-18';f.c.todayStr=()=>day;
+  f.state({status:'shared',others:1,personOthers:0,familyOthers:1});
+  const at=(date)=>({seconds:new Date(date+'T08:00:00').getTime()/1000});
+  const old=[
+    {_id:'old-hello',type:'aisatsu-back',text:'おやすみ',date:'2026-09-17',at:at('2026-09-17')},
+    {_id:'old-note',type:'family-message',text:'昨日の用事',date:'2026-09-17',at:at('2026-09-17')},
+    {_id:'legacy-hello',type:'aisatsu-back',text:'以前の挨拶',at:at('2026-09-16')}
+  ];
+  f.events(old,status);
+  assert.equal(f.c.currentFamilyMessageId,'');
+  assert.equal(f.document.getElementById('h-incoming-message').textContent,'');
+  assert.equal(f.visible(f.document.getElementById('h-message-reply')),false);
+  assert.ok(f.visible(f.document.getElementById('person-history-open')));
+  assert.equal(f.spoken.length,0,'old messages are not announced again');
+  const today={_id:'today-hello',type:'aisatsu-back',text:'おはよう',date:day,at:at(day)};
+  f.events([...old,today],status);
+  assert.equal(f.c.currentFamilyMessageId,'today-hello');
+  assert.match(f.document.getElementById('h-incoming-message').textContent,/おはよう/);
+  f.c.testStatus=status;vm.runInContext('personConversationStatus=testStatus;',f.c);
+  f.document.getElementById('person-message-reply-text').value='書きかけの返事';
+  f.document.getElementById('person-message-reply-modal').classList.add('show');
+  day='2026-09-19';f.c.hBootDay='2026-09-18';f.c.honninSending=true;
+  // Run the actual timer body: even when a draft prevents reload, yesterday
+  // must leave the home without turning a cache/error into a verified read.
+  const init=source('function initHonnin(){','function markAisatsuDone(){');
+  const begin=init.indexOf('  const upd=()=>{'),end=init.indexOf('  upd();',begin);
+  assert.ok(begin>=0&&end>begin);
+  vm.runInContext(init.slice(begin,end)+'upd();',f.c);
+  assert.equal(f.c.currentFamilyMessageId,'');
+  assert.equal(f.document.getElementById('h-incoming-message').textContent,'');
+  assert.equal(f.document.getElementById('person-message-reply-text').value,'書きかけの返事');
+  assert.equal(vm.runInContext('personConversationStatus',f.c),status);
+  assert.equal(vm.runInContext('personConversationItems.length',f.c),4,'history remains available');
+  assert.equal(f.writes.length,0,'expiry does not delete or write family records');
+  f.events([...old,today],status);
+  assert.equal(f.c.currentFamilyMessageId,'','server replay cannot revive yesterday');
+  f.events([{...old[2],_id:'legacy-today',at:at(day)}],status);
+  assert.equal(f.c.currentFamilyMessageId,'legacy-today','legacy records use their timestamp');
+  vm.runInContext(source('  personDayVisibility=()=>{','  const s=slot();'),f.c);
+  Object.defineProperty(f.document,'hidden',{configurable:true,value:false});
+  day='2026-09-20';f.document.dispatchEvent(new f.dom.window.Event('visibilitychange'));
+  assert.equal(f.c.currentFamilyMessageId,'','returning after midnight clears the old home immediately');
+  f.close();
+}
+console.log('Today-only person home: old greetings expire, history and drafts stay, cached/error state preserved');

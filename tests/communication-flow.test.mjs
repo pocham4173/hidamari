@@ -54,7 +54,7 @@ const connected={status:'shared',others:1,personOthers:1,familyOthers:0};
 const family={status:'shared',others:1,personOthers:0,familyOthers:1};
 const solo={status:'solo',others:0,personOthers:0,familyOthers:0};
 const unknown={status:'unknown',others:null,personOthers:null,familyOthers:null};
-const greeting={_id:'hello-1',type:'aisatsu',text:'おはよう',slot:'asa',uid:'person',at:{seconds:1}};
+const greeting={_id:'hello-1',type:'aisatsu',text:'おはよう',slot:'asa',uid:'person',date:'2026-09-17',at:{seconds:1}};
 const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:fn=>[['family','kazoku'],['person','honnin']].forEach(([id,role])=>fn({id,data:()=>({role})}))};
 {
  const f=fixture();f.state(classify(legacyMembers,'family'));f.events([greeting]);
@@ -64,7 +64,7 @@ const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:f
  await f.click(quick);assert.equal(f.writes.length,1);
  assert.equal(f.writes[0].text,'おはよう','生成したonclickを実行しても日本語が失われない');
  assert.equal(f.writes[0].replyTo,'hello-1');assert.equal(f.writes[0].type,'aisatsu-back');
- const response={...f.writes[0],_id:'response-1',uid:'family',at:{seconds:2}};
+ const response={...f.writes[0],_id:'response-1',uid:'family',date:'2026-09-17',at:{seconds:2}};
  f.events([greeting,response]);assert.match(f.el('ev-list').innerHTML,/あなたは返事を送りました/);
  assert.ok(f.el('ev-list').querySelectorAll('button').some(button=>button.disabled&&button.textContent==='返事を送りました'),'返事済みはその場所に残す');
  const continuation=f.replyButtons('hello-1').find(button=>button.dataset.replyAgain==='true');
@@ -75,7 +75,7 @@ const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:f
  assert.equal(f.c.currentFamilyMessageId,'response-1');assert.equal(f.el('h-message-reply').style.display,'block');
  assert.match(f.el('h-incoming-message').textContent,/おはよう/);assert.equal(f.el('h-reply-context').textContent,'上の連絡への返事です。');
  await f.c.sendFamilyMessageBack('ありがとう');assert.equal(f.writes.at(-1).text,'ありがとう');assert.equal(f.writes.at(-1).replyTo,'response-1');
- f.setAccount('family');f.state(classify(legacyMembers,'family'));f.events([greeting,response,{...f.writes.at(-1),_id:'thanks-1',uid:'person',at:{seconds:3}}]);
+ f.setAccount('family');f.state(classify(legacyMembers,'family'));f.events([greeting,response,{...f.writes.at(-1),_id:'thanks-1',uid:'person',date:'2026-09-17',at:{seconds:3}}]);
  assert.match(f.el('ev-list').innerHTML,/ご本人からの返事：「ありがとう」/);
 }
 {
@@ -112,14 +112,14 @@ const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:f
 }
 {
  const f=fixture();f.state(connected);f.events([greeting]);f.c.openPersonContactReply('hello-1');f.el('in-family-message').value='おはよう、また電話するね';
- f.events([greeting,{...greeting,_id:'hello-2',text:'こんにちは',at:{seconds:2}}]);await f.c.sendFamilyMessage();
+ f.events([greeting,{...greeting,_id:'hello-2',text:'こんにちは',date:'2026-09-17',at:{seconds:2}}]);await f.c.sendFamilyMessage();
  assert.equal(f.writes[0].replyTo,'hello-1','入力中に新しい挨拶が来ても返信先を変更しない');assert.equal(f.writes[0].text,'おはよう、また電話するね');
  f.c.openPersonContactReply('hello-1');f.el('in-family-message').value='消さないで';f.c.addEvent=async()=>{throw Error('offline');};await f.c.sendFamilyMessage();
  assert.equal(f.el('in-family-message').value,'消さないで');assert.match(f.el('family-message-state').textContent,/入力は残っています/);
 }
 {
- const f=fixture();f.state(family);f.setAccount('person');const msg={_id:'back',type:'aisatsu-back',text:'おはよう',name:'家族',at:{seconds:2}};
- f.c.renderPersonConversation([msg,{_id:'joined',type:'member-joined',text:'追加の人',at:{seconds:3}}],{fromCache:false});
+ const f=fixture();f.state(family);f.setAccount('person');const msg={_id:'back',type:'aisatsu-back',text:'おはよう',name:'家族',date:'2026-09-17',at:{seconds:2}};
+ f.c.renderPersonConversation([msg,{_id:'joined',type:'member-joined',text:'追加の人',date:'2026-09-17',at:{seconds:3}}],{fromCache:false});
  assert.equal(f.c.currentFamilyMessageId,'back','参加のお知らせで挨拶の返信先を消さない');
  f.c.renderPersonConversation([],{fromCache:false});assert.equal(f.c.currentFamilyMessageId,'');assert.equal(f.el('h-message-reply').style.display,'none');assert.equal(f.el('h-incoming-message').textContent,'');
  const spoken=f.spoken.length;
@@ -152,7 +152,7 @@ const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:f
  const f=fixture();f.setAccount('person');f.state(family);
  f.c.setTimeout=()=>1;f.c.clearTimeout=()=>{};
  vm.runInContext(section('let personSendWaitTimer=','function sendAisatsu(){'),f.c);
- const message={_id:'earlier-message',type:'family-message',text:'前に届いた家族の連絡',name:'家族',at:{seconds:2}};
+ const message={_id:'earlier-message',type:'family-message',text:'前に届いた家族の連絡',name:'家族',date:'2026-09-17',at:{seconds:2}};
  f.c.renderPersonConversation([message],{fromCache:false});
  f.c.beginSend();assert.equal(f.el('pop-msg').textContent,'記録を保存しています…');
  f.c.renderPersonConversation([message],{fromCache:false});
@@ -164,8 +164,8 @@ const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:f
 }
 for(const fail of [false,true]){
  const f=fixture();f.setAccount('person');f.state(family);
- const first={_id:'A',type:'family-message',text:'Aの連絡',name:'家族',at:{seconds:2}};
- const second={_id:'B',type:'family-message',text:'Bの連絡',name:'家族',at:{seconds:3}};
+ const first={_id:'A',type:'family-message',text:'Aの連絡',name:'家族',date:'2026-09-17',at:{seconds:2}};
+ const second={_id:'B',type:'family-message',text:'Bの連絡',name:'家族',date:'2026-09-17',at:{seconds:3}};
  f.c.renderPersonConversation([first],{fromCache:false});let complete;
  f.c.addEvent=payload=>{f.writes.push(payload);return new Promise((resolve,reject)=>complete=fail?()=>reject(Error('offline')):resolve);};
  const pending=f.c.sendFamilyMessageBack('ありがとう');assert.equal(f.writes[0].replyTo,'A');
@@ -180,8 +180,8 @@ for(const fail of [false,true]){
 }
 {
  const f=fixture();f.setAccount('person');f.state(family);
- const earlier={_id:'z-early',type:'family-message',text:'同じ秒の先の連絡',at:{seconds:10,nanoseconds:100}};
- const later={_id:'a-later',type:'family-message',text:'同じ秒の後の連絡',at:{seconds:10,nanoseconds:200}};
+ const earlier={_id:'z-early',type:'family-message',text:'同じ秒の先の連絡',date:'2026-09-17',at:{seconds:10,nanoseconds:100}};
+ const later={_id:'a-later',type:'family-message',text:'同じ秒の後の連絡',date:'2026-09-17',at:{seconds:10,nanoseconds:200}};
  f.c.renderPersonConversation([earlier],{fromCache:false});
  f.c.renderPersonConversation([later,earlier],{fromCache:false});
  assert.equal(f.c.currentFamilyMessageId,'a-later');assert.match(f.el('h-incoming-message').textContent,/同じ秒の後/);
@@ -196,7 +196,7 @@ for(const fail of [false,true]){
 }
 for(const cached of [true,false]){
  const f=fixture();f.setAccount('person');f.state(family);
- const message={_id:'reply-original',type:'family-message',text:'元の連絡',at:{seconds:2}};
+ const message={_id:'reply-original',type:'family-message',text:'元の連絡',date:'2026-09-17',at:{seconds:2}};
  f.c.renderPersonConversation([message],{fromCache:false});f.c.openPersonMessageReply();
  f.el('person-message-reply-text').value='書きかけの返事';
  f.c.renderPersonConversation(cached?[message]:[],{fromCache:cached});
@@ -213,7 +213,7 @@ for(const cached of [true,false]){
 }
 {
  const f=fixture();f.setAccount('person');f.state(family);
- const message={_id:'before-error',type:'family-message',text:'通信前の連絡',at:{seconds:2}};
+ const message={_id:'before-error',type:'family-message',text:'通信前の連絡',date:'2026-09-17',at:{seconds:2}};
  f.c.renderPersonConversation([message],{fromCache:false});
  vm.runInContext("personConversationStatus='error';updateCommunicationAvailability();",f.c);
  f.state(family);assert.match(f.el('h-contact-state').textContent,/読み込めませんでした/,'参加者の再取得で連絡の通信エラーを消さない');
@@ -229,7 +229,7 @@ console.log('communication flow: greeting roundtrip, separate save/receive, targ
 // Run the actual delayed press controller and the actual person reply onclick together.
 {
  const f=fixture();f.state(family);f.setAccount('person');
- const a={_id:'press-A',type:'family-message',text:'Aの連絡',at:{seconds:20}},b={_id:'press-B',type:'family-message',text:'Bの連絡',at:{seconds:21}};
+ const a={_id:'press-A',type:'family-message',text:'Aの連絡',date:'2026-09-17',at:{seconds:20}},b={_id:'press-B',type:'family-message',text:'Bの連絡',date:'2026-09-17',at:{seconds:21}};
  const handlers={},timers=[];let completion;
  const button=f.el('person-thanks');button.isConnected=true;
  button.closest=selector=>selector==='[hidden]'?null:button;button.getClientRects=()=>[{}];
@@ -252,12 +252,12 @@ console.log('communication + press integration: new-arrival cancellation and del
 // Reloaded replies must also preserve a way to continue the same conversation.
 {
  const f=fixture();f.state(connected);
- const savedReply={_id:'saved-reply',type:'aisatsu-back',text:'おはよう',replyTo:'hello-1',uid:'family',name:'家族',at:{seconds:2}};
+ const savedReply={_id:'saved-reply',type:'aisatsu-back',text:'おはよう',replyTo:'hello-1',uid:'family',name:'家族',date:'2026-09-17',at:{seconds:2}};
  f.events([greeting,savedReply]);
  assert.ok(f.el('ev-list').querySelectorAll('button').some(button=>button.disabled&&button.textContent==='返事を送りました'));
  const continuation=f.replyButtons('hello-1').find(button=>button.dataset.replyAgain==='true');
  await f.click(continuation);f.el('in-family-message').value='朝の挨拶に追伸です';
- f.events([greeting,savedReply,{...greeting,_id:'later-greeting',text:'こんにちは',slot:'hiru',at:{seconds:3}}]);
+ f.events([greeting,savedReply,{...greeting,_id:'later-greeting',text:'こんにちは',slot:'hiru',date:'2026-09-17',at:{seconds:3}}]);
  await f.c.sendFamilyMessage();
  assert.equal(f.writes.length,1);assert.equal(f.writes[0].replyTo,'hello-1','再表示後も新着に返信先をすり替えない');
  assert.equal(f.writes[0].text,'朝の挨拶に追伸です');
