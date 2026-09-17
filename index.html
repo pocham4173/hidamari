@@ -1096,9 +1096,14 @@ table.cal-rec td.pad{background:none;}
     </div>
 
     <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;">
-      <h4>家族との連携</h4>
+      <h4 id="settings-family-connection" tabindex="-1" style="scroll-margin-top:70px;">本人・家族とのつながり</h4>
       <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
       <p class="note">招待した家族の参加を管理者が承認すると、伝言一覧や「家族にお願い」がホームに表示されます。コードを渡しただけでは共有は始まりません。</p>
+      <details id="conversation-connection-guide"><summary>本人の「おはよう」に返事するには</summary>
+        <ol class="note"><li>本人のスマホで招待コードを入力して、この家庭に参加します。</li><li>管理者が「参加を認める」を押します。</li><li>本人のスマホで「本人が使う」を選びます。家族のホームに「本人からの連絡・返事」が表示されます。</li></ol>
+        <p class="note">すでに参加している場合は、下の一覧で本人が「本人の画面」になっているか確認してください。本人が押した「おはよう」などのすぐ下から返事できます。</p>
+        <p class="note">同じログイン用アカウントを2台で使っても、参加者は1人です。本人と家族は、それぞれのアカウントで参加します。記録を消したり、新しい家庭を作り直したりする必要はありません。</p>
+      </details>
       <details><summary>以前の共有記録を見る</summary><p class="note">連携を解除しても記録は消えません。以前の伝言・お願いは「ふり返り」から確認できます。</p><button class="set-btn" onclick="closeSettings();showTab('t-kiroku')">ふり返りを開く</button></details>
       <h4>つながっている人</h4>
       <div id="set-members"><div class="empty">読み込み中…</div></div>
@@ -1154,6 +1159,7 @@ table.cal-rec td.pad{background:none;}
     <div class="ftab" id="t-home">
       <div id="card-pending"></div>
       <div id="family-handoff-heading"><h2 style="font-size:1.2rem;margin:16px 4px 4px;">いま確認すること</h2><p class="note" id="home-summary-description" style="margin:0 4px 12px;">予定と、残っている用事を確認できます。</p></div>
+      <button class="set-btn" id="conversation-setup-entry" type="button" hidden onclick="openConversationConnection()">本人とのつながりを確認</button>
       <div class="card dom-record" id="card-actions" data-communication-gate="person" hidden>
         <h3>本人からの連絡・返事</h3>
         <p class="communication-status" id="person-contact-state" aria-live="polite">つながりを確認しています…</p>
@@ -1528,7 +1534,7 @@ setTimeout(function(){
 <script src="medicine-notebook.js"></script>
 <script src="notebook-integration.js"></script>
 <script src="person-button-feedback.js"></script>
-<script src="family-connection.js"></script>
+<script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js"></script>
 <script>
 const previewStorage={
@@ -1839,6 +1845,8 @@ function showCommunication(kind){
 }
 function updateCommunicationAvailability(){
   document.querySelectorAll('[data-communication-gate]').forEach(el=>el.hidden=!showCommunication(el.dataset.communicationGate));
+  const connectionEntry=document.getElementById('conversation-setup-entry');
+  if(connectionEntry)connectionEntry.hidden=canUseFamilyFeature('person');
   document.querySelectorAll('[data-send-audience]').forEach(el=>{
     const kind=el.dataset.sendAudience;
     const busy=kind==='person'?(aisatsuBackSending||askKusuriSending||familyMessageSending||familyQuickReplySending.size>0):personMessageReplySending;
@@ -5220,6 +5228,13 @@ function openSettings(){
   document.getElementById('consent-info').textContent=info.length?info.join(' / '):'この端末での同意記録はありません';
 }
 function closeSettings(){ document.getElementById('settings-modal').classList.remove('show'); }
+function openConversationConnection(){
+  openSettings();
+  document.getElementById('conversation-connection-guide').open=true;
+  const heading=document.getElementById('settings-family-connection');
+  heading.scrollIntoView({block:'start'});
+  heading.focus({preventScroll:true});
+}
 async function renderSetMembers(){
   const box=document.getElementById('set-members');
   try{
@@ -5236,7 +5251,9 @@ async function renderSetMembers(){
           '<button class="member-del" style="border-color:#5F7D52;color:#4C6541;margin-right:6px;" onclick="approveMember(\''+id+'\')">参加を認める</button>'+
           '<button class="member-del" onclick="denyMember(\''+id+'\')">認めない</button></span></div>';
       }else{
-        html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?' (ご本人)':'')+(me?' (この端末)':'')+'</span>'+
+        const audience=MainicoFamilyConnection.recipient(v);
+        const screen=audience==='honnin'?'本人の画面':audience==='kazoku'?'家族の画面':'利用画面を確認してください';
+        html+='<div class="member-row"><span>'+esc(v.name)+' ('+screen+')'+(me?' (このアカウント)':'')+'</span>'+
           ((doc.id!==householdOwnerId&&(me||isHouseholdOwner()))?'<button class="member-del" onclick="removeMember(\''+id+'\','+(me?'true':'false')+')">解除</button>':'<small>'+(doc.id===householdOwnerId?'管理者':'参加メンバー')+'</small>')+'</div>';
       }
     });

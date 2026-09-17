@@ -7,6 +7,33 @@ const unknown={status:'unknown',others:null,familyOthers:null,personOthers:null}
 const member=(id,role='kazoku',status='approved')=>({id,data:()=>({role,status})});
 const memberWithMode=(id,role,mode,status='approved')=>({id,data:()=>({role,mode,status})});
 const snapshot=(docs,metadata={fromCache:false,hasPendingWrites:false})=>({metadata,forEach:fn=>docs.forEach(fn)});
+const legacy=(id,role)=>({id,data:()=>({role})});
+
+test('Server-authorized legacy members without status remain recipients in both directions',()=>{
+  const docs=[legacy('family','kazoku'),legacy('person','honnin')];
+  assert.deepEqual(classify(snapshot(docs),'family'),{status:'shared',others:1,familyOthers:0,personOthers:1});
+  assert.deepEqual(classify(snapshot(docs),'person'),{status:'shared',others:1,familyOthers:1,personOthers:0});
+  assert.deepEqual(classify(snapshot([member('family'),legacy('person','honnin')]),'family'),{status:'shared',others:1,familyOthers:0,personOthers:1});
+  assert.deepEqual(classify(snapshot([legacy('family','kazoku'),member('person','honnin')]),'family'),{status:'shared',others:1,familyOthers:0,personOthers:1});
+});
+test('Only absent status is legacy approval; explicit invalid values never authorize',()=>{
+  for(const status of [null,undefined,'','pending','rejected',false,0,{},[]]){
+    const invalid={id:'person',data:()=>({role:'honnin',status})};
+    assert.deepEqual(classify(snapshot([legacy('family','kazoku'),invalid]),'family'),{status:'solo',others:0,familyOthers:0,personOthers:0});
+    assert.deepEqual(classify(snapshot([legacy('family','kazoku'),invalid]),'person'),unknown);
+  }
+});
+test('Legacy approval never bypasses verified identity, cache or mode checks',()=>{
+  const docs=[legacy('family','kazoku'),legacy('person','honnin')];
+  assert.deepEqual(classify(snapshot(docs,{fromCache:true}),'family'),unknown);
+  assert.deepEqual(classify(snapshot(docs,{fromCache:false,hasPendingWrites:true}),'family'),unknown);
+  assert.deepEqual(classify(snapshot(docs),'absent'),unknown);
+  assert.deepEqual(classify(snapshot([legacy('family','kazoku')]),'family'),{status:'solo',others:0,familyOthers:0,personOthers:0});
+  for(const mode of ['konly',null]){
+    const switched={id:'person',data:()=>({role:'honnin',mode})};
+    assert.equal(classify(snapshot([legacy('family','kazoku'),switched]),'family').personOthers,0);
+  }
+});
 
 test('Only a verified approved self with no other approved member is solo',()=>{
   assert.deepEqual(classify(snapshot([member('me')]),'me'),{status:'solo',others:0,familyOthers:0,personOthers:0});
