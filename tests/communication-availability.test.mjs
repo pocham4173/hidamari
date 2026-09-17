@@ -16,7 +16,7 @@ function fixture(){
   const c={familyConnection:{status:'unknown',others:null,personOthers:null,familyOthers:null},lastFamilyAudience:null,
     familyHomeItems:[],personConversationItems:[],familyHomeEventStatus:'ready',personConversationStatus:'ready',personIncomingShown:false,
     familyReplyStates:new Map(),familyQuickReplySending:new Set(),aisatsuBackSending:false,askKusuriSending:false,
-    familyMessageSending:false,personMessageReplySending:false,uid:()=> 'self',isKOnly:()=>true,currentFamilyMessageId:'',
+    familyMessageSending:false,personMessageReplySending:false,uid:()=> 'self',isKOnly:()=>false,currentFamilyMessageId:'',
     personReplyDone:()=>false,document:{getElementById:id=>states[id],querySelectorAll:selector=>selector==='[data-communication-gate]'?gates:selector==='[data-send-audience]'?buttons:[]}};
   vm.createContext(c);vm.runInContext(source,c);return {c,gates,buttons,states};
 }
@@ -56,3 +56,13 @@ const withFamily={status:'shared',others:1,personOthers:0,familyOthers:1};
   assert.equal(f.buttons[2].disabled,true,'本人側のreplyAgain指定で重複防止を解除しない');
 }
 console.log('communication availability: retained history, quiet solo, confirmed recipients, follow-up writing and source status passed');
+
+{
+  const f=fixture();f.c.isKOnly=()=>true;f.c.familyConnection=withPerson;
+  f.c.updateCommunicationAvailability();
+  assert.equal(f.gates[0].hidden,true,'代理記録モードには本人とのやりとりを表示しない');
+  assert.equal(f.buttons[0].disabled,true);assert.equal(f.buttons[1].disabled,true);
+  assert.equal(f.c.canUseFamilyFeature('person'),false,'非表示の送信操作を直接呼んでも利用できない');
+  f.c.familyConnection=withFamily;
+  assert.equal(f.c.canUseFamilyFeature('family'),true,'家族同士の共有は維持する');
+}

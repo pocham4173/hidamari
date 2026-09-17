@@ -1111,7 +1111,7 @@ table.cal-rec td.pad{background:none;}
       <h4 id="settings-family-connection" tabindex="-1" style="scroll-margin-top:70px;">本人・家族とのつながり</h4>
       <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
       <p class="note">招待した家族の参加を管理者が承認すると、伝言一覧や「家族にお願い」がホームに表示されます。コードを渡しただけでは共有は始まりません。</p>
-      <details id="conversation-connection-guide"><summary>本人の「おはよう」に返事するには</summary>
+      <details id="conversation-connection-guide" data-communication-gate="person"><summary>本人の「おはよう」に返事するには</summary>
         <ol class="note"><li>本人のスマホで招待コードを入力して、この家庭に参加します。</li><li>管理者が「参加を認める」を押します。</li><li>本人のスマホで「本人が使う」を選びます。家族のホームに「本人とのやりとり」が表示されます。</li></ol>
         <p class="note">すでに参加している場合は、下の一覧で本人が「本人の画面」になっているか確認してください。本人が押した「おはよう」などのすぐ下から返事できます。</p>
         <p class="note">同じログイン用アカウントを2台で使っても、参加者は1人です。本人と家族は、それぞれのアカウントで参加します。記録を消したり、新しい家庭を作り直したりする必要はありません。</p>
@@ -1851,7 +1851,7 @@ function grp(){ return db.collection('groups').doc(gid()); }
 function col(name){ return grp().collection(name); }
 function uid(){ return auth.currentUser ? auth.currentUser.uid : ''; }
 function myName(){ return previewStorage.getItem('mainicoName')||'家族'; }
-function isKOnly(){ return previewStorage.getItem('kazokuOnly')==='1'; }
+function isKOnly(){ return previewStorage.getItem('mainicoMode')==='kazoku' && previewStorage.getItem('kazokuOnly')==='1'; }
 /* 画面表示用のエスケープ。名前や本文に記号が含まれても表示が壊れないようにする */
 const ESC_MAP={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
 function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, c=>ESC_MAP[c]); }
@@ -1883,13 +1883,14 @@ function stopFamilyConnection(){
   renderFamilyConnection();
 }
 function canUseFamilyFeature(kind='family'){
+  if(kind==='person' && isKOnly())return false;
   if(familyConnection.status!=='shared')return false;
   return kind==='person'?familyConnection.personOthers>0:kind==='shared'?familyConnection.others>0:familyConnection.familyOthers>0;
 }
 function showCommunication(kind){
-  // A home destination must never disappear because membership is loading or screens changed.
-  // Authorization to send is checked separately, including on every write.
-  return kind==='person'||kind==='family';
+  // The selected use mode controls the destination; connectivity only controls sending.
+  // Recording on someone's behalf does not offer a conversation with that person.
+  return kind==='person'?!isKOnly():kind==='family';
 }
 function updateCommunicationAvailability(){
   document.querySelectorAll('[data-communication-gate]').forEach(el=>el.hidden=!showCommunication(el.dataset.communicationGate));
@@ -2468,6 +2469,9 @@ async function cancelJoinRequest(){
 }
 function startMode(){
   const m=previewStorage.getItem('mainicoMode');
+  // Retire callbacks and controls from the previous screen before opening the chosen one.
+  stopHouseholdSubscriptions();
+  if(m==='honnin')previewStorage.setItem('kazokuOnly','');
   if(m==='honnin' && gid()){ showPage('honnin'); initHonnin(); }
   else if(m==='kazoku' && gid()){ showPage('kazoku'); initKazoku(); }
   else showPage('entry');

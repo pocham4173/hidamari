@@ -86,7 +86,9 @@ const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:f
  f.state(solo);assert.equal(f.el('card-actions').hidden,false,'以前の会話は相手不在でも読める');
  assert.ok(f.replyButtons('hello-1').every(button=>button.disabled),'相手不在では返信できない');
  f.events([]);assert.equal(f.el('card-actions').hidden,false);f.state(unknown);assert.equal(f.el('card-actions').hidden,false,'会話がないときもホームの入口を消さない');
- f.state(connected);f.setKOnly(true);f.events([greeting]);assert.equal(f.el('card-actions').hidden,false,'後から本人参加しても家族のみモードのstyleで隠さない');
+ f.state(connected);f.setKOnly(true);f.events([greeting]);assert.equal(f.el('card-actions').hidden,true,'本人が参加していても代理記録モードに会話を表示しない');
+ assert.ok(f.replyButtons('hello-1').every(button=>button.disabled));await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,0);
+ f.setKOnly(false);f.events([greeting]);assert.equal(f.el('card-actions').hidden,false,'やりとりする家族用に戻すと会話を表示する');
  f.events([greeting],'cached');assert.ok(f.replyButtons('hello-1').every(button=>button.disabled),'通信未確認は実際の返信ボタンを無効にする');await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,0,'未確認の元連絡へは返信しない');
 }
 {
