@@ -33,7 +33,7 @@ assert.match(html, /id="card-family-tasks-preview"[\s\S]*?onclick="openFamilyTas
 assert.ok(html.indexOf('id="card-family-notes-preview"')<html.indexOf('id="card-next-yotei"'));
 assert.ok(html.indexOf('id="card-next-yotei"')<html.indexOf('id="card-family-tasks-preview"'));
 assert.match(html, /id="card-today-records"[\s\S]*?本人からの連絡/);
-assert.match(html, /以前のやりとりをふり返りで見る/);
+assert.match(section('id="card-actions"','id="card-family-notes-preview"'), /onclick="showTab\('t-kiroku'\)">前の日のやりとりを見る<\/button>/);
 assert.match(html, /id="watch-tag-history"/);
 assert.match(html, /この端末で確認しました/);
 assert.match(html, /get\(\{source:'server'\}\)/);
@@ -279,18 +279,18 @@ assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8
     { _id:'ordinary', type:'aisatsu', at:{seconds:6} }
   ];
   assert.deepEqual(Array.from(context.homeAttentionRows(events,{answered:[{type:'onegai-back'}]},false),v=>v._id),
-    ['ordinary','new-reply','quiet','open']);
+    ['ordinary','new-reply','old-reply','quiet','open','answered'],'返事済みのお願いや前の返事も会話として残す');
   assert.ok(context.homeAttentionRows(events,{},true).some(v=>v.type==='aisatsu'),'本人が後から参加した家庭でも会話を残す');
   const sameSecond=[
     {_id:'a-newer',type:'aisatsu',at:{seconds:10,nanoseconds:900}},
     {_id:'z-older',type:'aisatsu',at:{seconds:10,nanoseconds:100}}
   ];
   for(const input of [sameSecond,sameSecond.slice().reverse()]){
-    assert.deepEqual(Array.from(context.homeAttentionRows(input,{},false),v=>v._id),['a-newer'],'同じ秒でもナノ秒が新しい挨拶を残す');
+    assert.deepEqual(Array.from(context.homeAttentionRows(input,{},false),v=>v._id),['a-newer','z-older'],'両方の挨拶を残し、同じ秒ならナノ秒で並べる');
   }
   const exactTie=sameSecond.map(v=>({...v,at:{seconds:10,nanoseconds:100}}));
   assert.deepEqual(Array.from(context.homeAttentionRows(exactTie,{},false),v=>v._id),Array.from(context.homeAttentionRows(exactTie.slice().reverse(),{},false),v=>v._id),'時刻が完全一致しても入力順で表示を変えない');
-  console.log('✅ ホームには直近の挨拶・体調・服薬と返事を残す');
+  console.log('✅ ホームには当日の挨拶・お願い・返事を残し、返信済みも消さない');
 }
 
 {
