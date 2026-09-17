@@ -585,6 +585,13 @@ table.cal-rec td.pad{background:none;}
 .communication-received .reply-btn{min-height:48px;margin-top:8px;}
 #card-actions button:disabled,#h-message-reply button:disabled{opacity:.65;cursor:wait;}
 #card-actions h4{font-size:1rem;}
+#person-record-actions[hidden]{display:none;}
+#person-record-actions .set-btn{min-height:52px;margin:0;}
+#pending-page .setup-lead,#pending-page .note{max-width:360px;margin:12px auto;line-height:1.7;}
+#pending-page details{max-width:360px;margin:18px auto;text-align:left;}
+#pending-page summary{min-height:48px;padding:10px 0;cursor:pointer;font-weight:700;}
+#cancel-modal button{min-height:48px;}
+.recovery-steps{padding-left:1.5em;text-align:left;line-height:1.7;}
 </style>
 </head>
 <body>
@@ -611,6 +618,7 @@ table.cal-rec td.pad{background:none;}
   <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
   <a class="consent-back" href="help.html" target="_blank" rel="noopener">使い方・困ったときの案内</a>
   <button class="consent-back" type="button" onclick="openNotebookCleanup()">端末内の控えを削除</button>
+  <details style="max-width:340px;margin:16px auto;text-align:left;"><summary>利用を終える手続き</summary><p class="note">参加解除が済み、ログイン登録も不要な方の手続きです。機種変更では使いません。</p><button class="consent-back" type="button" onclick="openAccountDeletion()">自分のログイン登録を削除する</button><a class="consent-back" href="help.html#end" target="_blank" rel="noopener">利用終了の手順を見る</a></details>
 </div>
 
 <!-- ホーム画面への追加案内 -->
@@ -705,22 +713,26 @@ table.cal-rec td.pad{background:none;}
     <label for="recovery-password">パスワード（新しく設定するときは12文字以上）</label><input id="recovery-password" type="password" autocomplete="current-password" maxlength="128">
   </div>
   <div id="recovery-register">
+    <ol class="recovery-steps"><li>自分のメールとパスワードを入力し、下の「このアカウントの復旧を設定する」を押します。</li><li>届いた確認メールのリンクを開きます。</li><li>まいにこに戻り「確認できたか調べる」を押します。準備完了の表示まで確認してください。</li></ol>
     <button class="set-btn" onclick="runRecoveryAction('register')">このアカウントの復旧を設定する</button>
     <button class="set-btn" onclick="runRecoveryAction('check')">確認できたか調べる</button>
     <button class="set-btn" onclick="runRecoveryAction('resend')">確認メールを再送する</button>
   </div>
   <button class="set-btn" id="recovery-login" onclick="runRecoveryAction('login')">以前のアカウントを復旧する</button>
   <button class="set-btn" onclick="runRecoveryAction('reset')">パスワードを忘れた方</button>
+  <p class="note">写真・PDFのお薬手帳は、このログイン復旧では戻りません。機種変更後の旧端末で、参加解除やアカウント削除はしないでください。</p>
+  <a class="consent-back" href="help.html#recovery" target="_blank" rel="noopener">状況に合う復旧・機種変更の手順を見る</a>
   <div class="save-state" id="recovery-state" role="status" aria-live="polite"></div>
   <button class="modal-close" onclick="closeRecovery()">とじる</button>
 </div></div>
 <div class="modal" id="account-deletion-modal" role="dialog" aria-modal="true" aria-labelledby="account-deletion-title"><div class="modal-box adult-font">
   <div class="ttl" id="account-deletion-title">自分のアカウントを削除する</div>
   <p class="note" id="account-deletion-identity"></p>
-  <p class="note">先に管理するすべての家庭の共有データ削除、または参加解除を済ませてください。削除の準備が完了すると、このアカウントでの新規登録・通常の記録は停止し、取り消せません。通信が切れた場合は同じアカウントで再開してください。</p>
-  <p class="note">削除するのは今ログイン中のあなたの登録です。他の家族のログイン登録や、旧版で別の家庭に残った記録は削除しません。旧記録の整理は運営者に依頼してください。以前のログイン情報の悪用を防ぐため、識別番号と閉鎖開始日時だけを運営の最終整理まで保管します。</p>
+  <p class="note">機種変更のためには削除しません。同じアカウントで使う他の端末にも影響します。残したいお薬手帳は、先に原本を書き出して別の保管先で開けることを確認してください。</p>
+  <p class="note">先に、家庭全体を終了する方は共有データ削除、ご自身だけやめる方は参加解除を済ませます。下の「アカウントの終了を開始する」を押して開始が確認されると、このアカウントの通常利用は停止し、取り消せません。通信が切れた場合は、保存情報を消さず同じアカウントで再開してください。</p>
+  <p class="note">削除するのは今ログイン中のあなたの登録です。他の家族のログイン登録や、旧版で別の家庭に残った記録は削除しません。旧記録の整理を受け付ける専用の非公開窓口は、現在未設定です。以前のログイン情報の悪用を防ぐため、識別番号と閉鎖開始日時だけを運営の最終整理まで保管します。</p>
   <div class="account-fields"><label for="account-deletion-password">現在のパスワード（復旧設定をした方）</label><input id="account-deletion-password" type="password" autocomplete="current-password" maxlength="128"></div>
-  <button class="set-btn warn" onclick="prepareAccountDeletion()">削除の準備をする</button>
+  <button class="set-btn warn" onclick="prepareAccountDeletion()">アカウントの終了を開始する</button>
   <div class="account-fields"><label for="account-deletion-confirm">確認のため「アカウントを削除」と入力</label><input id="account-deletion-confirm" autocomplete="off"></div>
   <button class="set-btn warn" id="account-deletion-finish" onclick="finishAccountDeletion()" disabled>自分のログイン登録を削除する</button>
   <div class="save-state" id="account-deletion-state" role="status" aria-live="polite"></div>
@@ -728,14 +740,15 @@ table.cal-rec td.pad{background:none;}
 </div></div>
 <div class="page" id="account-closed-page"><div class="setup-wrap">
   <div class="setup-ttl">アカウントの利用終了</div><p id="account-closed-state" role="status" class="setup-lead"></p>
-  <p class="note">利用終了の確認：共有データの削除・参加解除 → 自分のログイン登録の削除 → 印刷した災害QRを読み取れないよう切断して廃棄 → 他の端末のサイト保存・写真・スクリーンショットを各自で削除。紙や他端末のコピーは遠隔では消せません。旧版の記録は運営者に整理を依頼してください。</p>
+  <p class="note">利用終了の確認：共有データの削除・参加解除 → 自分のログイン登録の削除 → 印刷した災害QRを読み取れないよう切断して廃棄 → 他の端末のサイト保存・写真・スクリーンショットを各自で削除。紙や他端末のコピーは遠隔では消せません。旧記録の整理を受け付ける専用の非公開窓口は、現在未設定です。</p>
   <button class="consent-back" onclick="openNotebookCleanup()">端末内の控えを削除</button>
   <button class="entry-btn sub" onclick="restartAfterAccountClosure()">新しく利用を始める</button>
 </div></div>
 <div class="modal" id="deletion-modal" role="dialog" aria-modal="true" aria-labelledby="deletion-title"><div class="modal-box adult-font">
   <div class="ttl" id="deletion-title">共有データをすべて削除する</div>
+  <p class="note">家族全員の共有データを終了する手続きです。機種変更や、自分だけ利用を休むときには使いません。残したいお薬手帳は、開始前に原本を書き出し、別の保管先で開けることを確認してください。</p>
   <p class="note">この家庭の全員の記録・予定・家族との接続・招待・おまもりタグとお知らせ・復旧先登録を共有サーバーから削除します。始めると利用を停止し、取り消せません。通信が切れたら、この画面で再開してください。</p>
-  <p class="note">この端末に保存した災害QRなども削除します。印刷物・他端末の保存内容・撮影したQRは各自で廃棄してください。ログイン用アカウントはこの操作では削除しません。共有削除の完了後「自分のログイン用アカウントを削除する」に進んでください。印刷した災害QRは読み取れないよう切断し、他の端末のサイト保存・写真・スクリーンショットも各自で削除してください。旧版で残った記録は運営者に整理を依頼してください。</p>
+  <p class="note">この端末に保存した災害QRなども削除します。印刷物・他端末の保存内容・撮影したQRは各自で廃棄してください。ログイン用アカウントはこの操作では削除しません。共有削除の完了後「自分のログイン用アカウントを削除する」に進んでください。印刷した災害QRは読み取れないよう切断し、他の端末のサイト保存・写真・スクリーンショットも各自で削除してください。旧版で残った記録の整理を受け付ける専用の非公開窓口は、現在未設定です。</p>
   <div class="account-fields"><label for="deletion-confirm">確認のため「共有データを削除」と入力</label><input id="deletion-confirm" autocomplete="off" spellcheck="false"></div>
   <button class="set-btn warn" id="deletion-run" onclick="runHouseholdDeletion()">削除を開始・再開する</button>
   <div class="save-state" id="deletion-state" role="status" aria-live="polite"></div>
@@ -763,10 +776,17 @@ table.cal-rec td.pad{background:none;}
 <!-- ===== 承認待ち ===== -->
 <div class="page" id="pending-page" style="background:#fff;">
   <div class="setup-wrap">
-    <div class="setup-ttl">承認待ちです</div>
-    <p class="setup-lead">参加の申請を送りました。最初に家庭を作成した管理者が「参加を認める」を押すと、利用をはじめられます。承認されるまで、記録は表示されません。<br>この画面はそのままで大丈夫です。承認されると自動で切り替わります。<br>一度使った招待コードは、もう一度は使えません。申請を取り下げたときや認められなかったときは、新しい招待コードを発行してもらってください。</p>
-    <div class="note" id="pending-err" style="display:none;max-width:320px;margin:0 auto 14px;text-align:left;color:#B0492F;">いまの状態を確認できませんでした。通信環境を確認して、この画面を開き直してください。参加が認められなかったときも、この表示になることがあります。その場合は「申請を取り下げる」を押すと入口に戻れます。</div>
-    <button class="entry-btn sub" onclick="cancelJoinRequest()">申請を取り下げる</button>
+    <div class="setup-ttl">家族への参加</div>
+    <p class="setup-lead" id="pending-state" role="status" aria-live="polite">参加状況を確認しています…</p>
+    <p class="note" id="pending-err" role="status" style="display:none;">今の参加状況を確認できません。保存情報は消さず、通信が戻ってから確認してください。</p>
+    <button class="entry-btn" id="pending-retry" type="button" onclick="retryPendingStatus()">参加状況を確認する</button>
+    <details id="pending-help"><summary>招待した人へのお願いを見る</summary>
+      <p>招待した人に、まいにこを開いて「参加を認める」を押してもらってください。今連絡できなくても、申請を取り下げる必要はありません。</p>
+      <button class="set-btn" type="button" onclick="copyPendingHelp()">お願いする文をコピー</button>
+      <p class="note" id="pending-copy-state" role="status"></p>
+    </details>
+    <button class="consent-back" id="pending-cancel" type="button" onclick="cancelJoinRequest()" disabled>申請を取り下げる</button>
+    <p class="note">参加するのをやめるときだけ取り下げます。参加し直す場合は、新しい招待コードが必要です。</p>
   </div>
 </div>
 
@@ -790,6 +810,7 @@ table.cal-rec td.pad{background:none;}
     </div>
     <div id="h-approve"></div>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
+    <div id="person-record-actions" hidden><button class="set-btn" id="person-record-correct" type="button" onclick="openCancel()">記録を確認・とりけす</button></div>
     <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
     <p class="communication-status" id="h-contact-state" aria-live="polite"></p>
     <div class="kibun" id="h-message-reply" data-communication-gate="family" hidden style="display:none;">
@@ -993,9 +1014,9 @@ table.cal-rec td.pad{background:none;}
 </div>
 
 <!-- 今日の記録のとりけし(本人) -->
-<div class="modal" id="cancel-modal">
+<div class="modal" id="cancel-modal" role="dialog" aria-modal="true" aria-labelledby="cancel-title">
   <div class="modal-box">
-    <div class="ttl">今日の記録をとりけす</div>
+    <div class="ttl" id="cancel-title" tabindex="-1">今日の記録をとりけす</div>
     <p style="font-size:.92rem;color:#7A6A55;line-height:1.7;margin-bottom:10px;">まちがえて押した記録を、とりけすことができます。とりけせるのは、この端末で今日つけた記録だけです。</p>
     <div id="cancel-list"><div class="empty">読み込み中…</div></div>
     <button class="modal-close" onclick="closeCancel()">とじる</button>
@@ -1694,6 +1715,7 @@ async function hySave(){
     }
     closeHYotei(true);
     const p=document.getElementById('pop-msg');
+    const recordActions=document.getElementById('person-record-actions');if(recordActions)recordActions.hidden=true;
     if(p){ p.textContent=editId?'予定の変更を保存しました':'予定を保存しました'; p.classList.add('show'); }
     speak(dateYomi(date)+'に、'+(time?timeYomi(time)+'に、':'')+label+'を '+(editId?'へんこうしました':'ほぞんしました'));
   }catch(e){
@@ -1713,6 +1735,7 @@ async function hyDelete(){
     await col('yotei').doc(id).delete();
     closeHYotei(true);
     const p=document.getElementById('pop-msg');
+    const recordActions=document.getElementById('person-record-actions');if(recordActions)recordActions.hidden=true;
     if(p){ p.textContent='予定を削除しました'; p.classList.add('show'); }
     speak('予定を さくじょしました');
   }catch(e){
@@ -2003,6 +2026,52 @@ function saveName(){
   }catch(error){alert('この端末に名前を保存できませんでした。保存情報は消さず、ブラウザーで開き直してください。');}
 }
 let groupCreating=false;
+// Resolve the result of the previous setup before starting a different household path.
+async function resumeOtherSetup(action,code,assertCurrent){
+  const groupKey='mainico_group_setup_v1',joinKey='mainico_join_pending_v1';
+  const group=JSON.parse(previewStorage.getItem(groupKey)||'null'),join=JSON.parse(previewStorage.getItem(joinKey)||'null');
+  for(const journal of [group,join]){
+    if(!journal)continue;
+    if(journal.uid!==uid())throw new Error('別アカウントの手続きが途中です。保存情報を消さず、元のアカウントで確認してください。');
+    if(!/^[A-Za-z0-9_-]{1,128}$/.test(journal.groupId)||!['honnin','kazoku','konly'].includes(journal.mode))throw new Error('以前の手続きの保存情報を確認できません。保存情報は消さず、確認してください。');
+  }
+  if(group&&join)throw new Error('以前の手続きが複数残っています。保存情報を消さず、元の手続きを確認してください。');
+  if(action==='join'&&group){
+    const snapshot=await db.collection('groups').doc(group.groupId).get({source:'server'});assertCurrent();
+    if(snapshot.metadata?.fromCache||snapshot.metadata?.hasPendingWrites)throw new Error('前の家庭の作成結果を通信で確認できません。時間をおいて再確認してください。');
+    if(snapshot.exists){
+      const data=snapshot.data();
+      if(data.createdBy!==uid()||data.deletionState==='deleting')throw new Error('前の家庭の状態を確認してください。新しい参加は始めていません。');
+      pendingMode=group.mode;previewStorage.setItem('mainicoPendingMode',group.mode);
+      previewStorage.setItem('mainicoName',group.name||'');previewStorage.setItem('mainicoGid',group.groupId);
+      try{previewStorage.removeItem(groupKey);}catch(e){}
+      await finishSetup();return true;
+    }
+    previewStorage.removeItem(groupKey);
+  }
+  if(join&&(action==='create'||join.code!==code)){
+    let member;
+    try{member=await db.collection('groups').doc(join.groupId).collection('members').doc(uid()).get({source:'server'});}
+    catch(error){
+      assertCurrent();
+      const household=await db.collection('groups').doc(join.groupId).get({source:'server'});assertCurrent();
+      if(household.metadata?.fromCache||household.metadata?.hasPendingWrites||household.exists)throw error;
+      member={exists:false};
+    }
+    assertCurrent();
+    if(member.metadata?.fromCache||member.metadata?.hasPendingWrites)throw new Error('前の参加申請を通信で確認できません。時間をおいて再確認してください。');
+    if(member.exists){
+      const data=member.data();
+      if(!['pending','approved'].includes(data.status))throw new Error('前の参加状況を確認してください。新しい家庭は作成していません。');
+      pendingMode=join.mode;previewStorage.setItem('mainicoPendingMode',join.mode);previewStorage.setItem('mainicoGid',join.groupId);
+      try{previewStorage.removeItem(joinKey);}catch(e){}
+      showPending();return true;
+    }
+    // Confirmed absence permits a different path; a read failure never reaches this point.
+    previewStorage.removeItem(joinKey);
+  }
+  return false;
+}
 async function createGroup(){
   if(groupCreating || joiningGroup)return;
   if(gid()){alert('すでに家族と接続しています。新しい家庭は作成していません。');return;}
@@ -2015,6 +2084,8 @@ async function createGroup(){
   groupCreating=true;
   const button=document.getElementById('btn-newgroup');button.disabled=true;
   try{
+    assertSameAccount();
+    if(await resumeOtherSetup('create','',assertSameAccount))return;
     assertSameAccount();
     const key='mainico_group_setup_v1';
     const old=JSON.parse(previewStorage.getItem(key)||'null');
@@ -2059,6 +2130,8 @@ async function joinByCode(){
   joiningGroup=true;
   try{
     assertSameAccount();
+    if(await resumeOtherSetup('join',code,assertSameAccount))return;
+    assertSameAccount();
     const inv=await db.collection('invites').doc(code).get({source:'server'});
     assertSameAccount();
     if(!inv.exists){alert('招待コードが見つかりません。コードを確認してください。');return;}
@@ -2069,7 +2142,12 @@ async function joinByCode(){
     if(previous && previous.uid===uid() && previous.groupId===v.groupId && previous.code===code){
       const me=await db.collection('groups').doc(v.groupId).collection('members').doc(uid()).get({source:'server'});
       assertSameAccount();
+      if(me.metadata?.fromCache||me.metadata?.hasPendingWrites)throw new Error('以前の参加申請を通信で確認できません。時間をおいて再確認してください。');
       alreadyJoined=me.exists && me.data().inviteCode===code;
+      if(alreadyJoined){
+        if(!['pending','approved'].includes(me.data().status))throw new Error('以前の参加状況を確認できません。保存情報は消さず、再確認してください。');
+        pendingMode=previous.mode;previewStorage.setItem('mainicoPendingMode',previous.mode);
+      }
     }
     if(!alreadyJoined){
       if(v.used){alert('この招待コードは使用済みです。新しいコードを発行してもらってください。');return;}
@@ -2117,63 +2195,169 @@ async function finishSetup(){
   }catch(error){showHouseholdBlocked('家族との接続・利用方法の保存を確認できませんでした。保存情報は消さず、通信を確認して再確認してください。');}
   finally{clearTimeout(slowTimer);modeSetupBusy=false;}
 }
+async function copyPendingHelp(){
+  const text='まいにこへの参加を申請しました。アプリを開いて「参加を認める」を押してもらえますか。';
+  const state=document.getElementById('pending-copy-state');
+  try{await navigator.clipboard.writeText(text);state.textContent='文をコピーしました。送信はしていません。ご自身で相手を確認して送ってください。';}
+  catch(e){state.textContent='コピーできませんでした。次の文を選んでコピーしてください：'+text;}
+}
 let pendingUnsub=null;
 let cancelling=false;
+let pendingContext=null,pendingStatus='unknown',pendingGeneration=0;
+function pendingIsCurrent(context){
+  return !!context && pendingContext===context && context.generation===pendingGeneration &&
+    context.userId===uid() && context.groupId===gid() && context.boot===householdBootGeneration;
+}
+function pendingState(status,text,error=''){
+  pendingStatus=status;
+  const state=document.getElementById('pending-state');
+  if(state)state.textContent=text;
+  const err=document.getElementById('pending-err');
+  if(err){err.textContent=error;err.style.display=error?'block':'none';}
+  const retry=document.getElementById('pending-retry');
+  if(retry)retry.disabled=cancelling||status==='approved';
+  const cancel=document.getElementById('pending-cancel');
+  if(cancel){
+    cancel.disabled=cancelling||!['pending','ended'].includes(status);
+    cancel.textContent=status==='ended'?'入口に戻る':'申請を取り下げる';
+  }
+}
+function stopPendingWatch(){
+  if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
+}
+async function pendingGroupEnded(context){
+  if(!pendingIsCurrent(context))return false;
+  try{
+    const group=await db.collection('groups').doc(context.groupId).get({source:'server'});
+    return pendingIsCurrent(context) && group.metadata && group.metadata.fromCache===false &&
+      !group.metadata.hasPendingWrites && !group.exists;
+  }catch(error){return false;}
+}
 function showPending(){
+  if(cancelling && pendingIsCurrent(pendingContext))return;
+  stopPendingWatch();
   cancelling=false;
+  const context={userId:uid(),groupId:gid(),boot:householdBootGeneration,generation:++pendingGeneration};
+  pendingContext=context;
   showPage('pending-page');
-  if(pendingUnsub) pendingUnsub();
-  pendingUnsub=col('members').doc(uid()).onSnapshot(doc=>{
-    const errBox=document.getElementById('pending-err');
-    if(errBox) errBox.style.display='none';
-    if(doc.metadata && doc.metadata.fromCache) return;  /* 通信不良中の一時的な表示では判断しない */
+  pendingState('unknown','参加の申請状況を確認しています。');
+  if(!context.userId||!context.groupId){
+    pendingState('unknown','この端末の申請状況を確認できません。','保存情報を消さず、通信を確認して「参加状況を確認」を押してください。');
+    return;
+  }
+  const ref=db.collection('groups').doc(context.groupId).collection('members').doc(context.userId);
+  pendingUnsub=ref.onSnapshot({includeMetadataChanges:true},doc=>{
+    if(!pendingIsCurrent(context)||cancelling)return;
+    if(!doc.metadata||doc.metadata.fromCache!==false||doc.metadata.hasPendingWrites){
+      pendingState('unknown','通信の確認を待っています。申請状況はまだ確認できていません。');
+      return;
+    }
     if(!doc.exists){
-      if(cancelling) return; /* 自分で取り下げ中。案内は cancelJoinRequest 側で出す */
-      if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
-      alert('参加は認められませんでした。');
-      previewStorage.removeItem('mainicoGid');
-      previewStorage.removeItem('mainicoMode');
-      location.reload();
+      pendingState('ended','この参加申請は終了しています。','参加する場合は、招待した人に新しいコードをお願いしてください。「入口に戻る」を押すまで、この端末の接続情報は残ります。');
       return;
     }
     if(doc.data().status==='approved'){
-      if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
+      stopPendingWatch();
+      pendingState('approved','参加が認められました。利用の準備をしています。');
       finishSetup();
+    }else if(doc.data().status==='pending'){
+      pendingState('pending','参加の申請を受け付けました。招待した人の確認を待っています。');
+    }else{
+      pendingState('unknown','現在の参加状況を確認できません。','保存情報を消さず、招待した人に確認してください。');
     }
-  }, err=>{
-    console.warn('pending', err);
-    const n=document.getElementById('pending-err');
-    if(n) n.style.display='block';
+  },async()=>{
+    if(!pendingIsCurrent(context)||cancelling)return;
+    pendingState('unknown','現在の参加状況を確認できません。','通信を確認して「参加状況を確認」を押してください。申請を取り下げたり、端末の保存情報を消したりする必要はありません。');
+    // A deleted household no longer permits reads of its member document.
+    if(await pendingGroupEnded(context)){
+      if(!pendingIsCurrent(context)||cancelling)return;
+      pendingState('ended','この家庭との接続は終了しています。','家庭が終了したことを確認しました。「入口に戻る」から、この端末の接続情報を整理できます。');
+    }
   });
 }
+function retryPendingStatus(){
+  if(cancelling)return;
+  showPending();
+}
+function clearEndedJoinContext(context){
+  if(!pendingIsCurrent(context))return false;
+  // Never clear another account's or household's unfinished request.
+  const key='mainico_join_pending_v1';
+  const raw=previewStorage.getItem(key);
+  if(raw){
+    const saved=JSON.parse(raw);
+    if(saved && saved.uid===context.userId && saved.groupId===context.groupId)previewStorage.removeItem(key);
+  }
+  previewStorage.removeItem('mainicoMode');
+  previewStorage.removeItem('mainicoPendingMode');
+  previewStorage.removeItem('mainicoGid');
+  stopPendingWatch();pendingContext=null;pendingGeneration++;
+  location.reload();
+  return true;
+}
+function returnFromEndedPending(context,text){
+  if(!pendingIsCurrent(context))return;
+  cancelling=false;
+  pendingState('ended',text);
+  try{clearEndedJoinContext(context);}
+  catch(error){
+    if(pendingIsCurrent(context))pendingState('ended','申請の終了は確認できています。','端末の接続情報の整理を完了できませんでした。保存情報を消さず、「入口に戻る」でもう一度お試しください。');
+  }
+}
 async function cancelJoinRequest(){
-  if(!confirm('参加の申請を取り下げますか?\n使った招待コードは、もう一度は使えません。参加し直すときは、新しい招待コードを発行してもらってください。')) return;
-  cancelling=true;
-  try{
-    await col('members').doc(uid()).delete();
-  }catch(e){
-    /* 失敗したときは何も消さず、承認待ちの画面のまま残す */
-    // 管理者の全体削除が済んだ場合は、既に接続がないことをサーバーで確認する。
-    let disconnected=false;
-    try{const me=await col('members').doc(uid()).get({source:'server'});disconnected=!me.exists;}
-    catch(ignore){try{const group=await grp().get({source:'server'});disconnected=!group.exists;}catch(unconfirmed){}}
-    if(disconnected){
-      if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
-      previewStorage.removeItem('mainicoGid');previewStorage.removeItem('mainicoMode');
-      alert('この家庭との接続は終了しています。入口に戻ります。');location.reload();return;
-    }
-    cancelling=false;
-    const n=document.getElementById('pending-err');
-    if(n) n.style.display='block';
-    alert('申請を取り下げできませんでした。\n通信の状態を確認して、もう一度お試しください。\n' + (e && e.message ? e.message : ''));
+  if(cancelling)return;
+  const context=pendingContext;
+  if(!pendingIsCurrent(context)||!['pending','ended'].includes(pendingStatus)){
+    if(pendingIsCurrent(context))pendingState('unknown','先に参加状況を確認してください。');
     return;
   }
-  /* ここから先は削除に成功したときだけ */
-  if(pendingUnsub){pendingUnsub();pendingUnsub=null;}
-  alert('申請を取り下げました。\n参加し直すときは、ご家族に新しい招待コードを発行してもらってください。');
-  previewStorage.removeItem('mainicoGid');
-  previewStorage.removeItem('mainicoMode');
-  location.reload();
+  const ended=pendingStatus==='ended';
+  if(!confirm(ended?'この申請が終了したことを再確認して、入口に戻りますか？\n参加する場合は、新しい招待コードが必要です。':
+    '参加の申請を取り下げますか？\n招待した人にまだ連絡できなくても、取り下げる必要はありません。取り下げると、参加し直すときに新しい招待コードが必要です。'))return;
+  if(!pendingIsCurrent(context))return;
+  cancelling=true;
+  pendingState('checking',ended?'申請が終了しているか再確認しています。':'申請を取り下げています。完了するまでお待ちください。');
+  const ref=db.collection('groups').doc(context.groupId).collection('members').doc(context.userId);
+  try{
+    const outcome=await db.runTransaction(async transaction=>{
+      if(!pendingIsCurrent(context))throw new Error('pending/session-changed');
+      const doc=await transaction.get(ref);
+      if(!pendingIsCurrent(context))throw new Error('pending/session-changed');
+      if(doc.metadata && (doc.metadata.fromCache||doc.metadata.hasPendingWrites))throw new Error('pending/unverified');
+      if(!doc.exists)return 'ended';
+      if(doc.data().status==='approved')return 'approved';
+      if(doc.data().status!=='pending')throw new Error('pending/unverified');
+      // A request observed as ended must not cancel a newly-created request.
+      if(ended)return 'pending';
+      transaction.delete(ref);
+      return 'cancelled';
+    });
+    if(!pendingIsCurrent(context))return;
+    cancelling=false;
+    if(outcome==='approved'){
+      stopPendingWatch();
+      pendingState('approved','すでに参加が認められています。申請は取り下げず、利用の準備をしています。');
+      await finishSetup();
+      return;
+    }
+    if(outcome==='pending'){
+      pendingState('pending','参加の申請を確認しました。申請は取り下げていません。');
+      return;
+    }
+    returnFromEndedPending(context,outcome==='cancelled'?'申請を取り下げました。入口に戻ります。':'この申請の終了を確認しました。入口に戻ります。');
+  }catch(error){
+    if(!pendingIsCurrent(context))return;
+    const householdEnded=await pendingGroupEnded(context);
+    if(!pendingIsCurrent(context))return;
+    cancelling=false;
+    if(householdEnded){
+      returnFromEndedPending(context,'この家庭の終了を確認しました。入口に戻ります。');
+      return;
+    }
+    pendingState('unknown','処理の完了を確認できません。','申請状況をもう一度確認してください。端末の保存情報は消していません。');
+  }finally{
+    if(pendingContext===context)cancelling=false;
+  }
 }
 function startMode(){
   const m=previewStorage.getItem('mainicoMode');
@@ -2414,71 +2598,79 @@ function markKusuriDone(slotKey){
   b.innerHTML='✓ '+kusuriSlotName(slotKey)+'の薬を記録しました<small>もう一度押すと声で確認できます</small>';
 }
 let honninSending=false;
+let personSendWaitTimer=null,personSendSequence=0,cancelViewRequest=0,cancelReturnFocus=null,cancelDialogBound=false;
+const personCancelBusy=new Set();
+function resetPersonRecordFeedback(){
+  personSendSequence++;
+  if(personSendWaitTimer!==null){clearTimeout(personSendWaitTimer);personSendWaitTimer=null;}
+  honninSending=false;cancelViewRequest++;cancelReturnFocus=null;
+  const actions=document.getElementById('person-record-actions');if(actions)actions.hidden=true;
+  const modal=document.getElementById('cancel-modal');if(modal)modal.classList.remove('show');
+  const list=document.getElementById('cancel-list');if(list)list.textContent='';
+}
+function showPersonRecordResult(text,date=todayStr()){
+  const p=document.getElementById('pop-msg');if(p){p.textContent=text;p.classList.add('show');}
+  const actions=document.getElementById('person-record-actions');if(actions)actions.hidden=date!==todayStr();
+}
+function personResultText(text,date){return (date===todayStr()?'':date+'の')+text;}
 function beginSend(){
-  if(honninSending) return false;
+  if(honninSending)return false;
   honninSending=true;
-  const p=document.getElementById('pop-msg');
-  if(p){ p.textContent='送信しています…'; p.classList.add('show'); }
+  const sequence=++personSendSequence,current=communicationSession();
+  const p=document.getElementById('pop-msg');if(p){p.textContent='記録を保存しています…';p.classList.add('show');}
+  const actions=document.getElementById('person-record-actions');if(actions)actions.hidden=true;
+  if(personSendWaitTimer!==null)clearTimeout(personSendWaitTimer);
+  personSendWaitTimer=setTimeout(()=>{
+    if(!current()||sequence!==personSendSequence||!honninSending)return;
+    personSendWaitTimer=null;
+    if(p){p.textContent='保存できたか確認しています…';p.classList.add('show');}
+    const state=document.getElementById('onegai-free-state'),button=document.getElementById('onegai-free-btn');
+    if(state&&button&&button.disabled)state.textContent='保存できたか確認しています…';
+  },10000);
   return true;
 }
-function endSend(ok){
+function endSend(ok,message='記録しました。',date=todayStr()){
+  personSendSequence++;
+  if(personSendWaitTimer!==null){clearTimeout(personSendWaitTimer);personSendWaitTimer=null;}
   honninSending=false;
-  if(ok){
-    const p=document.getElementById('pop-msg');
-    if(p && p.textContent==='送信しています…'){ p.textContent='記録しました。'; p.classList.add('show'); }
-  }
+  if(ok)showPersonRecordResult(message,date);
 }
 function honninSendFail(){
   const p=document.getElementById('pop-msg');
-  if(p){ p.textContent='電波が届きませんでした。もう一度押してください'; p.classList.add('show'); }
-  speak('でんぱが とどきませんでした。もういちど おしてください');
+  if(p){p.textContent='保存できませんでした。通信を確認して、もう一度押してください';p.classList.add('show');}
+  const actions=document.getElementById('person-record-actions');if(actions)actions.hidden=true;
+  speak('保存できませんでした。通信を確認して、もう一度押してください');
 }
 function sendAisatsu(){
   const date=todayStr(),s=slot();
   if(previewStorage.getItem('aisatsu-'+date+'-'+s.key)){
-    feedback();speak(s.tx+'は、記録してあります',true);return;
+    feedback();showPersonRecordResult('「'+s.tx+'」は記録してあります。',date);speak(s.tx+'は、記録してあります',true);return;
   }
   if(!beginSend())return;
-  const current=communicationSession();
-  feedback();
+  const current=communicationSession();feedback();
   return addEvent({type:'aisatsu',text:s.tx,slot:s.key,date}).then(()=>{
     if(!current())return;
-    endSend(true);
+    const message=personResultText('「'+s.tx+'」を記録しました。',date);endSend(true,message,date);
     try{previewStorage.setItem('aisatsu-'+date+'-'+s.key,'1');}catch(e){console.warn('greeting display cache',e);}
-    if(todayStr()!==date){
-      refreshSlotUI();
-      document.getElementById('pop-msg').textContent=date+'の挨拶を記録しました。';
-      speak(date+'の挨拶を記録しました');return;
-    }
+    if(todayStr()!==date){refreshSlotUI();speak(message);return;}
     if(slot().key===s.key)markAisatsuDone();else refreshSlotUI();
-    speak(s.tx+'を、記録しました');
+    speak(message);
     if(!previewStorage.getItem('kibun-'+date))document.getElementById('kibun-box').style.display='block';
-  },()=>{
-    if(!current())return;
-    endSend(false);honninSendFail();
-  });
+  },()=>{if(current()){endSend(false);honninSendFail();}});
 }
 function sendKibun(text,emoji){
   const date=todayStr();
   if(!beginSend())return;
-  const current=communicationSession();
-  feedback();
+  const current=communicationSession();feedback();
   return addEvent({type:'kibun',text,emoji,date}).then(()=>{
     if(!current())return;
-    endSend(true);
+    const message=personResultText('調子「'+text+'」を記録しました。',date);endSend(true,message,date);
     try{previewStorage.setItem('kibun-'+date,'1');}catch(e){console.warn('condition display cache',e);}
-    if(todayStr()!==date){
-      refreshSlotUI();
-      document.getElementById('pop-msg').textContent=date+'の調子を記録しました。';
-      speak(date+'の調子を記録しました');return;
-    }
-    document.getElementById('kibun-box').style.display='none';
-    speak(text+'を 記録しました');
-  },()=>{
-    if(!current())return;
-    endSend(false);honninSendFail();
-  });
+    if(todayStr()!==date){refreshSlotUI();speak(message);return;}
+    document.getElementById('kibun-box').style.display='none';speak(message);
+  },()=>{if(current()){endSend(false);honninSendFail();}});
 }
+
 function skipKibun(){
   speak('今日は 答えないに しました');
   previewStorage.setItem('kibun-'+todayStr(),'1');
@@ -2486,28 +2678,19 @@ function skipKibun(){
 }
 function sendKusuri(slotKey){
   if(!validKusuriSlot(slotKey))return;
-  const date=todayStr(),label=kusuriSlotName(slotKey);
+  const date=todayStr(),label=kusuriSlotName(slotKey),record='「'+label+'の薬を飲みました」';
   if(previewStorage.getItem('kusuri-'+date+'-'+slotKey)){
-    feedback();speak(label+'の薬を飲んだ記録があります',true);return;
+    feedback();showPersonRecordResult(record+'は記録してあります。',date);speak(record+'は記録してあります',true);return;
   }
   if(!beginSend())return;
-  const current=communicationSession();
-  feedback();
+  const current=communicationSession();feedback();
   return addEvent({type:'kusuri',slot:slotKey,date}).then(()=>{
     if(!current())return;
-    endSend(true);
+    const message=personResultText(record+'を記録しました。',date);endSend(true,message,date);
     try{previewStorage.setItem('kusuri-'+date+'-'+slotKey,'1');}catch(e){console.warn('medicine display cache',e);}
-    if(todayStr()!==date){
-      refreshSlotUI();
-      document.getElementById('pop-msg').textContent=date+'の'+label+'の薬の記録を保存しました。';
-      speak(date+'の'+label+'の薬の記録を保存しました');return;
-    }
-    markKusuriDone(slotKey);
-    speak(label+'の薬を飲んだ記録を保存しました');
-  },()=>{
-    if(!current())return;
-    endSend(false);honninSendFail();
-  });
+    if(todayStr()!==date){refreshSlotUI();speak(message);return;}
+    markKusuriDone(slotKey);speak(message);
+  },()=>{if(current()){endSend(false);honninSendFail();}});
 }
 
 /* ちょっとお願い */
@@ -2533,38 +2716,23 @@ function sendOnegaiFree(){
 }
 function sendOnegai(text, inputId){
   if(!requireFamilyFeature('family'))return;
-  const date=todayStr();
-  if(!beginSend())return;
+  const date=todayStr();if(!beginSend())return;
   const current=communicationSession();
-  const freeState=document.getElementById('onegai-free-state');
-  const freeBtn=document.getElementById('onegai-free-btn');
-  if(inputId&&freeState){
-    freeState.classList.remove('err');freeState.textContent='送信しています…';
-    if(freeBtn)freeBtn.disabled=true;
-  }
+  const freeState=document.getElementById('onegai-free-state'),freeBtn=document.getElementById('onegai-free-btn');
+  if(inputId&&freeState){freeState.classList.remove('err');freeState.textContent='記録を保存しています…';if(freeBtn)freeBtn.disabled=true;}
   feedback();
   return addEvent({type:'onegai',text,date}).then(()=>{
     if(!current())return;
-    endSend(true);
-    const input=inputId?document.getElementById(inputId):null;
-    const newerDraft=input&&input.value.trim()!==text;
+    const message=personResultText('お願い「'+text+'」を記録しました。',date);endSend(true,message,date);
+    const input=inputId?document.getElementById(inputId):null,newerDraft=input&&input.value.trim()!==text;
     if(input&&!newerDraft)input.value='';
     if(!newerDraft)closeOnegai(true);
-    else if(freeState)freeState.textContent='お願いを記録しました。書きかけの文章は残っています。';
-    const p=document.getElementById('pop-msg');
-    if(todayStr()!==date){
-      p.textContent=date+'のお願いを記録しました。';
-      speak(date+'のお願いを記録しました');
-    }else{
-      p.textContent=text==='今日はそっとしておいて'?'記録しました。今日はゆっくりお過ごしください':
-        'お願いを記録しました。'+requestAudienceText();
-      speak(text+'を 記録しました');
-    }
-    p.classList.add('show');
+    else if(freeState)freeState.textContent=message+'書きかけの文章は残っています。';
+    speak(message);
   },()=>{
     if(!current())return;
     endSend(false);
-    if(inputId&&freeState){freeState.classList.add('err');freeState.textContent='送信できませんでした。入力は残っています';}
+    if(inputId&&freeState){freeState.classList.add('err');freeState.textContent='保存できませんでした。入力は残っています';}
     honninSendFail();
   }).finally(()=>{if(current()&&freeBtn)freeBtn.disabled=false;});
 }
@@ -2667,39 +2835,66 @@ function renderFamilyCal(){
 }
 
 /* 今日の記録のとりけし(本人) */
-async function openCancel(){
-  speak('今日の 記録の 取り消しを ひらきました');
-  document.getElementById('cancel-modal').classList.add('show');
-  const box=document.getElementById('cancel-list');
-  try{
-    const snap=await col('events').where('date','==',todayStr()).get();
-    const mine=[];
-    snap.forEach(doc=>{ const v=doc.data(); if(v.uid===uid()) { v._id=doc.id; mine.push(v); } });
-    mine.sort((a,b)=>(a.at?a.at.seconds:0)-(b.at?b.at.seconds:0));
-    if(mine.length===0){ box.innerHTML='<div class="empty">今日この端末でつけた記録はありません</div>'; return; }
-    const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録'+recSlot(v.slot),'onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':v=>'服薬の確認'+recSlot(v.slot),'memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':v=>'「'+kusuriQuestion(v.slot)+'」','family-message':v=>'本人へのメッセージ「'+(v.text||'')+'」','family-message-back':v=>'家族への返事「'+(v.text||'')+'」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ','tag-alert':v=>'おまもりタグ「'+(v.text||'読み取り')+'」'};
-    box.innerHTML=mine.map(v=>{
-      const t=v.at?new Date(v.at.seconds*1000):null;
-      const tm=t?(t.getHours()+':'+String(t.getMinutes()).padStart(2,'0')):'';
-      return '<div class="member-row"><span>'+tm+' '+esc(nm[v.type]?nm[v.type](v):v.type)+'</span>'+
-        '<button class="member-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\''+jsArg(v.type)+'\',\''+jsArg(v.slot)+'\')">とりけす</button></div>';
-    }).join('');
-  }catch(e){ box.innerHTML='<div class="empty">読み込めませんでした</div>'; }
+function cancelRecordLabel(v){
+  const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録'+recSlot(v.slot),'onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':v=>'服薬の確認'+recSlot(v.slot),'care-log':v=>'様子の記録「'+(v.text||'今日の様子')+'」','memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':v=>'「'+kusuriQuestion(v.slot)+'」','family-message':v=>'本人へのメッセージ「'+(v.text||'')+'」','family-message-back':v=>'家族への返事「'+(v.text||'')+'」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ','tag-alert':v=>'おまもりタグ「'+(v.text||'読み取り')+'」'};
+  return nm[v.type]?nm[v.type](v):v.type;
 }
-function closeCancel(){ speak('とじました'); document.getElementById('cancel-modal').classList.remove('show'); }
-async function cancelEvent(id,type,slot){
-  speak('きろくを とりけします');
-  if(!confirm('この記録をとりけしますか?')) return;
+function cancelDialogKeydown(event){
+  if(event.key==='Escape'){event.preventDefault();closeCancel();return;}
+  if(event.key!=='Tab')return;
+  const modal=document.getElementById('cancel-modal');
+  const targets=Array.from(modal.querySelectorAll('button:not([disabled]),[href],input:not([disabled]),[tabindex="0"]')).filter(el=>!el.hidden);
+  if(!targets.length){event.preventDefault();document.getElementById('cancel-title').focus();return;}
+  const first=targets[0],last=targets[targets.length-1],active=document.activeElement;
+  if(event.shiftKey&&(active===first||!targets.includes(active))){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&(active===last||!targets.includes(active))){event.preventDefault();first.focus();}
+}
+async function openCancel(){
+  const request=++cancelViewRequest,current=communicationSession(),owner=uid(),group=gid(),date=todayStr();
+  cancelReturnFocus=document.activeElement;
+  const modal=document.getElementById('cancel-modal'),box=document.getElementById('cancel-list');
+  modal.classList.add('show');box.textContent='今日の自分の記録を確認しています…';
+  if(!cancelDialogBound){modal.addEventListener('keydown',cancelDialogKeydown);cancelDialogBound=true;}
+  const title=document.getElementById('cancel-title');if(title){title.setAttribute('tabindex','-1');title.focus();}
+  speak('今日の記録を確認する画面をひらきました。とりけしたい記録を選べます');
+  const active=()=>request===cancelViewRequest&&current()&&owner===uid()&&group===gid()&&date===todayStr();
   try{
-    await col('events').doc(id).delete();
-    const t=todayStr();
-    if(type==='aisatsu'){
-      previewStorage.removeItem('aisatsu-'+t+'-'+slot);
-    }
-    if(type==='kibun') previewStorage.removeItem('kibun-'+t);
-    if(type==='kusuri') previewStorage.removeItem('kusuri-'+t+'-'+slot);
+    const snap=await col('events').where('date','==',date).get({source:'server'});
+    if(!active())return;
+    if(snap.metadata?.fromCache===true||snap.metadata?.hasPendingWrites===true)throw new Error('records-unconfirmed');
+    const mine=[];
+    snap.forEach(doc=>{const v=doc.data();if(v.uid===owner&&v.date===date){v._id=doc.id;mine.push(v);}});
+    mine.sort((a,b)=>compareConversationEvents(b,a));
+    if(!mine.length){box.innerHTML='<div class="empty">今日の自分の記録はありません</div>';return;}
+    box.innerHTML=mine.map(v=>{
+      const t=v.at?new Date(v.at.seconds*1000):null,tm=t?(t.getHours()+':'+String(t.getMinutes()).padStart(2,'0')):'';
+      return '<div class="member-row"><span>'+tm+' '+esc(cancelRecordLabel(v))+'</span><button class="member-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\''+jsArg(v.type)+'\',\''+jsArg(v.slot)+'\')">とりけす</button></div>';
+    }).join('');
+  }catch(e){if(active())box.innerHTML='<div class="empty">記録を確認できませんでした。通信を確認して、開き直してください。</div>';}
+}
+function closeCancel(){
+  cancelViewRequest++;speak('とじました');document.getElementById('cancel-modal').classList.remove('show');
+  const target=cancelReturnFocus;cancelReturnFocus=null;if(target&&target.isConnected!==false&&typeof target.focus==='function')target.focus();
+}
+async function cancelEvent(id,type,slot){
+  const current=communicationSession(),owner=uid(),group=gid(),date=todayStr(),key=group+'\n'+owner+'\n'+id;
+  if(personCancelBusy.has(key))return;personCancelBusy.add(key);
+  const ref=col('events').doc(id);
+  try{
+    const snap=await ref.get({source:'server'});if(!current())return;
+    const row=snap.exists?snap.data():null;
+    if(!row||row.uid!==owner||row.date!==date||todayStr()!==date||snap.metadata?.fromCache===true||snap.metadata?.hasPendingWrites===true){alert('今日の自分の記録を確認できません。記録一覧を開き直してください。');return;}
+    if(!confirm('「'+cancelRecordLabel(row)+'」の記録をとりけしますか？'))return;
+    if(!current()||todayStr()!==date)return;
+    await ref.delete();if(!current())return;
+    try{
+      if(row.type==='aisatsu')previewStorage.removeItem('aisatsu-'+date+'-'+row.slot);
+      if(row.type==='kibun')previewStorage.removeItem('kibun-'+date);
+      if(row.type==='kusuri')previewStorage.removeItem('kusuri-'+date+'-'+row.slot);
+    }catch(e){console.warn('cancel display cache',e);}
     location.reload();
-  }catch(e){ alert('とりけせませんでした: '+e.message); }
+  }catch(e){if(current())alert('とりけせませんでした。通信を確認して、もう一度お試しください。');}
+  finally{personCancelBusy.delete(key);}
 }
 
 /* つながっている家族(本人側・閲覧) */
@@ -2732,7 +2927,7 @@ async function honninRemove(mid, isMe){
   if(mid===householdOwnerId){alert('管理者は参加解除できません。家庭全体の利用を終える場合は共有データの削除を選んでください。');return;}
   if(!isMe && !requireHouseholdOwner())return;
   const msg=isMe
-    ?'家族との共有をやめて、この端末を入口に戻しますか?\nこれまでの記録は消えず、家族の画面には残ります。'
+    ?'家庭への参加をやめますか？ 同じアカウントの他の端末も共有に接続できなくなります。\nこれまでの共有記録は残りますが、この端末の対象のお薬手帳の控えは削除します。残したい資料は先に原本を書き出してください。'
     :'この家族を解除しますか?\n解除後、この家族は共有サーバーの記録を新たに取得できなくなります。相手の端末に保存済みの写真・コピーは各端末で削除が必要です。';
   if(!confirm(msg)) return;
   try{
@@ -2786,6 +2981,7 @@ function resetCommunication(){
   familyConversationDay='';familyConversationRequest++;
   if(familyDayVisibility){document.removeEventListener('visibilitychange',familyDayVisibility);familyDayVisibility=null;}
   if(typeof closePersonHistory==='function')closePersonHistory();
+  if(typeof resetPersonRecordFeedback==='function')resetPersonRecordFeedback();
   // Old writes may still finish; their session guards must not own this new UI.
   honninSending=false;aisatsuBackSending=false;askKusuriSending=false;familyMessageSending=false;personMessageReplySending=false;
   familyQuickReplySending.clear();
@@ -2850,17 +3046,17 @@ function renderFamilyConversation(){
       });
       const vis=homeAttentionRows(items,replies,false);
       card.style.display='block';
-      if(!vis.length){box.textContent=familyHomeEventStatus==='ready'?'今日の連絡はまだありません。こちらから挨拶を送れます。':'今日の連絡を確認しています…';updateCommunicationAvailability();return;}
+      if(!vis.length){box.textContent=familyHomeEventStatus==='ready'?'今日の本人の記録は、まだありません。記録がないだけでは、今の様子は分かりません。こちらから挨拶を送れます。':'今日の連絡を確認しています…';updateCommunicationAvailability();return;}
       const label={
         'aisatsu':v=>'ご本人が「'+(v.text||'')+'」と挨拶しました',
         'kibun':v=>'今日の調子: '+v.text,
-        'kusuri':v=>(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の薬':'お薬')+'を飲んだと記録がありました',
+        'kusuri':v=>'本人の記録「'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の薬':'お薬')+'を飲みました」',
         'aisatsu-back':v=>(v.name||'家族')+'さんが「'+(v.text||'')+'」と挨拶しました',
         'ask-kusuri':v=>(v.name||'家族')+'さんが「'+kusuriQuestion(v.slot)+'」を送りました',
         'family-message':v=>(v.name||'家族')+'さんからのメッセージ：「'+(v.text||'')+'」',
         'kibun-kazoku':v=>(v.name||'家族')+'さんが体調を記録: '+v.text,
         'care-log':v=>(v.name||'家族')+'さんが「'+(v.text||'今日の様子')+'」と記録しました',
-        'kusuri-kakunin':v=>(v.name||'家族')+'さんが'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の':'')+'服薬を確認しました',
+        'kusuri-kakunin':v=>'家族の記録：'+(v.name||'家族')+'さん「'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の':'')+'服薬を確認しました」',
         'member-joined':v=>(v.text||'')+'さんが家族として参加しました',
         'memo':v=>(v.name||'家族')+': '+v.text,
         'disaster-safe':v=>(v.name||'家族')+'さんが「無事です」と記録しました',
@@ -5373,7 +5569,7 @@ async function revokeConsent(){
   if(isHouseholdOwner()){
     alert('管理者が家庭全体の利用を終了するときは「共有データをすべて削除する」を選んでください。自分の端末だけの利用を中断するときは、この画面を閉じてください。');return;
   }
-  if(!confirm('同意を取り消し、このアカウントの家族との接続を解除しますか？ これまでの共有記録は残ります。'))return;
+  if(!confirm('家庭への参加をやめますか？ 同じアカウントの他の端末も共有に接続できなくなります。これまでの共有記録は残りますが、この端末の対象のお薬手帳の控えは削除します。残したい資料は先に原本を書き出してください。'))return;
   try{if(await leaveHouseholdAccount()){alert('参加解除を確認しました。');location.reload();}}
   catch(error){alert('参加解除を確認できませんでした。通信状態を確認して、もう一度お試しください。');}
 }

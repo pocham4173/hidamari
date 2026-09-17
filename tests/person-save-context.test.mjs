@@ -6,10 +6,10 @@ const html=fs.readFileSync(process.env.MAINICO_PERSON_SENDS_SOURCE||new URL('../
 function section(start,end){const i=html.indexOf(start),j=html.indexOf(end,i);assert.ok(i>=0&&j>i,start);return html.slice(i,j);}
 function fixture(){
   let day='2026-09-17',currentSlot='yoru',account='person',group='home',generation=1;
-  const elements=new Map(),cache=new Map(),writes=[],spoken=[],marks=[],warnings=[];
+  const elements=new Map(),cache=new Map(),writes=[],spoken=[],marks=[],warnings=[],timers=new Map();let timerId=0;
   const el=id=>{if(!elements.has(id))elements.set(id,{textContent:'',value:'',disabled:false,style:{},classList:{add(){},remove(){}}});return elements.get(id);};
   let refreshes=0,closed=0,authorized=true;
-  const c={document:{getElementById:el},todayStr:()=>day,slot:()=>({key:currentSlot,tx:currentSlot==='yoru'?'おやすみ':'おはよう'}),
+  const c={document:{getElementById:el},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),todayStr:()=>day,slot:()=>({key:currentSlot,tx:currentSlot==='yoru'?'おやすみ':'おはよう'}),
     communicationSession:()=>{const captured=[account,group,generation];return()=>captured[0]===account&&captured[1]===group&&captured[2]===generation;},
     previewStorage:{getItem:key=>cache.get(key),setItem:(key,value)=>cache.set(key,value)},
     validKusuriSlot:key=>['asa','hiru','yoru'].includes(key),kusuriSlotName:key=>({asa:'朝',hiru:'昼',yoru:'夜'}[key]),
@@ -22,7 +22,7 @@ function fixture(){
     section('function sendOnegai(text, inputId){','/* カレンダー */'),c);
   return{c,el,cache,writes,spoken,marks,warnings,refreshes:()=>refreshes,closed:()=>closed,
     busy:()=>vm.runInContext('honninSending',c),day:value=>day=value,slot:value=>currentSlot=value,authorize:value=>authorized=value,
-    switchSession(){account='new-person';group='new-home';generation++;vm.runInContext('honninSending=false',c);el('onegai-free-btn').disabled=false;}};
+    switchSession(){account='new-person';group='new-home';generation++;c.resetPersonRecordFeedback();el('onegai-free-btn').disabled=false;}};
 }
 const cases=[
   ['greeting',f=>f.c.sendAisatsu(),'aisatsu-2026-09-17-yoru'],
@@ -77,7 +77,7 @@ for(const [name,send] of cases){
 }
 for(const [,send,key] of cases.filter(row=>row[2])){
   const f=fixture();f.c.previewStorage.setItem=()=>{throw Error('quota');};const pending=send(f);f.writes[0].resolve();await pending;
-  assert.equal(f.busy(),false);assert.equal(f.warnings.length,1);assert.doesNotMatch(f.el('pop-msg').textContent,/電波が届きません/,'A successful server save is not relabeled as a network failure');
+  assert.equal(f.busy(),false);assert.equal(f.warnings.length,1);assert.doesNotMatch(f.el('pop-msg').textContent,/保存できません|電波が届きません/,'A successful server save is not relabeled as a network failure');
 }
 {
   const f=fixture();f.authorize(false);f.c.sendOnegai('お願い');assert.equal(f.writes.length,0);

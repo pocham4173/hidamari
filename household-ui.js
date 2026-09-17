@@ -261,20 +261,41 @@ async function bootHouseholdUser(user){
       openAccountDeletion();return;
     }
     if(!gid()){
-      const join=JSON.parse(previewStorage.getItem('mainico_join_pending_v1')||'null');
+      const joinKey='mainico_join_pending_v1',joinRaw=previewStorage.getItem(joinKey);
+      const join=JSON.parse(joinRaw||'null');
       if(join && join.uid===user.uid && /^[A-Za-z0-9_-]{1,128}$/.test(join.groupId)){
-        const member=await db.collection('groups').doc(join.groupId).collection('members').doc(user.uid).get({source:'server'});
-        if(generation!==householdBootGeneration || uid()!==user.uid)return;
-        if(member.exists){
+        const joinUid=user.uid;
+        const current=()=>generation===householdBootGeneration && uid()===joinUid && !gid() && previewStorage.getItem(joinKey)===joinRaw;
+        const groupRef=db.collection('groups').doc(join.groupId);
+        let member;
+        try{
+          member=await groupRef.collection('members').doc(joinUid).get({source:'server'});
+          if(!current())return;
+        }catch(error){
+          if(!current())return;
+          // A deleted parent denies the member read. Only confirmed server
+          // absence of that household proves this unfinished request has ended.
+          let group;
+          try{group=await groupRef.get({source:'server'});}
+          catch(groupError){if(!current())return;throw groupError;}
+          if(!current())return;
+          if(!group || group.exists!==false || group.metadata?.fromCache!==false || group.metadata.hasPendingWrites!==false)throw error;
+          previewStorage.removeItem(joinKey);
+        }
+        if(member && (typeof member.exists!=='boolean' || member.metadata?.fromCache!==false || member.metadata.hasPendingWrites!==false))throw new Error('join-server-unconfirmed');
+        if(member?.exists){
           previewStorage.setItem('mainicoGid',join.groupId);
           previewStorage.setItem('mainicoPendingMode',join.mode);
-          previewStorage.removeItem('mainico_join_pending_v1');
+          previewStorage.removeItem(joinKey);
         }
       }
     }
     if(!gid()){
-      const pointer=await db.collection('accounts').doc(user.uid).get({source:'server'});
-      if(generation!==householdBootGeneration || uid()!==user.uid)return;
+      const pointerUid=user.uid;
+      let pointer;
+      try{pointer=await db.collection('accounts').doc(pointerUid).get({source:'server'});}
+      catch(error){if(generation!==householdBootGeneration || uid()!==pointerUid || gid())return;throw error;}
+      if(generation!==householdBootGeneration || uid()!==pointerUid || gid())return;
       if(pointer.exists)previewStorage.setItem('mainicoGid',pointer.data().groupId);
     }
   }catch(error){window.showStartupProblem('この端末の保存情報を確認できませんでした。保存情報を消さず、再確認してください');return;}
@@ -323,24 +344,51 @@ async function leaveHouseholdAccount(){
   if(!notebookCleared || !settingsCleared)alert('参加解除は完了しました。端末内のお薬手帳の控え・設定の削除を確認できません。入口の「端末内の控えを削除」から再確認してください。');
   return true;
 }
+let disconnectedDeviceResetBusy=false;
 async function resetDisconnectedDevice(){
+  if(disconnectedDeviceResetBusy||deletionBusy||recoveryBusy||accountClosureBusy)return;
   const notebookScope={uid:uid(),groupId:gid()};
   if(!confirm('この端末の現在の家庭の設定・災害QR・お薬手帳の控えを消して、入口に戻りますか？ サーバーの共有記録は消しません。'))return;
+  let generation=householdBootGeneration,localCleanupStarted=false;
+  const current=()=>notebookScope.uid===uid()&&notebookScope.groupId===gid()&&generation===householdBootGeneration;
+  const assertCurrent=()=>{if(!current())throw new Error('session-changed');};
+  const verified=snapshot=>{
+    if(!snapshot||typeof snapshot.exists!=='boolean'||snapshot.metadata?.fromCache!==false||snapshot.metadata.hasPendingWrites===true)throw new Error('server-unconfirmed');
+    return snapshot;
+  };
+  disconnectedDeviceResetBusy=true;
   try{
+    if(!notebookScope.uid)throw new Error('authentication-required');
     if(getDeletionService().getPending())throw new Error('deletion-pending');
-    if(gid()){
+    const accountRef=db.collection('accounts').doc(notebookScope.uid);
+    const pointer=verified(await accountRef.get({source:'server'}));assertCurrent();
+    if(pointer.exists&&(!notebookScope.groupId||pointer.data().groupId!==notebookScope.groupId))throw new Error('different-household');
+    if(notebookScope.groupId){
+      const groupRef=db.collection('groups').doc(notebookScope.groupId);
       let group=null;
-      try{group=await grp().get({source:'server'});}catch(error){if(error.code!=='permission-denied')throw error;}
-      if(group?.exists && group.data().createdBy===uid()){alert('管理者の接続を失わないため、この操作では戻れません。家庭全体を終了するときは共有データを削除してください。');return;}
-      const member=await col('members').doc(uid()).get({source:'server'}).catch(()=>null);
-      if(member?.exists){alert('参加中です。設定の「利用をやめる」から参加解除してください。');return;}
+      try{group=verified(await groupRef.get({source:'server'}));assertCurrent();}
+      catch(error){assertCurrent();if(error.code!=='permission-denied')throw error;}
+      if(group?.exists&&group.data().createdBy===notebookScope.uid){alert('管理者の接続を失わないため、この操作では戻れません。家庭全体を終了するときは共有データを削除してください。');return;}
+      // Permission denial is not proof of absence. A removed member can still read
+      // their own missing membership in an active group; an unreadable result stops.
+      if(!group||group.exists){
+        const member=verified(await groupRef.collection('members').doc(notebookScope.uid).get({source:'server'}));assertCurrent();
+        if(member.exists){alert('参加中です。設定の「利用をやめる」から参加解除してください。');return;}
+      }
     }
-    await db.collection('accounts').doc(uid()).delete();
+    assertCurrent();
+    if(pointer.exists){await accountRef.delete();assertCurrent();}
     stopHouseholdSubscriptions();
-    if(!await clearNotebookForExit(notebookScope))throw new Error('notebook-storage');
-    if(!clearMainicoDeviceData())throw new Error('storage');
+    generation=householdBootGeneration;assertCurrent();
+    localCleanupStarted=true;
+    const notebookCleared=await clearNotebookForExit(notebookScope);assertCurrent();
+    if(!notebookCleared)throw new Error('notebook-storage');
+    if(!clearMainicoDeviceData()){alert('端末内の設定の片付けを完了できませんでした。完了とは確認できないため、保存情報を手動で消さず、通信とブラウザーの保存設定を確認してください。');return;}
     location.reload();
-  }catch(error){alert('接続や端末保存の確認ができませんでした。削除が途中なら先に再開してください。');}
+  }catch(error){if(current())alert(localCleanupStarted?
+    '端末内の片付けの完了を確認できませんでした。保存情報を手動で消さず、通信とブラウザーの保存設定を確認してください。':
+    '接続の終了を確認できないため、端末の保存内容は消していません。通信を確認し、削除が途中なら先に再開してください。');}
+  finally{disconnectedDeviceResetBusy=false;}
 }
 
 // 削除成功時のAuthイベントで匿名登録を作り直さない。終了状態だけを端末保存する。
@@ -364,7 +412,7 @@ function openAccountDeletion(){
   document.getElementById('account-deletion-identity').textContent='削除対象：'+(auth.currentUser?.email||'この端末でログインしている、メール未登録のアカウント');
   document.getElementById('account-deletion-password').value='';document.getElementById('account-deletion-confirm').value='';
   document.getElementById('account-deletion-finish').disabled=true;
-  document.getElementById('account-deletion-state').textContent='先に共有データ削除・参加解除が済んでいるか確認します。';
+  document.getElementById('account-deletion-state').textContent='終了を開始すると通常利用を停止し、取り消せません。先に共有データ削除・参加解除の完了を確認してください。';
 }
 async function closeAccountDeletion(){
   if(accountClosureBusy)return;

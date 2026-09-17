@@ -307,6 +307,18 @@ console.log('✅ 管理操作はサーバー確認済み作成者だけに表示
 }
 {
   const env=harness();
+  env.element('account-deletion-password').value='old password';
+  env.ctx.openAccountDeletion();
+  assert.match(env.element('account-deletion-state').textContent,/通常利用を停止/);
+  assert.match(env.element('account-deletion-state').textContent,/取り消せません/);
+  assert.equal(env.element('account-deletion-password').value,'');
+  assert.equal(env.element('account-deletion-finish').disabled,true);
+  assert.equal(env.state.deletionCalls,0,'画面を開くだけでは終了を始めない');
+  assert.deepEqual(env.state.reads,[]);
+  console.log('✅ アカウント終了画面は開始の不可逆性を先に示し、開いただけでは終了しない');
+}
+{
+  const env=harness();
   env.element('account-deletion-password').value='secret-for-test';
   env.ctx.MainicoAccountDeletion={message:()=> '本人確認できませんでした'};
   env.ctx.testService={prepare:async()=>{throw Error('reauth');}};
@@ -317,4 +329,108 @@ console.log('✅ 管理操作はサーバー確認済み作成者だけに表示
   assert.match(env.element('account-deletion-state').textContent,/本人確認/);
   assert.equal(env.storage.values.has('mainico_account_closed_v1'),false);
   console.log('✅ 再認証失敗では最終削除を有効にせず、成功を表示せず、入力を消去する');
+}
+
+{
+  const key='mainico_join_pending_v1';
+  const journal=JSON.stringify({uid:'owner',groupId:'ended-family',mode:'kazoku',code:'TEST-CODE'});
+  const denied=()=>Object.assign(Error('parent no longer exists'),{code:'permission-denied'});
+  function joinHarness({memberGet=async()=>{throw denied();},groupGet=async()=>snapshot(null),pointerGet=async()=>snapshot(null)}={}){
+    const env=harness({[key]:journal,mainicoPendingMode:'kazoku',unrelatedPreference:'keep'});
+    const noWrite=()=>{throw Error('boot must not create or delete server records');};
+    const read=async(kind,options,impl)=>{
+      assert.equal(options.source,'server');env.state.reads.push(kind);return impl();
+    };
+    env.ctx.db={collection:name=>({doc:id=>{
+      if(name==='groups'){
+        assert.equal(id,'ended-family');
+        return {
+          get:options=>read('join-group',options,groupGet),set:noWrite,delete:noWrite,
+          collection:collection=>({doc:memberUid=>{
+            assert.equal(collection,'members');assert.equal(memberUid,'owner');
+            return {get:options=>read('join-member',options,memberGet),set:noWrite,delete:noWrite};
+          }})
+        };
+      }
+      assert.ok(['accountClosures','accounts'].includes(name));
+      return {get:options=>read(name,options,name==='accounts'?pointerGet:async()=>snapshot(null)),set:noWrite,delete:noWrite};
+    }})};
+    return env;
+  }
+  const ended=joinHarness();
+  await ended.ctx.bootHouseholdUser(ended.auth.currentUser);
+  assert.equal(ended.storage.getItem(key),null,'only confirmed absence ends the old request');
+  assert.equal(ended.storage.getItem('mainicoGid'),null);
+  assert.equal(ended.storage.getItem('unrelatedPreference'),'keep');
+  assert.equal(ended.state.started,1,'normal start opens entry without a household');
+  assert.deepEqual(ended.state.startupErrors,[]);
+  assert.deepEqual(ended.state.reads,['accountClosures','join-member','join-group','accounts']);
+
+  const uncertainGroups=[
+    async()=>snapshot({createdBy:'someone'}),
+    async()=>snapshot(null,true),
+    async()=>({...snapshot(null),metadata:{fromCache:false,hasPendingWrites:true}}),
+    async()=>({exists:false}),
+    async()=>({exists:false,metadata:{fromCache:false}}),
+    async()=>{throw Error('offline');},
+    async()=>{throw denied();}
+  ];
+  for(const groupGet of uncertainGroups){
+    const env=joinHarness({groupGet});
+    await env.ctx.bootHouseholdUser(env.auth.currentUser);
+    assert.equal(env.storage.getItem(key),journal,'uncertainty must retain the unfinished request');
+    assert.equal(env.storage.getItem('mainicoGid'),null);
+    assert.equal(env.state.started,0);
+    assert.equal(env.state.startupErrors.length,1);
+    assert.ok(!env.state.reads.includes('accounts'),'do not recover another pointer before resolving the request');
+  }
+  const pending=joinHarness({memberGet:async()=>snapshot({status:'pending'})});
+  pending.ctx.col=()=>({doc:()=>({get:async()=>snapshot({status:'pending'})})});
+  await pending.ctx.bootHouseholdUser(pending.auth.currentUser);
+  assert.equal(pending.storage.getItem(key),null);
+  assert.equal(pending.storage.getItem('mainicoGid'),'ended-family');
+  assert.equal(pending.state.pages.at(-1),'pending-page');
+  assert.ok(!pending.state.reads.includes('join-group'),'a valid pending member must not need permission to read its parent');
+  for(const member of [snapshot(null,true),{...snapshot({status:'pending'}),metadata:{fromCache:false,hasPendingWrites:true}}]){
+    const env=joinHarness({memberGet:async()=>member});
+    await env.ctx.bootHouseholdUser(env.auth.currentUser);
+    assert.equal(env.storage.getItem(key),journal);
+    assert.equal(env.state.started,0);
+    assert.equal(env.state.startupErrors.length,1);
+    assert.ok(!env.state.reads.includes('join-group'),'parent fallback only follows a failed member read');
+  }
+  console.log('✅ 未完の参加申請は家庭のサーバー不存在だけで終了扱いにし、通信不明・キャッシュ・未確定応答では記録を保持する');
+
+  const changes=[
+    env=>env.evaluate('householdBootGeneration++'),
+    env=>{env.auth.currentUser.uid='replacement';},
+    env=>env.storage.setItem('mainicoGid','new-family'),
+    env=>env.storage.setItem(key,JSON.stringify({uid:'owner',groupId:'new-request',mode:'honnin'}))
+  ];
+  for(const phase of ['member','group'])for(const change of changes)for(const rejects of [false,true]){
+    const response=deferred(),reached=deferred();
+    const read=()=>{reached.resolve();return response.promise;};
+    const env=joinHarness(phase==='member'?{memberGet:read}:{groupGet:read});
+    const boot=env.ctx.bootHouseholdUser(env.auth.currentUser);
+    await reached.promise;
+    change(env);
+    const stored=env.storage.getItem(key),groupId=env.storage.getItem('mainicoGid');
+    if(rejects)response.reject(denied());else response.resolve(snapshot(null));
+    await boot;
+    assert.equal(env.storage.getItem(key),stored,'old boot cannot clear a current request');
+    assert.equal(env.storage.getItem('mainicoGid'),groupId,'old boot cannot replace the current household');
+    assert.equal(env.state.started,0);
+    assert.deepEqual(env.state.startupErrors,[],'stale errors cannot block the new session');
+    assert.ok(!env.state.reads.includes('accounts'));
+  }
+  const pointer=deferred(),pointerReached=deferred();
+  const switched=joinHarness({pointerGet:()=>{pointerReached.resolve();return pointer.promise;}});
+  const boot=switched.ctx.bootHouseholdUser(switched.auth.currentUser);
+  await pointerReached.promise;
+  switched.storage.setItem('mainicoGid','new-family');
+  pointer.resolve(snapshot({groupId:'old-pointer'}));
+  await boot;
+  assert.equal(switched.storage.getItem('mainicoGid'),'new-family');
+  assert.equal(switched.state.started,0);
+  console.log('✅ 参加履歴の確認中にUID・家庭・起動世代・申請が変われば旧応答を捨て、別家庭の情報や画面を変更しない');
 }

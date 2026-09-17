@@ -45,6 +45,8 @@ jobs:
           node tests/household-deletion.test.mjs
           node tests/household-ui.test.mjs
           node tests/household-setup.test.mjs
+          node tests/pending-join.test.mjs
+          node tests/exit-safety.test.mjs
           node tests/entry-mode.test.mjs
           node tests/handoff-summary.test.mjs
           node tests/person-button-feedback.test.mjs
@@ -53,6 +55,7 @@ jobs:
           node tests/communication-flow.test.mjs
           node tests/conversation-date.test.mjs
           node tests/person-save-context.test.mjs
+          node tests/person-record-feedback.test.mjs
           node tests/person-tasks.test.mjs
           node tests/notebook-integration.test.mjs
           node tests/account-deletion.test.mjs
