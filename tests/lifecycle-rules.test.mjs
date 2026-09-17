@@ -1,9 +1,11 @@
 /* Firestore実動検査: 管理者境界、招待の同時利用、復旧先、削除の停止境界。 */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {createRequire} from 'node:module';
+const {classify}=createRequire(import.meta.url)('../family-connection.js');
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import {
-  doc, collection, setDoc, updateDoc, deleteDoc, getDoc, getDocs,
+  doc, collection, setDoc, updateDoc, deleteDoc, getDoc, getDocs, getDocsFromServer,
   query, where, serverTimestamp, Timestamp, writeBatch,
 } from 'firebase/firestore';
 
@@ -54,6 +56,10 @@ try {
     const db = ctx.firestore();
     await setDoc(doc(db, 'groups', 'home'), { createdBy: 'owner', createdAt: Timestamp.now() });
     await setDoc(doc(db, 'groups', 'other'), { createdBy: 'other-owner', createdAt: Timestamp.now() });
+    await setDoc(doc(db, 'groups', 'legacy-home'), { createdBy: 'old-family', createdAt: Timestamp.now() });
+    await setDoc(doc(db, 'groups', 'legacy-home', 'members', 'old-family'), { name: '旧家族', role: 'kazoku' });
+    await setDoc(doc(db, 'groups', 'legacy-home', 'members', 'old-person'), { name: '旧本人', role: 'honnin' });
+    await setDoc(doc(db, 'groups', 'legacy-home', 'members', 'still-pending'), { name: '承認待ち', role: 'honnin', status: 'pending' });
     for (const uid of ['owner', 'family', 'leaving']) {
       await setDoc(doc(db, 'groups', 'home', 'members', uid), { name: uid, role: 'kazoku', status: 'approved' });
     }
@@ -75,6 +81,26 @@ try {
 
   await allowed('通常の家族は世帯の記録を読める', () => getDoc(doc(family, 'groups', 'home', 'events', 'record')));
   await allowed('旧status無しメンバーも読める', () => getDoc(doc(dbFor('legacy'), 'groups', 'home', 'events', 'record')));
+  for(const [uid,personOthers,familyOthers] of [['old-family',1,0],['old-person',0,1]]){
+    await allowed('旧登録のサーバー参加一覧で返信相手を判定: '+uid,async()=>{
+      const snap=await getDocsFromServer(collection(dbFor(uid),'groups','legacy-home','members'));
+      assert.deepEqual(classify(snap,uid),{status:'shared',others:1,personOthers,familyOthers});
+    });
+  }
+  await allowed('旧登録の本人が挨拶を保存できる',()=>setDoc(doc(dbFor('old-person'),'groups','legacy-home','events','hello'),{
+    type:'aisatsu',text:'おはよう',slot:'asa',uid:'old-person',date:'2026-09-17',at:serverTimestamp(),
+  }));
+  await allowed('旧登録の家族が挨拶を取得し、返事を保存できる',async()=>{
+    const hello=await getDoc(doc(dbFor('old-family'),'groups','legacy-home','events','hello'));
+    assert.equal(hello.data().text,'おはよう');
+    await setDoc(doc(dbFor('old-family'),'groups','legacy-home','events','reply'),{
+      type:'aisatsu-back',text:'おはよう',replyTo:hello.id,uid:'old-family',date:'2026-09-17',at:serverTimestamp(),
+    });
+    const reply=await getDoc(doc(dbFor('old-person'),'groups','legacy-home','events','reply'));
+    assert.equal(reply.data().replyTo,'hello');
+  });
+  await denied('旧登録の家庭でも承認待ちは会話を読めない',()=>getDoc(doc(dbFor('still-pending'),'groups','legacy-home','events','hello')));
+  await denied('新規参加者がstatusを省いて旧登録扱いにはできない',()=>setDoc(doc(stranger,'groups','legacy-home','members','stranger'),{name:'検査',role:'honnin'}));
   await denied('別世帯の記録は読めない', () => getDoc(doc(owner, 'groups', 'other', 'events', 'record')));
   await denied('申請中は記録を読めない', () => getDoc(doc(dbFor('pending'), 'groups', 'home', 'events', 'record')));
   await denied('本人のroleを管理者にしても権限は増えない', () => updateDoc(doc(family, 'groups', 'home', 'members', 'family'), { role: 'admin' }));

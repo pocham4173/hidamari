@@ -7,7 +7,7 @@ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const source=html.slice(html.indexOf("let familyConnection={"),html.indexOf('let personTasksController=null;'));
 const labels=[{textContent:''}],requests=[{textContent:''}],people=[{textContent:''}];
 const gates=['family','person','shared'].map(kind=>({dataset:{shareGate:kind},hidden:true}));
-const els=Object.fromEntries(['home-summary-description','home-record-heading','family-task-kind-family','family-task-sharing-note','family-task-kind','person-contact-state','h-contact-state'].map(id=>[id,{textContent:'',value:'self',hidden:false,disabled:false}]));
+const els=Object.fromEntries(['home-summary-description','home-record-heading','family-task-kind-family','family-task-sharing-note','family-task-kind','person-contact-state','h-contact-state','conversation-setup-entry'].map(id=>[id,{textContent:'',value:'self',hidden:false,disabled:false}]));
 const conversations=['person','family'].map(kind=>({dataset:{communicationGate:kind},hidden:true}));
 const sends=['person','family'].map(kind=>({dataset:{sendAudience:kind},disabled:true}));
 const selectors={'[data-connection-state]':labels,'[data-request-audience]':requests,'[data-person-audience]':people,'[data-share-gate]':gates,'[data-communication-gate]':conversations,'[data-send-audience]':sends};
@@ -32,6 +32,11 @@ assert.match(els['home-summary-description'].textContent,/家族の伝言/);
 // A person recipient and a family recipient enable their respective controls.
 listeners[0].ok(snap([['me','kazoku'],['person','honnin']]));hidden(true,false,false);
 assert.equal(conversations[0].hidden,false);assert.equal(sends[0].disabled,false);
+assert.equal(els['conversation-setup-entry'].hidden,true,'本人とつながれば補助の入口は隠す');
+const legacySnap={metadata:{fromCache:false,hasPendingWrites:false},forEach:fn=>[['me','kazoku'],['person','honnin']].forEach(([id,role])=>fn({id,data:()=>({role})}))};
+listeners[0].ok(legacySnap);hidden(true,false,false);
+assert.equal(conversations[0].hidden,false,'旧登録でも本人とのやりとり欄を表示');
+assert.equal(sends[0].disabled,false,'旧登録でも確認済み相手への返信ができる');
 listeners[0].ok(snap([['me','kazoku'],['person','honnin']],true));hidden(true,true,true);
 assert.equal(conversations[0].hidden,false,'確認済みのやりとり欄は通信待ちで消さない');assert.equal(sends[0].disabled,true);
 // Switching the selected screen is reflected even though the original registration role is unchanged.
@@ -44,6 +49,7 @@ listeners[0].ok(snap([['me','kazoku'],['person','honnin'],['family','kazoku']]))
 els['family-task-kind'].value='family';listeners[0].ok(snap([['me','kazoku']]));hidden(true,true,true);
 assert.equal(els['family-task-kind'].value,'family');assert.equal(els['family-task-kind-family'].hidden,false);assert.match(els['family-task-sharing-note'].textContent,/入力は残っています/);
 assert.equal(c.requireFamilyFeature(),false);
+assert.equal(els['conversation-setup-entry'].hidden,false,'相手が確認できないときも設定への入口を残す');
 for(const state of [snap([['me','kazoku'],['family','kazoku']],true),snap([['me','kazoku'],['family','kazoku']],false,true)]){
  listeners[0].ok(state);hidden(true,true,true);assert.doesNotMatch(labels[0].textContent,/参加者はいません/);
 }

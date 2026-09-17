@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+const {classify}=createRequire(import.meta.url)('../family-connection.js');
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 function section(a,b){const i=html.indexOf(a),j=html.indexOf(b,i);assert.ok(i>=0&&j>i,a);return html.slice(i,j);}
 function htmlText(value){return String(value).replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');}
@@ -53,8 +55,10 @@ const family={status:'shared',others:1,personOthers:0,familyOthers:1};
 const solo={status:'solo',others:0,personOthers:0,familyOthers:0};
 const unknown={status:'unknown',others:null,personOthers:null,familyOthers:null};
 const greeting={_id:'hello-1',type:'aisatsu',text:'おはよう',slot:'asa',uid:'person',at:{seconds:1}};
+const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:fn=>[['family','kazoku'],['person','honnin']].forEach(([id,role])=>fn({id,data:()=>({role})}))};
 {
- const f=fixture();f.state(connected);f.events([greeting]);
+ const f=fixture();f.state(classify(legacyMembers,'family'));f.events([greeting]);
+ assert.equal(f.el('card-actions').hidden,false,'旧い参加情報から実際の返信欄まで表示される');
  assert.match(f.el('ev-list').innerHTML,/おはよう.*を返す/);
  const quick=f.replyButtons('hello-1').find(button=>button.getAttribute('onclick').startsWith('replyToPersonEvent'));
  await f.click(quick);assert.equal(f.writes.length,1);
@@ -67,11 +71,11 @@ const greeting={_id:'hello-1',type:'aisatsu',text:'おはよう',slot:'asa',uid:
  assert.equal(continuation.textContent,'続けて言葉を送る');await f.click(continuation);
  f.el('in-family-message').value='午後に電話するね';await f.c.sendFamilyMessage();
  assert.equal(f.writes[1].replyTo,'hello-1','返事済みからの追伸も元の挨拶につながる');assert.equal(f.writes[1].text,'午後に電話するね');
- f.setAccount('person');f.state(family);f.c.renderPersonConversation([response],{fromCache:false});
+ f.setAccount('person');f.state(classify(legacyMembers,'person'));f.c.renderPersonConversation([response],{fromCache:false});
  assert.equal(f.c.currentFamilyMessageId,'response-1');assert.equal(f.el('h-message-reply').style.display,'block');
  assert.match(f.el('h-incoming-message').textContent,/おはよう/);assert.equal(f.el('h-reply-context').textContent,'上の連絡への返事です。');
  await f.c.sendFamilyMessageBack('ありがとう');assert.equal(f.writes.at(-1).text,'ありがとう');assert.equal(f.writes.at(-1).replyTo,'response-1');
- f.setAccount('family');f.state(connected);f.events([greeting,response,{...f.writes.at(-1),_id:'thanks-1',uid:'person',at:{seconds:3}}]);
+ f.setAccount('family');f.state(classify(legacyMembers,'family'));f.events([greeting,response,{...f.writes.at(-1),_id:'thanks-1',uid:'person',at:{seconds:3}}]);
  assert.match(f.el('ev-list').innerHTML,/ご本人からの返事：「ありがとう」/);
 }
 {
@@ -256,3 +260,32 @@ console.log('communication + press integration: new-arrival cancellation and del
  assert.equal(f.writes[0].text,'朝の挨拶に追伸です');
 }
 console.log('conversation discovery integration: generated controls, completed markers, continuation and original reply target passed');
+
+// The missing-conversation entry opens the actual settings section without changing data.
+{
+ const f=fixture();let opened=0;
+ f.c.openSettings=()=>opened++;
+ vm.runInContext(section('function openConversationConnection(){','async function renderSetMembers(){'),f.c);
+ f.c.openConversationConnection();
+ assert.equal(opened,1);assert.equal(f.el('conversation-connection-guide').open,true);
+ assert.equal(f.el('settings-family-connection').focused,true);
+ assert.equal(f.writes.length,0);
+ assert.match(html,/id="conversation-setup-entry"[^>]*onclick="openConversationConnection\(\)"/);
+}
+// Settings identifies the current selected screen, including legacy registrations.
+{
+ const f=fixture();const rows=[
+   {id:'family',data:()=>({name:'家族',role:'kazoku'})},
+   {id:'person',data:()=>({name:'<本人>',role:'kazoku',mode:'honnin'})},
+   {id:'switched',data:()=>({name:'変更した人',role:'honnin',mode:'konly'})},
+ ];
+ Object.assign(f.c,{MainicoFamilyConnection:createRequire(import.meta.url)('../family-connection.js'),
+   col:()=>({get:async()=>({empty:false,forEach:fn=>rows.forEach(fn)})}),rememberMember:id=>id,isHouseholdOwner:()=>false,householdOwnerId:'family'});
+ vm.runInContext(section('async function renderSetMembers(){','/* 家族の設定画面が開いているときだけ'),f.c);
+ await f.c.renderSetMembers();
+ assert.match(f.el('set-members').innerHTML,/家族 \(家族の画面\) \(このアカウント\)/);
+ assert.match(f.el('set-members').innerHTML,/&lt;本人&gt; \(本人の画面\)/);
+ assert.match(f.el('set-members').innerHTML,/変更した人 \(家族の画面\)/);
+ assert.equal(f.writes.length,0);
+}
+console.log('connection discovery: settings entry, current screens and legacy identities passed');

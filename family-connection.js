@@ -31,7 +31,9 @@
         if(doc.metadata&&doc.metadata.hasPendingWrites===true){invalid=true;return;}
         const member=doc.data();
         if(!member||typeof member!=='object'){invalid=true;return;}
-        if(member.status!=='approved')return;
+        // Match firestore.rules: pre-approval-system members have no status field.
+        // Only its absence is legacy approval; pending/null/invalid values stay closed.
+        if(Object.prototype.hasOwnProperty.call(member,'status')&&member.status!=='approved')return;
         if(doc.id===ownUid){ownApproved=true;return;}
         approved.set(doc.id,recipient(member));
       });
@@ -44,5 +46,5 @@
     });
     return {status:approved.size?'shared':'solo',others:approved.size,familyOthers,personOthers};
   }
-  return {classify};
+  return {classify,recipient};
 });

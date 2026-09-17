@@ -97,7 +97,7 @@ if (html !== null) {
   for(const match of html.matchAll(/<script\b[^>]*\bsrc="([^\"]+)"/gi)){
     const src=match[1];
     if(/^(?:https?:|\/\/)/.test(src))continue;
-    const code=read(src);
+    const code=read(src.split(/[?#]/)[0]);
     if(code===null){record(`${src} を読める`,false);continue;}
     const error=syntaxError(code,src);
     record(`${src} の JavaScript に構文エラーがない`,!error,error||'');
