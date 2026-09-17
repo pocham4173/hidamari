@@ -53,6 +53,9 @@ jobs:
           node tests/family-connection.test.mjs
           node tests/solo-integration.test.mjs
           node tests/communication-flow.test.mjs
+          node tests/communication-availability.test.mjs
+          node tests/conversation-discovery.test.mjs
+          node tests/person-conversation-access.test.mjs
           node tests/conversation-date.test.mjs
           node tests/person-save-context.test.mjs
           node tests/person-record-feedback.test.mjs

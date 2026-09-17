@@ -4,11 +4,14 @@ import vm from 'node:vm';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 function section(a,b){const start=html.indexOf(a),end=html.indexOf(b,start);assert.ok(start>=0&&end>start);return html.slice(start,end);}
 class Element {
-  constructor(){this.value='';this.checked=false;this.textContent='';this.innerHTML='';this.children=[];this.style={};this.classList={add(){},remove(){},toggle(){}};}
+  constructor(){this.value='';this.checked=false;this.textContent='';this.innerHTML='';this.children=[];this.style={};const classes=new Set();this.classList={add:name=>classes.add(name),remove:name=>classes.delete(name),toggle(name,on){if(on)classes.add(name);else classes.delete(name);},contains:name=>classes.has(name)};}
   appendChild(c){this.children.push(c);return c;}
   replaceChildren(...children){this.children=children;this.textContent='';}
   addEventListener(event,fn){this[event]=fn;}
   setAttribute(){}
+  focus(){this.focused=true;}
+  contains(el){return this===el||this.children.some(c=>c.contains(el));}
+  querySelectorAll(){return [];}
 }
 const elements=new Map();const el=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);};
 let saved=null,writes=0,failSave=false,failQr=false,clock='2026年9月15日';
@@ -39,6 +42,7 @@ function historyFixture(){
         get:async options=>{assert.equal(field,'replyTo');assert.equal(options.source,'server');return {metadata:{fromCache:false},forEach:fn=>serverReplies.filter(v=>v.replyTo===value).forEach(v=>fn({data:()=>v}))};}})}),
     kusuriQuestion:()=> '薬は飲みましたか',speak(){},addEvent:payload=>{received.push(payload);return writeFailure?Promise.reject(Error('offline')):new Promise((resolve,reject)=>{resolveWrite=resolve;rejectWrite=reject;});}};
   vm.createContext(c);vm.runInContext(section('function compareConversationEvents(a,b){','function personReplyDone(id){'),c);
+  vm.runInContext(section('/* Focus changes only when a person opens', 'let personMessageReplyTargetId='),c);
   vm.runInContext(section('let personHistoryUnsub=', '/* 出典 https://www.city.ueda'),c);
   const snap=(data,cached=false,pending=false)=>({metadata:{fromCache:cached,hasPendingWrites:pending},forEach:fn=>data.forEach(v=>fn({id:v.id,data:()=>v}))});
   const deliver=(data,cached=false,pending=false)=>{data.forEach(v=>originals.set(v.id,v));listens.at(-1).ok(snap(data,cached,pending));};

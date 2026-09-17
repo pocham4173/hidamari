@@ -3,11 +3,26 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 function section(a,b){const i=html.indexOf(a),j=html.indexOf(b,i);assert.ok(i>=0&&j>i,a);return html.slice(i,j);}
+function htmlText(value){return String(value).replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');}
 class Element{
- constructor(){this._text='';this._html='';this.value='';this.style={};this.hidden=false;this.disabled=false;this.dataset={};const classes=new Set();this.classList={add:name=>classes.add(name),remove:name=>classes.delete(name),contains:name=>classes.has(name),toggle:(name,on)=>{if(on)classes.add(name);else classes.delete(name);}};}
- set textContent(v){this._text=String(v);this._html='';}get textContent(){return this._text;}
- set innerHTML(v){this._html=String(v);this._text='';}get innerHTML(){return this._html;}
- focus(){this.focused=true;}scrollIntoView(){}contains(){return false;}querySelectorAll(){return [];}
+ constructor(){this._text='';this._html='';this._buttons=[];this.attributes={};this.value='';this.style={};this.hidden=false;this.disabled=false;this.dataset={};const classes=new Set();this.classList={add:name=>classes.add(name),remove:name=>classes.delete(name),contains:name=>classes.has(name),toggle:(name,on)=>{if(on)classes.add(name);else classes.delete(name);}};}
+ set textContent(v){this._text=String(v);this._html='';this._buttons=[];}get textContent(){return this._text;}
+ set innerHTML(v){
+  this._html=String(v);this._text='';this._buttons=[];
+  // Parse the actual generated controls, including data attributes and disabled.
+  // The test must exercise the renderer's controls, not unrelated placeholder buttons.
+  for(const match of this._html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)){
+   const button=new Element();button.tagName='BUTTON';button.parentElement=this;
+   for(const attr of match[1].matchAll(/([\w-]+)(?:="([^"]*)")?/g))button.setAttribute(attr[1],htmlText(attr[2]??''));
+   button.disabled=Object.hasOwn(button.attributes,'disabled');button.textContent=htmlText(match[2].replace(/<[^>]*>/g,''));this._buttons.push(button);
+  }
+ }
+ get innerHTML(){return this._html;}
+ setAttribute(name,value){this.attributes[name]=String(value);if(name.startsWith('data-'))this.dataset[name.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=String(value);}
+ getAttribute(name){return this.attributes[name]??null;}
+ addEventListener(name,handler){(this.handlers??={})[name]=handler;}
+ focus(){this.focused=true;}scrollIntoView(){}contains(node){return this._buttons.includes(node);}
+ querySelectorAll(selector){return selector==='button'?this._buttons:[];}
 }
 function fixture(){
  const els=new Map(),writes=[],alerts=[],spoken=[],storage=new Map();let account='family',group='home',kOnly=false;
@@ -15,7 +30,7 @@ function fixture(){
  el('card-actions').dataset.communicationGate='person';el('h-message-reply').dataset.communicationGate='family';
  const personSend=el('btn-ab-asa');personSend.dataset.sendAudience='person';
  const familySend=el('person-thanks');familySend.dataset.sendAudience='family';
- const c={document:{getElementById:el,querySelectorAll:sel=>sel==='[data-communication-gate]'?[el('card-actions'),el('h-message-reply')]:sel==='[data-send-audience]'?[personSend,familySend]:sel==='#h-message-reply [data-send-audience="family"]'?[familySend]:[],removeEventListener(){}},uid:()=>account,gid:()=>group,isKOnly:()=>kOnly,householdBootGeneration:1,honninSending:false,
+ const c={document:{getElementById:el,querySelectorAll:sel=>sel==='[data-communication-gate]'?[el('card-actions'),el('h-message-reply')]:sel==='[data-send-audience]'?[personSend,familySend,...el('ev-list').querySelectorAll('button').filter(button=>button.dataset.sendAudience)]:sel==='#h-message-reply [data-send-audience="family"]'?[familySend]:[],removeEventListener(){}},uid:()=>account,gid:()=>group,isKOnly:()=>kOnly,householdBootGeneration:1,honninSending:false,
    currentFamilyMessageId:'',hMsgSpokenThrough:0,aisatsuBackSending:false,askKusuriSending:false,familyMessageSending:false,
    personMessageReplySending:false,onegaiBackFreeId:'',previewStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},todayStr:()=> '2026-09-17',feedback(){},speak:t=>spoken.push(t),timeYomi:v=>v,
    validKusuriSlot:k=>['asa','hiru','yoru'].includes(k),kusuriSlotName:k=>({asa:'朝',hiru:'昼',yoru:'夜'}[k]||''),slot:()=>({key:'asa'}),
@@ -29,7 +44,9 @@ function fixture(){
  vm.runInContext(section('let personMessageReplySending=false;', 'function recKibun(text)'),c);
  function state(value){c.nextConnection=value;vm.runInContext('familyConnection=nextConnection;renderFamilyConnection();',c);}
  function events(rows,status='ready'){c.nextRows=rows;c.nextStatus=status;vm.runInContext('familyHomeItems=nextRows;familyHomeEventStatus=nextStatus;renderFamilyConversation();',c);}
- return {c,el,writes,alerts,spoken,storage,state,events,setAccount:v=>account=v,setGroup:v=>group=v,setKOnly:v=>kOnly=v};
+ function replyButtons(id){return el('ev-list').querySelectorAll('button').filter(button=>button.dataset.replyTo===id);}
+ async function click(button){assert.ok(button,'generated button exists');assert.equal(button.disabled,false,'generated button is enabled');return await vm.runInContext(button.getAttribute('onclick'),c);}
+ return {c,el,writes,alerts,spoken,storage,state,events,replyButtons,click,setAccount:v=>account=v,setGroup:v=>group=v,setKOnly:v=>kOnly=v};
 }
 const connected={status:'shared',others:1,personOthers:1,familyOthers:0};
 const family={status:'shared',others:1,personOthers:0,familyOthers:1};
@@ -39,13 +56,17 @@ const greeting={_id:'hello-1',type:'aisatsu',text:'おはよう',slot:'asa',uid:
 {
  const f=fixture();f.state(connected);f.events([greeting]);
  assert.match(f.el('ev-list').innerHTML,/おはよう.*を返す/);
- const click=f.el('ev-list').innerHTML.match(/onclick="(replyToPersonEvent[^\"]+)"/)[1];
- await vm.runInContext(click,f.c);assert.equal(f.writes.length,1);
+ const quick=f.replyButtons('hello-1').find(button=>button.getAttribute('onclick').startsWith('replyToPersonEvent'));
+ await f.click(quick);assert.equal(f.writes.length,1);
  assert.equal(f.writes[0].text,'おはよう','生成したonclickを実行しても日本語が失われない');
  assert.equal(f.writes[0].replyTo,'hello-1');assert.equal(f.writes[0].type,'aisatsu-back');
  const response={...f.writes[0],_id:'response-1',uid:'family',at:{seconds:2}};
  f.events([greeting,response]);assert.match(f.el('ev-list').innerHTML,/あなたは返事を送りました/);
- assert.doesNotMatch(f.el('ev-list').innerHTML,/onclick="replyToPersonEvent/);
+ assert.ok(f.el('ev-list').querySelectorAll('button').some(button=>button.disabled&&button.textContent==='返事を送りました'),'返事済みはその場所に残す');
+ const continuation=f.replyButtons('hello-1').find(button=>button.dataset.replyAgain==='true');
+ assert.equal(continuation.textContent,'続けて言葉を送る');await f.click(continuation);
+ f.el('in-family-message').value='午後に電話するね';await f.c.sendFamilyMessage();
+ assert.equal(f.writes[1].replyTo,'hello-1','返事済みからの追伸も元の挨拶につながる');assert.equal(f.writes[1].text,'午後に電話するね');
  f.setAccount('person');f.state(family);f.c.renderPersonConversation([response],{fromCache:false});
  assert.equal(f.c.currentFamilyMessageId,'response-1');assert.equal(f.el('h-message-reply').style.display,'block');
  assert.match(f.el('h-incoming-message').textContent,/おはよう/);assert.equal(f.el('h-reply-context').textContent,'上の連絡への返事です。');
@@ -58,16 +79,22 @@ const greeting={_id:'hello-1',type:'aisatsu',text:'おはよう',slot:'asa',uid:
  f.state(connected);f.events([greeting]);assert.equal(f.el('card-actions').hidden,false);assert.equal(f.el('btn-ab-asa').disabled,false);
  f.state(unknown);assert.equal(f.el('card-actions').hidden,false);assert.equal(f.el('btn-ab-asa').disabled,true);
  const before=f.el('ev-list').innerHTML;await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,0);assert.equal(f.el('ev-list').innerHTML,before);
- f.state(solo);assert.equal(f.el('card-actions').hidden,true);f.state(unknown);assert.equal(f.el('card-actions').hidden,true,'確認済み一人の家庭には通信待ちで家族欄を復活させない');
+ f.state(solo);assert.equal(f.el('card-actions').hidden,false,'以前の会話は相手不在でも読める');
+ assert.ok(f.replyButtons('hello-1').every(button=>button.disabled),'相手不在では返信できない');
+ f.events([]);assert.equal(f.el('card-actions').hidden,true);f.state(unknown);assert.equal(f.el('card-actions').hidden,true,'会話のない確認済み一人の家庭に家族欄を復活させない');
  f.state(connected);f.setKOnly(true);f.events([greeting]);assert.equal(f.el('card-actions').hidden,false,'後から本人参加しても家族のみモードのstyleで隠さない');
- f.events([greeting],'cached');await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,0,'未確認の元連絡へは返信しない');
+ f.events([greeting],'cached');assert.ok(f.replyButtons('hello-1').every(button=>button.disabled),'通信未確認は実際の返信ボタンを無効にする');await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,0,'未確認の元連絡へは返信しない');
 }
 {
  const f=fixture();f.state(connected);f.events([greeting]);let release;
  f.c.addEvent=payload=>{f.writes.push(payload);return new Promise(resolve=>release=resolve);};
- const pending=f.c.replyToPersonEvent('hello-1');await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,1);release();await pending;
+ const pending=f.c.replyToPersonEvent('hello-1');assert.ok(f.replyButtons('hello-1').every(button=>button.disabled),'送信中の実ボタンは無効');await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,1);release();await pending;
  await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,1,'成功後はサーバー購読の返答を待たず重複送信を防ぐ');
- f.events([greeting]);assert.match(f.el('ev-list').innerHTML,/あなたは返事を送りました/);assert.doesNotMatch(f.el('ev-list').innerHTML,/onclick="replyToPersonEvent/);
+ f.events([greeting]);assert.match(f.el('ev-list').innerHTML,/あなたは返事を送りました/);
+ assert.ok(f.el('ev-list').querySelectorAll('button').some(button=>button.disabled&&button.textContent==='返事を送りました'));
+ const continuation=f.replyButtons('hello-1').find(button=>button.dataset.replyAgain==='true');
+ assert.ok(continuation);assert.equal(continuation.disabled,false,'購読反映前も続けて書くボタンは使える');
+ assert.equal(f.replyButtons('hello-1').some(button=>button.getAttribute('onclick').startsWith('replyToPersonEvent')),false,'済んだ定型返信を再送する操作にはしない');
 }
 {
  const f=fixture();f.state(connected);f.events([greeting]);let reject;
@@ -156,7 +183,9 @@ for(const fail of [false,true]){
  const saved=JSON.parse(f.storage.get('mainicoMessageCursor:home:person'));assert.equal(saved.at.nanoseconds,200);assert.equal(saved._id,'a-later');
  f.setAccount('family');f.state(connected);
  f.events([{...greeting,_id:'z-early',text:'早い挨拶',at:earlier.at},{...greeting,_id:'a-later',text:'遅い挨拶',at:later.at}]);
- assert.match(f.el('ev-list').innerHTML,/遅い挨拶/);assert.doesNotMatch(f.el('ev-list').innerHTML,/早い挨拶/);
+ assert.match(f.el('ev-list').innerHTML,/遅い挨拶/);assert.match(f.el('ev-list').innerHTML,/早い挨拶/,'新しい挨拶でも前の挨拶を消さない');
+ assert.ok(f.el('ev-list').innerHTML.indexOf('遅い挨拶')<f.el('ev-list').innerHTML.indexOf('早い挨拶'),'ナノ秒を含めて新しい会話から表示する');
+ assert.equal(f.replyButtons('z-early').length,2,'前の挨拶にも定型・自由文の返信がある');
 }
 for(const cached of [true,false]){
  const f=fixture();f.setAccount('person');f.state(family);
@@ -212,3 +241,18 @@ console.log('communication flow: greeting roundtrip, separate save/receive, targ
  assert.equal(f.writes.length,1);assert.equal(f.writes[0].replyTo,'press-B');assert.equal(f.writes[0].text,'ありがとう');
 }
 console.log('communication + press integration: new-arrival cancellation and deliberate next reply passed');
+
+// Reloaded replies must also preserve a way to continue the same conversation.
+{
+ const f=fixture();f.state(connected);
+ const savedReply={_id:'saved-reply',type:'aisatsu-back',text:'おはよう',replyTo:'hello-1',uid:'family',name:'家族',at:{seconds:2}};
+ f.events([greeting,savedReply]);
+ assert.ok(f.el('ev-list').querySelectorAll('button').some(button=>button.disabled&&button.textContent==='返事を送りました'));
+ const continuation=f.replyButtons('hello-1').find(button=>button.dataset.replyAgain==='true');
+ await f.click(continuation);f.el('in-family-message').value='朝の挨拶に追伸です';
+ f.events([greeting,savedReply,{...greeting,_id:'later-greeting',text:'こんにちは',slot:'hiru',at:{seconds:3}}]);
+ await f.c.sendFamilyMessage();
+ assert.equal(f.writes.length,1);assert.equal(f.writes[0].replyTo,'hello-1','再表示後も新着に返信先をすり替えない');
+ assert.equal(f.writes[0].text,'朝の挨拶に追伸です');
+}
+console.log('conversation discovery integration: generated controls, completed markers, continuation and original reply target passed');
