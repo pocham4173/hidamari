@@ -434,3 +434,38 @@ console.log('✅ 管理操作はサーバー確認済み作成者だけに表示
   assert.equal(switched.state.started,0);
   console.log('✅ 参加履歴の確認中にUID・家庭・起動世代・申請が変われば旧応答を捨て、別家庭の情報や画面を変更しない');
 }
+
+{
+  const env=harness(),closure=deferred(),member=deferred(),pointer=deferred();
+  const db=env.ctx.db,col=env.ctx.col;
+  const requests=[];
+  env.ctx.db={collection:name=>name==='accountClosures'?{doc:()=>({get:()=>{requests.push('closure');return closure.promise;}})}:name==='accounts'?{doc:()=>({set:()=>{requests.push('pointer');return pointer.promise;}})}:db.collection(name)};
+  env.ctx.col=name=>name==='members'?{doc:()=>({...col(name).doc(),get:()=>{requests.push('member');return member.promise;}})}:col(name);
+  const boot=env.ctx.bootHouseholdUser(env.auth.currentUser);
+  assert.deepEqual(requests.sort(),['closure','member'],'independent access checks begin without awaiting each other');
+  member.resolve(snapshot({status:'approved'}));await Promise.resolve();
+  assert.equal(env.state.started,0,'membership alone never bypasses account closure');
+  closure.resolve(snapshot(null));await boot;
+  assert.equal(env.state.started,1,'an unresolved recovery write cannot block home');
+  assert.equal(env.element('loading').style.display,'none');
+  assert.ok(requests.includes('pointer'));
+  pointer.reject(Error('offline'));await new Promise(r=>setImmediate(r));
+  assert.equal(env.element('recovery-sync-warning').hidden,false,'failure remains visible in recovery settings');
+  assert.equal(env.state.started,1);
+  env.ctx.saveRecoveryPointer=async()=>{};
+  await env.ctx.syncStartupRecoveryPointer();
+  assert.equal(env.element('recovery-sync-warning').hidden,true,'retry clears the warning only for this account');
+}
+{
+  for(const status of ['pending','revoked','absent']){
+    const env=harness();env.ctx.col=()=>({doc:()=>({get:async()=>snapshot(status==='absent'?null:{status})})});
+    env.ctx.grp=()=>{throw Error('group contents must not be read before approval');};
+    await env.ctx.bootHouseholdUser(env.auth.currentUser);
+    assert.equal(env.state.started,0,status);
+    assert.ok(env.state.pages.includes(status==='pending'?'pending-page':'household-status-page'));
+  }
+  const env=harness(),late=deferred();env.evaluate('householdVerified=true');env.ctx.saveRecoveryPointer=()=>late.promise;
+  const write=env.ctx.syncStartupRecoveryPointer();env.ctx.stopHouseholdSubscriptions();late.reject(Error('old account'));await write;
+  assert.equal(env.element('recovery-sync-warning').hidden,true,'old failure cannot replace current recovery state');
+}
+console.log('✅ 起動時の承認・終了確認は並行処理、未承認を遮断し、復旧先の保存待ちでホームを止めない');

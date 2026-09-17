@@ -124,31 +124,21 @@ if (html !== null) {
   );
 }
 
-/* ---------- 利用方法を切り替えても共有履歴を隠さない ---------- */
+/* ---------- 利用方法に応じた記録表示（DOMの詳しい検査は別途実行） ---------- */
 
 if (html !== null) {
-  const modeIndependentHistory =
-    /function\s+recVisible\s*\(v\)\s*\{\s*return\s+!REC_META_TYPES\[v\.type\];\s*\}/.test(html) &&
-    !/REC_KONLY_OK/.test(html);
-  record(
-    '家族の共有履歴を利用モードで除外しない',
-    modeIndependentHistory,
-    modeIndependentHistory ? '' : '本人・家族の履歴をモード別に除外する処理が残っています'
-  );
-
-  const graphHasSharedSeries = [
-    "['挨拶','aisatsu'",
-    "['メッセージと返事','message'",
-    "['服薬に関する記録','kusuri'",
-    "['体調の記録','kibun'",
-    "['ちょっとお願い','onegai'",
-    "['家族の記録','care'"
-  ].every((text) => html.includes(text));
-  record(
-    'グラフに本人・家族・日々の記録の共有系列がある',
-    graphHasSharedSeries,
-    graphHasSharedSeries ? '' : '共有履歴に必要なグラフ系列が不足しています'
-  );
+  let separated=false;
+  try {
+    const ctx={isKOnly:()=>true};
+    vm.createContext(ctx);
+    vm.runInContext(html.slice(html.indexOf('var REC_PERSON_TYPES'),html.indexOf('function eventWhoClass')),ctx);
+    separated=!ctx.recVisible({type:'kusuri'}) && !ctx.recVisible({type:'family-message'}) && ctx.recVisible({type:'kusuri-kakunin'});
+    ctx.isKOnly=()=>false;
+    separated=separated && ctx.recVisible({type:'kusuri'}) && ctx.recVisible({type:'family-message'});
+  } catch {}
+  record('家族だけの集計を本人の操作・会話から分ける',separated,separated?'':'利用方法に応じた表示範囲が不正です');
+  const archive=html.includes('id="rec-person-archive" hidden') && html.includes('function recRenderArchive()');
+  record('本人の元記録を別の履歴で確認できる',archive,archive?'':'別枠の履歴がありません');
 
   const actorColors = ['who-honnin', 'who-kazoku', 'who-shared'].every((name) =>
     html.includes(`.rec-kind.${name}`)
