@@ -85,7 +85,7 @@ const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:f
  const before=f.el('ev-list').innerHTML;await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,0);assert.equal(f.el('ev-list').innerHTML,before);
  f.state(solo);assert.equal(f.el('card-actions').hidden,false,'以前の会話は相手不在でも読める');
  assert.ok(f.replyButtons('hello-1').every(button=>button.disabled),'相手不在では返信できない');
- f.events([]);assert.equal(f.el('card-actions').hidden,true);f.state(unknown);assert.equal(f.el('card-actions').hidden,true,'会話のない確認済み一人の家庭に家族欄を復活させない');
+ f.events([]);assert.equal(f.el('card-actions').hidden,false);f.state(unknown);assert.equal(f.el('card-actions').hidden,false,'会話がないときもホームの入口を消さない');
  f.state(connected);f.setKOnly(true);f.events([greeting]);assert.equal(f.el('card-actions').hidden,false,'後から本人参加しても家族のみモードのstyleで隠さない');
  f.events([greeting],'cached');assert.ok(f.replyButtons('hello-1').every(button=>button.disabled),'通信未確認は実際の返信ボタンを無効にする');await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,0,'未確認の元連絡へは返信しない');
 }
@@ -120,7 +120,8 @@ const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:f
  f.c.renderPersonConversation([msg,{_id:'joined',type:'member-joined',text:'追加の人',at:{seconds:3}}],{fromCache:false});
  assert.equal(f.c.currentFamilyMessageId,'back','参加のお知らせで挨拶の返信先を消さない');
  f.c.renderPersonConversation([],{fromCache:false});assert.equal(f.c.currentFamilyMessageId,'');assert.equal(f.el('h-message-reply').style.display,'none');assert.equal(f.el('h-incoming-message').textContent,'');
- f.c.renderPersonConversation([msg],{fromCache:true});assert.equal(f.spoken.filter(t=>t.includes('おはよう')).length,0,'キャッシュを新着として読み上げない');
+ const spoken=f.spoken.length;
+ f.c.renderPersonConversation([msg],{fromCache:true});assert.equal(f.spoken.length,spoken,'キャッシュを新着として読み上げない');
 }
 {
  const f=fixture();f.state(connected);f.events([greeting]);const session=f.c.communicationSession();
@@ -220,7 +221,7 @@ assert.doesNotMatch(html,/試験運用中｜実名・住所・電話・病歴は
 assert.ok(html.indexOf('id="card-actions"')<html.indexOf('id="card-next-yotei"'));
 assert.doesNotMatch(html,/<details[^>]*id="family-person-contact"/);
 assert.match(html,/onSnapshot\(\{includeMetadataChanges:true\},snap=>\{\s*if\(!conversationCurrent\(\)\)return/);
-assert.match(html,/onSnapshot\(\{includeMetadataChanges:true\},snap=>\{\s*if\(!personConversationCurrent\(\)\)return/);
+assert.match(html,/onSnapshot\(\{includeMetadataChanges:true\},snap=>\{\s*if\(!current\(\)\)return/);
 console.log('communication flow: greeting roundtrip, separate save/receive, target-bound status, nanosecond order, cached/deleted targets, redraw-safe retry, approval and stale household passed');
 
 // Run the actual delayed press controller and the actual person reply onclick together.
@@ -270,7 +271,7 @@ console.log('conversation discovery integration: generated controls, completed m
  assert.equal(opened,1);assert.equal(f.el('conversation-connection-guide').open,true);
  assert.equal(f.el('settings-family-connection').focused,true);
  assert.equal(f.writes.length,0);
- assert.match(html,/id="conversation-setup-entry"[^>]*onclick="openConversationConnection\(\)"/);
+ assert.doesNotMatch(html,/id="conversation-setup-entry"/,'説明用のボタンで会話欄を置き換えない');
 }
 // Settings identifies the current selected screen, including legacy registrations.
 {

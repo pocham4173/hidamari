@@ -17,7 +17,7 @@ function fixture(){
   const replies=new Map();
   const context={
     familyHomeItems:[],familyHomeEventStatus:'ready',familyReplyStates:replies,
-    uid:()=> 'family-A',eventWhoClass:v=>v.type==='family-message-back'||['aisatsu','kibun','kusuri','onegai'].includes(v.type)?'who-honnin':'who-kazoku',
+    uid:()=> 'family-A',todayStr:()=> '2026-09-17',eventWhoClass:v=>v.type==='family-message-back'||['aisatsu','kibun','kusuri','onegai'].includes(v.type)?'who-honnin':'who-kazoku',
     kusuriSlotName:key=>({asa:'朝',hiru:'昼',yoru:'夜'}[key]||''),kusuriQuestion:()=> '朝の薬は飲みましたか？',
     esc:value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])),
     jsArg:value=>String(value??'').replace(/[^A-Za-z0-9_-]/g,''),
@@ -71,10 +71,10 @@ const message=(id,type,text,seconds,replyTo,owner='family-A')=>({_id:id,type,tex
   const response=message('family-response','aisatsu-back','おはようございます',2,'greet-A');
   const thanks=message('person-thanks','family-message-back','ありがとう',3,'family-response','person-A');
   const rendered=f.render([original,response,thanks]);
-  assert.equal((rendered.match(/おはようございます/g)||[]).length,1,'family reply is grouped once under the original greeting');
+  assert.equal((rendered.match(/理絵さんが「おはようございます」と挨拶しました/g)||[]).length,1,'family reply has one row plus a quoted reply context');
   assert.equal((rendered.match(/ご本人からの返事：「ありがとう」/g)||[]).length,1,'person response stays visible once in the same conversation');
-  assert.ok(rendered.indexOf('と挨拶しました')<rendered.indexOf('おはようございます'));
-  assert.ok(rendered.indexOf('おはようございます')<rendered.indexOf('ご本人からの返事'));
+  assert.ok(rendered.indexOf('ご本人からの返事')<rendered.indexOf('理絵さんが「おはようございます」'),'new person reply appears above the older greeting');
+  assert.match(rendered,/onclick="replyToPersonEvent\('person-thanks'\)"/,'person reply can be answered again inline');
 }
 {
   const f=fixture();

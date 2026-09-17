@@ -813,13 +813,13 @@ table.cal-rec td.pad{background:none;}
     <div class="h-time" id="h-time"></div>
   </div>
   <div class="h-body">
-    <section class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" hidden aria-labelledby="person-conversation-heading">
+    <section class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" aria-labelledby="person-conversation-heading">
       <h2 id="person-conversation-heading">家族とのやりとり</h2>
     <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
     <p class="communication-status" id="h-contact-state" aria-live="polite"></p>
+    <button class="set-btn" id="person-conversation-retry" type="button" hidden onclick="retryHomeConversation('honnin')">もう一度読み込む</button>
     <div class="kibun" id="h-message-reply" data-communication-gate="family" hidden style="display:none;">
-      <div class="q">この連絡に返事を送る</div><p class="note" id="h-reply-context"></p>
-      <div class="note" style="text-align:center;margin:0 0 10px;">送りたい返事を一つ選んでください。</div>
+      <div class="q">返事を送る</div><p id="h-reply-context" hidden></p>
       <div class="kibun-grid">
         <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('読んだよ',this.dataset.replyTo)">読んだよ</button>
         <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('ありがとう',this.dataset.replyTo)">ありがとう</button>
@@ -1100,7 +1100,7 @@ table.cal-rec td.pad{background:none;}
       <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
       <p class="note">招待した家族の参加を管理者が承認すると、伝言一覧や「家族にお願い」がホームに表示されます。コードを渡しただけでは共有は始まりません。</p>
       <details id="conversation-connection-guide"><summary>本人の「おはよう」に返事するには</summary>
-        <ol class="note"><li>本人のスマホで招待コードを入力して、この家庭に参加します。</li><li>管理者が「参加を認める」を押します。</li><li>本人のスマホで「本人が使う」を選びます。家族のホームに「本人からの連絡・返事」が表示されます。</li></ol>
+        <ol class="note"><li>本人のスマホで招待コードを入力して、この家庭に参加します。</li><li>管理者が「参加を認める」を押します。</li><li>本人のスマホで「本人が使う」を選びます。家族のホームに「本人とのやりとり」が表示されます。</li></ol>
         <p class="note">すでに参加している場合は、下の一覧で本人が「本人の画面」になっているか確認してください。本人が押した「おはよう」などのすぐ下から返事できます。</p>
         <p class="note">同じログイン用アカウントを2台で使っても、参加者は1人です。本人と家族は、それぞれのアカウントで参加します。記録を消したり、新しい家庭を作り直したりする必要はありません。</p>
       </details>
@@ -1158,16 +1158,16 @@ table.cal-rec td.pad{background:none;}
     <!-- ホーム -->
     <div class="ftab" id="t-home">
       <div id="card-pending"></div>
-      <div id="family-handoff-heading"><h2 style="font-size:1.2rem;margin:16px 4px 4px;">いま確認すること</h2><p class="note" id="home-summary-description" style="margin:0 4px 12px;">予定と、残っている用事を確認できます。</p></div>
-      <button class="set-btn" id="conversation-setup-entry" type="button" hidden onclick="openConversationConnection()">本人とのつながりを確認</button>
-      <div class="card dom-record" id="card-actions" data-communication-gate="person" hidden>
-        <h3>本人からの連絡・返事</h3>
-        <p class="communication-status" id="person-contact-state" aria-live="polite">つながりを確認しています…</p>
+      <div class="card dom-record" id="card-actions" data-communication-gate="person">
+        <h3>本人とのやりとり</h3>
+        <p class="communication-status" id="person-contact-state" aria-live="polite">読み込んでいます…</p>
+        <button class="set-btn" id="family-conversation-retry" type="button" hidden onclick="retryHomeConversation('kazoku')">もう一度読み込む</button>
         <div class="communication-received" id="card-today-records">
-          <h4 id="home-date-h3">今日のやりとり</h4>
-          <div id="ev-list"><div class="empty" id="ev-empty">今日の連絡を読み込んでいます…</div></div>
+          <h4 id="home-date-h3">新しい連絡から表示</h4>
+          <div id="ev-list"><div class="empty" id="ev-empty">やりとりを読み込んでいます…</div></div>
         </div>
-        <h4>こちらからも挨拶を送れます</h4>
+        <details class="set-sec" id="family-conversation-compose"><summary>こちらから連絡する</summary>
+        <h4>あいさつを送る</h4>
         <div class="ab-grid">
           <button class="ab-btn" id="btn-ab-asa" data-send-audience="person" disabled onclick="sendAisatsuBack('asa')"><span class="ic">☀️</span><span class="tx">おはよう</span></button>
           <button class="ab-btn" id="btn-ab-hiru" data-send-audience="person" disabled onclick="sendAisatsuBack('hiru')"><span class="ic">🌤</span><span class="tx">こんにちは</span></button>
@@ -1182,6 +1182,7 @@ table.cal-rec td.pad{background:none;}
           <button class="big-btn family" id="family-message-btn" data-send-audience="person" disabled onclick="sendFamilyMessage()">メッセージを送る</button>
           <div class="sent-note" id="family-message-state" aria-live="polite"></div>
         </div>
+        </details>
         <details class="set-sec"><summary>お薬の声かけ</summary>
           <div class="medicine-check-grid">
             <button class="ab-btn" id="btn-ask-asa" data-send-audience="person" disabled onclick="askKusuri('asa')"><span class="ic">🌅</span><span class="tx">朝の薬<br>飲んだ？</span></button>
@@ -1200,6 +1201,7 @@ table.cal-rec td.pad{background:none;}
         <button class="family-jump" type="button" onclick="composeFamilyNote()">＋ 家族に伝言を書く</button>
       </div>
 
+      <div id="family-handoff-heading"><h2 style="font-size:1.2rem;margin:16px 4px 4px;">いま確認すること</h2><p class="note" id="home-summary-description" style="margin:0 4px 12px;">予定と、残っている用事を確認できます。</p></div>
       <div class="card dom-yotei" id="card-next-yotei" style="display:none;">
         <h3>今日・明日の予定</h3>
         <div id="family-today-tomorrow" class="family-day-plan" aria-live="polite">予定を読み込んでいます…</div>
@@ -1830,23 +1832,12 @@ function canUseFamilyFeature(kind='family'){
   return kind==='person'?familyConnection.personOthers>0:kind==='shared'?familyConnection.others>0:familyConnection.familyOthers>0;
 }
 function showCommunication(kind){
-  // A past conversation stays readable even when its recipient changes screens.
-  // Showing history never grants permission to send: canUseFamilyFeature does that.
-  const items=kind==='person'?(typeof familyHomeItems==='undefined'?[]:familyHomeItems):
-    (typeof personConversationItems==='undefined'?[]:personConversationItems);
-  const incomingTypes=kind==='person'?['aisatsu','kibun','kusuri','onegai','family-message-back']:
-    ['aisatsu-back','onegai-back','family-message','ask-kusuri'];
-  const hasHistory=items.some(v=>v.uid&&v.uid!==uid()&&incomingTypes.includes(v.type));
-  if(hasHistory)return true;
-  if(familyConnection.status!=='unknown')return canUseFamilyFeature(kind);
-  if(lastFamilyAudience)return kind==='person'?lastFamilyAudience.personOthers>0:lastFamilyAudience.familyOthers>0;
-  // Keep the main conversation's place during initial connection checks.
-  return kind==='person'?!isKOnly():!!currentFamilyMessageId;
+  // A home destination must never disappear because membership is loading or screens changed.
+  // Authorization to send is checked separately, including on every write.
+  return kind==='person'||kind==='family';
 }
 function updateCommunicationAvailability(){
   document.querySelectorAll('[data-communication-gate]').forEach(el=>el.hidden=!showCommunication(el.dataset.communicationGate));
-  const connectionEntry=document.getElementById('conversation-setup-entry');
-  if(connectionEntry)connectionEntry.hidden=canUseFamilyFeature('person');
   document.querySelectorAll('[data-send-audience]').forEach(el=>{
     const kind=el.dataset.sendAudience;
     const busy=kind==='person'?(aisatsuBackSending||askKusuriSending||familyMessageSending||familyQuickReplySending.size>0):personMessageReplySending;
@@ -1858,18 +1849,22 @@ function updateCommunicationAvailability(){
   });
   const state=document.getElementById('person-contact-state');
   if(state)state.textContent=!canUseFamilyFeature('person')?(familyConnection.status==='unknown'?
-    '参加状況と通信を確認しています。確認できるまで返事は送れません。':
-    '現在、本人用の参加者はいません。これまでのやりとりは読めます。参加状況は設定で確認できます。'):
+    '通信を確認しています。返事は確認後に送れます。':
+    '本人の参加を確認できると、返事を送れます。'):
     familyHomeEventStatus==='cached'?'保存したやりとりを表示しています。最新の連絡は通信が戻ってから確認します。':
-    familyHomeEventStatus==='error'?'今日の連絡を読み込めませんでした。通信状態を確認してください。':
-    familyHomeEventStatus==='loading'?'今日の連絡を読み込んでいます…':'本人からの連絡のすぐ下で返事できます。';
+    familyHomeEventStatus==='error'?'やりとりを読み込めませんでした。通信状態を確認してください。':
+    familyHomeEventStatus==='loading'?'やりとりを読み込んでいます…':'';
   const person=document.getElementById('h-contact-state');
   if(person)person.textContent=!showCommunication('family')?'':!canUseFamilyFeature('family')?(familyConnection.status==='unknown'?
-    '参加状況と通信を確認しています。確認できるまで返事は送れません。':
-    '現在、家族用の参加者はいません。これまでのやりとりは読めます。参加状況は設定で確認できます。'):
+    '通信を確認しています。返事は確認後に送れます。':
+    '家族の参加を確認できると、返事を送れます。'):
     personConversationStatus==='error'?'家族からの連絡を確認できませんでした。通信状態を確認してください。':
     personConversationStatus==='cached'?'保存した連絡です。通信が確認できると返事を送れます。':
     personConversationStatus==='loading'?'家族からの連絡を確認しています…':!personIncomingShown?'家族からの連絡は、ここに届きます。':'';
+  [['family-conversation-retry',familyHomeEventStatus],['person-conversation-retry',personConversationStatus]].forEach(([id,status])=>{
+    const button=document.getElementById(id);
+    if(button)button.hidden=familyConnection.status!=='unknown'&&status!=='error'&&status!=='cached';
+  });
   if(typeof refreshPersonHistoryReplyButtons==='function')refreshPersonHistoryReplyButtons();
 }
 function requireFamilyFeature(kind='family'){
@@ -1914,8 +1909,14 @@ function renderFamilyConnection(){
   // A membership change must also refresh already-rendered tasks, without clearing drafts.
   if(typeof changeFamilyTaskList==='function')changeFamilyTaskList(connected?familyTaskListMode:'all');
 }
-function startFamilyConnection(){
-  stopFamilyConnection();
+function startFamilyConnection(reset=true){
+  if(reset)stopFamilyConnection();
+  else{
+    familyConnectionGeneration++;
+    if(familyConnectionUnsub)familyConnectionUnsub();
+    familyConnectionUnsub=null;
+    familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};renderFamilyConnection();
+  }
   const generation=familyConnectionGeneration,owner=uid(),group=gid(),boot=householdBootGeneration;
   const current=()=>generation===familyConnectionGeneration&&owner===uid()&&group===gid()&&boot===householdBootGeneration;
   familyConnectionUnsub=col('members').onSnapshot({includeMetadataChanges:true},snap=>{
@@ -2525,20 +2526,22 @@ function renderPersonConversation(items,metadata={}){
     if(['aisatsu-back','onegai-back','family-message'].includes(v.type))text=(v.name||'家族')+'さんから「'+(v.text||'こんにちは')+'」が届きました';
     if(v.type==='ask-kusuri'){
       const askedSlot=validKusuriSlot(v.slot)?v.slot:slot().key;
-      if(!previewStorage.getItem('kusuri-'+todayStr()+'-'+askedSlot))text=(v.name||'家族')+'さんから「'+kusuriSlotName(askedSlot)+'の薬は飲みましたか？」';
+      if(v.date===todayStr()&&!previewStorage.getItem('kusuri-'+todayStr()+'-'+askedSlot))text=(v.name||'家族')+'さんから「'+kusuriSlotName(askedSlot)+'の薬は飲みましたか？」';
     }
-    if(v.type==='member-joined')text=(v.text||'')+'さんが家族として参加しました';
+    // Participation notices belong in settings, not above a reply to a different message.
     if(text)msgs.push({...v,text});
   });
   msgs.sort((a,b)=>compareConversationEvents(b,a));
   const incoming=document.getElementById('h-incoming-message');
-  const target=msgs.find(v=>['family-message','aisatsu-back','onegai-back'].includes(v.type));
+  const target=msgs.find(v=>['family-message','aisatsu-back','onegai-back','ask-kusuri'].includes(v.type));
   currentFamilyMessageId=target?target._id:'';
-  document.getElementById('h-reply-context').textContent=target?(target===msgs[0]?'上の連絡への返事です。':target.text+'（この連絡への返事）'):'';
+  document.getElementById('h-reply-context').textContent=target?'上の連絡への返事です。':'';
   const replyBox=document.getElementById('h-message-reply');
   if(replyBox)replyBox.style.display=target?'block':'none';
   document.querySelectorAll('#h-message-reply [data-send-audience="family"]').forEach(button=>button.dataset.replyTo=currentFamilyMessageId);
-  incoming.textContent=msgs[0]?.text||'';
+  const displayed=target||msgs[0];
+  const when=displayed?.at?new Date(displayed.at.seconds*1000):null;
+  incoming.textContent=displayed?((when?(when.getMonth()+1)+'月'+when.getDate()+'日 '+when.getHours()+':'+String(when.getMinutes()).padStart(2,'0')+'　':'')+displayed.text):'';
   incoming.classList.toggle('show',!!msgs.length);
   personIncomingShown=!!msgs.length;
   renderPersonReplyState();
@@ -2556,6 +2559,21 @@ function renderPersonConversation(items,metadata={}){
     }
   }
   updateCommunicationAvailability();
+}
+function subscribePersonConversation(){
+  if(honninUnsub)honninUnsub();
+  const session=communicationSession(),request=++personConversationRequest;
+  const current=()=>session()&&request===personConversationRequest;
+  personConversationStatus='loading';updateCommunicationAvailability();
+  honninUnsub=col('events').orderBy('at','desc').limit(100).onSnapshot({includeMetadataChanges:true},snap=>{
+    if(!current())return;
+    const items=[];snap.forEach(doc=>{const v=doc.data();if(v.at)items.push({...v,_id:doc.id});});
+    renderPersonConversation(items,snap.metadata);
+  },err=>{if(current()){console.warn('events',err);personConversationStatus='error';updateCommunicationAvailability();}});
+}
+function retryHomeConversation(screen){
+  startFamilyConnection(false);
+  if(screen==='honnin')subscribePersonConversation();else subscribeFamilyConversation();
 }
 function initHonnin(){
   startFamilyConnection();
@@ -2596,14 +2614,7 @@ function initHonnin(){
   memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
     renderPendingCard('h-approve', snap);
   }, err=>console.warn('members', err));
-  if(honninUnsub) honninUnsub();
-  const personConversationCurrent=communicationSession();
-  honninUnsub=col('events').where('date','==',todayStr())
-    .onSnapshot({includeMetadataChanges:true},snap=>{
-      if(!personConversationCurrent())return;
-      const items=[];snap.forEach(doc=>items.push(Object.assign({},doc.data(),{_id:doc.id})));
-      renderPersonConversation(items,snap.metadata);
-    }, err=>{if(personConversationCurrent()){console.warn('events',err);personConversationStatus='error';updateCommunicationAvailability();}});
+  subscribePersonConversation();
 
   if(yoteiUnsub) yoteiUnsub();
   yoteiUnsub=subscribeYotei(()=>{
@@ -2987,7 +2998,7 @@ function closeMembers(){ speak('とじました'); document.getElementById('memb
 let communicationGeneration=0,familyHomeItems=[],familyHomeEventStatus='loading';
 let familyMessageReplyTarget='',personIncomingShown=false;
 const familyQuickReplySending=new Set(),familyReplyStates=new Map(),personReplyStates=new Map(),personSpokenMessages=new Set();
-let personConversationItems=[],personConversationStatus='loading';
+let personConversationItems=[],personConversationStatus='loading',personConversationRequest=0;
 let familyConversationDay='',familyConversationRequest=0,familyDayVisibility=null;
 function compareConversationEvents(a,b){
   return (a.at?.seconds||0)-(b.at?.seconds||0)||(a.at?.nanoseconds||0)-(b.at?.nanoseconds||0)||String(a._id||'').localeCompare(String(b._id||''));
@@ -3003,7 +3014,7 @@ function renderPersonReplyState(){
 }
 function familyMessageTarget(id){
   if(!requireFamilyFeature('family'))return null;
-  const target=personConversationItems.find(v=>v._id===id&&['family-message','aisatsu-back','onegai-back'].includes(v.type));
+  const target=personConversationItems.find(v=>v._id===id&&['family-message','aisatsu-back','onegai-back','ask-kusuri'].includes(v.type));
   if(personConversationStatus!=='ready'||!target){
     alert('元の連絡を確認できません。通信を確認して、もう一度お試しください。入力した内容は残っています。');return null;
   }
@@ -3015,7 +3026,7 @@ function communicationSession(){
 }
 function resetCommunication(){
   communicationGeneration++;familyHomeItems=[];familyHomeEventStatus='loading';
-  personConversationItems=[];personConversationStatus='loading';
+  personConversationItems=[];personConversationStatus='loading';personConversationRequest++;
   familyReplyStates.clear();personReplyStates.clear();personSpokenMessages.clear();
   familyConversationDay='';familyConversationRequest++;
   if(familyDayVisibility){document.removeEventListener('visibilitychange',familyDayVisibility);familyDayVisibility=null;}
@@ -3037,7 +3048,7 @@ function resetCommunication(){
 }
 function personReplyTarget(id){
   if(!requireFamilyFeature('person'))return null;
-  const target=familyHomeItems.find(v=>v._id===id&&['aisatsu','kibun','kusuri'].includes(v.type));
+  const target=familyHomeItems.find(v=>v._id===id&&['aisatsu','kibun','kusuri','family-message-back'].includes(v.type));
   if(familyHomeEventStatus!=='ready'||!target){alert('元の連絡を確認できません。通信を確認して、もう一度お試しください。');return null;}
   return target;
 }
@@ -3059,6 +3070,7 @@ async function replyToPersonEvent(id){
 }
 function openPersonContactReply(id){
   const original=personReplyTarget(id);if(!original)return;
+  document.getElementById('family-conversation-compose').open=true;
   familyMessageReplyTarget=id;
   const title=document.getElementById('family-message-target');title.hidden=false;
   title.textContent='「'+(original.text||'お薬の記録')+'」への返事';
@@ -3077,7 +3089,7 @@ function renderFamilyConversation(){
   const items=familyHomeItems;
   const box=document.getElementById('ev-list');
   const card=document.getElementById('card-today-records');
-  // Keep the day's conversation together; replying never removes its original message.
+  // Show recent messages by arrival time; a new reply is its own visible row.
   const replies=Object.create(null);
   items.forEach(v=>{
     if(['onegai-back','family-message-back','aisatsu-back','family-message'].includes(v.type)&&v.replyTo){
@@ -3088,12 +3100,12 @@ function renderFamilyConversation(){
   const vis=homeAttentionRows(items,replies,false);
   card.style.display='block';
   if(!vis.length){
-    box.textContent=familyHomeEventStatus==='ready'?'今日のやりとりは、まだありません。記録がないだけでは、今の様子は分かりません。こちらから挨拶を送れます。':'今日のやりとりを確認しています…';
+    box.textContent=familyHomeEventStatus==='ready'?'まだやりとりはありません。連絡が届くと、ここに表示します。':'やりとりを読み込んでいます…';
     updateCommunicationAvailability();return;
   }
   const label={
     'aisatsu':v=>'ご本人が「'+(v.text||'')+'」と挨拶しました',
-    'kibun':v=>'今日の調子: '+(v.text||''),
+    'kibun':v=>'その日の調子: '+(v.text||''),
     'kusuri':v=>'本人の記録「'+(kusuriSlotName(v.slot)?kusuriSlotName(v.slot)+'の薬':'お薬')+'を飲みました」',
     'aisatsu-back':v=>(v.name||'家族')+'さんが「'+(v.text||'')+'」と挨拶しました',
     'ask-kusuri':v=>(v.name||'家族')+'さんが「'+kusuriQuestion(v.slot)+'」を送りました',
@@ -3101,20 +3113,18 @@ function renderFamilyConversation(){
     'onegai-back':v=>(v.name||'家族')+'さんの返事：「'+(v.text||'')+'」',
     'family-message-back':v=>'ご本人からの返事：「'+(v.text||'')+'」'
   };
-  const time=v=>{const t=new Date(v.at.seconds*1000);return t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');};
+  const time=v=>{const t=new Date(v.at.seconds*1000);return (t.getMonth()+1)+'月'+t.getDate()+'日 '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');};
   const sender=v=>['aisatsu','kibun','kusuri','onegai','family-message-back'].includes(v.type)?
     (v.name&&v.name!=='本人'?v.name+'さん（本人）':'本人'):(v.name||'家族')+'さん（家族）';
-  function replyMarkup(id,seen=new Set([id])){
-    return (replies[id]||[]).map(v=>{
-      if(seen.has(v._id))return '';
-      const next=new Set(seen);next.add(v._id);
-      const text=v.type==='family-message-back'?'ご本人からの返事：「'+(v.text||'')+'」':(v.name||'家族')+'さんの返事：「'+(v.text||'')+'」';
-      return '<div class="reply-log '+eventWhoClass(v)+'"><div class="tm">'+esc(sender(v))+' · '+time(v)+'</div>'+esc(text)+replyMarkup(v._id,next)+'</div>';
-    }).join('');
+  const byId=new Map(items.map(v=>[v._id,v]));
+  function replyContext(v){
+    if(!v.replyTo)return '';
+    const original=byId.get(v.replyTo);
+    return '<div class="note">'+esc(original?'「'+(original.text||'お薬の記録')+'」への返事':'前の連絡への返事')+'</div>';
   }
-  const markup=vis.map(v=>{
-    const head='<div class="tm">'+esc(sender(v))+' · '+time(v)+'</div>';
-    if(['aisatsu','kibun','kusuri'].includes(v.type)){
+  const rowsMarkup=vis.map(v=>{
+    const head='<div class="tm">'+esc(sender(v))+' · '+time(v)+'</div>'+replyContext(v);
+    if(['aisatsu','kibun','kusuri','family-message-back'].includes(v.type)){
       const answered=replies[v._id]||[];
       const replyState=familyReplyStates.get(v._id);
       const mine=answered.some(r=>r.uid===uid())||replyState?.status==='sent';
@@ -3122,7 +3132,7 @@ function renderFamilyConversation(){
       const primary=mine?'<button class="reply-btn reply-complete" type="button" disabled aria-disabled="true">返事を送りました</button>':
         '<button class="reply-btn reply-primary" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="replyToPersonEvent(\''+jsArg(v._id)+'\')">'+esc('「'+quick+'」を返す')+'</button>';
       const write='<button class="reply-btn" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'"'+(mine?' data-reply-again="true"':'')+' onclick="openPersonContactReply(\''+jsArg(v._id)+'\')">'+(mine?'続けて言葉を送る':'言葉を書いて返す')+'</button>';
-      return '<div class="ev '+eventWhoClass(v)+'">'+head+'<b>'+esc(label[v.type](v))+'</b>'+replyMarkup(v._id)+
+      return '<div class="ev '+eventWhoClass(v)+'">'+head+'<b>'+esc(label[v.type](v))+'</b>'+
         (mine?'<div class="reply-log">あなたは返事を送りました</div>':'')+'<div class="reply-row">'+primary+write+'</div>'+
         '<div class="save-state'+(replyState?.status==='error'?' err':'')+'" id="person-reply-state-'+esc(v._id)+'" aria-live="polite">'+esc(replyState?.text||'')+'</div></div>';
     }
@@ -3134,11 +3144,14 @@ function renderFamilyConversation(){
         '<div class="reply-guide">ご本人へ送る返事を選ぶか、自由に書けます</div>'+['今から対応するね','あとで連絡するね','今は対応できないよ'].map(r=>
           '<button class="reply-btn" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="sendOnegaiBack(\''+jsArg(v._id)+'\',\''+r+'\')">'+r+'</button>').join('');
       const write=soto||answered.length?'':'<button class="reply-btn" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="openOnegaiBackFree(\''+jsArg(v._id)+'\')">自由に返事を書く</button>';
-      return '<div class="ev onegai-ev '+eventWhoClass(v)+'">'+head+'<b>'+esc(title)+'</b>'+replyMarkup(v._id)+(presets||write?'<div class="reply-row">'+presets+write+'</div>':'')+'</div>';
+      return '<div class="ev onegai-ev '+eventWhoClass(v)+'">'+head+'<b>'+esc(title)+'</b>'+(presets||write?'<div class="reply-row">'+presets+write+'</div>':'')+'</div>';
     }
-    const own=v.type==='family-message'&&v.uid===uid()?' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\'family-message\',\'\')">とりけす</button>':'';
-    return '<div class="ev '+eventWhoClass(v)+'">'+head+esc(label[v.type]?label[v.type](v):'')+own+replyMarkup(v._id)+'</div>';
-  }).join('');
+    const own=v.type==='family-message'&&v.uid===uid()&&v.date===todayStr()?' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\'family-message\',\'\')">とりけす</button>':'';
+    return '<div class="ev '+eventWhoClass(v)+'">'+head+esc(label[v.type]?label[v.type](v):'')+own+'</div>';
+  });
+  const earlierOpen=box.querySelector?.('#family-earlier-conversation')?.open;
+  const markup=rowsMarkup.slice(0,3).join('')+(rowsMarkup.length>3?
+    '<details id="family-earlier-conversation"'+(earlierOpen?' open':'')+'><summary>前のやりとりを見る（'+(rowsMarkup.length-3)+'件）</summary>'+rowsMarkup.slice(3).join('')+'</details>':'');
   if(box.innerHTML!==markup){
     const active=document.activeElement;
     const focusAction=active&&box.contains(active)?active.getAttribute('onclick'):null;
@@ -3149,20 +3162,7 @@ function renderFamilyConversation(){
 }
 function homeAttentionRows(items,replies,kOnly){
   const types=['aisatsu','kibun','kusuri','onegai','aisatsu-back','ask-kusuri','family-message','onegai-back','family-message-back'];
-  const replyTypes=['aisatsu-back','family-message','onegai-back','family-message-back'];
-  const sorted=items.filter(v=>types.includes(v.type)).slice().sort(compareConversationEvents);
-  const byId=new Map(sorted.map(v=>[v._id,v]));
-  const roots=sorted.filter(v=>!replyTypes.includes(v.type)||!v.replyTo||!byId.has(v.replyTo)||v.replyTo===v._id);
-  const covered=new Set();
-  function cover(v){
-    if(covered.has(v._id))return;
-    covered.add(v._id);
-    (replies[v._id]||[]).forEach(child=>{if(byId.has(child._id))cover(child);});
-  }
-  roots.forEach(cover);
-  // Malformed reply chains must not silently hide an otherwise readable record.
-  sorted.forEach(v=>{if(!covered.has(v._id)){roots.push(v);cover(v);}});
-  return roots.sort((a,b)=>compareConversationEvents(b,a));
+  return items.filter(v=>types.includes(v.type)).slice().sort((a,b)=>compareConversationEvents(b,a));
 }
 let familyYoteiStatus='loading';
 function renderFamilySchedule(){
@@ -3203,12 +3203,12 @@ function renderFamilySchedule(){
 function subscribeFamilyConversation(){
   if(evUnsub) evUnsub();
   const session=communicationSession(),day=todayStr(),request=++familyConversationRequest;
-  familyConversationDay=day;familyHomeItems=[];familyHomeEventStatus='loading';renderFamilyConversation();
+  familyConversationDay=day;familyHomeEventStatus='loading';renderFamilyConversation();
   if(!aisatsuBackSending){const note=document.getElementById('note-aisatsu-back');note.textContent='';note.style.display='none';}
   if(!askKusuriSending){const note=document.getElementById('note-ask');note.textContent='';note.style.display='none';}
   if(isKOnly())document.getElementById('care-today').textContent='今日の記録を読み込んでいます…';
   const conversationCurrent=()=>session()&&request===familyConversationRequest&&day===todayStr();
-  evUnsub=col('events').where('date','==',day)
+  evUnsub=col('events').orderBy('at','desc').limit(100)
     .onSnapshot({includeMetadataChanges:true},snap=>{
       if(!conversationCurrent())return;
       const items=[];
@@ -3217,11 +3217,11 @@ function subscribeFamilyConversation(){
       snap.forEach(doc=>{
         const v=doc.data(); v._id=doc.id;
         if(v.at)items.push(v);
-        if(v.type==='aisatsu-back' && v.at && v.at.seconds>sentBackAt){
+        if(v.date===day && v.type==='aisatsu-back' && v.at && v.at.seconds>sentBackAt){
           sentBack={name:v.name||'家族', text:v.text||''};
           sentBackAt=v.at.seconds;
         }
-        if(v.type==='ask-kusuri'){
+        if(v.date===day && v.type==='ask-kusuri'){
           sentAskSlots[validKusuriSlot(v.slot)?v.slot:'other']=v.name||'家族';
         }
       });
@@ -3238,7 +3238,7 @@ function subscribeFamilyConversation(){
         na.style.display='block';
       }else{na.style.display='none';}
       items.sort(compareConversationEvents);
-      if(isKOnly()) renderTodayQuickRecords(items);
+      if(isKOnly()) renderTodayQuickRecords(items.filter(v=>v.date===day));
       familyHomeItems=items;familyHomeEventStatus=snap.metadata.fromCache||snap.metadata.hasPendingWrites?'cached':'ready';
       renderFamilyConversation();
     }, err=>{
@@ -3254,17 +3254,17 @@ function initKazoku(){
   const kOnly=isKOnly();
   document.getElementById('f-lg').textContent='まいにこ ─ ホーム';
   document.getElementById('f-title').textContent=dateJp(d);
-  document.getElementById('home-date-h3').textContent='今日のやりとり';
+  document.getElementById('home-date-h3').textContent='新しい連絡から表示';
   document.querySelectorAll('.ab-btn').forEach(b=>b.classList.remove('suggested'));
   const curAb=document.getElementById('btn-ab-'+slot().key);
   if(curAb) curAb.classList.add('suggested');
-  document.getElementById('ev-list').textContent='今日の連絡を読み込んでいます…';
+  document.getElementById('ev-list').textContent='やりとりを読み込んでいます…';
   document.getElementById('card-krec').style.display=kOnly?'block':'none';
   document.getElementById('card-next-yotei').style.display='block';
   document.querySelectorAll('.family-only-card').forEach(function(el){ el.style.display=kOnly?'block':'none'; });
   /* おまもりタグの知らせがあれば最優先。その次に未確認の伝言、予定、やることを並べます。 */
   document.getElementById('t-home').insertBefore(
-    document.getElementById('watch-tag-home'),document.getElementById('family-handoff-heading'));
+    document.getElementById('watch-tag-home'),document.getElementById('card-pending'));
   if(kOnly){
     document.getElementById('t-home').insertBefore(
       document.getElementById('card-care-quick'),document.getElementById('card-krec'));
@@ -3330,7 +3330,7 @@ function showTab(t){
   if(t==='t-kiroku') recOpen();
   if(t==='t-soudan') openAnshin('home');
   if(t==='t-home'){
-    document.getElementById('home-date-h3').textContent='ご本人からの連絡';
+    document.getElementById('home-date-h3').textContent='新しい連絡から表示';
     renderFamilySchedule();
     renderFamilyTasks();
   }

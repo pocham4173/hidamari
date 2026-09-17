@@ -66,5 +66,6 @@ jobs:
 
       - name: 端末内お薬手帳の保存・隔離・容量を検査
         run: |
-          npm install --no-save --package-lock=false fake-indexeddb@6.2.4
+          npm install --no-save --package-lock=false fake-indexeddb@6.2.4 jsdom@26.1.0
           node --test tests/medicine-notebook.test.mjs
+          node tests/home-conversation-dom.test.mjs
