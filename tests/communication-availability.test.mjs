@@ -41,9 +41,9 @@ const withFamily={status:'shared',others:1,personOthers:0,familyOthers:1};
     f.c.familyHomeItems=[row];f.c.updateCommunicationAvailability();
     assert.equal(f.gates[0].hidden,false,'連絡の有無でホームの会話欄を消さない');
   }
-  f.c.familyHomeItems=[];f.c.personConversationItems=[{uid:'family',type:'family-message'}];f.c.updateCommunicationAvailability();
+  f.c.familyHomeItems=[];f.c.personIncomingShown=true;f.c.personConversationItems=[{uid:'family',type:'family-message'}];f.c.updateCommunicationAvailability();
   assert.equal(f.gates[1].hidden,false);assert.equal(f.buttons[2].disabled,true);
-  assert.match(f.states['h-contact-state'].textContent,/家族の参加を確認/);
+  assert.match(f.states['h-contact-state'].textContent,/今は返事を送れません/);
 }
 {
   const f=fixture();f.c.familyConnection=withPerson;f.c.familyReplyStates.set('greeting',{status:'sent'});
