@@ -114,6 +114,9 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
   assert.match(loading.textContent, /もう一度読み込む/);
   assert.match(loading.textContent, /Safariで開く/);
   assert.equal(loading.children.length, 3, '縦並びの案内と再試行ボタンを表示');
+  const beforeOptional=loading.textContent;
+  stage.onError({target:{tagName:'SCRIPT',dataset:{optional:'true'}}});
+  assert.equal(loading.textContent,beforeOptional,'QRの読込失敗でアプリ全体の起動エラーにしない');
   stage.onError({ target: { tagName: 'SCRIPT' } });
   assert.match(loading.textContent, /外部ファイルを読み込めませんでした/);
   loading.style.display = 'none';
@@ -135,7 +138,7 @@ assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8
     document: { getElementById: id => ids[id] },
     recY: 2026, recM: 8, recReq: 0,
     recDayStr: (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
-    recDrawSummary: () => { summarized = true; },
+    recDrawSummary: () => { summarized = true; }, recRenderArchive:()=>{},
     recEvents: [], recPrevEvents: [], recPrevReady: false,
     col: () => ({ where() { return this; }, get(options) { sources.push(options?.source); return Promise.reject(new Error('offline')); } }),
     console: { warn() {} }, Date, Promise
@@ -228,7 +231,7 @@ assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8
   const summary=new Element(), heading=new Element();
   const context={
     document:{getElementById:id=>id==='rec-sum'?summary:heading,createElement:tag=>new Element(tag)},
-    recY:2026,recM:8,recPrevReady:false,recPrevEvents:[],
+    isKOnly:()=>false,recY:2026,recM:8,recPrevReady:false,recPrevEvents:[],
     recEvents:[
       {_id:'note',type:'family-note',date:'2026-09-12',at:{seconds:1},name:'家族A',text:'明日は通院'},
       {_id:'task',type:'family-task',date:'2026-09-12',at:{seconds:2},name:'家族B',text:'薬局に行く'}
@@ -253,7 +256,7 @@ assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8
   const context={
     document:{getElementById:()=>body},
     REC_LABEL:{aisatsu:v=>['本人の挨拶','','ご本人が「'+v.text+'」と挨拶しました']},
-    recTime:()=> '7:30',esc:v=>String(v)
+    recTime:()=> '7:30',esc:v=>String(v),isKOnly:()=>false
   };
   vm.runInNewContext(section('function rgRender(d){','function recOpen(){'),context);
   context.rgRender({periodDays:28,buckets:[{label:'8/17〜'},{label:'8/24〜'}],

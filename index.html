@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#E0711A">
-<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 [hidden]{display:none!important;}
 .account-fields{display:grid;gap:10px;margin:14px 0;}
@@ -740,6 +740,7 @@ table.cal-rec td.pad{background:none;}
   <button class="set-btn" onclick="runRecoveryAction('reset')">パスワードを忘れた方</button>
   <p class="note">写真・PDFのお薬手帳は、このログイン復旧では戻りません。機種変更後の旧端末で、参加解除やアカウント削除はしないでください。</p>
   <a class="consent-back" href="help.html#recovery" target="_blank" rel="noopener">状況に合う復旧・機種変更の手順を見る</a>
+  <div id="recovery-sync-warning" hidden><p class="note">復旧先の保存がまだ完了していません。</p><button type="button" class="set-btn" onclick="syncStartupRecoveryPointer()">保存をやり直す</button></div>
   <div class="save-state" id="recovery-state" role="status" aria-live="polite"></div>
   <button class="modal-close" onclick="closeRecovery()">とじる</button>
 </div></div>
@@ -1376,7 +1377,7 @@ table.cal-rec td.pad{background:none;}
 
     <!-- ふり返り -->
     <div class="ftab" id="t-kiroku" style="display:none;">
-      <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div class="note" style="margin:0 0 10px;"><b style="color:#B45309;">オレンジはご本人</b>、<b style="color:#315FAE;">青はご家族</b>、<b style="color:#33704D;">緑は共有・安全情報</b>です。時間順に並び、本文には記録した家族の名前も表示します。</div><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
+      <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div id="rec-source-legend" class="note" style="margin:0 0 10px;">記録した人と時間を確認できます。</div><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
       <div class="card dom-record"><h3 id="rec-sum-ttl">今月のまとめ</h3><div class="rec-sum" id="rec-sum"></div><div class="note">「今月の経過日数中に何件あり、何日に記録があったか」を同じ形でまとめています。良い・悪いや健康状態の判断はしていません。この記録は医療機関の診療記録ではありません。</div></div>
       <div class="card dom-record"><h3>期間のグラフ</h3>
         <div class="rg-period">
@@ -1389,6 +1390,11 @@ table.cal-rec td.pad{background:none;}
       </div>
       <div class="card dom-record"><h3>日付を選んで見る</h3><div class="rec-ttl" id="rec-ttl">─</div><label style="display:block;font-weight:900;font-size:.85rem;margin-top:10px;">見たい日<input type="date" id="rec-date" onchange="recChooseDate()" style="display:block;width:100%;min-height:50px;margin-top:6px;font:inherit;padding:10px;border:1px solid #D8CDBA;border-radius:8px;background:#fff;"></label><table class="cal cal-rec" id="rec-cal" style="display:none;"></table></div>
       <div class="card dom-record"><h3>過去の記録・予定をまとめて見る</h3><div class="range-picker"><label>開始日<input type="date" id="rec-range-from"></label><label>終了日<input type="date" id="rec-range-to"></label></div><button class="big-btn record" type="button" onclick="recLoadRange()">この期間を表示する</button><div class="save-state" id="rec-range-state" aria-live="polite"></div><div id="rec-range-results"><div class="empty">開始日と終了日を選んでください</div></div><div class="record-tools" style="margin-top:12px;grid-template-columns:1fr;"><button onclick="printRecords()">印刷・PDF用画面を開く</button></div><div class="note">生活記録と、登録されていた予定を日付順に一つの一覧で表示します。</div></div>
+      <details class="card dom-record" id="rec-person-archive" hidden>
+        <summary>本人の操作・やりとりの履歴</summary>
+        <p class="note" id="rec-person-archive-month"></p>
+        <div id="rec-person-archive-list"></div>
+      </details>
     </div>
 
     <!-- 安心: 相談と、もしもの備えへの入口 -->
@@ -1526,6 +1532,7 @@ window.showStartupProblem=function(message){
 };
 window.addEventListener('error',function(e){
   if(e.target && e.target.tagName==='SCRIPT'){
+    if(e.target.dataset?.optional==='true')return;
     window.mainicoStartupStage='必要なファイルの読み込み中';
     window.showStartupProblem('外部ファイルを読み込めませんでした');
   }else if(e.target===window && document.getElementById('loading').style.display!=='none'){
@@ -1544,11 +1551,11 @@ setTimeout(function(){
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
 <script src="mainico-config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
+<script async data-optional="true" src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script src="account-recovery.js"></script>
 <script src="account-deletion.js"></script>
 <script src="household-deletion.js"></script>
-<script src="household-ui.js"></script>
+<script src="household-ui.js?v=20260918-startup"></script>
 <script src="medicine-notebook.js"></script>
 <script src="notebook-integration.js"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
@@ -3644,13 +3651,16 @@ var recSel = '';               /* 選んでいる日 'YYYY-MM-DD' */
 var recEvents = [];            /* 表示中の月のevents */
 var recPrevEvents = [];        /* 前月の同じ日数分。月まとめの比較だけに使います */
 var recPrevReady = false;      /* 前月が0件なのか、通信で取得できなかったのかを分けます */
+var recRangeReq = 0;
 var recReq = 0;                /* 読み込みの通し番号。古い結果を捨てるために使います */
 
 function pad2(n){ return String(n).padStart(2,'0'); }
 function recDayStr(y,m,d){ return y+'-'+pad2(m+1)+'-'+pad2(d); }
 
-/* 承認済み家族には、端末の利用モードにかかわらず同じ記録・集計を表示します。
-   利用方法は入力画面だけを変え、これまで共有した履歴を隠しません。 */
+/* 家族だけでは本人操作と本人向けの会話を通常の集計に混ぜない。
+   元データは変更せず、同じ月の別枠の履歴に残す。 */
+var REC_PERSON_TYPES = new Set(['aisatsu','kibun','kusuri','onegai','family-message-back',
+  'aisatsu-back','ask-kusuri','family-message','onegai-back']);
 var REC_META_TYPES = {
   'care-config':1,
   'medicine-info':1,
@@ -3659,7 +3669,7 @@ var REC_META_TYPES = {
   'family-contact':1
 };
 function recVisible(v){
-  return !REC_META_TYPES[v.type];
+  return !REC_META_TYPES[v.type] && !(isKOnly() && REC_PERSON_TYPES.has(v.type));
 }
 
 function eventWhoClass(v){
@@ -3733,12 +3743,12 @@ function rgRender(d){
   var total=0;
   Object.keys(d.M).forEach(function(k){ d.M[k].forEach(function(v){ total+=v; }); });
   if(total===0){ body.innerHTML='<div class="empty">この期間の記録はまだありません</div>'; return; }
-  /* どちらの利用方法でも、本人・家族・介護記録を同じ系列で振り返れます */
+  /* recVisibleで現在の利用方法に合う記録だけを集計済み。 */
   var series=[
     ['挨拶','aisatsu','#D58B2B'],
     ['メッセージと返事','message','#8B6EC7'],
-    ['服薬に関する記録','kusuri','#5B8DC9'],
-    ['体調の記録','kibun','#C9A227'],
+    [isKOnly()?'家族の服薬確認':'服薬に関する記録','kusuri','#5B8DC9'],
+    [isKOnly()?'家族が記録した体調':'体調の記録','kibun','#C9A227'],
     ['ちょっとお願い','onegai','#A34A2E'],
     ['家族の記録','care','#3F815C']
   ];
@@ -3771,6 +3781,32 @@ function rgRender(d){
     html+='</div></details>';
   });
   body.innerHTML=html;
+}
+function resetRecordViews(){
+  ++recReq; ++rgSeq; ++recRangeReq;
+  recY=0; recM=0; recSel=''; recEvents=[]; recPrevEvents=[]; recPrevReady=false;
+  ['rec-day','rec-sum','rec-cal','rg-body','rec-range-results','rec-range-state','rec-person-archive-list'].forEach(function(id){
+    var el=document.getElementById(id); if(el)el.textContent='';
+  });
+  ['rec-range-from','rec-range-to'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  var archive=document.getElementById('rec-person-archive');
+  if(archive){archive.hidden=true;archive.open=false;}
+  var legend=document.getElementById('rec-source-legend');if(legend)legend.textContent='記録した人と時間を確認できます。';
+}
+function recRenderArchive(){
+  var archive=document.getElementById('rec-person-archive');
+  if(!archive)return;
+  var box=document.getElementById('rec-person-archive-list');box.textContent='';
+  var events=isKOnly()?recEvents.filter(function(v){return REC_PERSON_TYPES.has(v.type);}):[];
+  archive.hidden=!events.length;archive.open=false;
+  document.getElementById('rec-person-archive-month').textContent=recY+'年'+(recM+1)+'月の履歴です。通常の集計には含めていません。';
+  events.slice().reverse().forEach(function(v){
+    var row=document.createElement('div');row.className='range-row '+eventWhoClass(v);
+    var time=document.createElement('time');time.textContent=v.date+' '+recTime(v);
+    var text=document.createElement('div');var label=REC_LABEL[v.type](v);
+    text.textContent=label[0]+'：'+label[2]+recReplyFor(v);
+    row.appendChild(time);row.appendChild(text);box.appendChild(row);
+  });
 }
 function recOpen(){
   var now = new Date();
@@ -3808,7 +3844,9 @@ function recLoadRange(){
   if(to>todayStr()){ state.classList.add('err'); state.textContent='終了日は今日以前を選んでください'; return; }
   state.textContent='読み込み中…';
   box.innerHTML='<div class="rec-loading">読み込み中…</div>';
-  col('events').get({source:'server'}).then(function(snap){
+  var request=++recRangeReq;
+  col('events').where('date','>=',from).where('date','<=',to).get({source:'server'}).then(function(snap){
+    if(request!==recRangeReq)return;
     var rows=[];
     snap.forEach(function(doc){
       var v=doc.data(); v._id=doc.id;
@@ -3835,6 +3873,7 @@ function recLoadRange(){
     });
     state.textContent=from+' から '+to+'：'+rows.length+'件';
   }).catch(function(e){
+    if(request!==recRangeReq)return;
     state.classList.add('err'); state.textContent='読み込めませんでした。通信状態を確認してください';
     box.innerHTML='<div class="empty">期間の記録を表示できませんでした</div>';
     console.warn('rec range',e);
@@ -3872,6 +3911,7 @@ function recMove(step){
    「読み込み中」に置き換えます。古い月の内容が新しい月のものに見えないようにするためです。 */
 function recShowLoading(m){
   recEvents = [];
+  recRenderArchive();
   recPrevEvents = [];
   recPrevReady = false;
   document.getElementById('rec-cal').innerHTML =
@@ -3917,7 +3957,7 @@ function recLoad(){
     recEvents = list;
     recPrevEvents = prevList;
     recPrevReady = !!result[1];
-    recDrawCal(); recDrawSummary(); recDrawDay();
+    recDrawCal(); recDrawSummary(); recDrawDay(); recRenderArchive();
   }).catch(function(e){
     if(my !== recReq) return;   /* 古い月の失敗で、新しい月の表示を消さないようにします */
     recEvents = [];
@@ -4052,6 +4092,9 @@ function recDrawDay(){
   var box = document.getElementById('rec-day');
   var ttl = document.getElementById('rec-day-ttl');
   var note = document.getElementById('rec-day-note');
+  var legend=document.getElementById('rec-source-legend');
+  if(legend)legend.textContent=isKOnly()?'家族が残した記録と、共有・安全情報を時間順に表示します。':'オレンジはご本人、青はご家族、緑は共有・安全情報です。時間順に表示します。';
+  note.textContent=isKOnly()?'家族が画面で服薬を確認した記録です。実際に飲んだことを証明するものではありません。':'服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。';
   if(!recSel){
     ttl.textContent = 'その日の記録';
     box.innerHTML = '<div class="empty">見たい日を選ぶと、その日の記録が出ます</div>';
@@ -4224,7 +4267,7 @@ function recDrawSummary(){
   var kazokuN=detailCounts.aisatsuK+detailCounts.messageK+detailCounts.kibunK+detailCounts.kusuriConfirmK+detailCounts.kusuriAskK+detailCounts.henshinK+detailCounts.careK+detailCounts.memoK;
   var sharedN=detailCounts.tag+detailCounts.disaster;
   var busiest=Object.keys(dayTotals).sort(function(a,b){return dayTotals[b]-dayTotals[a];})[0];
-  var wholeText=elapsed+'日中'+Object.keys(allDays).length+'日に、合計'+totalN+'件の生活記録がありました。本人'+honninN+'件・家族'+kazokuN+'件'+(sharedN?'・共有／安全情報'+sharedN+'件':'')+'です。';
+  var wholeText=elapsed+'日中'+Object.keys(allDays).length+'日に、合計'+totalN+'件の生活記録がありました。'+(isKOnly()?'家族'+kazokuN+'件':'本人'+honninN+'件・家族'+kazokuN+'件')+(sharedN?'・共有／安全情報'+sharedN+'件':'')+'です。';
   if(busiest){
     var busyDate=new Date(busiest+'T00:00:00');
     wholeText+=' 最も記録が多かったのは'+(busyDate.getMonth()+1)+'月'+busyDate.getDate()+'日の'+dayTotals[busiest]+'件でした。';
@@ -4258,11 +4301,11 @@ function recDrawSummary(){
     addInsight('本人と家族のやり取り','家族からのメッセージ'+detailCounts.messageK+'件・本人からの返事'+detailCounts.messageH+'件、本人からのお願い'+detailCounts.onegaiH+'件・家族からの返信'+detailCounts.henshinK+'件が記録されています。必要な内容は下の詳細から確認できます。','blue');
   }
   var topKibun=Object.keys(kibunBy).sort(function(a,b){return kibunBy[b]-kibunBy[a];})[0];
-  if(topKibun) addInsight('体調の記録','最も多く記録された言葉は「'+topKibun+'」'+kibunBy[topKibun]+'件でした。本人や家族が選んだ言葉の傾向で、健康状態の判定ではありません。','gold');
+  if(topKibun) addInsight('体調の記録','最も多く記録された言葉は「'+topKibun+'」'+kibunBy[topKibun]+'件でした。'+(isKOnly()?'家族が記録した':'本人や家族が選んだ')+'言葉の傾向で、健康状態の判定ではありません。','gold');
   if(counts.kusuri){
     var medicineMax=Math.max(kusuriSlot.asa,kusuriSlot.hiru,kusuriSlot.yoru), medicineTop=[];
     if(kusuriSlot.asa===medicineMax) medicineTop.push('朝'); if(kusuriSlot.hiru===medicineMax) medicineTop.push('昼'); if(kusuriSlot.yoru===medicineMax) medicineTop.push('夜');
-    var medicineText='本人の記録'+detailCounts.kusuriH+'件・家族の確認'+detailCounts.kusuriConfirmK+'件・家族の声かけ'+detailCounts.kusuriAskK+'件です。';
+    var medicineText=isKOnly()?'家族の服薬確認'+detailCounts.kusuriConfirmK+'件です。':'本人の記録'+detailCounts.kusuriH+'件・家族の確認'+detailCounts.kusuriConfirmK+'件・家族の声かけ'+detailCounts.kusuriAskK+'件です。';
     medicineText+=medicineMax>0 ? ' 時間帯では'+medicineTop.join('・')+'が最も多く記録されています。' : ' 時間帯別の服薬記録はまだありません。';
     addInsight('服薬に関する記録',medicineText,'blue');
   }
@@ -4363,11 +4406,11 @@ function recDrawSummary(){
     ['おまもりタグの読み取り',detailCounts.tag,detailDays.tag,'#63A57D',detailEvents.tag],
     ['防災の記録',detailCounts.disaster,detailDays.disaster,'#63A57D',detailEvents.disaster]
   ].filter(function(r){return r[1]>0;});
-  addList('記録の詳細を見る',recordRows,'項目を押すと、記録した日付・時刻・内容が開きます。オレンジは本人、青は家族、緑は共有・安全情報です。');
+  addList('記録の詳細を見る',recordRows,'項目を押すと、記録した日付・時刻・内容が開きます。'+(isKOnly()?'青は家族、緑は共有・安全情報です。':'オレンジは本人、青は家族、緑は共有・安全情報です。'));
 
   var familySharedRows=[
     ['家族の伝言','family-note'],['伝言への返事','family-note-reply'],
-    ['やることの追加','family-task'],['やることの対応済み','family-task-done']
+    ['やることの追加','family-task'],['やることの引受け','family-task-help'],['やることの対応済み','family-task-done']
   ].map(function(entry){
     var events=familyShared.filter(function(v){return v.type===entry[1];});
     var days={};events.forEach(function(v){days[v.date]=1;});
@@ -5442,6 +5485,7 @@ async function makeInvite(targetId){
    QRには推測しにくいランダムIDだけを入れます。
    氏名・住所・電話番号・病歴・家族情報・位置情報は入れません。 */
 function printDisasterQr(){
+  if(typeof qrcode!=='function'){alert('QRを読み込めません。通信を確認して、もう一度お試しください。');return;}
   let v=null; try{ v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null'); }catch(e){}
   if(!v){ alert('先に災害用QRを作ってください。'); return; }
   if(v.consentVersion!==2){alert('本人と連絡先の同意を確認して、QRを作り直してください。');return;}
@@ -5458,6 +5502,7 @@ function printDisasterQr(){
     '<div class="note">作成時に、本人と掲載する連絡先の同意を確認しています。コピーは遠隔で消せません。<br>財布・お薬手帳・非常持出し袋に入れてお使いください。</div>');
 }
 function printWatchTag(){
+  if(typeof qrcode!=='function'){alert('QRを読み込めません。通信を確認して、もう一度お試しください。');return;}
   if(!currentWatchTagId){ alert('先にタグを作ってください。'); return; }
   const url=watchTagUrl(currentWatchTagId);
   const qr=qrcode(0,'M'); qr.addData(url); qr.make();

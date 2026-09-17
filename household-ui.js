@@ -25,6 +25,7 @@ function stopHouseholdSubscriptions(){
   if(typeof closePersonTasks==='function')closePersonTasks();
   if(window.mainicoNotebookClose)window.mainicoNotebookClose();
   householdBootGeneration++;
+  if(typeof resetRecordViews==='function')resetRecordViews();
   [householdUnsub,ownMemberUnsub,memWatchUnsub,honninUnsub,yoteiUnsub,evUnsub,ytListUnsub,watchTagUnsub,medicineInfoUnsub,personHistoryUnsub,pendingUnsub].forEach(fn=>{try{if(fn)fn();}catch(e){}});
   householdUnsub=ownMemberUnsub=null;
   familyOnlyUnsubs.forEach(fn=>{try{fn();}catch(e){}}); familyOnlyUnsubs=[];
@@ -78,6 +79,21 @@ async function saveRecoveryPointer(){
   if(!gid() || householdDeleting)return;
   await db.collection('accounts').doc(uid()).set({groupId:gid(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
 }
+let recoveryPointerSync=null;
+function renderRecoveryPointerSync(){
+  const box=document.getElementById('recovery-sync-warning');
+  if(box)box.hidden=!(recoveryPointerSync && recoveryPointerSync.groupId===gid() && recoveryPointerSync.userId===uid() && recoveryPointerSync.failed);
+}
+async function syncStartupRecoveryPointer(){
+  if(!gid() || !householdVerified || householdDeleting)return;
+  const attempt={groupId:gid(),userId:uid(),generation:householdBootGeneration,failed:false};
+  recoveryPointerSync=attempt;renderRecoveryPointerSync();
+  try{await saveRecoveryPointer();}
+  catch(error){
+    if(recoveryPointerSync!==attempt || gid()!==attempt.groupId || uid()!==attempt.userId || householdBootGeneration!==attempt.generation)return;
+    attempt.failed=true;renderRecoveryPointerSync();
+  }
+}
 function recoveryState(text,error=false){
   const el=document.getElementById('recovery-state');el.textContent=text;el.classList.toggle('err',error);
 }
@@ -117,6 +133,7 @@ async function openRecovery(){
   document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
   document.getElementById('recovery-modal').classList.add('show');
   document.getElementById('recovery-password').value='';
+  renderRecoveryPointerSync();
   document.getElementById('recovery-register').hidden=!gid();
   document.getElementById('recovery-login').hidden=!!gid();
   document.getElementById('recovery-email').value=auth.currentUser?.email||'';
@@ -235,6 +252,7 @@ async function bootHouseholdUser(user){
     try{await auth.signInAnonymously();}catch(error){window.showStartupProblem('ログインできませんでした');}
     return;
   }
+  let memberRead=null,memberGroup='';
   try{
     applyRecoveryJournal();
     const pending=getDeletionService().getPending();
@@ -247,6 +265,9 @@ async function bootHouseholdUser(user){
       openHouseholdDeletion();return;
     }
     deletionResumeOnly=false;
+    // 自分の参加状態と終了手続きは並行確認。共有内容は承認確認後に読む。
+    memberGroup=gid();
+    if(memberGroup)memberRead=col('members').doc(user.uid).get({source:'server'}).then(doc=>({doc}),error=>({error}));
     const closure=await db.collection('accountClosures').doc(user.uid).get({source:'server'});
     if(generation!==householdBootGeneration || uid()!==user.uid)return;
     if(closure.exists){
@@ -303,11 +324,14 @@ async function bootHouseholdUser(user){
     window.mainicoStartupStage='家族との接続確認中';
     try{
       // 自分のmemberはpendingでも読める。groupは承認前に読まない。
-      const me=await col('members').doc(user.uid).get({source:'server'});
-      if(generation!==householdBootGeneration)return;
+      const memberResult=memberRead && memberGroup===gid()?await memberRead:{doc:await col('members').doc(user.uid).get({source:'server'})};
+      if(generation!==householdBootGeneration || uid()!==user.uid)return;
+      if(memberResult.error)throw memberResult.error;
+      const me=memberResult.doc;
       if(me.exists && me.data().status==='pending'){
         document.getElementById('loading').style.display='none';showPending();return;
       }
+      if(!me.exists || (me.data().status && me.data().status!=='approved')){showHouseholdBlocked('このアカウントは家庭に参加していません。管理者に確認してください。');return;}
       const group=await refreshHousehold();
       if(generation!==householdBootGeneration)return;
       if(!group){showHouseholdBlocked('この家庭は見つかりませんでした。管理者に確認してください。');return;}
@@ -316,8 +340,7 @@ async function bootHouseholdUser(user){
         if(isHouseholdOwner()){openHouseholdDeletion();return;}
         showHouseholdBlocked('管理者が共有データを削除しています。');return;
       }
-      if(!me.exists){showHouseholdBlocked('このアカウントは家庭に参加していません。管理者に確認してください。');return;}
-      await saveRecoveryPointer();
+      // 復旧先の保存は画面を開いた後に行う。失敗は復旧設定に表示する。
     }catch(error){
       if(generation!==householdBootGeneration)return;
       showHouseholdBlocked('家族との接続を確認できません。通信を確認してください。参加が解除された場合は、下の「接続が終了した端末を入口に戻す」からやり直せます。');return;
@@ -325,7 +348,7 @@ async function bootHouseholdUser(user){
   }
   if(generation!==householdBootGeneration)return;
   window.mainicoStartupStage='準備完了';document.getElementById('loading').style.display='none';
-  try{startMode();if(gid())watchHouseholdAccess();}catch(error){showHouseholdBlocked('画面を開けませんでした。保存情報は消さず、再確認してください。');}
+  try{startMode();if(gid()){watchHouseholdAccess();void syncStartupRecoveryPointer();}}catch(error){showHouseholdBlocked('画面を開けませんでした。保存情報は消さず、再確認してください。');}
 }
 async function retryHouseholdConnection(){
   document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
