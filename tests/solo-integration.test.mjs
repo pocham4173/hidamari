@@ -12,7 +12,7 @@ const conversations=['person','family'].map(kind=>({dataset:{communicationGate:k
 const sends=['person','family'].map(kind=>({dataset:{sendAudience:kind},disabled:true}));
 const selectors={'[data-connection-state]':labels,'[data-request-audience]':requests,'[data-person-audience]':people,'[data-share-gate]':gates,'[data-communication-gate]':conversations,'[data-send-audience]':sends};
 let account='me',group='home',listeners=[],stops=0,refreshes=0;
-const c={document:{querySelectorAll:sel=>selectors[sel]||[],getElementById:id=>els[id]||null},uid:()=>account,gid:()=>group,householdBootGeneration:1,MainicoFamilyConnection:require('../family-connection.js'),col:()=>({onSnapshot:(opt,ok,err)=>{listeners.push({ok,err});return ()=>stops++;}}),familyTaskListMode:'all',changeFamilyTaskList:()=>refreshes++,alert:()=>{},isKOnly:()=>false,currentFamilyMessageId:'',familyHomeEventStatus:'loading',personConversationStatus:'loading',familyQuickReplySending:new Set(),familyReplyStates:new Map(),aisatsuBackSending:false,askKusuriSending:false,familyMessageSending:false,personMessageReplySending:false};
+const c={document:{querySelectorAll:sel=>selectors[sel]||[],getElementById:id=>els[id]||null},uid:()=>account,gid:()=>group,householdBootGeneration:1,MainicoFamilyConnection:require('../family-connection.js'),col:()=>({onSnapshot:(opt,ok,err)=>{listeners.push({ok,err});return ()=>stops++;}}),familyTaskListMode:'all',changeFamilyTaskList:()=>refreshes++,alert:()=>{},isKOnly:()=>false,currentFamilyMessageId:'',familyHomeEventStatus:'loading',personConversationStatus:'loading',personIncomingShown:false,familyQuickReplySending:new Set(),familyReplyStates:new Map(),aisatsuBackSending:false,askKusuriSending:false,familyMessageSending:false,personMessageReplySending:false};
 vm.createContext(c);vm.runInContext(source,c);
 const snap=(members,cache=false,pending=false)=>({metadata:{fromCache:cache,hasPendingWrites:pending},forEach:fn=>members.forEach(([id,role,status='approved',mode])=>fn({id,data:()=>({...{role,status},...(mode===undefined?{}:{mode})})}))});
 const hidden=(family,person,shared)=>assert.deepEqual(gates.map(v=>v.hidden),[family,person,shared]);
@@ -63,7 +63,8 @@ const home=html.slice(html.indexOf('<div class="ftab" id="t-home">'),html.indexO
 assert.doesNotMatch(home,/data-connection-state|home-operator-note/);
 assert.match(html,/以前の共有記録を見る/);assert.match(html,/以前の家族からの伝言を見る/);
 assert.match(html,/onclick="openPersonTasks\(\)"/);
-assert.match(html,/招待せずに一人で始められます/);
+const entry=html.slice(html.indexOf('id="entry"'),html.indexOf('<!-- ホーム画面への追加案内 -->'));
+assert.match(entry,/onclick="pickMode\('honnin'\)"/,'一人で始める本人の入口は残す');
 assert.match(html,/あとから参加を承認した家族には、これまでの予定・記録・やることも共有/);
 assert.doesNotMatch(html,/家族の画面に届けました|家族の画面に記録されました|家族へ伝言を共有しました/);
 assert.match(html,/function initHonnin\(\)\{\s*startFamilyConnection/);

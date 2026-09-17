@@ -214,7 +214,7 @@ for(const cached of [true,false]){
  const message={_id:'before-error',type:'family-message',text:'通信前の連絡',at:{seconds:2}};
  f.c.renderPersonConversation([message],{fromCache:false});
  vm.runInContext("personConversationStatus='error';updateCommunicationAvailability();",f.c);
- f.state(family);assert.match(f.el('h-contact-state').textContent,/確認できませんでした/,'参加者の再取得で連絡の通信エラーを消さない');
+ f.state(family);assert.match(f.el('h-contact-state').textContent,/読み込めませんでした/,'参加者の再取得で連絡の通信エラーを消さない');
  assert.equal(f.el('person-thanks').disabled,true);await f.c.sendFamilyMessageBack('ありがとう');assert.equal(f.writes.length,0);
 }
 assert.doesNotMatch(html,/試験運用中｜実名・住所・電話・病歴は入力しないでください/);
