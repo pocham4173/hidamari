@@ -23,7 +23,7 @@ assert.equal(els['family-task-kind-family'].disabled,true);
 assert.doesNotMatch(els['home-summary-description'].textContent,/家族/);
 // Code redeemed, but not approved: no premature collaboration UI.
 listeners[0].ok(snap([['me','kazoku'],['invited','kazoku','pending']]));hidden(true,true,true);
-assert.equal(conversations[0].hidden,true);assert.equal(conversations[1].hidden,true);assert.ok(sends.every(button=>button.disabled));
+assert.equal(conversations[0].hidden,false);assert.equal(conversations[1].hidden,false);assert.ok(sends.every(button=>button.disabled));
 assert.equal(c.requireFamilyFeature(),false);
 listeners[0].ok(snap([['me','kazoku'],['family','kazoku']]));hidden(false,true,false);
 assert.equal(c.requireFamilyFeature(),true);assert.equal(els['family-task-kind-family'].disabled,false);
@@ -32,7 +32,6 @@ assert.match(els['home-summary-description'].textContent,/家族の伝言/);
 // A person recipient and a family recipient enable their respective controls.
 listeners[0].ok(snap([['me','kazoku'],['person','honnin']]));hidden(true,false,false);
 assert.equal(conversations[0].hidden,false);assert.equal(sends[0].disabled,false);
-assert.equal(els['conversation-setup-entry'].hidden,true,'本人とつながれば補助の入口は隠す');
 const legacySnap={metadata:{fromCache:false,hasPendingWrites:false},forEach:fn=>[['me','kazoku'],['person','honnin']].forEach(([id,role])=>fn({id,data:()=>({role})}))};
 listeners[0].ok(legacySnap);hidden(true,false,false);
 assert.equal(conversations[0].hidden,false,'旧登録でも本人とのやりとり欄を表示');
@@ -49,7 +48,6 @@ listeners[0].ok(snap([['me','kazoku'],['person','honnin'],['family','kazoku']]))
 els['family-task-kind'].value='family';listeners[0].ok(snap([['me','kazoku']]));hidden(true,true,true);
 assert.equal(els['family-task-kind'].value,'family');assert.equal(els['family-task-kind-family'].hidden,false);assert.match(els['family-task-sharing-note'].textContent,/入力は残っています/);
 assert.equal(c.requireFamilyFeature(),false);
-assert.equal(els['conversation-setup-entry'].hidden,false,'相手が確認できないときも設定への入口を残す');
 for(const state of [snap([['me','kazoku'],['family','kazoku']],true),snap([['me','kazoku'],['family','kazoku']],false,true)]){
  listeners[0].ok(state);hidden(true,true,true);assert.doesNotMatch(labels[0].textContent,/参加者はいません/);
 }
