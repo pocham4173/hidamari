@@ -52,8 +52,6 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .install-main:active{transform:translateY(3px);box-shadow:0 1px 0 #C8D7EF;}
 #entry #select-box{width:100%;max-width:320px;}
 #entry .entry-btn{min-height:64px;}
-#entry .entry-secondary{background:#fff;color:var(--cha);border:1px solid #D6DDE5;box-shadow:none;font-size:1rem;padding:12px;}
-#entry .entry-secondary small{color:#637084;}
 #entry .entry-tools{width:100%;max-width:320px;margin-top:8px;border-top:1px solid #E7EBEF;padding-top:8px;}
 #entry .entry-tools .consent-back{min-height:44px;margin:0 auto;}
 .communication-status:empty{display:none;}
@@ -626,12 +624,12 @@ table.cal-rec td.pad{background:none;}
   <img class="appicon" src="icon-192.png" alt="まいにこ">
   <h1>まいにこ</h1>
   <div class="entry-catch">不安を軽く、安心を深く、<br>上田でつなぐ。</div>
-  <div class="q">このスマートフォンを使う方</div>
+  <div class="q">使い方を選んでください</div>
   <div id="entry-state" class="save-state" role="status" aria-live="polite"></div>
   <div id="select-box">
     <button class="entry-btn" onclick="pickMode('honnin')">本人が使う</button>
-    <button class="entry-btn" onclick="pickMode('kazoku')">家族が使う<small>本人とやりとりする</small></button>
-    <button class="entry-btn entry-secondary" onclick="pickMode('konly')">家族が記録する<small>本人の代わりに記録する</small></button>
+    <button class="entry-btn" onclick="pickMode('kazoku')">本人と家族が使う<small>家族用の画面</small></button>
+    <button class="entry-btn" onclick="pickMode('konly')">家族だけで使う<small>本人は操作しません</small></button>
   </div>
   <div class="entry-tools">
     <button class="consent-back" onclick="openRecovery()">以前のアカウントで再開する</button>
@@ -1916,7 +1914,7 @@ function updateCommunicationAvailability(){
     personIncomingShown?'今は返事を送れません。': ''):
     personConversationStatus==='error'?'連絡を読み込めませんでした。':
     personConversationStatus==='cached'?'保存した連絡です。通信が戻るまでお待ちください。':
-    personConversationStatus==='loading'?'連絡を読み込んでいます…':!personIncomingShown?'連絡はまだありません。':'';
+    personConversationStatus==='loading'?'連絡を読み込んでいます…':!personIncomingShown?'今日の連絡はまだありません。':'';
   // Keep messages/results readable. Only remove controls that cannot currently be used.
   const replyOptions=document.getElementById('person-reply-options');
   if(replyOptions)replyOptions.hidden=familyConnection.status!=='unknown'&&!canUseFamilyFeature('family');
@@ -2588,11 +2586,19 @@ function refreshSlotUI(){
   });
   if(previewStorage.getItem('aisatsu-'+todayStr()+'-'+s.key)) markAisatsuDone();
 }
-function renderPersonConversation(items,metadata={}){
+function renderPersonConversation(items,metadata={},announce=true){
+  personConversationDay=todayStr();
   personConversationItems=items;
   personConversationStatus=metadata.fromCache||metadata.hasPendingWrites?'cached':'ready';
   const msgs=[];
   items.forEach(v=>{
+    // Home is today's inbox. Older contacts remain in the dated history.
+    let day=v.date;
+    if(!day && Number.isFinite(v.at?.seconds)){
+      const sent=new Date(v.at.seconds*1000);
+      day=sent.getFullYear()+'-'+String(sent.getMonth()+1).padStart(2,'0')+'-'+String(sent.getDate()).padStart(2,'0');
+    }
+    if(day!==personConversationDay)return;
     let text='';
     if(['aisatsu-back','onegai-back','family-message'].includes(v.type))text=(v.name||'家族')+'さんから「'+(v.text||'こんにちは')+'」が届きました';
     if(v.type==='ask-kusuri'){
@@ -2616,7 +2622,7 @@ function renderPersonConversation(items,metadata={}){
   incoming.classList.toggle('show',!!msgs.length);
   personIncomingShown=!!msgs.length;
   renderPersonReplyState();
-  if(msgs.length&&personConversationStatus==='ready'){
+  if(announce&&msgs.length&&personConversationStatus==='ready'){
     const latest=msgs[0],key='mainicoMessageCursor:'+gid()+':'+uid();
     let previous=null;
     try{previous=JSON.parse(previewStorage.getItem(key)||'null');}catch(e){}
@@ -2629,6 +2635,14 @@ function renderPersonConversation(items,metadata={}){
       }
     }
   }
+  updateCommunicationAvailability();
+}
+function refreshPersonConversationDay(){
+  if(personConversationDay===todayStr())return;
+  const status=personConversationStatus;
+  renderPersonConversation(personConversationItems,{fromCache:status!=='ready'},false);
+  // A clock change is not a successful server read.
+  personConversationStatus=status;
   updateCommunicationAvailability();
 }
 function subscribePersonConversation(){
@@ -2650,6 +2664,7 @@ function initHonnin(){
   startFamilyConnection();
   hBootDay=todayStr(); hCurSlot=slot().key;
   const upd=()=>{
+    refreshPersonConversationDay();
     if(todayStr()!==hBootDay){
       /* 送信中・画面入力中は切断しない。手が空いた次の確認(15秒後)で更新する */
       const ae=document.activeElement;
@@ -2667,6 +2682,8 @@ function initHonnin(){
   upd();
   if(clockTimer) clearInterval(clockTimer);
   clockTimer=setInterval(upd,15000);
+  personDayVisibility=()=>{if(!document.hidden)refreshPersonConversationDay();};
+  document.addEventListener('visibilitychange',personDayVisibility);
 
   const s=slot();
   document.getElementById('a-ic').textContent=s.ic;
@@ -3070,6 +3087,7 @@ let communicationGeneration=0,familyHomeItems=[],familyHomeEventStatus='loading'
 let familyMessageReplyTarget='',personIncomingShown=false;
 const familyQuickReplySending=new Set(),familyReplyStates=new Map(),personReplyStates=new Map(),personSpokenMessages=new Set();
 let personConversationItems=[],personConversationStatus='loading',personConversationRequest=0;
+let personConversationDay='',personDayVisibility=null;
 let familyConversationDay='',familyConversationRequest=0,familyDayVisibility=null;
 function compareConversationEvents(a,b){
   return (a.at?.seconds||0)-(b.at?.seconds||0)||(a.at?.nanoseconds||0)-(b.at?.nanoseconds||0)||String(a._id||'').localeCompare(String(b._id||''));
@@ -3107,6 +3125,8 @@ function resetCommunication(){
   }
   communicationGeneration++;familyHomeItems=[];familyHomeEventStatus='loading';
   personConversationItems=[];personConversationStatus='loading';personConversationRequest++;
+  personConversationDay='';
+  if(personDayVisibility){document.removeEventListener('visibilitychange',personDayVisibility);personDayVisibility=null;}
   familyReplyStates.clear();personReplyStates.clear();personSpokenMessages.clear();
   familyConversationDay='';familyConversationRequest++;
   if(familyDayVisibility){document.removeEventListener('visibilitychange',familyDayVisibility);familyDayVisibility=null;}
