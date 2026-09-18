@@ -73,4 +73,5 @@ jobs:
           node tests/simple-navigation.test.mjs
           node tests/family-only-records.test.mjs
           node tests/consent.test.mjs
+          node tests/consent-routing.test.mjs
           node tests/ueda-centers.test.mjs

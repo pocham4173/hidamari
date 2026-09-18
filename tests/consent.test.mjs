@@ -39,8 +39,8 @@ for(const mode of ['honnin','kazoku','konly']){
 {
  const f=fixture();f.c.showConsentFlow('kazoku',f.resume);f.checks('a').forEach(x=>x.checked=true);await f.c.submitConsent('a');
  const listener=f.listeners.at(-1);f.records.delete('one');listener.ok({exists:false,metadata:{fromCache:false,hasPendingWrites:false}});
- assert.equal(f.c.hasSessionConsent('kazoku'),false);assert.ok(f.stopped>1);assert.equal(f.c.document.querySelector('.page.active').id,'consent-a');
- f.checks('a').forEach(x=>x.checked=true);await f.c.submitConsent('a');await f.c.withdrawCurrentConsent();assert.equal(f.records.has('one'),false);assert.equal(f.c.hasSessionConsent('kazoku'),false);f.dom.window.close();
+ assert.equal(f.c.hasSessionConsent('kazoku'),false);assert.ok(f.stopped>1);assert.equal(f.c.document.querySelector('.page.active').id,'entry');
+ f.c.showConsentFlow('kazoku',f.resume);f.checks('a').forEach(x=>x.checked=true);await f.c.submitConsent('a');await f.c.withdrawCurrentConsent();assert.equal(f.records.has('one'),false);assert.equal(f.c.hasSessionConsent('kazoku'),false);f.dom.window.close();
 }
 {
  const f=fixture();f.c.showConsentFlow('honnin',f.resume);f.c.cancelConsent();await f.c.submitConsent('a');assert.equal(f.writes,0);assert.equal(f.resumes,0);f.dom.window.close();

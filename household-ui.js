@@ -334,8 +334,14 @@ async function bootHouseholdUser(user){
       }
       if(!me.exists || (me.data().status && me.data().status!=='approved')){showHouseholdBlocked('このアカウントは家庭に参加していません。管理者に確認してください。');return;}
       const data=me.data();
-      const consentMode=['honnin','kazoku','konly'].includes(data.mode)?data.mode:(data.role==='honnin'?'honnin':isKOnly()?'konly':'kazoku');
-      if(!await ensureConsentForMode(consentMode,()=>bootHouseholdUser(auth.currentUser)))return;
+      const savedMode=previewStorage.getItem('mainicoMode');
+      const consentMode=savedMode==='honnin'?'honnin':savedMode==='kazoku'?(isKOnly()?'konly':'kazoku'):null;
+      // 同意で確認した使い方と、開く画面を一致させる。旧設定の推測で画面を決めない。
+      const explicitlyChosen=previewStorage.getItem('mainicoModeChoiceV1')===JSON.stringify([user.uid,gid(),consentMode]);
+      if(!consentMode || !explicitlyChosen || (['honnin','kazoku','konly'].includes(data.mode) && data.mode!==consentMode)){
+        showConsentModeChoice();return;
+      }
+      if(!await ensureConsentForMode(consentMode,()=>bootHouseholdUser(auth.currentUser),showConsentModeChoice))return;
       if(generation!==householdBootGeneration)return;
       const group=await refreshHousehold();
       if(generation!==householdBootGeneration)return;

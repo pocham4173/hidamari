@@ -658,6 +658,7 @@ table.cal-rec td.pad{background:none;}
 <!-- 同意 a -->
 <div class="page consent-page" id="consent-a"><div class="consent-wrap">
   <h1 class="consent-ttl" id="consent-title-a" tabindex="-1">まいにこを使う前に</h1>
+  <p id="consent-mode-a" class="consent-lead"></p><button class="consent-back" type="button" onclick="cancelConsent()">使い方を選び直す</button>
   <p class="consent-lead">まいにこで記録する内容と、共有する範囲を確認してください。</p>
   <p class="consent-note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong><br>緊急時はアプリの返事を待たず119番等へ連絡してください。現在は架空情報で操作を確かめる試作品です。</p>
   <p><a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシーを読む（別画面）</a> ／ <a href="help.html#notifications" target="_blank" rel="noopener">通知の制限を読む</a></p>
@@ -676,6 +677,7 @@ table.cal-rec td.pad{background:none;}
 <!-- 同意 b -->
 <div class="page consent-page" id="consent-b"><div class="consent-wrap">
   <h1 class="consent-ttl" id="consent-title-b" tabindex="-1">まいにこを使う前に</h1>
+  <p id="consent-mode-b" class="consent-lead"></p><button class="consent-back" type="button" onclick="cancelConsent()">使い方を選び直す</button>
   <p class="consent-lead">家族が確認したことを家族自身の記録として残します。本人がボタンを操作することは前提にしません。</p>
   <p class="consent-note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong><br>緊急時はアプリの返事を待たず119番等へ連絡してください。現在は架空情報で操作を確かめる試作品です。</p>
   <p><a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシーを読む（別画面）</a> ／ <a href="help.html#notifications" target="_blank" rel="noopener">通知の制限を読む</a></p>
@@ -1545,11 +1547,11 @@ setTimeout(function(){
 <script async data-optional="true" src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script src="ueda-centers.js?v=20260918"></script>
 <script src="consent.js?v=20260918"></script>
-<script src="consent-ui.js?v=20260918"></script>
+<script src="consent-ui.js?v=20260918-mode2"></script>
 <script src="account-recovery.js"></script>
 <script src="account-deletion.js?v=20260918-consent"></script>
 <script src="household-deletion.js"></script>
-<script src="household-ui.js?v=20260918-consent"></script>
+<script src="household-ui.js?v=20260918-mode2"></script>
 <script src="medicine-notebook.js"></script>
 <script src="notebook-integration.js"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
@@ -2084,17 +2086,19 @@ function pickMode(m){
   try{
     pendingMode=m;
     entryState('');
-    showConsentFlow(m,afterConsent);
+    showConsentFlow(m,()=>afterConsent(m));
   }catch(error){
     entryState('この端末の保存情報を確認できません。保存情報は消さず、Safariなどのブラウザーで開き直してください。');
   }
 }
 function agreeConsent(kind){ return submitConsent(kind); }
-function afterConsent(){
-  if(!hasSessionConsent(pendingMode)){showConsentFlow(pendingMode,afterConsent);return;}
+function afterConsent(mode=pendingMode){
+  if(!['honnin','kazoku','konly'].includes(mode)){showConsentModeChoice();return;}
+  if(!hasSessionConsent(mode)){showConsentFlow(mode,()=>afterConsent(mode));return;}
+  pendingMode=mode;
   previewStorage.setItem('mainicoPendingMode', pendingMode);
   if(pendingMode!=='honnin' && !previewStorage.getItem('mainicoName')){ showPage('name-page'); return; }
-  if(gid()){ finishSetup(); return; }
+  if(gid())return finishSetup();
   setupConnectPage();
   showPage('connect-page');
 }
@@ -2273,9 +2277,9 @@ async function finishSetup(){
   modeSetupBusy=true;
   let slowTimer;
   try{
-    const accountUid=uid(),groupId=gid();
-    const assertCurrent=()=>{if(uid()!==accountUid || gid()!==groupId)throw new Error('setup-session-changed');};
-    const m=previewStorage.getItem('mainicoPendingMode')||pendingMode;
+    const accountUid=uid(),groupId=gid(),generation=householdBootGeneration;
+    const assertCurrent=()=>{if(uid()!==accountUid || gid()!==groupId || generation!==householdBootGeneration)throw new Error('setup-session-changed');};
+    const m=pendingMode||previewStorage.getItem('mainicoPendingMode');
     if(!accountUid || !groupId || !['honnin','kazoku','konly'].includes(m))throw new Error('setup-incomplete');
     if(!await ensureConsentForMode(m,finishSetup))return;
     showPage('household-status-page');
@@ -2290,8 +2294,9 @@ async function finishSetup(){
     // 接続と保存が確認できるまで、この端末の確定した利用方法を変更しない。
     previewStorage.setItem('kazokuOnly', m==='konly'?'1':'');
     previewStorage.setItem('mainicoMode', m==='honnin'?'honnin':'kazoku');
+    previewStorage.setItem('mainicoModeChoiceV1',JSON.stringify([accountUid,groupId,m]));
     startMode();watchHouseholdAccess();
-  }catch(error){showHouseholdBlocked('家族との接続・利用方法の保存を確認できませんでした。保存情報は消さず、通信を確認して再確認してください。');}
+  }catch(error){if(error.message!=='setup-session-changed')showHouseholdBlocked('家族との接続・利用方法の保存を確認できませんでした。保存情報は消さず、通信を確認して再確認してください。');}
   finally{clearTimeout(slowTimer);modeSetupBusy=false;}
 }
 async function copyPendingHelp(){
@@ -2460,7 +2465,7 @@ async function cancelJoinRequest(){
 }
 function startMode(){
   const m=previewStorage.getItem('mainicoMode');
-  if(gid() && m && !hasSessionConsent(m==='honnin'?'honnin':isKOnly()?'konly':'kazoku')){showConsentFlow(m==='honnin'?'honnin':isKOnly()?'konly':'kazoku',()=>bootHouseholdUser(auth.currentUser));return;}
+  if(gid() && m && !hasSessionConsent(m==='honnin'?'honnin':isKOnly()?'konly':'kazoku')){showConsentModeChoice();return;}
   // Retire callbacks and controls from the previous screen before opening the chosen one.
   stopHouseholdSubscriptions();
   if(m==='honnin')previewStorage.setItem('kazokuOnly','');
