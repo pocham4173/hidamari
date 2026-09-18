@@ -1,3 +1,4 @@
+import {consentFixture} from './helpers/consent-fixture.mjs';
 /* Complete HTML + production subscription/render/send functions + actual Firestore
    compat SDK/rules. Two independent authenticated identities; no live user data. */
 import assert from 'node:assert/strict';
@@ -27,6 +28,7 @@ const quick=f=>first(f)?.querySelector('[onclick^="replyToPersonEvent"]');
 try{
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async ctx=>{
+    for(const id of ['family','person'])await ctx.firestore().doc('consents/'+id).set(consentFixture(firebase.firestore.Timestamp.now()));
     const home=ctx.firestore().collection('groups').doc('home');
     await home.set({createdBy:'family'});
     await home.collection('members').doc('family').set({name:'家族',role:'kazoku',mode:'kazoku',status:'approved'});

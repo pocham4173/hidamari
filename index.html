@@ -634,6 +634,7 @@ table.cal-rec td.pad{background:none;}
   <div class="entry-tools">
     <button class="consent-back" onclick="openRecovery()">以前のアカウントで再開する</button>
     <button class="install-main" id="install-main" type="button" onclick="installApp()">ホーム画面に追加</button>
+    <p class="note">本サービスは119番通報や安否確認、医療行為の代替ではありません。</p><a class="consent-back" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
     <a class="consent-back" href="help.html" target="_blank" rel="noopener">使い方・困ったとき</a>
     <details style="margin:12px auto;text-align:left;"><summary>利用終了・データの整理</summary><p class="note">機種変更では削除しないでください。</p><button class="consent-back" type="button" onclick="openNotebookCleanup()">端末内の控えを削除</button><button class="consent-back" type="button" onclick="openAccountDeletion()">自分のログイン登録を削除する</button><a class="consent-back" href="help.html#end" target="_blank" rel="noopener">利用終了の手順を見る</a></details>
   </div>
@@ -654,53 +655,41 @@ table.cal-rec td.pad{background:none;}
 </div>
 </div>
 
-<!-- ===== 同意(共用) ===== -->
-<div class="page consent-page" id="consent-a">
-  <div class="consent-wrap">
-    <div class="consent-ttl">まいにこを使う前に</div>
-    <p class="consent-lead">まいにこは、あなたとご家族が毎日の様子を無理なく伝え合うためのアプリです。カメラで監視したり、知らない人へ情報を公開したりするものではありません。次の内容を確認し、よければチェックしてください。</p>
-    <label class="consent-item"><input type="checkbox" class="ck-a"> 挨拶ボタンを押したことと、その時刻を保存します</label>
-    <label class="consent-item"><input type="checkbox" class="ck-a"> 登録した予定を保存します</label>
-    <label class="consent-item"><input type="checkbox" class="ck-a"> 服薬ボタンを押したことと、その時刻を保存します</label>
-    <label class="consent-item"><input type="checkbox" class="ck-a"> 選んだ体調を保存します</label>
-    <label class="consent-item"><input type="checkbox" class="ck-a"> 下の説明を読みました</label>
-    <div class="consent-note">
-      <b>共有される範囲</b><br>一人でも使えます。あとから参加を承認した家族には、これまでの予定・記録・やることも共有されます。端末内のお薬手帳の写真は別で、自動共有されません。<br><b>大切な注意</b><br>
-      ・服薬ボタンは「押した記録」です。実際に薬を飲んだことを保証しません<br>
-      ・お薬情報を登録する場合は、本人の了解を得て必要最小限にし、最新の処方はお薬手帳・薬袋・医師・薬剤師に確認してください<br>
-      ・記録の表示は通信状態や端末の設定により、遅れたり届かなかったりする場合があります。記録がないことは、未実施や異常を意味しません<br>
-      ・まいにこは24時間の監視、救急通報、医師の診断や治療の代わりではありません<br>
-      ・体調の異常時や緊急時は、医療機関または119番へ連絡してください<br>
-      ・同意は設定から取り消して、利用をやめることができます<br>
-      ・現在は試作品です。病名・保険証の写真・位置情報などは扱いません
-    </div>
-    <button class="entry-btn" style="margin-top:16px;" onclick="agreeConsent('a')">同意してはじめる</button>
-    <button class="consent-back" onclick="showPage('entry')">← 入口に戻る</button>
-  </div>
-</div>
+<!-- 同意 a -->
+<div class="page consent-page" id="consent-a"><div class="consent-wrap">
+  <h1 class="consent-ttl" id="consent-title-a" tabindex="-1">まいにこを使う前に</h1>
+  <p class="consent-lead">まいにこで記録する内容と、共有する範囲を確認してください。</p>
+  <p class="consent-note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong><br>緊急時はアプリの返事を待たず119番等へ連絡してください。現在は架空情報で操作を確かめる試作品です。</p>
+  <p><a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシーを読む（別画面）</a> ／ <a href="help.html#notifications" target="_blank" rel="noopener">通知の制限を読む</a></p>
+  <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="privacy">プライバシーポリシーを読み、記載された情報の取扱いに同意します。</label>
+  <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="sensitive">服薬・体調・支援に関する記録など、要配慮個人情報を含み得る情報を、記録・ふり返り・家族との共有のために取得・保存することに同意します。</label>
+  <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="sharing">承認した家族へ記録を共有することに同意します。あとから参加を承認した家族には、これまでの予定・記録・やることも共有されることを確認しました。</label>
+  <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="subject"><span id="consent-subject-a">記録される本人の意思を確認します。</span></label>
+  <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="disclaimer">サービスの限界と通知の制限を確認しました。</label>
+  <div class="consent-note">挨拶・予定・服薬ボタン・様子メモ等の内容と日時、記録者を保存します。服薬ボタンは押した記録で、服用の証明ではありません。記録がないことは異常を意味しません。<br>アプリを閉じた家族へのプッシュ通知はありません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。<br>お薬手帳の写真は端末内に保存され、自動共有されません。<br>本人が拒否・不快感を示すときは利用を止めてください。本人の意思を確認できない場合は、このチェックだけで利用を始めないでください。<br>同意は設定から取り消せます。共有済み記録の削除・退会は別の操作です。</div>
+  <p id="consent-state-a" role="status" aria-live="polite"></p>
+  <button class="entry-btn" id="consent-submit-a" onclick="agreeConsent('a')">同意してはじめる</button>
+  <button class="consent-back" onclick="cancelConsent()">同意せず入口へ戻る</button>
+  <details><summary>利用を終了・同意を取り消す</summary><button class="set-btn warn" onclick="withdrawCurrentConsent()">同意の取り消しを再試行</button><button class="set-btn" onclick="openConsentExit()">退会・データ削除へ</button><a href="help.html#end" target="_blank" rel="noopener">削除の範囲と手順</a></details>
+</div></div>
 
-<!-- ===== 同意(家族記録モード) ===== -->
-<div class="page consent-page" id="consent-b">
-  <div class="consent-wrap">
-    <div class="consent-ttl">記録をはじめる前に</div>
-    <p class="consent-lead">このモードでは、本人から挨拶や体調は届きません。ご家族が確認した様子、予定、服薬の確認、メモを記録します。本人に分かる方法で説明し、意思を確認してください。家族が確認したことを家族自身の記録として残し、本人の入力や意思とは区別します。拒否や続く不快感があれば利用を中止してください。意思確認が難しい場合の利用条件は、専門家への確認が済むまで定められていません。</p>
-    <label class="consent-item"><input type="checkbox" class="ck-b"> 本人にこの利用を説明しました</label>
-    <label class="consent-item"><input type="checkbox" class="ck-b"> 本人の了解を得ています</label>
-    <label class="consent-item"><input type="checkbox" class="ck-b"> 必要以上の情報を入力しません</label>
-    <label class="consent-item"><input type="checkbox" class="ck-b"> 記録は医療判断や服薬の証明にならないことを理解しました</label>
-    <div class="consent-note">
-      <b>共有される範囲</b><br>一人でも使えます。あとから参加を承認した家族には、これまでの予定・記録・やることも共有されます。端末内のお薬手帳の写真は別で、自動共有されません。<br><b>大切な注意</b><br>
-      ・「本人に薬を飲んだか確認しました」は家族による確認の記録です。服用そのものを証明しません<br>
-      ・お薬情報を登録する場合は、本人の了解を得て必要最小限にし、最新の処方はお薬手帳・薬袋・医師・薬剤師に確認してください<br>
-      ・記録がないことは、未実施や異常を意味しません<br>
-      ・まいにこは24時間の監視、救急通報、医師の診断や治療の代わりではありません<br>
-      ・体調の異常時や緊急時は、医療機関または119番へ連絡してください<br>
-      ・現在は試作品です。病名・保険証の写真・位置情報などは扱いません
-    </div>
-    <button class="entry-btn" style="margin-top:16px;" onclick="agreeConsent('b')">同意してはじめる</button>
-    <button class="consent-back" onclick="showPage('entry')">← 入口に戻る</button>
-  </div>
-</div>
+<!-- 同意 b -->
+<div class="page consent-page" id="consent-b"><div class="consent-wrap">
+  <h1 class="consent-ttl" id="consent-title-b" tabindex="-1">まいにこを使う前に</h1>
+  <p class="consent-lead">家族が確認したことを家族自身の記録として残します。本人がボタンを操作することは前提にしません。</p>
+  <p class="consent-note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong><br>緊急時はアプリの返事を待たず119番等へ連絡してください。現在は架空情報で操作を確かめる試作品です。</p>
+  <p><a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシーを読む（別画面）</a> ／ <a href="help.html#notifications" target="_blank" rel="noopener">通知の制限を読む</a></p>
+  <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="privacy">プライバシーポリシーを読み、記載された情報の取扱いに同意します。</label>
+  <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="sensitive">服薬・体調・支援に関する記録など、要配慮個人情報を含み得る情報を、記録・ふり返り・家族との共有のために取得・保存することに同意します。</label>
+  <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="sharing">承認した家族へ記録を共有することに同意します。あとから参加を承認した家族には、これまでの予定・記録・やることも共有されることを確認しました。</label>
+  <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="subject"><span id="consent-subject-b">記録される本人の意思を確認します。</span></label>
+  <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="disclaimer">サービスの限界と通知の制限を確認しました。</label>
+  <div class="consent-note">挨拶・予定・服薬ボタン・様子メモ等の内容と日時、記録者を保存します。服薬ボタンは押した記録で、服用の証明ではありません。記録がないことは異常を意味しません。<br>アプリを閉じた家族へのプッシュ通知はありません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。<br>お薬手帳の写真は端末内に保存され、自動共有されません。<br>本人が拒否・不快感を示すときは利用を止めてください。本人の意思を確認できない場合は、このチェックだけで利用を始めないでください。<br>同意は設定から取り消せます。共有済み記録の削除・退会は別の操作です。</div>
+  <p id="consent-state-b" role="status" aria-live="polite"></p>
+  <button class="entry-btn" id="consent-submit-b" onclick="agreeConsent('b')">同意してはじめる</button>
+  <button class="consent-back" onclick="cancelConsent()">同意せず入口へ戻る</button>
+  <details><summary>利用を終了・同意を取り消す</summary><button class="set-btn warn" onclick="withdrawCurrentConsent()">同意の取り消しを再試行</button><button class="set-btn" onclick="openConsentExit()">退会・データ削除へ</button><a href="help.html#end" target="_blank" rel="noopener">削除の範囲と手順</a></details>
+</div></div>
 
 <!-- ===== 名前入力(家族) ===== -->
 <div class="page" id="name-page" style="background:#fff;">
@@ -899,6 +888,7 @@ table.cal-rec td.pad{background:none;}
 
 <div class="modal" id="person-settings-modal"><div class="modal-box adult-font">
   <div class="ttl">その他の設定</div>
+<a class="set-btn" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a><button class="set-btn warn" onclick="revokeConsent()">同意を取り消して利用をやめる</button>
   <div class="set-sec"><h4>家族との連携</h4>
     <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
     <p class="note">招待した家族の参加を管理者が承認すると、お願い・返事を送れるようになります。以前のやりとりはホームで確認できます。</p>
@@ -1128,7 +1118,8 @@ table.cal-rec td.pad{background:none;}
 
     <div class="set-sec">
       <h4>利用をやめる</h4>
-      <div id="consent-info" style="display:none;">─</div>
+      <div id="consent-info">─</div>
+      <a class="set-btn" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
       <button class="set-btn warn" onclick="revokeConsent()">同意を取り消して利用をやめる</button>
       <div class="note">この端末での利用を終了し、家族との接続を解除します。</div>
     </div>
@@ -1552,10 +1543,13 @@ setTimeout(function(){
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
 <script src="mainico-config.js"></script>
 <script async data-optional="true" src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
+<script src="ueda-centers.js?v=20260918"></script>
+<script src="consent.js?v=20260918"></script>
+<script src="consent-ui.js?v=20260918"></script>
 <script src="account-recovery.js"></script>
-<script src="account-deletion.js"></script>
+<script src="account-deletion.js?v=20260918-consent"></script>
 <script src="household-deletion.js"></script>
-<script src="household-ui.js?v=20260918-startup"></script>
+<script src="household-ui.js?v=20260918-consent"></script>
 <script src="medicine-notebook.js"></script>
 <script src="notebook-integration.js"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
@@ -2090,23 +2084,14 @@ function pickMode(m){
   try{
     pendingMode=m;
     entryState('');
-    const ckey='mainicoConsent-'+(m==='konly'?'b':'a');
-    if(previewStorage.getItem(ckey)){ afterConsent(); return; }
-    showPage(m==='konly'?'consent-b':'consent-a');
+    showConsentFlow(m,afterConsent);
   }catch(error){
     entryState('この端末の保存情報を確認できません。保存情報は消さず、Safariなどのブラウザーで開き直してください。');
   }
 }
-function agreeConsent(kind){
-  const cks=document.querySelectorAll(kind==='a'?'.ck-a':'.ck-b');
-  let all=true; cks.forEach(c=>{ if(!c.checked) all=false; });
-  if(!all){ alert('すべての項目を確認して、チェックを入れてください'); return; }
-  try{
-    previewStorage.setItem('mainicoConsent-'+kind, JSON.stringify({ver:'段階A v0.3', at:new Date().toISOString()}));
-    afterConsent();
-  }catch(error){alert('この端末に同意を保存できませんでした。保存情報は消さず、ブラウザーで開き直してください。');}
-}
+function agreeConsent(kind){ return submitConsent(kind); }
 function afterConsent(){
+  if(!hasSessionConsent(pendingMode)){showConsentFlow(pendingMode,afterConsent);return;}
   previewStorage.setItem('mainicoPendingMode', pendingMode);
   if(pendingMode!=='honnin' && !previewStorage.getItem('mainicoName')){ showPage('name-page'); return; }
   if(gid()){ finishSetup(); return; }
@@ -2292,6 +2277,7 @@ async function finishSetup(){
     const assertCurrent=()=>{if(uid()!==accountUid || gid()!==groupId)throw new Error('setup-session-changed');};
     const m=previewStorage.getItem('mainicoPendingMode')||pendingMode;
     if(!accountUid || !groupId || !['honnin','kazoku','konly'].includes(m))throw new Error('setup-incomplete');
+    if(!await ensureConsentForMode(m,finishSetup))return;
     showPage('household-status-page');
     document.getElementById('household-status-text').textContent='利用方法と家族との接続を確認しています…';
     slowTimer=setTimeout(()=>{
@@ -2474,6 +2460,7 @@ async function cancelJoinRequest(){
 }
 function startMode(){
   const m=previewStorage.getItem('mainicoMode');
+  if(gid() && m && !hasSessionConsent(m==='honnin'?'honnin':isKOnly()?'konly':'kazoku')){showConsentFlow(m==='honnin'?'honnin':isKOnly()?'konly':'kazoku',()=>bootHouseholdUser(auth.currentUser));return;}
   // Retire callbacks and controls from the previous screen before opening the chosen one.
   stopHouseholdSubscriptions();
   if(m==='honnin')previewStorage.setItem('kazokuOnly','');
@@ -5372,11 +5359,7 @@ function openSettings(){
   document.getElementById('settings-modal').classList.add('show');
   renderSetMembers();
   loadWatchTag();
-  const ca=previewStorage.getItem('mainicoConsent-a'), cb=previewStorage.getItem('mainicoConsent-b');
-  const info=[];
-  if(ca){ const v=JSON.parse(ca); info.push('共用モード同意: '+v.ver+' ('+v.at.slice(0,10)+')'); }
-  if(cb){ const v=JSON.parse(cb); info.push('家族記録モード同意: '+v.ver+' ('+v.at.slice(0,10)+')'); }
-  document.getElementById('consent-info').textContent=info.length?info.join(' / '):'この端末での同意記録はありません';
+  document.getElementById('consent-info').textContent=consentSession?'同意の版：'+consentSession.value.version+' ／ 設定から取り消せます。':'同意の確認が必要です。';
 }
 function closeSettings(){ document.getElementById('settings-modal').classList.remove('show'); }
 function openConversationConnection(){
@@ -5657,6 +5640,7 @@ function requestTagNotify(){
 }
 let watchTagUnsub=null;
 let currentWatchTagId='';
+let watchTagCreating=false;
 function randWatchTagId(){
   const a=new Uint8Array(24); crypto.getRandomValues(a);
   let raw=''; a.forEach(v=>raw+=String.fromCharCode(v));
@@ -5693,8 +5677,8 @@ async function loadWatchTag(){
     currentWatchTagId=(v.watchTagActive && v.watchTagId)?v.watchTagId:'';
     if(!currentWatchTagId){
       if(history)history.textContent='';
-      area.innerHTML=(isHouseholdOwner()?'<button class="big-btn family" onclick="createWatchTag()">おまもりタグを作る</button>':'<div class="note">タグの作成は管理者へ依頼してください。</div>')+
-        '<div class="note">内部確認用の試作品です。本人の同意、実通知、乱用防止、削除機能が完成するまで販売・配布には使いません。作成後も、いつでも停止・再発行できます。</div>';
+      area.innerHTML='<p class="note">QRにはURLとランダムな番号だけを入れます。氏名・住所・電話・病歴・位置情報は含めません。現在は内部確認用の試作品です。販売・実情報での配布には使いません。停止後に新しい番号で再発行できます。</p>'+
+        (isHouseholdOwner()?'<label class="consent-item"><input type="checkbox" id="watch-tag-consent">本人にタグの仕組み・通知の制限・複製や紛失の可能性を説明し、本人の同意を確認しました。</label><button class="big-btn family" onclick="createWatchTag()">おまもりタグを作る</button>':'<div class="note">タグの作成は管理者へ依頼してください。</div>');
       return;
     }
     renderWatchTag(currentWatchTagId);
@@ -5756,32 +5740,38 @@ async function loadWatchTag(){
 function renderWatchTag(id){
   const area=document.getElementById('watch-tag-area');
   const url=watchTagUrl(id);
-  const notifyBtn=('Notification' in window && Notification.permission==='default')?'<button class="tag-notify-btn" onclick="requestTagNotify()">この端末で通知の表示を許可する</button>':'';
+  const notifyBtn=('Notification' in window && Notification.permission==='default')?'<button class="tag-notify-btn" onclick="requestTagNotify()">アプリ起動中のお知らせ表示を許可する</button>':'';
   area.innerHTML='<div class="tag-state"><strong>使用中</strong><p>QRに個人情報は入っていません</p>'+
     '<div class="tag-qr">'+watchTagQr(url)+'</div>'+
     '<div class="tag-actions"><button class="tag-copy" onclick="printWatchTag()">タグを印刷する</button>'+
     '<button class="tag-copy" onclick="copyWatchTagLink()">リンクをコピー</button></div>'+
     (isHouseholdOwner()?'<div class="tag-actions"><button class="tag-stop" onclick="stopWatchTag()">このタグを停止</button></div>':'')+
     notifyBtn+
-    '<div class="note">おまもりタグは緊急通報ではなく、家族が気づくための補助です。お知らせの音と表示は、アプリを開いている間だけ届きます。緊急の対応は、読み取った方からの119番・110番が基本です。</div></div>';
+    '<div class="note">おまもりタグは緊急通報ではなく、家族が気づくための補助です。アプリを閉じた家族へのプッシュ通知はありません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。緊急の対応は、読み取った方からの119番・110番が基本です。</div></div>';
 }
 async function createWatchTag(){
-  if(!requireHouseholdOwner())return;
+  if(watchTagCreating || !requireHouseholdOwner())return;
+  if(!document.getElementById('watch-tag-consent')?.checked){alert('本人への説明と同意を確認してください。');return;}
+  const account=uid(),groupId=gid(),generation=householdBootGeneration;
+  const current=()=>uid()===account && gid()===groupId && generation===householdBootGeneration;
   const area=document.getElementById('watch-tag-area');
+  watchTagCreating=true;
   area.innerHTML='<div class="empty">安全なタグを作っています…</div>';
-  const id=randWatchTagId();
   try{
-    const batch=db.batch();
-    batch.set(db.collection('watchTags').doc(id),{
-      groupId:gid(),active:true,createdBy:uid(),createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    // 再試行で使用中のタグを置き換えない。発行は設定と同一transaction。
+    const id=randWatchTagId(),setting=db.collection('groups').doc(groupId).collection('settings').doc('watchTag');
+    await db.runTransaction(async tx=>{
+      if(!current())throw new Error('tag/session-changed');
+      const previous=await tx.get(setting);
+      if(!current())throw new Error('tag/session-changed');
+      if(previous.exists && previous.data().watchTagActive)throw new Error('tag/already-active');
+      tx.set(db.collection('watchTags').doc(id),{groupId,active:true,createdBy:account,createdAt:firebase.firestore.FieldValue.serverTimestamp(),consentVersion:MainicoConsent.VERSION,consentedAt:firebase.firestore.FieldValue.serverTimestamp()});
+      tx.set(setting,{watchTagId:id,watchTagActive:true,watchTagUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()});
     });
-    batch.set(col('settings').doc('watchTag'),{watchTagId:id,watchTagActive:true,watchTagUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-    await batch.commit();
-    currentWatchTagId=id;
-    loadWatchTag();
+    if(current()){currentWatchTagId=id;await loadWatchTag();}
   }catch(e){
-    area.innerHTML='<button class="big-btn family" onclick="createWatchTag()">もう一度作る</button><div class="note">作成できませんでした。設定を確認してください。</div>';
-  }
+    if(current()){await loadWatchTag();alert(e.message==='tag/already-active'?'使用中のタグがあります。再発行するときは先に停止してください。':'作成の完了を確認できません。表示中のタグと通信状態を確認してください。');}
+  }finally{watchTagCreating=false;}
 }
 async function copyWatchTagLink(){
   if(!currentWatchTagId) return;
@@ -5803,14 +5793,7 @@ async function stopWatchTag(){
     alert('おまもりタグを停止しました');
   }catch(e){ alert('停止できませんでした。通信状態を確認してください。'); }
 }
-async function revokeConsent(){
-  if(isHouseholdOwner()){
-    alert('管理者が家庭全体の利用を終了するときは「共有データをすべて削除する」を選んでください。自分の端末だけの利用を中断するときは、この画面を閉じてください。');return;
-  }
-  if(!confirm('家庭への参加をやめますか？ 同じアカウントの他の端末も共有に接続できなくなります。これまでの共有記録は残りますが、この端末の対象のお薬手帳の控えは削除します。残したい資料は先に原本を書き出してください。'))return;
-  try{if(await leaveHouseholdAccount()){alert('参加解除を確認しました。');location.reload();}}
-  catch(error){alert('参加解除を確認できませんでした。通信状態を確認して、もう一度お試しください。');}
-}
+async function revokeConsent(){ return withdrawCurrentConsent(); }
 async function deleteAllData(){
   openHouseholdDeletion();
 }
@@ -5935,20 +5918,7 @@ async function replyToHistory(id,button,state){
   }
 }
 
-/* 出典 https://www.city.ueda.nagano.jp/soshiki/korei/2610.html 2026-09-15確認。
-   同名地区の分担条件を省略しない。地区名から自動で担当を断定しない。 */
-const UEDA_CENTERS=[
-  {name:'神川',area:'東部地区・神川地区',phone:'0268-29-2266'},
-  {name:'中央',area:'南部地区・中央地区・北部地区',phone:'0268-26-7788'},
-  {name:'西部',area:'西部地区・塩尻地区',phone:'0268-71-5712'},
-  {name:'城下',area:'城下地区・川辺地区・泉田地区（半過、下之条、川辺町）',phone:'0268-22-2360'},
-  {name:'神科',area:'神科地区・豊殿地区',phone:'0268-27-2881'},
-  {name:'塩田',area:'塩田地区',phone:'0268-37-1537'},
-  {name:'川西',area:'川西地区・川辺地区・泉田地区（半過、下之条、川辺町以外）',phone:'0268-26-1172'},
-  {name:'丸子',area:'丸子地域（東内、西内、腰越以外）',phone:'0268-42-0015'},
-  {name:'真田',area:'真田地域',phone:'0268-72-8055'},
-  {name:'武石',area:'武石地域・丸子地域（東内、西内、腰越）',phone:'0268-41-4055'}
-];
+const UEDA_CENTERS=MainicoUedaCenters.centers;
 function uedaCenterPicker(){
   const root=sdEl('div','set-sec'),label=sdEl('label','','お住まいの地区と相談先を選ぶ');
   label.htmlFor='ueda-center-select';root.appendChild(label);
@@ -5960,10 +5930,12 @@ function uedaCenterPicker(){
     result.replaceChildren();if(select.value==='')return;
     const c=UEDA_CENTERS[Number(select.value)];if(!c)return;
     result.appendChild(sdEl('h4','',c.name+'地域包括支援センター'));
-    result.appendChild(sdEl('p','',c.area));
-    result.appendChild(sdTel(c.phone,c.phone+' に電話する','電話アプリが開きます。相談時間・担当は公式一覧で確認してください。'));
+    result.appendChild(sdEl('p','','所在地：'+c.address));
+    result.appendChild(sdEl('p','','担当地区：'+c.area));
+    result.appendChild(sdEl('p','','相談時間：'+(c.hours||'電話でご確認ください')));
+    result.appendChild(sdTel(c.phone,c.phone+' に電話する','電話アプリが開きます。不在の場合があるため、来所前に電話連絡をお願いします。'));
   });
-  root.appendChild(sdEl('p','note','掲載元：上田市「地域包括支援センター」。この一覧と電話番号の確認日：2026年9月15日。来所前に電話で確認してください。'));
+  root.appendChild(sdEl('p','note','掲載元：上田市「地域包括支援センター」。付録Aの基本データを収録。公式情報の最終確認日：'+MainicoUedaCenters.checkedAt+'。来所前に電話連絡をお願いします。'));
   root.appendChild(sdLink(SOUDAN_SAKI.houkatsu.url,'地区・相談時間を公式一覧で確認する','担当が分からない場合も、こちらで確認できます。'));
   const report=sdEl('a','sd-btn');report.href='https://github.com/pocham4173/hidamari/issues/new';report.target='_blank';report.rel='noopener noreferrer';
   report.appendChild(sdEl('span','l','掲載情報の誤りを知らせる'));

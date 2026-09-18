@@ -1,3 +1,4 @@
+import {consentFixture} from './helpers/consent-fixture.mjs';
 /* 実Firebase compat SDK + 実rules + 実module の統合検査。
    認証identityはrules emulatorのテストトークン。Authメール配信/実機UIは対象外。 */
 import assert from 'node:assert/strict';
@@ -61,7 +62,10 @@ function records(groupId, ownerUid, memberUid) {
 async function seed(data) {
   await env.withSecurityRulesDisabled(async ctx => {
     const db = ctx.firestore(), batch = db.batch();
-    for (const [path, value] of Object.entries(data)) batch.set(db.doc(path), value);
+    for (const [path, value] of Object.entries(data)) {
+      batch.set(db.doc(path), value);
+      if(/^groups\/[^/]+\/members\/[^/]+$/.test(path))batch.set(db.doc('consents/'+path.split('/').at(-1)),consentFixture(firebase.firestore.Timestamp.now()));
+    }
     await batch.commit();
   });
 }
@@ -103,6 +107,7 @@ try {
   assert.equal(owner.deletion.getPending(), null);
   assert.equal((await readAll(Object.keys(home))).filter(snap => snap.exists).length, 0, '既知doc全てを権限外監査で不存在確認');
   assert.deepEqual(await readAll(Object.keys(other)), otherBefore, '他世帯は全て保持');
+  assert.equal((await readAll(['consents/full-owner']))[0].exists,true,'世帯の削除ではアカウントの同意は残る');
   await assert.rejects(owner.recovery.checkReady('full-home'), error => error.code === 'recovery/no-pointer');
   console.log(`OK 実SDKで${Object.keys(home).length}件を複数ページ全削除・他世帯保持・削除済み復旧拒否`);
 

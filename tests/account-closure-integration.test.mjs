@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {consentFixture} from './helpers/consent-fixture.mjs';
 import fs from 'node:fs';
 import {createRequire} from 'node:module';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
@@ -14,6 +15,7 @@ async function seed(data){await env.withSecurityRulesDisabled(async ctx=>{for(co
 function createHome(id){const batch=db.batch();batch.set(db.doc(`groups/${id}`),{createdBy:'self',createdAt:stamp()});batch.set(db.doc(`groups/${id}/members/self`),{name:'試験',role:'kazoku',mode:'konly',status:'approved',joinedAt:stamp()});batch.set(db.doc('accounts/self'),{groupId:id,updatedAt:stamp()});return batch;}
 try{
  await env.clearFirestore();
+ await seed({'consents/self':consentFixture(firebase.firestore.Timestamp.now())});
  await seed({'groups/other-home':{createdBy:'other'},'groups/other-home/members/self':{status:'approved'},[`watchTags/${tag}`]:{groupId:'other-home',active:true}});
  await assertFails(db.collection('groups').get());
  await assertFails(db.collection('groups').where('createdBy','==','other').get());
@@ -32,8 +34,10 @@ try{
  await assertFails(db.doc(`watchTags/${tag}/alerts/self`).set({type:'found',situation:'safe',count:1,senderUid:'self',createdAt:stamp()}));
  await assertSucceeds(db.doc('groups/other-home/members/self').delete());
  await service.finish(Closure.CONFIRMATION);assert.equal(deleted,true);
+ assert.equal((await db.doc('consents/self').get({source:'server'})).exists,false,'Auth削除前に同意を削除');
  console.log('OK 実SDK自己削除: owner限定検索、閉鎖ロック、旧tokenの新世帯/記録/復旧先/外部通知を拒否、退会は可能');
  await env.clearFirestore();
+ await seed({'consents/self':consentFixture(firebase.firestore.Timestamp.now())});
  const batch=createHome('race');batch.set(db.doc('accountClosures/self'),{requestedAt:stamp()});await assertFails(batch.commit());
  console.log('OK 同一batchの閉鎖開始+新世帯作成はgetAfterで拒否');
  await seed({'groups/legacy-owned':{createdBy:'self'}});

@@ -25,6 +25,7 @@ button{width:100%;min-height:58px;border:0;border-radius:17px;background:#1F8A82
   <p>このタグの持ち主を心配してくださり、ありがとうございます。</p>
   <p><b>まず「こんにちは。何かお困りですか？」と、やさしく声をかけてください。</b></p>
   <div class="emergency"><a href="tel:119">けが・意識障害<br>119</a><a href="tel:110">危険・事件の心配<br>110</a></div>
+  <p class="note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong></p>
   <div class="privacy"><b>この画面に個人情報は表示されません。</b><br>氏名・住所・電話番号・病歴・家族の連絡先・現在地は取得も表示もしません。</div>
   <fieldset id="situation-group">
     <legend>いちばん近い状況を選んでください</legend>
@@ -36,7 +37,7 @@ button{width:100%;min-height:58px;border:0;border-radius:17px;background:#1F8A82
   <div class="manual" id="manual"><label for="tag-code">QRを読み取れない場合</label><input id="tag-code" type="text" maxlength="32" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="タグコード32文字を入力"><button id="open-code" type="button">タグコードを確認する</button><div class="note">QRタグの裏面などに記載されたコードだけを入力してください。氏名・住所・電話番号・病歴は入力しません。</div></div>
   <button id="notify" type="button" disabled>状況を選んでください</button>
   <div class="status" id="status" role="status" aria-live="polite"></div>
-  <div class="note"><b>これは内部確認用の試作品です。</b><br>選んだ状況は家族のアプリ内履歴に記録されますが、プッシュ通知・電話・メールは届きません。家族がすぐ気づいたり応答したりすることを保証する機能ではありません。まいにこが、暗証番号・口座・カード情報・支払い・アプリのインストールをお願いすることはありません。</div>
+  <div class="note"><b>これは内部確認用の試作品です。</b><br>選んだ状況は家族のアプリ内履歴に記録されますが、プッシュ通知・電話・メールは届きません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。家族がすぐ気づいたり応答したりすることを保証する機能ではありません。まいにこが、暗証番号・口座・カード情報・支払い・アプリのインストールをお願いすることはありません。</div>
 </main>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -109,5 +110,6 @@ button.addEventListener('click',async()=>{
   }
 });
 </script>
+<p class="note" style="text-align:center"><a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a></p>
 </body>
 </html>

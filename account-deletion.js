@@ -54,6 +54,8 @@
         current(id);const lock=await db.collection('accountClosures').doc(id).get({source:'server'});current(id);
         if(!lock.exists)throw problem('closure/not-prepared');
         await released(id);const user=current(id);
+        // 同意記録はアカウント単位。Auth削除前に消去完了を確認する。
+        await db.collection('consents').doc(id).delete();current(id);
         beforeDelete(id);current(id);
         try{await user.delete();}catch(e){onDeleteFailure(id);throw e;}
         preparedUid='';return {uid:id,deleted:true};

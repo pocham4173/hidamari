@@ -11,6 +11,32 @@ service cloud.firestore {
       return signedIn() && !existsAfter(/databases/$(db)/documents/accountClosures/$(request.auth.uid));
     }
 
+    // サービスへの同意。家族への公開権限とは別に検査する。
+    function hasConsent() {
+      return usableAccount()
+        && existsAfter(/databases/$(db)/documents/consents/$(request.auth.uid))
+        && getAfter(/databases/$(db)/documents/consents/$(request.auth.uid)).data.version == '2026-09-18.1'
+        && getAfter(/databases/$(db)/documents/consents/$(request.auth.uid)).data.privacyAccepted == true
+        && getAfter(/databases/$(db)/documents/consents/$(request.auth.uid)).data.sensitiveAccepted == true
+        && getAfter(/databases/$(db)/documents/consents/$(request.auth.uid)).data.sharingAccepted == true;
+    }
+
+    match /consents/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create, update: if usableAccount() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['version', 'mode', 'privacyAccepted', 'sensitiveAccepted', 'sharingAccepted', 'subjectBasis', 'acceptedAt'])
+        && request.resource.data.version == '2026-09-18.1'
+        && request.resource.data.mode in ['honnin', 'kazoku', 'konly']
+        && request.resource.data.privacyAccepted == true
+        && request.resource.data.sensitiveAccepted == true
+        && request.resource.data.sharingAccepted == true
+        && request.resource.data.subjectBasis == (request.resource.data.mode == 'honnin' ? 'self' : 'explained-and-agreed')
+        && request.resource.data.acceptedAt == request.time;
+      // 同意撤回・アカウント削除は同意なしでも行える。
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
     // 管理者は作成者アカウントだけ。画面の role や自己申告は権限に使わない。
     function isOwner(groupId) {
       return signedIn()
@@ -65,7 +91,7 @@ service cloud.firestore {
     }
 
     match /groups/{groupId} {
-      allow create: if usableAccount()
+      allow create: if usableAccount() && hasConsent()
         && request.resource.data.keys().hasOnly(['createdBy', 'createdAt'])
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
@@ -91,7 +117,7 @@ service cloud.firestore {
           || (signedIn() && isActive(groupId) && request.auth.uid == uid);
         allow list: if isOwner(groupId) || isApproved(groupId);
 
-        allow create: if signedIn() && writableGroup(groupId)
+        allow create: if signedIn() && hasConsent() && writableGroup(groupId)
           && request.auth.uid == uid
           && mayChooseGroup(groupId)
           && request.resource.data.keys().hasOnly([
@@ -134,8 +160,8 @@ service cloud.firestore {
       }
 
       match /events/{eventId} {
-        allow read: if isApproved(groupId) || deletingOwner(groupId);
-        allow create: if isApproved(groupId) && writableGroup(groupId)
+        allow read: if (isApproved(groupId) && hasConsent()) || deletingOwner(groupId);
+        allow create: if isApproved(groupId) && hasConsent() && writableGroup(groupId)
           && request.resource.data.uid == request.auth.uid;
         allow update: if false;
         allow delete: if deletingOwner(groupId) || (usableAccount() && isApproved(groupId)
@@ -143,10 +169,10 @@ service cloud.firestore {
       }
 
       match /yotei/{yoteiId} {
-        allow read: if isApproved(groupId) || deletingOwner(groupId);
+        allow read: if (isApproved(groupId) && hasConsent()) || deletingOwner(groupId);
 
         /* 新規作成: 自分名義のみ・9項目限定・作成/更新時刻はサーバー時刻 */
-        allow create: if isApproved(groupId) && writableGroup(groupId)
+        allow create: if isApproved(groupId) && hasConsent() && writableGroup(groupId)
           && request.resource.data.get('uid', null) == request.auth.uid
           && request.resource.data.keys().hasOnly([
             'kind', 'date', 'time', 'label', 'color', 'repeat',
@@ -164,7 +190,7 @@ service cloud.firestore {
            「変更された項目」だけを許可リストで検査する。
            createdAtはリスト外=書き換え不可。
            uidの変更は、名義の無い旧予定を家族が引き継ぐ場合のみ許可。 */
-        allow update: if isApproved(groupId) && writableGroup(groupId)
+        allow update: if isApproved(groupId) && hasConsent() && writableGroup(groupId)
           && (resource.data.get('uid', null) == null
               || resource.data.get('uid', null) == request.auth.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -185,10 +211,10 @@ service cloud.firestore {
 
       // QRおまもりタグの家族側設定
       match /settings/watchTag {
-        allow get: if isApproved(groupId) || deletingOwner(groupId);
+        allow get: if (isApproved(groupId) && hasConsent()) || deletingOwner(groupId);
         allow list: if deletingOwner(groupId);
 
-        allow create: if activeOwner(groupId)
+        allow create: if activeOwner(groupId) && hasConsent()
           && request.resource.data.keys().hasOnly([
             'watchTagId', 'watchTagActive', 'watchTagUpdatedAt'
           ])
@@ -273,19 +299,21 @@ service cloud.firestore {
 
     // QRおまもりタグ本体
     match /watchTags/{tagId} {
-      allow get: if isApproved(resource.data.groupId) || deletingOwner(resource.data.groupId);
+      allow get: if (isApproved(resource.data.groupId) && hasConsent()) || deletingOwner(resource.data.groupId);
       allow list: if isOwner(resource.data.groupId);
 
       allow create: if signedIn()
         && tagId.matches('^[A-Za-z0-9_-]{32}$')
         && request.resource.data.keys().hasOnly([
-          'groupId', 'active', 'createdBy', 'createdAt'
+          'groupId', 'active', 'createdBy', 'createdAt', 'consentVersion', 'consentedAt'
         ])
         && request.resource.data.groupId is string
         && request.resource.data.active == true
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
-        && activeOwner(request.resource.data.groupId);
+        && activeOwner(request.resource.data.groupId) && hasConsent()
+        && request.resource.data.consentVersion == '2026-09-18.1'
+        && request.resource.data.consentedAt == request.time;
 
       allow update: if activeOwner(resource.data.groupId)
         && request.resource.data.groupId == resource.data.groupId
@@ -328,7 +356,7 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time
           && request.time > resource.data.createdAt + duration.value(10, 'm');
 
-        allow read: if isApproved(get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId)
+        allow read: if (hasConsent() && isApproved(get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId))
           || deletingOwner(get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId);
         allow delete: if deletingOwner(get(/databases/$(db)/documents/watchTags/$(tagId)).data.groupId);
       }

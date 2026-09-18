@@ -72,3 +72,5 @@ jobs:
           node tests/person-speech.test.mjs
           node tests/simple-navigation.test.mjs
           node tests/family-only-records.test.mjs
+          node tests/consent.test.mjs
+          node tests/ueda-centers.test.mjs

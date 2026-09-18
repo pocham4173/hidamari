@@ -1,3 +1,4 @@
+import {consentFixture} from './helpers/consent-fixture.mjs';
 /* Firestore実動検査: 管理者境界、招待の同時利用、復旧先、削除の停止境界。 */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -54,6 +55,7 @@ try {
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
+    for(const id of ['owner','family','stranger','legacy','old-family','old-person','new-owner','race-a','race-b','former-member','deleted-group-user'])await setDoc(doc(db,'consents',id),consentFixture(Timestamp.now()));
     await setDoc(doc(db, 'groups', 'home'), { createdBy: 'owner', createdAt: Timestamp.now() });
     await setDoc(doc(db, 'groups', 'other'), { createdBy: 'other-owner', createdAt: Timestamp.now() });
     await setDoc(doc(db, 'groups', 'legacy-home'), { createdBy: 'old-family', createdAt: Timestamp.now() });
@@ -181,7 +183,7 @@ try {
   await denied('通常時にタグ本体だけを消して通知を孤立させられない', () => deleteDoc(doc(owner, 'watchTags', tagId)));
   await allowed('タグと設定を同batch作成できる', () => {
     const batch = writeBatch(owner);
-    batch.set(doc(owner, 'watchTags', tagId2), { groupId: 'home', active: true, createdBy: 'owner', createdAt: serverTimestamp() });
+    batch.set(doc(owner, 'watchTags', tagId2), { groupId: 'home', active: true, createdBy: 'owner', createdAt: serverTimestamp(), consentVersion:'2026-09-18.1', consentedAt:serverTimestamp() });
     batch.set(doc(owner, 'groups', 'home', 'settings', 'watchTag'), { watchTagId: tagId2, watchTagActive: true, watchTagUpdatedAt: serverTimestamp() });
     return batch.commit();
   });

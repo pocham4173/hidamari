@@ -245,6 +245,7 @@ async function bootHouseholdUser(user){
   if(window.mainicoNotebookClose)window.mainicoNotebookClose();
   if(recoveryBusy || accountClosureBusy)return;
   if(accountClosureEnded()){showAccountClosed('ログイン登録の削除操作を行いました。再ログインは自動で行いません。完了表示を確認できなかった場合は運営者へ確認してください。');return;}
+  clearConsentSession();
   const generation=++householdBootGeneration;
   householdVerified=false;
   if(!user){
@@ -332,6 +333,10 @@ async function bootHouseholdUser(user){
         document.getElementById('loading').style.display='none';showPending();return;
       }
       if(!me.exists || (me.data().status && me.data().status!=='approved')){showHouseholdBlocked('このアカウントは家庭に参加していません。管理者に確認してください。');return;}
+      const data=me.data();
+      const consentMode=['honnin','kazoku','konly'].includes(data.mode)?data.mode:(data.role==='honnin'?'honnin':isKOnly()?'konly':'kazoku');
+      if(!await ensureConsentForMode(consentMode,()=>bootHouseholdUser(auth.currentUser)))return;
+      if(generation!==householdBootGeneration)return;
       const group=await refreshHousehold();
       if(generation!==householdBootGeneration)return;
       if(!group){showHouseholdBlocked('この家庭は見つかりませんでした。管理者に確認してください。');return;}
