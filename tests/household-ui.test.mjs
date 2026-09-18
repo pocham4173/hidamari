@@ -40,7 +40,7 @@ function deferred() {
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 }
-function harness(seed = { mainicoGid: 'family', mainicoMode: 'kazoku' }) {
+function harness(seed = { mainicoGid: 'family', mainicoMode: 'kazoku', mainicoModeChoiceV1: JSON.stringify(['owner','family','kazoku']) }) {
   const storage = storageFixture(seed);
   const elements = new Map();
   const element = id => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
@@ -51,7 +51,7 @@ function harness(seed = { mainicoGid: 'family', mainicoMode: 'kazoku' }) {
   const state = { pages: [], alerts: [], startupErrors: [], started: 0, unsubscribed: 0, subscriptions: [], reads: [], pending: null, deletionCalls: 0 };
   const auth = { currentUser: { uid: 'owner', email: 'owner@example.test' }, signInAnonymously: async () => { throw Error('unexpected anonymous creation'); } };
   const ctx = {
-    clearConsentSession(){},ensureConsentForMode:async()=>true,isKOnly:()=>false,
+    clearConsentSession(){},ensureConsentForMode:async()=>true,showConsentModeChoice:()=>state.pages.push('entry'),isKOnly:()=>false,
     auth, localStorage: storage, previewStorage: storage,
     uid: () => auth.currentUser?.uid || '', gid: () => storage.getItem('mainicoGid') || '',
     document: {

@@ -125,7 +125,7 @@ for(const previous of ['honnin','kazoku','konly']){
     vm.runInContext(source('function isKOnly(){','/* 画面表示用のエスケープ'),f.c);
     vm.runInContext(source('function resetFamilyScroll(){','/* ===== モード選択'),f.c);
     vm.runInContext(source('let pendingMode=null;','function agreeConsent('),f.c);
-    vm.runInContext(source('function afterConsent(){','function setupConnectPage(){'),f.c);
+    vm.runInContext(source('function afterConsent(','function setupConnectPage(){'),f.c);
     vm.runInContext(source('async function finishSetup(){','async function copyPendingHelp(){'),f.c);
     vm.runInContext(source('function startMode(){','function resetMode(){'),f.c);
     const finish=f.c.finishSetup;f.c.finishSetup=()=>{finished=finish();return finished;};

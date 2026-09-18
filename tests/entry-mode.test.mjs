@@ -8,7 +8,7 @@ function fixture(){
  const data=new Map([['mainicoPendingMode','honnin'],['mainicoMode','kazoku']]);
  const elements=new Map();const pages=[];const errors=[];const timers=[];
  let release;const wait=new Promise(r=>release=r);
- const c={showConsentFlow:(mode)=>pages.push(mode==='konly'?'consent-b':'consent-a'),ensureConsentForMode:async()=>true,document:{getElementById:id=>{if(!elements.has(id))elements.set(id,{textContent:''});return elements.get(id);}},previewStorage:{getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)},uid:()=> 'owner',gid:()=> 'home',showPage:p=>pages.push(p),afterConsent:()=>pages.push('after-consent'),refreshHousehold:()=>wait,householdDeleting:false,col:()=>({doc:()=>({update:async()=>{}})}),saveRecoveryPointer:async()=>{},startMode:()=>pages.push('started'),watchHouseholdAccess:()=>{},showHouseholdBlocked:m=>errors.push(m),setTimeout:f=>{timers.push(f);return timers.length;},clearTimeout:()=>{}};
+ const c={householdBootGeneration:0,showConsentFlow:(mode)=>pages.push(mode==='konly'?'consent-b':'consent-a'),ensureConsentForMode:async()=>true,document:{getElementById:id=>{if(!elements.has(id))elements.set(id,{textContent:''});return elements.get(id);}},previewStorage:{getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)},uid:()=> 'owner',gid:()=> 'home',showPage:p=>pages.push(p),afterConsent:()=>pages.push('after-consent'),refreshHousehold:()=>wait,householdDeleting:false,col:()=>({doc:()=>({update:async()=>{}})}),saveRecoveryPointer:async()=>{},startMode:()=>pages.push('started'),watchHouseholdAccess:()=>{},showHouseholdBlocked:m=>errors.push(m),setTimeout:f=>{timers.push(f);return timers.length;},clearTimeout:()=>{}};
  vm.createContext(c);vm.runInContext(entry+'\n'+finish,c);return{c,data,elements,pages,errors,timers,release};
 }
 for(const mode of ['honnin','kazoku','konly']){
@@ -29,7 +29,7 @@ for(const mode of ['honnin','kazoku','konly']){
  const e=fixture();e.c.saveRecoveryPointer=async()=>{throw Error('permission-denied');};const pending=e.c.finishSetup();e.release();await pending;assert.equal(e.data.get('mainicoMode'),'kazoku');assert.equal(e.errors.length,1);assert.ok(!e.pages.includes('started'));
 }
 {
- const e=fixture();const pending=e.c.finishSetup();e.c.uid=()=> 'different-account';e.release();await pending;assert.equal(e.errors.length,1);assert.equal(e.data.get('mainicoMode'),'kazoku');
+ const e=fixture();const pending=e.c.finishSetup();e.c.uid=()=> 'different-account';e.release();await pending;assert.equal(e.errors.length,0,'旧アカウントの応答で新しい画面を上書きしない');assert.equal(e.data.get('mainicoMode'),'kazoku');
 }
 {
  const e=fixture();e.c.gid=()=>{throw Error('storage blocked');};await e.c.finishSetup();assert.equal(e.errors.length,1);
