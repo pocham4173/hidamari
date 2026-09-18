@@ -29,7 +29,7 @@ for(const mode of ['honnin','kazoku','konly']){
  await f.c.submitConsent(kind);assert.equal(f.resumes,1);assert.ok(f.c.hasSessionConsent(mode));
  const value=f.records.get('one');assert.equal(value.version,Consent.VERSION);assert.equal(value.subjectBasis,mode==='honnin'?'self':'explained-and-agreed');
  f.c.clearConsentSession();assert.equal(await f.c.ensureConsentForMode(mode,f.resume),true,'再起動はサーバー同意で再開');
- f.records.set('one',{...value,version:'old'});f.c.clearConsentSession();assert.equal(await f.c.ensureConsentForMode(mode,f.resume),false);assert.ok(f.checks(kind).every(x=>!x.checked));
+ f.records.set('one',{...value,version:'2026-09-18.1'});f.c.clearConsentSession();assert.equal(await f.c.ensureConsentForMode(mode,f.resume),false);assert.ok(f.checks(kind).every(x=>!x.checked));
  f.dom.window.close();
 }
 {

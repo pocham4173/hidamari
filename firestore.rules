@@ -15,7 +15,7 @@ service cloud.firestore {
     function hasConsent() {
       return usableAccount()
         && existsAfter(/databases/$(db)/documents/consents/$(request.auth.uid))
-        && getAfter(/databases/$(db)/documents/consents/$(request.auth.uid)).data.version == '2026-09-18.1'
+        && getAfter(/databases/$(db)/documents/consents/$(request.auth.uid)).data.version == '2026-09-19.1'
         && getAfter(/databases/$(db)/documents/consents/$(request.auth.uid)).data.privacyAccepted == true
         && getAfter(/databases/$(db)/documents/consents/$(request.auth.uid)).data.sensitiveAccepted == true
         && getAfter(/databases/$(db)/documents/consents/$(request.auth.uid)).data.sharingAccepted == true;
@@ -26,7 +26,7 @@ service cloud.firestore {
       allow list: if false;
       allow create, update: if usableAccount() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['version', 'mode', 'privacyAccepted', 'sensitiveAccepted', 'sharingAccepted', 'subjectBasis', 'acceptedAt'])
-        && request.resource.data.version == '2026-09-18.1'
+        && request.resource.data.version == '2026-09-19.1'
         && request.resource.data.mode in ['honnin', 'kazoku', 'konly']
         && request.resource.data.privacyAccepted == true
         && request.resource.data.sensitiveAccepted == true
@@ -312,7 +312,7 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time
         && activeOwner(request.resource.data.groupId) && hasConsent()
-        && request.resource.data.consentVersion == '2026-09-18.1'
+        && request.resource.data.consentVersion == '2026-09-19.1'
         && request.resource.data.consentedAt == request.time;
 
       allow update: if activeOwner(resource.data.groupId)
