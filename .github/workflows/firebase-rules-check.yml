@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'firestore.rules'
+      - 'consent.js'
+      - 'tests/consent-rules.test.mjs'
+      - 'tests/helpers/consent-fixture.mjs'
       - 'firebase.json'
       - 'tests/alerts.test.mjs'
       - 'tests/lifecycle-rules.test.mjs'
@@ -47,4 +50,4 @@ jobs:
         run: npm install --no-save firebase@11.10.0 @firebase/rules-unit-testing@4.0.1 jsdom@26.1.0
 
       - name: Firestore Emulatorで通知・予定・権限・復旧・削除を検査
-        run: firebase emulators:exec --only firestore --project demo-mainico "node tests/alerts.test.mjs && node tests/lifecycle-rules.test.mjs && node tests/lifecycle-integration.test.mjs && node tests/account-closure-integration.test.mjs && node tests/home-conversation-emulator.test.mjs"
+        run: firebase emulators:exec --only firestore --project demo-mainico "node tests/alerts.test.mjs && node tests/lifecycle-rules.test.mjs && node tests/lifecycle-integration.test.mjs && node tests/account-closure-integration.test.mjs && node tests/home-conversation-emulator.test.mjs && node tests/consent-rules.test.mjs"

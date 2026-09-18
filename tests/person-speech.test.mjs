@@ -48,7 +48,7 @@ function fixture({press=false}={}){
   vm.runInContext(section('/* ===== 読み上げ(こえの おへんじ) ===== */','/* ===== きょうの予定 ===== */'),c);
   vm.runInContext(section('function speakDateHeader(){','function speakNextYotei(){'),c);
   vm.runInContext(section('/* ===== 本人の予定入力 ===== */','async function hyDelete(){'),c);
-  vm.runInContext(section('let personHistoryUnsub=null,','/* 出典 https://www.city.ueda.nagano.jp/soshiki/korei/2610.html'),c);
+  vm.runInContext(section('let personHistoryUnsub=null,','const UEDA_CENTERS='),c);
   Object.defineProperty(document,'hidden',{configurable:true,value:false});
   dom.window.HTMLElement.prototype.getClientRects=function(){return f.visible(this)?[{}]:[];};
   f.state(shared);f.events([message]);

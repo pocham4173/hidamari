@@ -120,6 +120,8 @@ for(const previous of ['honnin','kazoku','konly']){
         f.c.renderFamilyConnection();
       }
     });
+    // This fixture represents an explicitly completed consent step; real gate tests live in consent.test.mjs.
+    Object.assign(f.c,{hasSessionConsent:()=>true,ensureConsentForMode:async()=>true,showConsentFlow:(_mode,resume)=>resume()});
     vm.runInContext(source('function isKOnly(){','/* 画面表示用のエスケープ'),f.c);
     vm.runInContext(source('function resetFamilyScroll(){','/* ===== モード選択'),f.c);
     vm.runInContext(source('let pendingMode=null;','function agreeConsent('),f.c);

@@ -1,3 +1,4 @@
+import {consentFixture} from './helpers/consent-fixture.mjs';
 /* おまもりタグ通知と予定の権限ルール動作検査（19ケース） */
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import { doc, setDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -29,6 +30,7 @@ async function check(name, promise, expectOk) {
 try {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
+    for(const id of ['m1','m2'])await setDoc(doc(db,'consents',id),consentFixture(Timestamp.now()));
     await setDoc(doc(db, 'groups', 'g1'), { createdBy: 'm1', createdAt: Timestamp.now() });
     await setDoc(doc(db, 'watchTags', TAG), { active: true, groupId: 'g1' });
     await setDoc(doc(db, 'watchTags', TAG_STOP), { active: false, groupId: 'g1' });

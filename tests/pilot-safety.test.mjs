@@ -43,7 +43,7 @@ function historyFixture(){
     kusuriQuestion:()=> '薬は飲みましたか',speak(){},addEvent:payload=>{received.push(payload);return writeFailure?Promise.reject(Error('offline')):new Promise((resolve,reject)=>{resolveWrite=resolve;rejectWrite=reject;});}};
   vm.createContext(c);vm.runInContext(section('function compareConversationEvents(a,b){','function personReplyDone(id){'),c);
   vm.runInContext(section('/* Focus changes only when a person opens', 'let personMessageReplyTargetId='),c);
-  vm.runInContext(section('let personHistoryUnsub=', '/* 出典 https://www.city.ueda'),c);
+  vm.runInContext(section('let personHistoryUnsub=', 'const UEDA_CENTERS='),c);
   const snap=(data,cached=false,pending=false)=>({metadata:{fromCache:cached,hasPendingWrites:pending},forEach:fn=>data.forEach(v=>fn({id:v.id,data:()=>v}))});
   const deliver=(data,cached=false,pending=false)=>{data.forEach(v=>originals.set(v.id,v));listens.at(-1).ok(snap(data,cached,pending));};
   const controls=()=>{const row=el('person-history-list').children.find(x=>x.children.some(c=>c.textContent==='この伝言に「読んだよ」と返す'));return row?{button:row.children[3],state:row.children[4]}:null;};

@@ -51,6 +51,7 @@ function harness(seed = { mainicoGid: 'family', mainicoMode: 'kazoku' }) {
   const state = { pages: [], alerts: [], startupErrors: [], started: 0, unsubscribed: 0, subscriptions: [], reads: [], pending: null, deletionCalls: 0 };
   const auth = { currentUser: { uid: 'owner', email: 'owner@example.test' }, signInAnonymously: async () => { throw Error('unexpected anonymous creation'); } };
   const ctx = {
+    clearConsentSession(){},ensureConsentForMode:async()=>true,isKOnly:()=>false,
     auth, localStorage: storage, previewStorage: storage,
     uid: () => auth.currentUser?.uid || '', gid: () => storage.getItem('mainicoGid') || '',
     document: {
