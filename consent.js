@@ -1,7 +1,7 @@
 /* 同意は認証UIDに結び付けてサーバーで確認する。端末の旧フラグは根拠にしない。 */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.MainicoConsent=api;})(typeof window!=='undefined'?window:globalThis,function(){
   'use strict';
-  const VERSION='2026-09-18.1';
+  const VERSION='2026-09-19.1';
   const modes=['honnin','kazoku','konly'];
   function valid(value,mode){
     return !!value && modes.includes(mode) && value.version===VERSION && value.mode===mode

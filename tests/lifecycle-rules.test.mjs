@@ -183,7 +183,7 @@ try {
   await denied('通常時にタグ本体だけを消して通知を孤立させられない', () => deleteDoc(doc(owner, 'watchTags', tagId)));
   await allowed('タグと設定を同batch作成できる', () => {
     const batch = writeBatch(owner);
-    batch.set(doc(owner, 'watchTags', tagId2), { groupId: 'home', active: true, createdBy: 'owner', createdAt: serverTimestamp(), consentVersion:'2026-09-18.1', consentedAt:serverTimestamp() });
+    batch.set(doc(owner, 'watchTags', tagId2), { groupId: 'home', active: true, createdBy: 'owner', createdAt: serverTimestamp(), consentVersion:'2026-09-19.1', consentedAt:serverTimestamp() });
     batch.set(doc(owner, 'groups', 'home', 'settings', 'watchTag'), { watchTagId: tagId2, watchTagActive: true, watchTagUpdatedAt: serverTimestamp() });
     return batch.commit();
   });

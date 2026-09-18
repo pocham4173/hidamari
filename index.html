@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="medicine-notebook.css">
+<link rel="stylesheet" href="medicine-notebook.css?v=20260919">
 <title>まいにこ</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -660,7 +660,7 @@ table.cal-rec td.pad{background:none;}
   <h1 class="consent-ttl" id="consent-title-a" tabindex="-1">まいにこを使う前に</h1>
   <p id="consent-mode-a" class="consent-lead"></p><button class="consent-back" type="button" onclick="cancelConsent()">使い方を選び直す</button>
   <p class="consent-lead">まいにこで記録する内容と、共有する範囲を確認してください。</p>
-  <p class="consent-note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong><br>緊急時はアプリの返事を待たず119番等へ連絡してください。現在は架空情報で操作を確かめる試作品です。</p>
+  <p class="consent-note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong><br>緊急時はアプリの返事を待たず119番等へ連絡してください。</p>
   <p><a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシーを読む（別画面）</a> ／ <a href="help.html#notifications" target="_blank" rel="noopener">通知の制限を読む</a></p>
   <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="privacy">プライバシーポリシーを読み、記載された情報の取扱いに同意します。</label>
   <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="sensitive">服薬・体調・支援に関する記録など、要配慮個人情報を含み得る情報を、記録・ふり返り・家族との共有のために取得・保存することに同意します。</label>
@@ -679,7 +679,7 @@ table.cal-rec td.pad{background:none;}
   <h1 class="consent-ttl" id="consent-title-b" tabindex="-1">まいにこを使う前に</h1>
   <p id="consent-mode-b" class="consent-lead"></p><button class="consent-back" type="button" onclick="cancelConsent()">使い方を選び直す</button>
   <p class="consent-lead">家族が確認したことを家族自身の記録として残します。本人がボタンを操作することは前提にしません。</p>
-  <p class="consent-note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong><br>緊急時はアプリの返事を待たず119番等へ連絡してください。現在は架空情報で操作を確かめる試作品です。</p>
+  <p class="consent-note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong><br>緊急時はアプリの返事を待たず119番等へ連絡してください。</p>
   <p><a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシーを読む（別画面）</a> ／ <a href="help.html#notifications" target="_blank" rel="noopener">通知の制限を読む</a></p>
   <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="privacy">プライバシーポリシーを読み、記載された情報の取扱いに同意します。</label>
   <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="sensitive">服薬・体調・支援に関する記録など、要配慮個人情報を含み得る情報を、記録・ふり返り・家族との共有のために取得・保存することに同意します。</label>
@@ -1070,7 +1070,7 @@ table.cal-rec td.pad{background:none;}
       <input id="disaster-free" maxlength="60" autocomplete="off" placeholder="例：右耳のほうが聞こえやすいです">
       <label class="disaster-consent"><input id="disaster-consent" type="checkbox"><span>本人に分かる方法で掲載内容を確認し、誰でも読めることとコピーを消せないことについて、本人の同意を得ています</span></label>
       <label class="disaster-consent"><input id="disaster-contact-consent" type="checkbox"><span>掲載する連絡先の本人から、電話番号をQRに載せる同意を得ています</span></label>
-      <div class="note">更新・紛失時はQRを作り直し、手元の旧QRを廃棄してください。公的な身分証明や医療記録ではなく、救助・連絡を保証しません。現在は試験用の架空情報だけで確認してください。</div>
+      <div class="note">更新・紛失時はQRを作り直し、手元の旧QRを廃棄してください。公的な身分証明や医療記録ではなく、救助・連絡を保証しません。</div>
       <div class="save-state" id="disaster-qr-state" role="status"></div>
       <button class="big-btn" type="button" onclick="makeDisasterQr()">入力内容を確認してQRを作る</button>
       <div id="disaster-qr-preview" class="disaster-preview"></div>
@@ -1360,7 +1360,6 @@ table.cal-rec td.pad{background:none;}
           </div>
           <input type="hidden" id="yt-color" value="#4F7FD3">
         </div>
-        <div class="note">試験中は、予定名に実名・住所・電話番号・病名を書かないでください。</div>
         <button class="big-btn yotei" id="yt-save-btn" onclick="saveYotei()">保存する</button>
         <button class="set-btn" id="yt-cancel-edit" style="display:none;" onclick="clearYoteiForm()">修正をやめる</button>
         <div class="save-state" id="yt-save-state" aria-live="polite"></div>
@@ -1439,32 +1438,27 @@ table.cal-rec td.pad{background:none;}
           <summary>📰 上田の情報を見る</summary>
           <div class="note">まいにこはニュースを転載せず、信頼できる発信元へつなぎます。家族との声・予定・記録はまいにこで、地域の情報は読みやすい方法を選んでください。</div>
           <div class="local-source"><b>上田市の公式情報</b><span>防災・市政・手続きなど</span></div>
-          <a class="sd-btn" href="https://www.city.ueda.nagano.jp/soshiki/uedapr/73021.html" target="_blank" rel="noopener noreferrer"><span class="l">上田市公式LINEの案内</span><span class="s">友だち登録と受信設定を確認できます</span></a>
-          <a class="sd-btn" href="https://www.city.ueda.nagano.jp/site/koho/" target="_blank" rel="noopener noreferrer"><span class="l">広報うえだを読む</span><span class="s">市の広報紙・電子版が開きます</span></a>
+          <a class="sd-btn" href="https://www.city.ueda.nagano.jp/soshiki/uedapr/73021.html" target="_blank" rel="noopener noreferrer"><span class="l">上田市公式LINEの案内</span></a>
+          <a class="sd-btn" href="https://www.city.ueda.nagano.jp/site/koho/" target="_blank" rel="noopener noreferrer"><span class="l">広報うえだを読む</span></a>
           <div class="local-source"><b>地域の読みもの（民間）</b><span>身近な出来事・催し・地域の記事</span></div>
-          <a class="sd-btn local-paper" href="https://www.weekly-ueda.com/" target="_blank" rel="noopener noreferrer"><span class="l">週刊うえだ</span><span class="s">上田地域の生活情報紙</span></a>
-          <a class="sd-btn local-paper" href="https://tjournal.co.jp/" target="_blank" rel="noopener noreferrer"><span class="l">東信ジャーナル</span><span class="s">東信地域のニュース</span></a>
+          <a class="sd-btn local-paper" href="https://www.weekly-ueda.com/" target="_blank" rel="noopener noreferrer"><span class="l">週刊うえだ</span></a>
+          <a class="sd-btn local-paper" href="https://tjournal.co.jp/" target="_blank" rel="noopener noreferrer"><span class="l">東信ジャーナル</span></a>
           <div class="note">大切な防災・行政情報は、上田市の公式ページでも確認してください。地域紙は民間の情報です。</div>
         </details>
       </div>
       <div class="card dom-soudan" id="sd-pick-card" style="display:none;">
         <h3>どんなことで困っていますか?</h3>
         <div class="note" id="sd-region-label" style="margin:0 0 8px;font-weight:700;"></div>
-        <p class="sd-lead" id="sd-lead">当てはまるものを選んでください。このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。</p>
+        <p class="sd-lead" id="sd-lead">当てはまる困りごとを選んでください。</p>
         <div class="sd-list" id="sd-list"></div>
-        <div class="note">上田市内の相談先をご案内しています。相談はご本人・ご家族から直接行ってください。</div>
         <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
       </div>
       <div class="card dom-soudan" id="sd-detail-card" style="display:none;">
         <h3 id="sd-detail-ttl">ここへ相談できます</h3>
         <div id="sd-detail"></div>
       </div>
-      <div class="card dom-soudan" id="sd-note-card" style="display:none;">
-        <div class="note">当番の医療機関や電話番号は変わることがあります。最新の内容は、それぞれの公式ページでお確かめください。</div>
-        <div class="note" id="sd-checked">公式情報の確認日: ─</div>
-      </div>
       <div class="card dom-soudan" id="anshin-tag-card" style="display:none;">
-        <h3>おまもりタグ（内部試作品）</h3>
+        <h3>おまもりタグ</h3>
         <p class="tag-lead">読み取った方が、個人情報を見ずに家族へ知らせるタグです。</p>
         <details class="tag-guide"><summary>おまもりタグとは（説明）</summary>
           <div class="note" style="margin-top:6px;">外出先で道に迷ったときなどに、周りの方がQRをスマートフォンで読み取ると、家族のまいにこへ「見かけました」と状況が届くタグです。<br>
@@ -1490,7 +1484,7 @@ table.cal-rec td.pad{background:none;}
           </div>
         </details>
         <div class="note">チェックはこの端末だけに保存され、家族には送信されません。</div>
-        <a class="sd-btn" href="https://ueda-bosai.jp/bueda20/portal/html/home.html" target="_blank" rel="noopener noreferrer"><span class="l">上田市防災ポータルサイトを開く</span><span class="s">緊急情報・避難情報・気象情報（市の公式サイト）</span></a>
+        <a class="sd-btn" href="https://ueda-bosai.jp/bueda20/portal/html/home.html" target="_blank" rel="noopener noreferrer"><span class="l">上田市防災ポータルサイトを開く</span></a>
         <button class="set-btn" onclick="openAnshin('home')">安心の入口へ戻る</button>
       </div>
     </div>
@@ -1546,13 +1540,13 @@ setTimeout(function(){
 <script src="mainico-config.js"></script>
 <script async data-optional="true" src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script src="ueda-centers.js?v=20260918"></script>
-<script src="consent.js?v=20260918"></script>
+<script src="consent.js?v=20260919"></script>
 <script src="consent-ui.js?v=20260918-mode2"></script>
 <script src="account-recovery.js"></script>
 <script src="account-deletion.js?v=20260918-consent"></script>
 <script src="household-deletion.js"></script>
 <script src="household-ui.js?v=20260918-mode2"></script>
-<script src="medicine-notebook.js"></script>
+<script src="medicine-notebook.js?v=20260919"></script>
 <script src="notebook-integration.js"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
 <script src="person-button-feedback.js?v=20260917-voice"></script>
@@ -3448,14 +3442,13 @@ document.querySelectorAll('#fnav button[data-t]').forEach(b=>{
    このアプリは、病気の判断・緊急度の判定・制度の該当判定を行いません。
    上田市が出している公式ページへの入口だけを用意します。
    リンクと文言はこの1か所にまとめてあるので、あとから差し替えられます。 */
-var SOUDAN_CHECKED = '2026年9月8日';
 
 /* 相談先(窓口)。名前・説明・公式ページ */
 var SOUDAN_SAKI = {
   houkatsu: {
     name: '地域包括支援センター',
     url:  'https://www.city.ueda.nagano.jp/soshiki/korei/2610.html',
-    desc: '高齢の方の介護や暮らしの困りごとを、はじめに相談できる窓口です。お住まいの地区ごとに担当が決まっています。一覧は公式ページでご確認ください。'
+    desc: '高齢の方の暮らし・介護について、お住まいの地区の窓口へ相談できます。'
   },
   kaigohoken: {
     name: '介護保険の案内(介護保険のしおり)',
@@ -3544,26 +3537,24 @@ function sdEl(tag, cls, text){
   return n;
 }
 /* 公式ページを開くボタン。新しい画面で開きます */
-function sdLink(url, label, note){
+function sdLink(url, label){
   var a = sdEl('a','sd-btn');
   var u = soudanUrl(url);
   if(u){ a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
   a.appendChild(sdEl('span','l', label));
-  if(note) a.appendChild(sdEl('span','s', note));
   return a;
 }
 /* 電話するボタン。番号が変わらない119だけに使います */
-function sdTel(num, label, note){
+function sdTel(num, label){
   var a = sdEl('a','sd-btn tel');
   a.href = 'tel:' + num;
   a.appendChild(sdEl('span','l', label));
-  if(note) a.appendChild(sdEl('span','s', note));
   return a;
 }
 
 /* 最初の画面(困りごとを選ぶ) */
 function openAnshin(which){
-  ['anshin-home','sd-pick-card','sd-detail-card','sd-note-card','bousai-card','anshin-tag-card'].forEach(function(id){
+  ['anshin-home','sd-pick-card','sd-detail-card','bousai-card','anshin-tag-card'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   if(which==='soudan'){ soudanReset(); return; }
@@ -3573,11 +3564,9 @@ function openAnshin(which){
 }
 function soudanReset(){
   document.getElementById('sd-region-label').textContent='上田市の相談先';
-  document.getElementById('sd-lead').innerHTML='当てはまるものを選んでください。上田市の公式なご案内へ進めます。<br>このアプリが相談内容を判断したり、どこかへ送ったりすることはありません。';
-  document.getElementById('sd-checked').textContent='公式情報の確認日: '+SOUDAN_CHECKED;
+  document.getElementById('sd-lead').textContent='当てはまる困りごとを選んでください。';
   document.getElementById('sd-detail-card').style.display = 'none';
   document.getElementById('sd-pick-card').style.display = 'block';
-  document.getElementById('sd-note-card').style.display = 'block';
   document.getElementById('anshin-home').style.display = 'none';
   var list = document.getElementById('sd-list');
   if(list.childNodes.length) return;   /* 一度作れば作り直しません */
@@ -3585,7 +3574,6 @@ function soudanReset(){
     var b = sdEl('button','sd-pick');
     b.type = 'button';
     b.appendChild(sdEl('span','l', k.label));
-    b.appendChild(sdEl('span','s', k.sub));
     b.addEventListener('click', function(){ soudanShow(i); });
     list.appendChild(b);
   });
@@ -3597,14 +3585,13 @@ function soudanShow(i){
   if(!k) return;
   var box = document.getElementById('sd-detail');
   box.textContent = '';
-  document.getElementById('sd-detail-ttl').textContent = k.label + ' ─ ここへ相談できます';
+  document.getElementById('sd-detail-ttl').textContent = k.label;
 
   /* 命にかかわるときの案内は、いちばん上に出します */
   if(k.kyukyu){
     var w = sdEl('div','sd-119');
     w.appendChild(sdEl('b','','命にかかわるようなとき、強い症状のときは、迷わず119番へ電話してください。'));
-    w.appendChild(sdEl('div','d','命にかかわる症状や強い症状があるときの案内です。'));
-    w.appendChild(sdTel('119','119番に電話する','救急車を呼ぶときの番号です'));
+    w.appendChild(sdTel('119','119番に電話する'));
     box.appendChild(w);
   }
 
@@ -3615,7 +3602,7 @@ function soudanShow(i){
     var it = sdEl('div','sd-item');
     it.appendChild(sdEl('div','n', t.name));
     it.appendChild(sdEl('div','d', t.desc));
-    it.appendChild(sdLink(t.url,'公式ページを見る','上田市のページが新しい画面で開きます'));
+    it.appendChild(sdLink(t.url,'公式ページを見る'));
     if(key==='houkatsu')it.appendChild(uedaCenterPicker());
     box.appendChild(it);
   });
@@ -3626,11 +3613,8 @@ function soudanShow(i){
   back.addEventListener('click', soudanReset);
   box.appendChild(back);
 
-  box.appendChild(sdEl('div','note','このアプリから記録や個人情報が自治体へ送られることはありません。相談するかどうかは、ご本人とご家族で決めてください。'));
-
   document.getElementById('sd-pick-card').style.display = 'none';
   document.getElementById('sd-detail-card').style.display = 'block';
-  document.getElementById('sd-note-card').style.display = 'block';
 }
 
 /* ===== 記録タブ: 月間記録 =====
@@ -5469,7 +5453,7 @@ async function makeInvite(targetId){
   }catch(e){ alert('発行できませんでした: '+e.message); }
 }
 
-/* ===== QRおまもりタグ(試作品) =====
+/* ===== QRおまもりタグ =====
    QRには推測しにくいランダムIDだけを入れます。
    氏名・住所・電話番号・病歴・家族情報・位置情報は入れません。 */
 function printDisasterQr(){
@@ -5682,7 +5666,7 @@ async function loadWatchTag(){
     currentWatchTagId=(v.watchTagActive && v.watchTagId)?v.watchTagId:'';
     if(!currentWatchTagId){
       if(history)history.textContent='';
-      area.innerHTML='<p class="note">QRにはURLとランダムな番号だけを入れます。氏名・住所・電話・病歴・位置情報は含めません。現在は内部確認用の試作品です。販売・実情報での配布には使いません。停止後に新しい番号で再発行できます。</p>'+
+      area.innerHTML='<p class="note">QRにはURLとランダムな番号だけを入れます。氏名・住所・電話・病歴・位置情報は含めません。停止後に新しい番号で再発行できます。</p>'+
         (isHouseholdOwner()?'<label class="consent-item"><input type="checkbox" id="watch-tag-consent">本人にタグの仕組み・通知の制限・複製や紛失の可能性を説明し、本人の同意を確認しました。</label><button class="big-btn family" onclick="createWatchTag()">おまもりタグを作る</button>':'<div class="note">タグの作成は管理者へ依頼してください。</div>');
       return;
     }
@@ -5928,7 +5912,7 @@ function uedaCenterPicker(){
   const root=sdEl('div','set-sec'),label=sdEl('label','','お住まいの地区と相談先を選ぶ');
   label.htmlFor='ueda-center-select';root.appendChild(label);
   const select=sdEl('select','setup-input');select.id='ueda-center-select';
-  const empty=sdEl('option','','地区が分からない・公式一覧で確認する');empty.value='';select.appendChild(empty);
+  const empty=sdEl('option','','地区・相談先を選択');empty.value='';select.appendChild(empty);
   UEDA_CENTERS.forEach((c,i)=>{const o=sdEl('option','',c.area+' ／ '+c.name);o.value=String(i);select.appendChild(o);});root.appendChild(select);
   const result=sdEl('div');result.setAttribute('aria-live','polite');root.appendChild(result);
   select.addEventListener('change',()=>{
@@ -5938,14 +5922,10 @@ function uedaCenterPicker(){
     result.appendChild(sdEl('p','','所在地：'+c.address));
     result.appendChild(sdEl('p','','担当地区：'+c.area));
     result.appendChild(sdEl('p','','相談時間：'+(c.hours||'電話でご確認ください')));
-    result.appendChild(sdTel(c.phone,c.phone+' に電話する','電話アプリが開きます。不在の場合があるため、来所前に電話連絡をお願いします。'));
+    result.appendChild(sdTel(c.phone,c.phone+' に電話する'));
+    result.appendChild(sdEl('p','','来所前にお電話ください。'));
   });
-  root.appendChild(sdEl('p','note','掲載元：上田市「地域包括支援センター」。付録Aの基本データを収録。公式情報の最終確認日：'+MainicoUedaCenters.checkedAt+'。来所前に電話連絡をお願いします。'));
-  root.appendChild(sdLink(SOUDAN_SAKI.houkatsu.url,'地区・相談時間を公式一覧で確認する','担当が分からない場合も、こちらで確認できます。'));
-  const report=sdEl('a','sd-btn');report.href='https://github.com/pocham4173/hidamari/issues/new';report.target='_blank';report.rel='noopener noreferrer';
-  report.appendChild(sdEl('span','l','掲載情報の誤りを知らせる'));
-  report.appendChild(sdEl('span','s','GitHubへのログインが必要です。投稿は公開されるため、本人の氏名・病状・個人の電話番号は書かないでください。'));
-  root.appendChild(report);return root;
+  return root;
 }
 
 /* ===== 起動 ===== */

@@ -21,7 +21,7 @@ try{
  await assertFails(record.set({uid:'owner',text:'without consent'}));
  await assertFails(db.doc('groups/home/events/old').get({source:'server'}));
  await assertFails(consent.set({...consentFixture(stamp()),sensitiveAccepted:false}));
- await assertFails(consent.set({...consentFixture(stamp()),version:'old'}));
+ await assertFails(consent.set({...consentFixture(stamp()),version:'2026-09-18.1'}));
  await assertFails(consent.set({...consentFixture(stamp()),subjectBasis:'self'}));
  await assertFails(consent.set({...consentFixture(stamp()),acceptedAt:firebase.firestore.Timestamp.now()}));
  await assertFails(consent.set({...consentFixture(stamp()),name:'personal information'}));
