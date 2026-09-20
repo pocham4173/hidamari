@@ -30,7 +30,7 @@ const withFamily={status:'shared',others:1,personOthers:0,familyOthers:1};
   f.c.familyConnection=withFamily;f.c.updateCommunicationAvailability();
   assert.equal(f.gates[0].hidden,false,'相手が家族用へ変更しても本人との過去の会話は残る');
   assert.equal(f.buttons[0].disabled,true);assert.equal(f.buttons[1].disabled,true);
-  assert.match(f.states['person-contact-state'].textContent,/本人の参加を確認/);
+  assert.match(f.states['person-contact-state'].textContent,/返事ボタンは、ご本人が別のスマホ/);
   f.c.familyConnection=solo;f.c.updateCommunicationAvailability();
   assert.equal(f.gates[0].hidden,false,'相手が退出しても共有されていた会話は読める');
   f.c.familyHomeItems=[];f.c.updateCommunicationAvailability();assert.equal(f.gates[0].hidden,false);
