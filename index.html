@@ -628,6 +628,9 @@ table.cal-rec td.pad{background:none;}
 .communication-received .reply-log{padding:8px 0;overflow-wrap:anywhere;}
 .communication-received .reply-guide{font-size:.88rem;margin-top:8px;color:var(--usucha);}
 .today-glance{font-size:1.02rem;font-weight:800;color:#4A3A24;background:#FFF6EA;border:1px solid #EFD9BC;border-radius:10px;padding:9px 11px;margin:0 0 10px;line-height:1.5;}
+/* 返事を送れないことが確定している間は、押せないボタンを並べず理由だけを示す */
+#card-actions.replies-unavailable .reply-row,
+#card-actions.replies-unavailable #family-conversation-compose{display:none!important;}
 </style>
 </head>
 <body>
@@ -1961,10 +1964,12 @@ function updateCommunicationAvailability(){
     const answered=id&&!writeAgain&&(kind==='person'?familyReplyStates.get(id)?.status==='sent':personReplyDone(id));
     el.disabled=!canUseFamilyFeature(kind)||busy||!sourceReady||!!answered;
   });
+  const personCard=document.getElementById('card-actions');
+  if(personCard&&personCard.classList)personCard.classList.toggle('replies-unavailable',familyConnection.status!=='unknown'&&!canUseFamilyFeature('person'));
   const state=document.getElementById('person-contact-state');
   if(state)state.textContent=!canUseFamilyFeature('person')?(familyConnection.status==='unknown'?
     '通信を確認しています。返事は確認後に送れます。':
-    '本人の参加を確認できると、返事を送れます。'):
+    '返事ボタンは、ご本人が別のスマホ（別のアカウント）で「本人が使う」として参加すると表示されます。'):
     familyHomeEventStatus==='cached'?'保存したやりとりを表示しています。最新の連絡は通信が戻ってから確認します。':
     familyHomeEventStatus==='error'?'やりとりを読み込めませんでした。通信状態を確認してください。':
     familyHomeEventStatus==='loading'?'やりとりを読み込んでいます…':'';
