@@ -14,10 +14,11 @@ function source(start,end){
 {
   const f=homeFixture(),entry=f.document.getElementById('entry');
   const modes=[...entry.querySelectorAll('#select-box button')];
-  assert.equal(modes.length,3);
+  assert.equal(modes.length,4);
   for(const [i,mode] of ['honnin','kazoku','konly'].entries()){
     assert.equal(modes[i].getAttribute('onclick'),`pickMode('${mode}')`,'simplifying labels preserves mode choice');
   }
+  assert.equal(modes[3].getAttribute('onclick'),'pickInvited()','招待された方の専用入口を用意する');
   assert.match(modes[1].textContent,/本人と家族が使う/);
   assert.match(modes[2].textContent,/家族だけで使う/);
   assert.doesNotMatch(entry.textContent,/家族が記録する/);
@@ -77,8 +78,10 @@ function source(start,end){
   const form=contacts.querySelector('details');
   const consultation=home.querySelector('[onclick="openAnshin(\'soudan\')"]');
   const tag=home.querySelector('[onclick="openAnshin(\'tag\')"]');
-  assert.ok(f.visible(notebook));
-  before(notebook,contacts);before(contacts,consultation);before(contacts,tag);
+  assert.ok(notebook,'お薬手帳の入口は安心タブに残る');
+  const notebookWrap=f.document.getElementById('medicine-notebook-area');
+  assert.ok(notebookWrap&&notebookWrap.contains(notebook)&&!notebookWrap.open,'お薬手帳は畳んだ項目から開く');
+  before(consultation,contacts);before(tag,contacts);before(contacts,notebookWrap);
   assert.equal(contacts.classList.contains('family-only-card'),false,'ordinary family mode also has phone contacts');
   assert.ok(form&&!form.open,'adding a contact does not occupy the everyday phone view');
   assert.equal(form.contains(list),false,'saved phone numbers are outside the collapsed editor');

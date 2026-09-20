@@ -270,7 +270,7 @@ console.log('conversation discovery integration: generated controls, completed m
  f.c.openSettings=()=>opened++;
  vm.runInContext(section('function openConversationConnection(){','async function renderSetMembers(){'),f.c);
  f.c.openConversationConnection();
- assert.equal(opened,1);assert.equal(f.el('conversation-connection-guide').open,true);
+ assert.equal(opened,1);assert.equal(f.el('menu-family').open,true);
  assert.equal(f.el('settings-family-connection').focused,true);
  assert.equal(f.writes.length,0);
  assert.doesNotMatch(html,/id="conversation-setup-entry"/,'説明用のボタンで会話欄を置き換えない');
@@ -286,9 +286,11 @@ console.log('conversation discovery integration: generated controls, completed m
    col:()=>({get:async()=>({empty:false,forEach:fn=>rows.forEach(fn)})}),rememberMember:id=>id,isHouseholdOwner:()=>false,householdOwnerId:'family'});
  vm.runInContext(section('async function renderSetMembers(){','/* 家族の設定画面が開いているときだけ'),f.c);
  await f.c.renderSetMembers();
- assert.match(f.el('set-members').innerHTML,/家族 \(家族の画面\) \(このアカウント\)/);
- assert.match(f.el('set-members').innerHTML,/&lt;本人&gt; \(本人の画面\)/);
- assert.match(f.el('set-members').innerHTML,/変更した人 \(家族の画面\)/);
+ assert.match(f.el('set-members').innerHTML,/家族（あなた）/);
+ assert.match(f.el('set-members').innerHTML,/管理者/);
+ assert.match(f.el('set-members').innerHTML,/&lt;本人&gt;（ご本人）/);
+ assert.match(f.el('set-members').innerHTML,/変更した人/);
+ assert.doesNotMatch(f.el('set-members').innerHTML,/変更した人（ご本人）/);
  assert.equal(f.writes.length,0);
 }
 console.log('connection discovery: settings entry, current screens and legacy identities passed');

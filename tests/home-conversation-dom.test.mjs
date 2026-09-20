@@ -39,7 +39,9 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
 {
  const f=homeFixture('honnin');f.state(family);f.events([greeting,reply]);
  const panel=f.document.getElementById('person-conversation-panel');assert.ok(f.visible(panel));
- assert.equal(f.document.querySelector('.h-body').firstElementChild,panel,'person conversation precedes schedules');
+ const bodyKids=[...f.document.querySelector('.h-body').children];
+ assert.equal(bodyKids[0],f.document.getElementById('h-today'),'今日の予定は本人画面の最上部を維持する');
+ assert.ok(bodyKids.indexOf(f.document.getElementById('btn-a'))<bodyKids.indexOf(panel),'毎日の挨拶ボタンがやりとりより先に来る');
  assert.equal(f.document.getElementById('h-incoming-message').textContent,'','yesterday is kept off today’s home');
  assert.ok(f.visible(f.document.getElementById('person-history-open')));
  f.events([greeting,{...reply,date:'2026-09-18',at:{seconds:1789722010}}]);

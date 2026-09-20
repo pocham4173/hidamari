@@ -61,7 +61,7 @@ for(const tag of html.match(/<[^>]+data-share-gate[^>]*>/g))assert.match(tag,/ h
 for(const id of ['card-family-notes','card-family-notes-preview','family-task-filter'])assert.match(html,new RegExp('id="'+id+'" data-share-gate="family" hidden'));
 const home=html.slice(html.indexOf('<div class="ftab" id="t-home">'),html.indexOf('<!-- 予定',html.indexOf('<div class="ftab" id="t-home">')));
 assert.doesNotMatch(home,/data-connection-state|home-operator-note/);
-assert.match(html,/以前の共有記録を見る/);assert.match(html,/以前の家族からの伝言を見る/);
+assert.match(html,/以前の伝言・お願いは「ふり返り」で確認できます/);assert.match(html,/ふり返りを開く/);assert.match(html,/以前の家族からの伝言を見る/);
 assert.match(html,/onclick="openPersonTasks\(\)"/);
 const entry=html.slice(html.indexOf('id="entry"'),html.indexOf('<!-- ホーム画面への追加案内 -->'));
 assert.match(entry,/onclick="pickMode\('honnin'\)"/,'一人で始める本人の入口は残す');
