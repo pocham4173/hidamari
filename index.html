@@ -627,6 +627,7 @@ table.cal-rec td.pad{background:none;}
 .communication-received .reply-btn:disabled{opacity:1;background:#EDF1F6;color:#566171;border-color:#CDD5E0;cursor:default;}
 .communication-received .reply-log{padding:8px 0;overflow-wrap:anywhere;}
 .communication-received .reply-guide{font-size:.88rem;margin-top:8px;color:var(--usucha);}
+.today-glance{font-size:1.02rem;font-weight:800;color:#4A3A24;background:#FFF6EA;border:1px solid #EFD9BC;border-radius:10px;padding:9px 11px;margin:0 0 10px;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -638,12 +639,13 @@ table.cal-rec td.pad{background:none;}
   <img class="appicon" src="icon-192.png" alt="まいにこ">
   <h1>まいにこ</h1>
   <div class="entry-catch">不安を軽く、安心を深く、<br>上田でつなぐ。</div>
-  <div class="q">使い方を選んでください</div>
+  <div class="q">どなたのスマホで使いますか？</div>
   <div id="entry-state" class="save-state" role="status" aria-live="polite"></div>
   <div id="select-box">
-    <button class="entry-btn" onclick="pickMode('honnin')">本人が使う</button>
-    <button class="entry-btn" onclick="pickMode('kazoku')">本人と家族が使う<small>家族用の画面</small></button>
+    <button class="entry-btn" onclick="pickMode('honnin')">本人が使う<small>見守られるご本人のスマホ</small></button>
+    <button class="entry-btn" onclick="pickMode('kazoku')">本人と家族が使う<small>家族のスマホ・家族用の画面</small></button>
     <button class="entry-btn" onclick="pickMode('konly')">家族だけで使う<small>本人は操作しません</small></button>
+    <button class="entry-btn" onclick="pickInvited()">招待された方<small>招待コードをお持ちの方はこちら</small></button>
   </div>
   <div class="entry-tools">
     <button class="consent-back" onclick="openRecovery()">以前のアカウントで再開する</button>
@@ -676,12 +678,15 @@ table.cal-rec td.pad{background:none;}
   <p class="consent-lead">まいにこで記録する内容と、共有する範囲を確認してください。</p>
   <p class="consent-note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong><br>緊急時はアプリの返事を待たず119番等へ連絡してください。</p>
   <p><a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシーを読む（別画面）</a> ／ <a href="help.html#notifications" target="_blank" rel="noopener">通知の制限を読む</a></p>
+  <label class="consent-item" style="background:#F0F7EE;border-color:#B7D3AC;"><input type="checkbox" id="ck-all-a" onchange="toggleAllConsent('a',this.checked)"><strong>下の5つの内容を確認しました。すべてに同意します</strong></label>
   <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="privacy">プライバシーポリシーを読み、記載された情報の取扱いに同意します。</label>
   <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="sensitive">服薬・体調・支援に関する記録など、要配慮個人情報を含み得る情報を、記録・ふり返り・家族との共有のために取得・保存することに同意します。</label>
   <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="sharing">承認した家族へ記録を共有することに同意します。あとから参加を承認した家族には、これまでの予定・記録・やることも共有されることを確認しました。</label>
   <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="subject"><span id="consent-subject-a">記録される本人の意思を確認します。</span></label>
   <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="disclaimer">サービスの限界と通知の制限を確認しました。</label>
+  <details class="consent-note-wrap"><summary style="cursor:pointer;padding:8px 0;font-weight:700;">詳しい説明を読む（保存される内容・通知の制限など）</summary>
   <div class="consent-note">挨拶・予定・服薬ボタン・様子メモ等の内容と日時、記録者を保存します。服薬ボタンは押した記録で、服用の証明ではありません。記録がないことは異常を意味しません。<br>アプリを閉じた家族へのプッシュ通知はありません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。<br>お薬手帳の写真は端末内に保存され、自動共有されません。<br>本人が拒否・不快感を示すときは利用を止めてください。本人の意思を確認できない場合は、このチェックだけで利用を始めないでください。<br>同意は設定から取り消せます。共有済み記録の削除・退会は別の操作です。</div>
+  </details>
   <p id="consent-state-a" role="status" aria-live="polite"></p>
   <button class="entry-btn" id="consent-submit-a" onclick="agreeConsent('a')">同意してはじめる</button>
   <button class="consent-back" onclick="cancelConsent()">同意せず入口へ戻る</button>
@@ -695,12 +700,15 @@ table.cal-rec td.pad{background:none;}
   <p class="consent-lead">家族が確認したことを家族自身の記録として残します。本人がボタンを操作することは前提にしません。</p>
   <p class="consent-note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong><br>緊急時はアプリの返事を待たず119番等へ連絡してください。</p>
   <p><a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシーを読む（別画面）</a> ／ <a href="help.html#notifications" target="_blank" rel="noopener">通知の制限を読む</a></p>
+  <label class="consent-item" style="background:#F0F7EE;border-color:#B7D3AC;"><input type="checkbox" id="ck-all-b" onchange="toggleAllConsent('b',this.checked)"><strong>下の5つの内容を確認しました。すべてに同意します</strong></label>
   <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="privacy">プライバシーポリシーを読み、記載された情報の取扱いに同意します。</label>
   <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="sensitive">服薬・体調・支援に関する記録など、要配慮個人情報を含み得る情報を、記録・ふり返り・家族との共有のために取得・保存することに同意します。</label>
   <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="sharing">承認した家族へ記録を共有することに同意します。あとから参加を承認した家族には、これまでの予定・記録・やることも共有されることを確認しました。</label>
   <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="subject"><span id="consent-subject-b">記録される本人の意思を確認します。</span></label>
   <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="disclaimer">サービスの限界と通知の制限を確認しました。</label>
+  <details class="consent-note-wrap"><summary style="cursor:pointer;padding:8px 0;font-weight:700;">詳しい説明を読む（保存される内容・通知の制限など）</summary>
   <div class="consent-note">挨拶・予定・服薬ボタン・様子メモ等の内容と日時、記録者を保存します。服薬ボタンは押した記録で、服用の証明ではありません。記録がないことは異常を意味しません。<br>アプリを閉じた家族へのプッシュ通知はありません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。<br>お薬手帳の写真は端末内に保存され、自動共有されません。<br>本人が拒否・不快感を示すときは利用を止めてください。本人の意思を確認できない場合は、このチェックだけで利用を始めないでください。<br>同意は設定から取り消せます。共有済み記録の削除・退会は別の操作です。</div>
+  </details>
   <p id="consent-state-b" role="status" aria-live="polite"></p>
   <button class="entry-btn" id="consent-submit-b" onclick="agreeConsent('b')">同意してはじめる</button>
   <button class="consent-back" onclick="cancelConsent()">同意せず入口へ戻る</button>
@@ -792,7 +800,7 @@ table.cal-rec td.pad{background:none;}
     <input type="text" id="in-code" class="setup-input" placeholder="招待コードを入力" autocapitalize="characters" autocomplete="off">
     <button class="entry-btn sub" onclick="joinByCode()">招待コードで参加</button>
     <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
-    <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、すでに利用中のご家族の画面の「設定」→「家族・本人を招待する」で発行できます。コードで参加すると「承認待ち」になり、最初に家庭を作成した管理者が認めると利用できます。招待コードは一度使うと再び使えません。認められなかったときや申請を取り下げたときは、新しいコードを発行してもらってください。<br><br>この端末は一度つながると、モードを切り替えても同じご家族の記録を使います。</div>
+    <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、すでに利用中のご家族の画面の「設定」→「家族の管理」→「家族を追加する」で発行できます。コードで参加すると「承認待ち」になり、最初に家庭を作成した管理者が認めると利用できます。招待コードは一度使うと再び使えません。認められなかったときや申請を取り下げたときは、新しいコードを発行してもらってください。<br><br>この端末は一度つながると、モードを切り替えても同じご家族の記録を使います。</div>
     <button class="consent-back" onclick="showPage('entry')">← 入口に戻る</button>
   </div>
 </div>
@@ -822,34 +830,10 @@ table.cal-rec td.pad{background:none;}
     <div class="h-time" id="h-time"></div>
   </div>
   <div class="h-body">
-    <section class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" aria-labelledby="person-conversation-heading">
-      <h2 id="person-conversation-heading">家族とのやりとり</h2>
-    <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
-    <p class="communication-status" id="h-contact-state" aria-live="polite"></p>
-    <button class="set-btn" id="person-conversation-retry" type="button" hidden onclick="checkPersonConversation()">もう一度読み込む</button>
-    <div class="kibun" id="h-message-reply" data-communication-gate="family" hidden style="display:none;">
-      <div id="person-reply-options"><div class="q">返事を選ぶ</div><p id="h-reply-context" hidden></p>
-      <div class="kibun-grid">
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('読んだよ',this.dataset.replyTo)">読んだよ</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('ありがとう',this.dataset.replyTo)">ありがとう</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('あとで電話するね',this.dataset.replyTo)">あとで電話するね</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="openPersonMessageReply(this.dataset.replyTo)">自分で返事を書く</button>
-      </div>
-      </div>
-      <div class="save-state" id="h-message-reply-state" aria-live="polite"></div>
-      <button class="set-btn" id="person-reply-read" type="button" hidden onclick="speakElement('h-message-reply-state')">返事の結果を声で聞く</button>
-    </div>
-      <button class="cal-open" id="person-history-open" type="button" data-person-voice="前の連絡をひらきます" onclick="openPersonHistory()">前の連絡を見る</button>
-    </section>
     <div class="h-today person-press-target" id="h-today" style="display:none;cursor:pointer;" onclick="speakToday()">
       <div class="ht-lb">今日の予定</div>
       <div id="h-today-list"></div>
       <button class="ht-yomi" type="button" onclick="event.stopPropagation();speakToday()">🔊 音声で聞く</button>
-    </div>
-    <div class="yotei-card person-press-target" role="button" tabindex="0" aria-label="これからの予定を音声で聞く" onclick="speakNextYotei()" style="cursor:pointer;">
-      <div class="lb">予定</div>
-      <div class="days" id="y-days">-</div>
-      <div class="pl" id="y-label">これからの予定はありません</div>
     </div>
     <div id="h-approve"></div>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
@@ -880,6 +864,30 @@ table.cal-rec td.pad{background:none;}
       <div class="note" style="text-align:center;">お薬を飲んだら、朝・昼・夜から選んで押してください。服薬の証明ではありません。</div>
     </div>
     <button class="onegai-btn" data-share-gate="family" data-person-voice="おねがいの がめんを ひらきました" hidden onclick="openOnegai()">ちょっとお願い</button>
+    <section class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" aria-labelledby="person-conversation-heading">
+      <h2 id="person-conversation-heading">家族とのやりとり</h2>
+    <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
+    <p class="communication-status" id="h-contact-state" aria-live="polite"></p>
+    <button class="set-btn" id="person-conversation-retry" type="button" hidden onclick="checkPersonConversation()">もう一度読み込む</button>
+    <div class="kibun" id="h-message-reply" data-communication-gate="family" hidden style="display:none;">
+      <div id="person-reply-options"><div class="q">返事を選ぶ</div><p id="h-reply-context" hidden></p>
+      <div class="kibun-grid">
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('読んだよ',this.dataset.replyTo)">読んだよ</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('ありがとう',this.dataset.replyTo)">ありがとう</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('あとで電話するね',this.dataset.replyTo)">あとで電話するね</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="openPersonMessageReply(this.dataset.replyTo)">自分で返事を書く</button>
+      </div>
+      </div>
+      <div class="save-state" id="h-message-reply-state" aria-live="polite"></div>
+      <button class="set-btn" id="person-reply-read" type="button" hidden onclick="speakElement('h-message-reply-state')">返事の結果を声で聞く</button>
+    </div>
+      <button class="cal-open" id="person-history-open" type="button" data-person-voice="前の連絡をひらきます" onclick="openPersonHistory()">前の連絡を見る</button>
+    </section>
+    <div class="yotei-card person-press-target" role="button" tabindex="0" aria-label="これからの予定を音声で聞く" onclick="speakNextYotei()" style="cursor:pointer;">
+      <div class="lb">予定</div>
+      <div class="days" id="y-days">-</div>
+      <div class="pl" id="y-label">これからの予定はありません</div>
+    </div>
     <button class="cal-open" data-person-voice="カレンダーを ひらきました" onclick="openCal()">カレンダーを見る</button>
     <button class="cal-open" type="button" data-person-voice="自分のやることをひらきました。やることを追加し、終わったら、できたを押します。" onclick="openPersonTasks()">自分のやること</button>
     <button class="cal-open" data-person-voice="予定の 入力を ひらきました" onclick="openHYotei()">予定を入れる</button>
@@ -1058,6 +1066,7 @@ table.cal-rec td.pad{background:none;}
     <div class="ttl" id="cancel-title" tabindex="-1">今日の記録をとりけす</div>
     <p style="font-size:.92rem;color:#7A6A55;line-height:1.7;margin-bottom:10px;">まちがえて押した記録を、とりけすことができます。とりけせるのは、この端末で今日つけた記録だけです。</p>
     <div id="cancel-list"><div class="empty">読み込み中…</div></div>
+    <div class="save-state" id="cancel-state" role="status" aria-live="polite" style="font-size:1.05rem;"></div>
     <button class="modal-close" onclick="closeCancel()">とじる</button>
   </div>
 </div>
@@ -1118,7 +1127,7 @@ table.cal-rec td.pad{background:none;}
         </div>
         <div class="set-sec" data-owner-only hidden>
           <h4>家族を追加する</h4>
-          <div class="note" style="margin-top:0;">① コードを作る → ② 家族に伝える（電話やメモ） → ③ 家族が入口の「招待された方」で入力 → あなたが「参加を認める」で完了。<br><span style="color:#8A6F4D;">コードは24時間・1回だけ使えます。</span>コードを渡しただけでは共有は始まりません。</div>
+          <div class="note" style="margin-top:0;">① コードを作る → ② 家族に伝える（電話やメモ） → ③ 家族がまいにこを開き、入口の「招待された方」から案内に沿って進んでコードを入力 → ④ あなたが「参加を認める」で完了。<br><span style="color:#8A6F4D;">コードは24時間・1回だけ使えます。</span>コードを渡しただけでは共有は始まりません。</div>
           <button data-owner-only hidden class="set-btn" onclick="makeInvite('settings-invite-area')">招待コードを作る</button>
           <div id="settings-invite-area"></div>
         </div>
@@ -1217,6 +1226,7 @@ table.cal-rec td.pad{background:none;}
       <div id="card-pending"></div>
       <div class="card dom-record" id="card-actions" data-communication-gate="person">
         <h3>本人とのやりとり</h3>
+        <p class="today-glance" id="today-glance" hidden></p>
         <p class="communication-status" id="person-contact-state" aria-live="polite">読み込んでいます…</p>
         <button class="set-btn" id="family-conversation-retry" type="button" hidden onclick="retryHomeConversation('kazoku')">もう一度読み込む</button>
         <div class="communication-received" id="card-today-records">
@@ -1446,10 +1456,14 @@ table.cal-rec td.pad{background:none;}
     <div class="ftab" id="t-soudan" style="display:none;">
       <div class="card dom-soudan" id="anshin-home">
         <h3>安心</h3>
-        <section aria-labelledby="medicine-notebook-heading">
-          <h4 id="medicine-notebook-heading">💊 お薬手帳</h4>
-          <button class="set-btn" type="button" onclick="openMedicineNotebook()">お薬手帳を開く</button>
-          <div class="note">この端末に保存・家族へ自動共有されません</div>
+        <section aria-labelledby="anshin-secondary-heading">
+          <h4 id="anshin-secondary-heading">相談・もしもの備え</h4>
+          <div class="anshin-choices">
+            <button type="button" onclick="openAnshin('soudan')">💬<br>相談先を探す</button>
+            <button type="button" onclick="openAnshin('tag')">🔔<br>おまもりタグ</button>
+            <button type="button" onclick="openAnshin('bousai')">🎒<br>もしもの備え</button>
+            <button type="button" onclick="openDisasterQr()">🪪<br>災害用QRを作る</button>
+          </div>
         </section>
         <div class="set-sec" id="family-contact-area">
           <h4>電話・連絡先</h4>
@@ -1463,6 +1477,11 @@ table.cal-rec td.pad{background:none;}
             <div class="save-state" id="family-contact-state" aria-live="polite"></div>
           </details>
         </div>
+        <details class="medicine-info" id="medicine-notebook-area">
+          <summary>💊 お薬手帳（この端末に保存）</summary>
+          <div class="note">この端末に保存し、家族へ自動共有されません。</div>
+          <button class="set-btn" type="button" onclick="openMedicineNotebook()">お薬手帳を開く</button>
+        </details>
         <details class="medicine-info" id="medicine-info-area">
           <summary>お薬の共有メモ</summary>
           <div class="note">本人と承認済みの家族だけで共有します。薬の名前と飲む時間を、必要な範囲だけ登録してください。</div>
@@ -1478,15 +1497,6 @@ table.cal-rec td.pad{background:none;}
           <div class="family-tool-list" id="medicine-info-list"><div class="empty">読み込み中…</div></div>
           <div class="note">これは家族の共有メモです。処方の変更や服用方法は、お薬手帳・薬袋・医師・薬剤師の最新の指示を確認してください。おまもりタグや災害用QRには表示しません。</div>
         </details>
-        <section class="set-sec" aria-labelledby="anshin-secondary-heading">
-          <h4 id="anshin-secondary-heading">相談・もしもの備え</h4>
-          <div class="anshin-choices">
-            <button type="button" onclick="openAnshin('soudan')">💬<br>相談先を探す</button>
-            <button type="button" onclick="openAnshin('tag')">🔔<br>おまもりタグ</button>
-            <button type="button" onclick="openAnshin('bousai')">🎒<br>もしもの備え</button>
-            <button type="button" onclick="openDisasterQr()">🪪<br>災害用QRを作る</button>
-          </div>
-        </section>
         <details class="disaster-intro local-info">
           <summary>📰 上田の情報を見る</summary>
           <div class="note">まいにこはニュースを転載せず、信頼できる発信元へつなぎます。家族との声・予定・記録はまいにこで、地域の情報は読みやすい方法を選んでください。</div>
@@ -2127,6 +2137,31 @@ function entryState(message){
   const el=document.getElementById('entry-state');
   if(el)el.textContent=message;
 }
+/* 招待された方の専用入口: 家族用モードで進み、接続画面ではコード入力を案内する */
+function pickInvited(){
+  pickMode('kazoku');
+  try{previewStorage.setItem('mainicoInvitedFlow','1');}catch(e){}
+}
+/* 同意画面の「すべてに同意」まとめチェック(記録される同意項目は従来の5つのまま) */
+function toggleAllConsent(kind,on){
+  document.querySelectorAll('#consent-'+kind+' input[data-consent]').forEach(el=>{el.checked=on;});
+}
+function syncConsentMaster(kind){
+  const master=document.getElementById('ck-all-'+kind);
+  if(!master)return;
+  const all=[...document.querySelectorAll('#consent-'+kind+' input[data-consent]')];
+  master.checked=all.length>0&&all.every(el=>el.checked);
+}
+(function(){
+  try{
+    if(typeof document==='undefined'||typeof document.querySelectorAll!=='function')return;
+    ['a','b'].forEach(kind=>{
+      document.querySelectorAll('#consent-'+kind+' input[data-consent]').forEach(el=>{
+        el.addEventListener('change',()=>syncConsentMaster(kind));
+      });
+    });
+  }catch(e){}
+})();
 function pickMode(m){
   if(!['honnin','kazoku','konly'].includes(m))return;
   if(modeSetupBusy){entryState('利用方法を確認しています。少しお待ちください。');return;}
@@ -2153,6 +2188,14 @@ function setupConnectPage(){
   const lead=document.getElementById('connect-lead');
   const btn=document.getElementById('btn-newgroup');
   const tb=document.getElementById('together-box');
+  let invited=false;
+  try{invited=previewStorage.getItem('mainicoInvitedFlow')==='1';previewStorage.removeItem('mainicoInvitedFlow');}catch(e){}
+  if(invited&&pendingMode==='kazoku'){
+    lead.textContent='招待された方：下の欄に招待コードを入れて「招待コードで参加」を押してください。';
+    btn.textContent='ご本人と一緒に初期設定する'; tb.style.display='block';
+    setTimeout(()=>{const c=document.getElementById('in-code');if(c){try{c.focus();}catch(e){}}},300);
+    return;
+  }
   if(pendingMode==='honnin'){
     lead.textContent='ご家族の画面の「設定」で発行した招待コードを入力してください。ご本人がはじめて使う場合は「新しくはじめる」も選べます。';
     btn.textContent='新しくはじめる'; tb.style.display='none';
@@ -3077,7 +3120,7 @@ async function cancelEvent(id,type,slot){
       if(row.type==='kusuri')previewStorage.removeItem('kusuri-'+date+'-'+row.slot);
     }catch(e){console.warn('cancel display cache',e);}
     location.reload();
-  }catch(e){if(current())alert('とりけせませんでした。通信を確認して、もう一度お試しください。');}
+  }catch(e){if(current()){const st=document.getElementById('cancel-state');const msg='とりけせませんでした。通信を確認して、もう一度お試しください。';if(st)st.textContent=msg;try{speak(msg,true);}catch(err){}}}
   finally{personCancelBusy.delete(key);}
 }
 
@@ -3231,8 +3274,23 @@ function cancelPersonContactReply(){
 
 /* ===== 家族 ===== */
 let evUnsub=null, ytListUnsub=null, aisatsuBackSending=false;
+/* 今日のようす1行(本人がいる家庭のみ)。記録がないことは異常を意味しない表現を守る */
+function renderTodayGlance(items){
+  const el=document.getElementById('today-glance');
+  if(!el)return;
+  if(isKOnly()||familyHomeEventStatus==='loading'){el.hidden=true;return;}
+  const day=dateString(new Date());
+  const t=(items||[]).filter(v=>v&&v.date===day);
+  const ai=t.some(v=>v.type==='aisatsu');
+  const ku=t.filter(v=>v.type==='kusuri').length;
+  const kb=t.filter(v=>v.type==='kibun'&&v.text).sort(compareConversationEvents).pop();
+  el.hidden=false;
+  if(!t.length){el.textContent='今日のようす：まだ今日の記録はありません（記録がないことは異常を意味しません）';return;}
+  el.textContent='今日のようす：挨拶 '+(ai?'あり':'なし')+' ／ お薬の記録 '+ku+'回'+(kb?' ／ 体調「'+kb.text+'」':'');
+}
 function renderFamilyConversation(){
   const items=familyHomeItems;
+  if(typeof renderTodayGlance==='function'){try{renderTodayGlance(items);}catch(e){console.warn('glance',e);}}
   const box=document.getElementById('ev-list');
   const card=document.getElementById('card-today-records');
   // Show recent messages by arrival time; a new reply is its own visible row.
@@ -5478,7 +5536,7 @@ async function denyMember(mid){
   try{
     await col('members').doc(mid).delete();
     refreshSetMembersIfOpen();
-    alert('参加を認めませんでした。\nこのとき使われた招待コードは、もう使えません。あらためて招待するときは、「家族・本人を招待する」で新しい招待コードを発行してください。');
+    alert('参加を認めませんでした。\nこのとき使われた招待コードは、もう使えません。あらためて招待するときは、「家族の管理」の「家族を追加する」で新しい招待コードを発行してください。');
   }catch(e){ alert('操作できませんでした: '+e.message); }
 }
 async function removeMember(mid, isMe){
@@ -5514,7 +5572,7 @@ async function makeInvite(targetId){
       used: false
     });
     if(area){
-      const msg='まいにこの招待コードです：'+code+'（24時間・1回有効）\nアプリ：https://pocham4173.github.io/hidamari/\n開いて「招待された方」にこのコードを入れてください。';
+      const msg='まいにこの招待コードです：'+code+'（24時間・1回有効）\nアプリ：https://pocham4173.github.io/hidamari/\n開いて入口の「招待された方」を押し、案内に沿って進んでこのコードを入れてください。';
       area.innerHTML=
         '<div class="code-show">'+code+'</div>'+
         '<div class="code-exp">有効期限24時間・一度だけ使えます。</div>'+
