@@ -70,6 +70,7 @@
   function describe(v){
     var d=toDate(v&&v.notifyAt);
     if(d) return '🔔 LINEで知らせる：'+jpDateTime(d);
+    if(v&&v.notificationStatus==='expired') return '🔔 LINEのお知らせ期限が過ぎました（送信完了は未確認）';
     var sent=toDate(v&&v.notifiedAt);
     if(sent) return '🔔 LINEでお知らせ済み（'+jpDateTime(sent)+'）';
     return '';

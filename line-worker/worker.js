@@ -22,6 +22,7 @@
 const APP_URL = 'https://pocham4173.github.io/hidamari/';
 const CODE_RE = /^[A-HJ-NP-Z2-9]{8}$/;
 const LATE_LIMIT_MS = 12 * 60 * 60 * 1000;   // 12時間以上遅れた通知は送らずに印だけ付ける
+const CONSENT_VERSION = '2026-09-19.1';
 const SUBREQUEST_BUDGET = 45;                // 無料プランの上限(50)より少し手前で止める
 
 export default {
@@ -55,11 +56,12 @@ async function handleWebhook(request, env) {
   let events = [];
   try { events = JSON.parse(body).events || []; } catch (e) { return new Response('bad json', { status: 400 }); }
   const fs = new Firestore(env);
+  let failed = false;
   for (const ev of events) {
     try { await handleEvent(ev, env, fs); }
-    catch (e) { console.error('event failed', e && e.stack || e); }
+    catch (e) { failed = true; console.error('event failed'); }
   }
-  return new Response('ok');
+  return new Response(failed ? 'retry later' : 'ok', {status: failed ? 503 : 200});
 }
 
 async function verifySignature(body, signature, secret) {
@@ -128,8 +130,13 @@ async function linkByCode(fs, code, lineUserId) {
     await fs.delete('lineLinkCodes/' + code).catch(() => {});
     return '家族への参加が承認されていないため、連携できませんでした。';
   }
-  await fs.set('lineLinks/' + uid, { lineUserId, groupId, linkedAt: new Date() });
-  await fs.delete('lineLinkCodes/' + code).catch(() => {});
+  // Code consumption and link creation either both commit or neither does.
+  const consumed = await fs.commit([
+    {delete: fs.root + '/lineLinkCodes/' + code, currentDocument: {updateTime: c.updateTime}},
+    {update: {name: fs.root + '/lineLinks/' + uid,
+      fields: toFields({lineUserId, groupId, linkedAt: new Date()})}}
+  ]);
+  if (!consumed) return NG;
   const name = typeof member.name === 'string' && member.name ? member.name + 'さん、' : '';
   return name + 'LINE連携しました。\n\nまいにこで「LINEで知らせる日時」を入れた予定が、このLINEに届きます。\n' +
     'やめるときは、アプリの設定で解除するか、「解除」と送ってください。';
@@ -139,7 +146,6 @@ async function removeLinksFor(fs, lineUserId) {
   const docs = await fs.query('', {
     from: [{ collectionId: 'lineLinks' }],
     where: fieldEq('lineUserId', { stringValue: lineUserId }),
-    limit: 20,
   });
   for (const d of docs) await fs.delete(d.path);
   return docs.length;
@@ -154,7 +160,15 @@ async function approvedMember(fs, groupId, uid) {
   const status = m.fields.status === undefined ? 'approved' : m.fields.status;
   if (status !== 'approved') return null;
   if (await fs.get('accountClosures/' + uid)) return null;
+  const consent = await fs.get('consents/' + uid);
+  if (!validConsent(consent && consent.fields)) return null;
   return m.fields;
+}
+function validConsent(c) {
+  return !!c && c.version === CONSENT_VERSION && ['honnin','kazoku','konly'].includes(c.mode)
+    && c.privacyAccepted === true && c.sensitiveAccepted === true && c.sharingAccepted === true
+    && c.subjectBasis === (c.mode === 'honnin' ? 'self' : 'explained-and-agreed')
+    && c.acceptedAt instanceof Date && Number.isFinite(c.acceptedAt.getTime());
 }
 
 /* ================= 15分ごとの見回り ================= */
@@ -162,72 +176,94 @@ async function approvedMember(fs, groupId, uid) {
 async function runNotifications(env) {
   const fs = new Firestore(env);
   const now = new Date();
-  const groups = await fs.list('groups', ['deletionState']);
-  // 家庭ごと削除された人のLINE連携と、期限切れの連携コードを片付ける
-  const alive = new Set(groups.filter((g) => g.fields.deletionState !== 'deleting').map((g) => g.id));
-  for (const l of await fs.list('lineLinks', ['groupId'])) {
-    if (fs.count > SUBREQUEST_BUDGET - 10) break;
-    if (!alive.has(l.fields.groupId)) await fs.delete(l.path).catch(() => {});
-  }
-  for (const c of await fs.list('lineLinkCodes', ['expiresAt'])) {
-    if (fs.count > SUBREQUEST_BUDGET - 10) break;
-    const exp = c.fields.expiresAt;
-    if (!(exp instanceof Date) || exp.getTime() < now.getTime() - 3600 * 1000) await fs.delete(c.path).catch(() => {});
-  }
   let sent = 0;
-  for (const g of groups) {
-    if (fs.count > SUBREQUEST_BUDGET) break;        // 残りは次の見回りで送る
-    if (g.fields.deletionState === 'deleting') continue;
-    const groupId = g.id;
-    const due = await fs.query('groups/' + groupId, {
-      from: [{ collectionId: 'yotei' }],
-      where: { fieldFilter: { field: { fieldPath: 'notifyAt' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: now.toISOString() } } },
-      limit: 10,
-    });
-    if (!due.length) continue;
-    const recipients = await recipientsOf(fs, groupId);
-    for (const y of due) {
-      if (fs.count > SUBREQUEST_BUDGET) break;
-      // 先に「送信済み」の印を付ける（同じ予定を二重に送らないため）。
-      // 見回りの間に予定が書き換えられていたら失敗するので、次回あらためて判断する。
-      const claimed = await fs.patch(y.path, { notifyAt: null, notifiedAt: new Date() }, ['notifyAt', 'notifiedAt'], y.updateTime);
-      if (!claimed) continue;
-      const at = y.fields.notifyAt;
-      if (at instanceof Date && now.getTime() - at.getTime() > LATE_LIMIT_MS) continue;
-      if (!recipients.list.length) continue;
-      const text = buildMessage(y.fields, recipients.names[y.fields.uid] || '', now);
-      for (const to of recipients.list) {
-        if (await push(env, fs, to, text)) sent++;
+  try {
+    const groups = await fs.list('groups', ['deletionState']);
+    // Rotate the starting household; a busy household cannot monopolize every run.
+    const offset = groups.length ? Math.floor(now.getTime() / 900000) % groups.length : 0;
+    for (const g of [...groups.slice(offset), ...groups.slice(0, offset)]) {
+      if (g.fields.deletionState === 'deleting') continue;
+      const due = await fs.query(g.path, {
+        from: [{collectionId:'yotei'}],
+        where: {fieldFilter:{field:{fieldPath:'notifyAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},
+        orderBy: [{field:{fieldPath:'notifyAt'},direction:'ASCENDING'}], limit:10,
+      });
+      for (const y of due) {
+        const at = y.fields.notifyAt;
+        if (!(at instanceof Date)) continue;
+        if (now.getTime() - at.getTime() > LATE_LIMIT_MS) {
+          await fs.patch(y.path, {notifyAt:null, notifiedAt:null, notificationStatus:'expired'},
+            ['notifyAt','notifiedAt','notificationStatus'], y.updateTime);
+          continue;
+        }
+        const links = await fs.query('', {from:[{collectionId:'lineLinks'}],
+          where:fieldEq('groupId',{stringValue:g.id})});
+        const members = await fs.list(g.path + '/members', ['name']);
+        const owner = members.find(m => m.id === y.fields.uid);
+        const text = buildMessage(y.fields, owner && owner.fields.name || '', now);
+        let complete = true, accepted = 0;
+        const seen = new Set();
+        const start = links.length ? Math.floor(now.getTime()/900000) % links.length : 0;
+        for (const link of [...links.slice(start), ...links.slice(0,start)]) {
+          const to = link.fields.lineUserId;
+          if (typeof to !== 'string' || !to || seen.has(to)) continue;
+          // The same schedule revision and recipient always reuse one retry key.
+          const key = await deliveryKey(y.path + '\n' + y.updateTime + '\n' + to);
+          const receiptPath = 'lineDeliveryReceipts/' + key;
+          let receipt = await fs.get(receiptPath);
+          if (receipt && receipt.fields.acceptedAt instanceof Date) {
+            seen.add(to); accepted++; continue;
+          }
+          // Recheck server state immediately before each external transmission.
+          if (!await approvedMember(fs, g.id, link.id)) continue;
+          const currentLink = await fs.get(link.path);
+          if (!currentLink || currentLink.fields.groupId !== g.id || currentLink.fields.lineUserId !== to) continue;
+          const currentSchedule = await fs.get(y.path);
+          if (!currentSchedule || currentSchedule.updateTime !== y.updateTime) {complete=false;break;}
+          // Persist one immutable payload before sending, including across midnight/restarts.
+          if (!receipt) {
+            await fs.commit([{update:{name:fs.root+'/'+receiptPath,
+              fields:toFields({text,expiresAt:new Date(at.getTime()+13*3600000)})},
+              currentDocument:{exists:false}}]);
+            receipt = await fs.get(receiptPath);
+          }
+          if (!receipt || typeof receipt.fields.text !== 'string') {complete=false;continue;}
+          seen.add(to);
+          if (!await push(env, fs, to, receipt.fields.text, key)) {complete=false;continue;}
+          sent++; accepted++;
+          // A crash before this write is safe: LINE recognizes the same retry key.
+          await fs.set(receiptPath, {acceptedAt:new Date(), expiresAt:new Date(at.getTime()+13*3600000)});
+        }
+        if (complete && accepted > 0) {
+          await fs.patch(y.path, {notifyAt:null, notifiedAt:new Date(), notificationStatus:'accepted'},
+            ['notifyAt','notifiedAt','notificationStatus'], y.updateTime);
+        }
+        // No eligible recipient or failed delivery: keep notifyAt for the next run.
       }
     }
+    // Clean one verified orphan link per run without relying on a complete household list.
+    const cleanupLinks = await fs.list('lineLinks', ['groupId']);
+    if (cleanupLinks.length) {
+      const link = cleanupLinks[Math.floor(now.getTime()/900000)%cleanupLinks.length];
+      if (!await approvedMember(fs, link.fields.groupId, link.id)) await fs.delete(link.path);
+    }
+    // Bounded maintenance. Never infer a deleted household from a partial list.
+    for (const collectionId of ['lineLinkCodes','lineDeliveryReceipts']) {
+      const expired = await fs.query('', {from:[{collectionId}],
+        where:{fieldFilter:{field:{fieldPath:'expiresAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},limit:3});
+      for (const d of expired) await fs.delete(d.path);
+    }
+  } catch (e) {
+    if (e.message !== 'request-budget') throw e;
+    // Pending schedules retain their notifyAt and receipts for the next run.
   }
-  console.log('notifications sent:', sent, 'requests:', fs.count);
+  console.log('notifications accepted:', sent, 'requests:', fs.count);
 }
-
-async function recipientsOf(fs, groupId) {
-  const links = await fs.query('', {
-    from: [{ collectionId: 'lineLinks' }],
-    where: fieldEq('groupId', { stringValue: groupId }),
-    limit: 20,
-  });
-  const members = await fs.list('groups/' + groupId + '/members', ['status', 'name']);
-  const byUid = {};
-  const names = {};
-  for (const m of members) {
-    byUid[m.id] = m.fields;
-    if (typeof m.fields.name === 'string') names[m.id] = m.fields.name;
-  }
-  const list = [];
-  for (const l of links) {
-    const uid = l.id;
-    const m = byUid[uid];
-    const status = m && (m.status === undefined ? 'approved' : m.status);
-    if (!m) { await fs.delete(l.path).catch(() => {}); continue; }  // 家庭から抜けた人の連携は片付ける
-    if (status !== 'approved') continue;
-    const to = l.fields.lineUserId;
-    if (typeof to === 'string' && !list.includes(to)) list.push(to);
-  }
-  return { list, names };
+async function deliveryKey(value) {
+  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));
+  bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
+  const hex=Array.from(bytes.slice(0,16),b=>b.toString(16).padStart(2,'0')).join('');
+  return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
 }
 
 function buildMessage(y, ownerName, now) {
@@ -262,22 +298,25 @@ async function reply(env, replyToken, text) {
     headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN },
     body: JSON.stringify({ replyToken, messages: [{ type: 'text', text }] }),
   });
-  if (!res.ok) console.error('reply failed', res.status, await res.text());
+  if (!res.ok) console.error('reply failed', res.status);
 }
 
-async function push(env, fs, to, text) {
-  fs.count++;
+async function push(env, fs, to, text, retryKey) {
+  fs.reserve();
+  try {
   const res = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN,
-      'x-line-retry-key': crypto.randomUUID(),
+      'x-line-retry-key': retryKey,
     },
     body: JSON.stringify({ to, messages: [{ type: 'text', text }] }),
   });
-  if (!res.ok) { console.error('push failed', res.status, await res.text()); return false; }
-  return true;
+  if (res.ok || (res.status === 409 && res.headers.get('x-line-accepted-request-id'))) return true;
+  console.error('push failed', res.status);
+  return false;
+  } catch (e) { console.error('push response unavailable'); return false; }
 }
 
 /* ================= Firestore（REST・サービスアカウント） ================= */
@@ -296,6 +335,16 @@ class Firestore {
     this.base = 'https://firestore.googleapis.com/v1/' + this.root;
     this.count = 0;
   }
+  reserve() {
+    if (this.count >= SUBREQUEST_BUDGET) throw new Error('request-budget');
+    this.count++;
+  }
+  async commit(writes) {
+    const res = await this.call('POST',this.base+':commit',{writes});
+    if (res.ok) return true;
+    if ([400,404,409,412].includes(res.status)) return false;
+    throw new Error('commit failed '+res.status);
+  }
   async token() {
     const now = Math.floor(Date.now() / 1000);
     if (cachedToken && cachedToken.email === this.sa.client_email && cachedToken.exp - 60 > now) return cachedToken.token;
@@ -311,7 +360,7 @@ class Firestore {
       { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
     const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(unsigned));
     const jwt = unsigned + '.' + b64url(new Uint8Array(sig));
-    this.count++;
+    this.reserve();
     const res = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -324,7 +373,7 @@ class Firestore {
   }
   async call(method, url, body) {
     const token = await this.token();
-    this.count++;
+    this.reserve();
     const res = await fetch(url, {
       method,
       headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },

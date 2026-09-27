@@ -23,19 +23,39 @@ const cmp = (a, b) => {
   if ('stringValue' in a && 'stringValue' in b) return a.stringValue < b.stringValue ? -1 : a.stringValue > b.stringValue ? 1 : 0;
   return NaN;
 };
-const pushes = [], replies = [];
+const pushes = [], replies = [], keys = [];
+let pushFailure=false, lostResponse=false, requests=0;
+const acceptedKeys=new Set();
 globalThis.fetch = async (url, opt = {}) => {
+  requests++;
   url = String(url);
   const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
   const body = opt.body ? (typeof opt.body === 'string' && opt.body.startsWith('{') ? JSON.parse(opt.body) : opt.body) : null;
   if (url === 'https://oauth2.googleapis.com/token') return json({ access_token: 'gtok', expires_in: 3600 });
-  if (url === 'https://api.line.me/v2/bot/message/push') { pushes.push(body); return json({}); }
+  if (url === 'https://api.line.me/v2/bot/message/push') {
+    keys.push(opt.headers['x-line-retry-key']);
+    if(pushFailure) return json({},500);
+    if(acceptedKeys.has(keys.at(-1))) return new Response('{}',{status:409,headers:{'x-line-accepted-request-id':'accepted'}});
+    acceptedKeys.add(keys.at(-1)); pushes.push(body);
+    if(lostResponse) {lostResponse=false;throw new Error('lost response');}
+    return json({});
+  }
   if (url === 'https://api.line.me/v2/bot/message/reply') { replies.push(body); return json({}); }
   const base = 'https://firestore.googleapis.com/v1/' + ROOT;
   assert.ok(url.startsWith(base), url);
   assert.equal(opt.headers.authorization, 'Bearer gtok');
   const u = new URL(url);
   let rest = decodeURIComponent(u.pathname).slice(('/v1/' + ROOT).length).replace(/^\//, '');
+  if (rest === ':commit') {
+    for(const w of body.writes){
+      const path=(w.delete||w.update.name).slice(ROOT.length+1), pre=w.currentDocument;
+      if(pre && ((pre.updateTime && db.get(path)?.updateTime!==pre.updateTime) ||
+        (pre.exists===false && db.has(path)))) return json({},409);
+    }
+    for(const w of body.writes){const path=(w.delete||w.update.name).slice(ROOT.length+1);
+      if(w.delete)db.delete(path);else put(path,w.update.fields);}
+    return json({});
+  }
   if (rest.endsWith(':runQuery') || u.pathname.endsWith(':runQuery')) {
     rest = rest.replace(/:runQuery$/, '');
     const q = body.structuredQuery;
@@ -50,7 +70,9 @@ globalThis.fetch = async (url, opt = {}) => {
       const c = cmp(v, f.value);
       if ((f.op === 'EQUAL' && c === 0) || (f.op === 'LESS_THAN_OR_EQUAL' && c <= 0)) out.push({ document: docJson(p) });
     }
-    return json(out.length ? out : [{ readTime: 'x' }]);
+    if(q.orderBy)out.sort((a,b)=>cmp(a.document.fields[q.orderBy[0].field.fieldPath],b.document.fields[q.orderBy[0].field.fieldPath]));
+    const limited=q.limit?out.slice(0,q.limit):out;
+    return json(limited.length ? limited : [{readTime:'x'}]);
   }
   const method = opt.method || 'GET';
   const isCollection = rest.split('/').length % 2 === 1;
@@ -79,6 +101,8 @@ async function hook(events, badSig) {
 }
 const user = (id) => ({ type: 'user', userId: id });
 
+const consent=()=>({version:S('2026-09-19.1'),mode:S('kazoku'),privacyAccepted:{booleanValue:true},sensitiveAccepted:{booleanValue:true},sharingAccepted:{booleanValue:true},subjectBasis:S('explained-and-agreed'),acceptedAt:T(new Date())});
+for(const id of ['owner','fam','wait'])put('consents/'+id,consent());
 /* ---- 家庭の準備 ---- */
 put('groups/g1', { createdBy: S('owner') });
 put('groups/g1/members/owner', { name: S('理絵'), status: S('approved') });
@@ -144,9 +168,9 @@ assert.ok(db.get('groups/g1/yotei/y1').fields.notifiedAt.timestampValue);
 assert.ok(db.get('groups/g1/yotei/y2').fields.notifyAt.timestampValue, 'まだ先の予定はそのまま');
 assert.ok('nullValue' in db.get('groups/g1/yotei/yOld').fields.notifyAt, '古すぎる予定は送らずに印だけ');
 assert.ok(db.get('groups/g2/yotei/yDel').fields.notifyAt.timestampValue, '削除中の家庭には触れない');
-assert.equal(db.has('lineLinks/gone'), false, '家庭から抜けた人の連携は片付ける');
-assert.equal(db.has('lineLinks/delHome') || db.has('lineLinks/noHome'), false, '削除された家庭の連携は片付ける');
-assert.equal(db.has('lineLinkCodes/OLDD2345'), false, '期限切れのコードは片付ける');
+assert.ok(!pushes.some(p=>p.to==='Ugone'),'家庭から抜けた人には送らない');
+assert.ok(!pushes.some(p=>['Udel','Uno'].includes(p.to)),'削除された家庭には送らない');
+// Cleanup is bounded and may run after pending notifications finish.
 // 9. 2回目の見回りでは二重に送らない
 await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } });
 await waiter;
@@ -166,3 +190,32 @@ const res = await worker.fetch(new Request('https://w.example/'), env, {});
 assert.equal(await res.text(), 'まいにこ LINE送信役は動いています');
 
 console.log('line worker: 署名確認・友だち追加・連携(期限切れ/承認待ちは不可)・見回り送信(対象者/文面/二重送信なし/古い予定/削除中の家庭)・解除・ブロック 13項目 passed');
+
+// Failure, consent withdrawal, closure, retries and request budget regressions.
+async function tick(){requests=0;await worker.scheduled({},env,{waitUntil:p=>{waiter=p;}});await waiter;assert.ok(requests<=45,'strict request budget');}
+function pending(id){put('groups/g1/yotei/'+id,{date:S(ds),label:S(id),uid:S('owner'),notifyAt:T(new Date(Date.now()-60000))});}
+put('lineLinks/owner',{lineUserId:S('Uowner'),groupId:S('g1')});
+put('consents/owner',consent());
+pending('retry');pushFailure=true;const before=pushes.length;
+await tick();assert.equal(pushes.length,before);assert.ok(db.get('groups/g1/yotei/retry').fields.notifyAt.timestampValue);
+const retryKey=keys.at(-1);pushFailure=false;await tick();assert.equal(pushes.length,before+1);assert.equal(keys.at(-1),retryKey);
+assert.ok(db.get('groups/g1/yotei/retry').fields.notifiedAt.timestampValue);
+pending('lost');lostResponse=true;await tick();const lostKey=keys.at(-1),afterLost=pushes.length;
+await tick();assert.equal(keys.at(-1),lostKey);assert.equal(pushes.length,afterLost,'409 accepted does not duplicate');
+assert.ok(db.get('groups/g1/yotei/lost').fields.notifiedAt.timestampValue);
+pending('withdrawn');db.delete('consents/owner');await tick();assert.equal(pushes.length,afterLost);
+assert.ok(db.get('groups/g1/yotei/withdrawn').fields.notifyAt.timestampValue);
+put('consents/owner',consent());put('accountClosures/owner',{requestedAt:T(new Date())});
+put('lineLinks/owner',{lineUserId:S('Uowner'),groupId:S('g1')});await tick();assert.equal(pushes.length,afterLost,'closed account cannot receive');
+assert.ok(!db.get('groups/g1/yotei/yOld').fields.notifiedAt?.timestampValue,'expired is not sent');
+console.log('additional safety and retry regressions passed');
+// One-time codes remain single-use even when two webhook requests overlap.
+db.delete('accountClosures/owner');put('consents/owner',consent());
+put('lineLinkCodes/RACE2345',{uid:S('owner'),groupId:S('g1'),expiresAt:T(new Date(Date.now()+60000))});
+const previousReplies=replies.length;
+await Promise.all(['Urace1','Urace2'].map(id=>hook([{type:'message',source:user(id),replyToken:id,message:{type:'text',text:'RACE2345'}}])));
+assert.equal(replies.slice(previousReplies).filter(r=>r.messages[0].text.includes('LINE連携しました')).length,1);
+// Several pending schedules exhaust the budget without losing the remainder.
+for(let i=0;i<10;i++)pending('budget'+i);
+await tick();assert.equal(requests,45);assert.ok([...db].some(([p,d])=>p.includes('/yotei/budget')&&d.fields.notifyAt.timestampValue));
+console.log('atomic code consumption and budget exhaustion passed');
