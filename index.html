@@ -813,6 +813,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 </div></div>
 <div class="modal" id="recovery-modal" role="dialog" aria-modal="true" aria-labelledby="recovery-title"><div class="modal-box adult-font">
   <div class="ttl" id="recovery-title">端末の変更・復旧</div>
+  <div class="save-state" id="recovery-state" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
   <p class="note">復旧設定をする前に端末やブラウザーの保存情報を失うと、同じアカウントへ戻せません。端末が使えるうちに設定してください。</p>
   <div class="account-fields">
     <label for="recovery-email">ご自身のメールアドレス</label><input id="recovery-email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254">
@@ -829,7 +830,6 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
   <p class="note">写真・PDFのお薬手帳は、このログイン復旧では戻りません。機種変更後の旧端末で、参加解除やアカウント削除はしないでください。</p>
   <a class="consent-back" href="help.html#recovery" target="_blank" rel="noopener">状況に合う復旧・機種変更の手順を見る</a>
   <div id="recovery-sync-warning" hidden><p class="note">復旧先の保存がまだ完了していません。</p><button type="button" class="set-btn" onclick="syncStartupRecoveryPointer()">保存をやり直す</button></div>
-  <div class="save-state" id="recovery-state" role="status" aria-live="polite"></div>
   <button class="modal-close" onclick="closeRecovery()">とじる</button>
 </div></div>
 <div class="modal" id="account-deletion-modal" role="dialog" aria-modal="true" aria-labelledby="account-deletion-title"><div class="modal-box adult-font">
@@ -1765,7 +1765,7 @@ setTimeout(function(){
 <script src="account-recovery.js"></script>
 <script src="account-deletion.js?v=20260918-consent"></script>
 <script src="household-deletion.js"></script>
-<script src="household-ui.js?v=20260918-mode2"></script>
+<script src="household-ui.js?v=20260927-recovery-feedback"></script>
 <script src="medicine-notebook.js?v=20260921"></script>
 <script src="notebook-integration.js"></script>
 <script src="person-speech.js?v=20260917-voice"></script>

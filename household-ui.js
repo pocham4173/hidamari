@@ -96,6 +96,9 @@ async function syncStartupRecoveryPointer(){
 }
 function recoveryState(text,error=false){
   const el=document.getElementById('recovery-state');el.textContent=text;el.classList.toggle('err',error);
+  if(document.getElementById('recovery-modal').classList.contains('show')){
+    el.scrollIntoView({block:'nearest',behavior:'auto'});
+  }
 }
 function getRecoveryService(){
   if(!recoveryService)recoveryService=MainicoRecovery.create({auth,db,
@@ -147,6 +150,7 @@ function closeRecovery(){
 async function runRecoveryAction(action){
   if(recoveryBusy)return;
   recoveryBusy=true;
+  document.getElementById('recovery-modal').setAttribute('aria-busy','true');
   document.querySelectorAll('#recovery-modal button').forEach(el=>el.disabled=true);
   const email=document.getElementById('recovery-email').value.trim();
   const password=document.getElementById('recovery-password').value;
@@ -155,6 +159,7 @@ async function runRecoveryAction(action){
     const service=getRecoveryService();
     if(action==='register'){
       const result=await service.register({email,password,groupId:gid()});
+      document.getElementById('recovery-password').value='';
       recoveryState(result.ready?'復旧の準備ができています。登録したメールとパスワードを安全に保管してください。':'確認メールを送りました。メールのリンクを開き、戻って「確認できたか調べる」を押してください。');
     }else if(action==='check'){
       const result=await service.checkReady(gid());
@@ -165,6 +170,7 @@ async function runRecoveryAction(action){
       await service.resetPassword(email);recoveryState('登録がある場合は、パスワード再設定のメールが届きます。メールの案内に従ってください。');
     }else if(action==='login'){
       const result=await service.recover({email,password});
+      document.getElementById('recovery-password').value='';
       applyRecoveryJournal();
       recoveryState('共有記録への接続を復旧しました。写真の控えは端末内だけに保存され、別端末へは復旧しません。画面を開きます。');
       document.getElementById('recovery-modal').classList.remove('show');
@@ -179,7 +185,8 @@ async function runRecoveryAction(action){
     }else recoveryState(MainicoRecovery.message(error),true);
   }
   finally{
-    document.getElementById('recovery-password').value='';recoveryBusy=false;
+    recoveryBusy=false;
+    document.getElementById('recovery-modal').setAttribute('aria-busy','false');
     document.querySelectorAll('#recovery-modal button').forEach(el=>el.disabled=false);
   }
 }
