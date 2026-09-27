@@ -249,7 +249,7 @@ table.cal-rec td.pad{background:none;}
 .hy-days{display:flex;gap:8px;}
 .hy-days button{flex:1;min-height:58px;border:2px solid var(--hi);border-radius:12px;background:#fff;color:var(--hi-koi);font-family:inherit;font-size:1.05rem;font-weight:900;cursor:pointer;}
 .hy-days button.on{background:var(--hi);color:#fff;}
-#hy-date,#hy-time,#hy-free{width:100%;min-height:56px;border:2px solid #D8CBB4;border-radius:12px;font-family:inherit;font-size:1.15rem;padding:8px 12px;margin-top:8px;background:#fff;color:var(--cha);box-sizing:border-box;}
+#hy-date,#hy-time,#hy-free,#hy-place,#hy-notify{width:100%;min-height:56px;border:2px solid #D8CBB4;border-radius:12px;font-family:inherit;font-size:1.15rem;padding:8px 12px;margin-top:8px;background:#fff;color:var(--cha);box-sizing:border-box;}
 .hy-save{display:block;width:100%;margin-top:18px;min-height:64px;border:none;border-radius:14px;background:var(--hi);color:#fff;font-family:inherit;font-size:1.2rem;font-weight:900;cursor:pointer;box-shadow:0 4px 0 var(--hi-koi);}
 /* 月のまとめ */
 .sum-overview{padding:16px;border-radius:16px;background:linear-gradient(135deg,#EAF5EE,#F8FCF9);border:2px solid #B8D9C4;}
@@ -404,6 +404,16 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .yt-simple label{font-size:1rem;font-weight:900;color:var(--cha);}
 .yt-simple input{width:100%;min-height:44px;margin-top:5px;font-family:inherit;font-size:.98rem;padding:9px 10px;border:1px solid #CDD6E1;border-radius:9px;background:#F8FAFC;color:var(--cha);}
 .schedule-form-card{padding:14px;}
+/* LINEで予定のお知らせ */
+.line-notify-field{border:2px solid #BFE8CF;border-radius:12px;background:#F3FBF6;padding:10px 12px;margin-top:10px;}
+.line-notify-field .ln-ttl{font-weight:900;color:var(--cha);}
+.line-notify-field .ln-quick{display:flex;gap:8px;margin-top:8px;}
+.line-notify-field .ln-quick button{flex:1;min-height:44px;border:2px solid #06C755;border-radius:10px;background:#fff;color:#067A36;font-family:inherit;font-weight:900;font-size:.9rem;cursor:pointer;}
+.line-notify-field .note{margin-top:6px;}
+.line-add{background:#06C755!important;border-color:#06C755!important;color:#fff!important;text-decoration:none;}
+.line-steps{padding-left:1.3em;margin:10px 0 0;}
+.line-steps li{margin:4px 0;}
+.yt-notify{color:#067A36;}
 .schedule-form-card h3{font-size:.95rem;}
 .yt-form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .yt-form-row label{min-width:0;}
@@ -739,7 +749,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
   <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="subject"><span id="consent-subject-a">記録される本人の意思を確認します。</span></label>
   <label class="consent-item"><input type="checkbox" class="ck-a" data-consent="disclaimer">サービスの限界と通知の制限を確認しました。</label>
   <details class="consent-note-wrap"><summary style="cursor:pointer;padding:8px 0;font-weight:700;">詳しい説明を読む（保存される内容・通知の制限など）</summary>
-  <div class="consent-note">挨拶・予定・服薬ボタン・様子メモ等の内容と日時、記録者を保存します。服薬ボタンは押した記録で、服用の証明ではありません。記録がないことは異常を意味しません。<br>アプリを閉じた家族へのプッシュ通知はありません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。<br>お薬手帳の写真は端末内に保存され、自動共有されません。<br>本人が拒否・不快感を示すときは利用を止めてください。本人の意思を確認できない場合は、このチェックだけで利用を始めないでください。<br>同意は設定から取り消せます。共有済み記録の削除・退会は別の操作です。</div>
+  <div class="consent-note">挨拶・予定・服薬ボタン・様子メモ等の内容と日時、記録者を保存します。服薬ボタンは押した記録で、服用の証明ではありません。記録がないことは異常を意味しません。<br>アプリを閉じた家族へのプッシュ通知はありません（LINE連携した人には、「LINEで知らせる日時」を入れた予定のお知らせだけLINEで届きます）。バックグラウンドや画面ロック中は音・表示が届かないことがあります。<br>お薬手帳の写真は端末内に保存され、自動共有されません。<br>本人が拒否・不快感を示すときは利用を止めてください。本人の意思を確認できない場合は、このチェックだけで利用を始めないでください。<br>同意は設定から取り消せます。共有済み記録の削除・退会は別の操作です。</div>
   </details>
   <p class="note" style="text-align:center;margin:12px 0 2px;"><a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシーを読む（別画面）</a><br><a href="help.html#notifications" target="_blank" rel="noopener">通知の制限を読む（別画面）</a></p>
   <p id="consent-state-a" role="status" aria-live="polite"></p>
@@ -761,7 +771,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
   <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="subject"><span id="consent-subject-b">記録される本人の意思を確認します。</span></label>
   <label class="consent-item"><input type="checkbox" class="ck-b" data-consent="disclaimer">サービスの限界と通知の制限を確認しました。</label>
   <details class="consent-note-wrap"><summary style="cursor:pointer;padding:8px 0;font-weight:700;">詳しい説明を読む（保存される内容・通知の制限など）</summary>
-  <div class="consent-note">挨拶・予定・服薬ボタン・様子メモ等の内容と日時、記録者を保存します。服薬ボタンは押した記録で、服用の証明ではありません。記録がないことは異常を意味しません。<br>アプリを閉じた家族へのプッシュ通知はありません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。<br>お薬手帳の写真は端末内に保存され、自動共有されません。<br>本人が拒否・不快感を示すときは利用を止めてください。本人の意思を確認できない場合は、このチェックだけで利用を始めないでください。<br>同意は設定から取り消せます。共有済み記録の削除・退会は別の操作です。</div>
+  <div class="consent-note">挨拶・予定・服薬ボタン・様子メモ等の内容と日時、記録者を保存します。服薬ボタンは押した記録で、服用の証明ではありません。記録がないことは異常を意味しません。<br>アプリを閉じた家族へのプッシュ通知はありません（LINE連携した人には、「LINEで知らせる日時」を入れた予定のお知らせだけLINEで届きます）。バックグラウンドや画面ロック中は音・表示が届かないことがあります。<br>お薬手帳の写真は端末内に保存され、自動共有されません。<br>本人が拒否・不快感を示すときは利用を止めてください。本人の意思を確認できない場合は、このチェックだけで利用を始めないでください。<br>同意は設定から取り消せます。共有済み記録の削除・退会は別の操作です。</div>
   </details>
   <p class="note" style="text-align:center;margin:12px 0 2px;"><a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシーを読む（別画面）</a><br><a href="help.html#notifications" target="_blank" rel="noopener">通知の制限を読む（別画面）</a></p>
   <p id="consent-state-b" role="status" aria-live="polite"></p>
@@ -982,6 +992,9 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
     <button class="set-btn" onclick="closePersonSettings();openMembers()">参加している人を確認する</button>
     <details><summary>以前の家族からの伝言を見る</summary><p class="note">連携を解除しても、家庭に残っている伝言はここから確認できます。</p><button class="set-btn" onclick="closePersonSettings();openPersonHistory()">伝言の履歴を見る</button></details>
   </div>
+  <div class="set-sec"><h4>LINEで予定のお知らせ</h4>
+    <div id="person-line-area"></div>
+  </div>
   <div class="set-sec" style="border-top:none;"><h4>声のお返事（読み上げ）</h4>
     <div class="note">オンにすると、ボタンを押したあとに声でもお知らせします。</div>
     <button class="set-btn" id="speech-toggle" onclick="toggleSpeech()">声のお返事：オフ（押すとオン）</button>
@@ -1041,6 +1054,14 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
   <input id="hy-free" maxlength="20" placeholder="予定の名前を書いてください">
   <div class="hy-q">時間</div>
   <input type="time" id="hy-time">
+  <div class="hy-q">場所（書かなくても大丈夫です）</div>
+  <input id="hy-place" maxlength="60" placeholder="例：上田市サントミューゼ">
+  <div class="line-notify-field">
+    <div class="ln-ttl">LINEで知らせる日時（入れたときだけ）</div>
+    <input type="datetime-local" id="hy-notify" aria-label="LINEで知らせる日時">
+    <div class="ln-quick"><button type="button" onclick="hyNotifyPreset('eve')">前日の夜7時</button><button type="button" onclick="hyNotifyPreset('morning')">当日の朝7時</button><button type="button" onclick="hyNotifyPreset('none')">知らせない</button></div>
+    <div class="note">LINE連携した家族とご本人に届きます。</div>
+  </div>
   <button class="hy-save" id="hy-save-btn" type="button" onclick="hySave()">この予定を保存する</button>
   <button class="set-btn warn" id="hy-delete-btn" type="button" onclick="hyDelete()" style="display:none;">この予定を削除する</button>
   <div class="note" id="hy-note" role="status">予定を保存します。参加を承認した家族にも表示されます。</div>
@@ -1203,6 +1224,13 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
           <button data-owner-only hidden class="set-btn" onclick="makeInvite('settings-invite-area')">招待コードを作る</button>
           <div id="settings-invite-area"></div>
         </div>
+      </div>
+    </details>
+
+    <details class="set-menu" id="menu-line" ontoggle="if(this.open&&window.MainicoLine)MainicoLine.render('settings-line-area')">
+      <summary>LINEで予定のお知らせ</summary>
+      <div class="set-menu-body">
+        <div id="settings-line-area"></div>
       </div>
     </details>
 
@@ -1488,6 +1516,13 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
             <label>日付<input type="date" id="yt-date"></label>
             <label>時間<input type="time" id="yt-time"></label>
           </div>
+          <label>場所（任意）<input type="text" id="yt-place" maxlength="60" placeholder="例：上田市サントミューゼ"></label>
+          <div class="line-notify-field">
+            <label class="ln-ttl" for="yt-notify">LINEで知らせる日時（任意）</label>
+            <input type="datetime-local" id="yt-notify">
+            <div class="ln-quick"><button type="button" onclick="MainicoLine.preset('yt-notify','yt-date','eve')">前日の夜7時</button><button type="button" onclick="MainicoLine.preset('yt-notify','yt-date','morning')">当日の朝7時</button><button type="button" onclick="document.getElementById('yt-notify').value=''">知らせない</button></div>
+            <div class="note">入れた日時に、LINE連携した家族とご本人へ届きます（15分ほど遅れることがあります）。連携は「設定 → LINEで予定のお知らせ」から。</div>
+          </div>
           <div class="yt-form-row">
             <label>絵文字<input type="text" id="yt-kind" value="📌" maxlength="8" placeholder="絵文字"></label>
             <fieldset class="yt-color-field">
@@ -1716,6 +1751,7 @@ setTimeout(function(){
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260917-voice"></script>
+<script src="line-notify.js?v=20260926"></script>
 <script>
 const previewStorage={
   getItem:k=>localStorage.getItem(k),
@@ -1737,6 +1773,7 @@ if(window.MAINICO_RECAPTCHA_SITE_KEY){
   );
 }
 const db = previewApp.firestore();
+window.db = db;
 window.mainicoStartupStage='ログインの準備中';
 if('serviceWorker' in navigator){
   try{ navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('service worker',e); }); }
@@ -1905,6 +1942,8 @@ function openHYotei(id){
     document.getElementById('hy-date').value=v.date||todayStr();
     document.getElementById('hy-free').value=v.label||'';
     document.getElementById('hy-time').value=v.time||'';
+    document.getElementById('hy-place').value=v.place||'';
+    document.getElementById('hy-notify').value=typeof MainicoLine!=='undefined'?MainicoLine.toInputValue(v.notifyAt):'';
     note.textContent='予定を変更します。参加を承認した家族にも反映されます。';
     document.getElementById('cal-modal').classList.remove('show');
     speak('予定の 変更を ひらきました');
@@ -1915,6 +1954,8 @@ function openHYotei(id){
     document.getElementById('hy-date').value=todayStr();
     document.getElementById('hy-free').value='';
     document.getElementById('hy-time').value='';
+    document.getElementById('hy-place').value='';
+    document.getElementById('hy-notify').value='';
     note.textContent='予定を保存します。参加を承認した家族にも表示されます。';
     speak('予定の 入力を ひらきました');
   }
@@ -1926,6 +1967,20 @@ function closeHYotei(silent){
   document.getElementById('h-yotei-modal').classList.remove('show');
   hEditingYoteiId='';
 }
+/* LINEで知らせる日時。line-notify.js が読み込めない時は、既存の値を変えない */
+function lineNotifyInput(inputId,origin){
+  if(typeof MainicoLine==='undefined') return {ok:true,fields:{}};
+  const r=MainicoLine.readNotify(inputId,origin&&origin.notifyAt);
+  return r.ok?{ok:true,fields:{notifyAt:r.value}}:r;
+}
+function hyNotifyPreset(kind){
+  feedback();
+  const input=document.getElementById('hy-notify');
+  if(kind==='none'){ input.value=''; speak('LINEでは しらせません'); return; }
+  if(!document.getElementById('hy-date').value) document.getElementById('hy-date').value=todayStr();
+  const d=MainicoLine.preset('hy-notify','hy-date',kind);
+  if(d) speak((kind==='eve'?'前の日の 夜7時':'当日の 朝7時')+'に、LINEで しらせます');
+}
 function hyDateStr(){
   return document.getElementById('hy-date').value || todayStr();
 }
@@ -1934,10 +1989,14 @@ async function hySave(){
   const label=document.getElementById('hy-free').value.trim();
   const date=hyDateStr();
   const time=document.getElementById('hy-time').value||'';
+  const place=document.getElementById('hy-place').value.trim().slice(0,60);
   const n=document.getElementById('hy-note');
   const btn=document.getElementById('hy-save-btn');
   if(!label){ n.textContent='予定の名前を書いてください';speak(n.textContent);document.getElementById('hy-free').focus();return; }
   const editId=hEditingYoteiId;
+  const origin=editId?yoteiCache.find(x=>x._id===editId):null;
+  const notify=lineNotifyInput('hy-notify',origin);
+  if(!notify.ok){ n.textContent=notify.message;speak(n.textContent);document.getElementById('hy-notify').focus();return; }
   const current=communicationSession(),view=hYoteiView;
   const sameView=()=>current()&&view===hYoteiView;
   feedback();
@@ -1950,12 +2009,12 @@ async function hySave(){
       const v=yoteiCache.find(x=>x._id===editId);
       if(!v || v.uid!==uid()) throw new Error('この予定は変更できません');
       await col('yotei').doc(editId).update({
-        date:date,time:time,label:label,repeat:'none',
+        date:date,time:time,label:label,repeat:'none',place:place,...notify.fields,
         updatedAt:firebase.firestore.FieldValue.serverTimestamp()
       });
     }else{
       await col('yotei').add({
-        kind:'📌',date:date,time:time,label:label,color:'#3D6FB4',repeat:'none',uid:uid(),
+        kind:'📌',date:date,time:time,label:label,color:'#3D6FB4',repeat:'none',uid:uid(),place:place,...notify.fields,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt:firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -2738,7 +2797,7 @@ function openBackConfirm(){
   if(back) requestAnimationFrame(function(){ back.classList.add('show'); speak('利用方法を 変更しますか'); });
 }
 function closeBackConfirm(){ speak('変更を やめました'); document.getElementById('back-modal').classList.remove('show'); }
-function openPersonSettings(){ applyHouseholdPermissions(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); }
+function openPersonSettings(){ applyHouseholdPermissions(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); if(window.MainicoLine) MainicoLine.render('person-line-area'); }
 function closePersonSettings(){ speak('とじました'); document.getElementById('person-settings-modal').classList.remove('show'); }
 /* ===== 予定 ===== */
 let yoteiCache=[];
@@ -2803,6 +2862,7 @@ function nextYotei(){
 function yoteiDetail(v){
   const parts=[];
   if(v.time) parts.push(v.time);
+  if(v.place) parts.push('📍'+v.place);
   if(v.repeat==='weekly') parts.push('以前の繰り返し予定（毎週）・修正保存で1回だけになります');
   if(v.repeat==='monthly') parts.push('以前の繰り返し予定（毎月）・修正保存で1回だけになります');
   return parts.join(' / ');
@@ -3683,7 +3743,8 @@ function initKazoku(){
           '<button class="yt-del danger" onclick="delYotei(\''+jsArg(v._id)+'\')">削除する</button></span>'
         : '<small>'+(v.uid?'この予定は、登録した家族だけが変更・削除できます':'以前の予定（承認済みの家族が整理できます）')+'</small>';
       return '<div class="yt-item" style="border-left:6px solid '+yoteiColor(v)+';padding-left:8px"><span class="yt-main"><small class="yt-date">'+esc(v.kind||'📌')+' '+dateJp(dd)+'</small><b>'+esc(v.label)+'</b>'+
-        (detail?'<br><small>'+esc(detail)+'</small>':'')+'</span>'+actions+'</div>';
+        (detail?'<br><small>'+esc(detail)+'</small>':'')+
+        (typeof MainicoLine!=='undefined'&&MainicoLine.describe(v)?'<br><small class="yt-notify">'+esc(MainicoLine.describe(v))+'</small>':'')+'</span>'+actions+'</div>';
     }).join('');
   });
 }
@@ -5597,7 +5658,7 @@ function setYoteiSaveState(text,isError){
 }
 function clearYoteiForm(){
   editingYoteiId='';
-  ['yt-date','yt-time','yt-label'].forEach(id=>document.getElementById(id).value='');
+  ['yt-date','yt-time','yt-label','yt-place','yt-notify'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('yt-kind').value='📌';
   setYoteiColor('#4F7FD3');
   document.getElementById('yt-form-title').textContent='予定の登録';
@@ -5613,6 +5674,8 @@ function editYotei(id){
   document.getElementById('yt-date').value=v.date||'';
   document.getElementById('yt-time').value=v.time||'';
   document.getElementById('yt-label').value=v.label||'';
+  document.getElementById('yt-place').value=v.place||'';
+  document.getElementById('yt-notify').value=typeof MainicoLine!=='undefined'?MainicoLine.toInputValue(v.notifyAt):'';
   setYoteiColor(yoteiColor(v));
   document.getElementById('yt-form-title').textContent='予定を修正する';
   document.getElementById('yt-save-btn').textContent='修正を保存する';
@@ -5628,7 +5691,11 @@ async function saveYotei(){
   const color=document.getElementById('yt-color').value;
   if(!date){alert('日付を選んでください');return;}
   if(!label){alert('予定名を入力してください');return;}
-  const data={kind,date,time,label,color,repeat:'none',uid:uid(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const place=document.getElementById('yt-place').value.trim().slice(0,60);
+  const origin=editingYoteiId?yoteiCache.find(x=>x._id===editingYoteiId):null;
+  const notify=lineNotifyInput('yt-notify',origin);
+  if(!notify.ok){alert(notify.message);return;}
+  const data={kind,date,time,label,color,repeat:'none',uid:uid(),place,...notify.fields,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
   const btn=document.getElementById('yt-save-btn');
   btn.disabled=true;
   setYoteiSaveState('保存中…');

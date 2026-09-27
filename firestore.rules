@@ -168,6 +168,13 @@ service cloud.firestore {
           && resource.data.uid == request.auth.uid);
       }
 
+      /* 予定の追加項目(2026-09-26): 場所(60文字まで)と、LINEで知らせる日時。
+         notifiedAt(送信済みの印)は送信役(サーバー)だけが書く。 */
+      function validYoteiExtras(d) {
+        return (!('place' in d) || (d.place is string && d.place.size() <= 60))
+          && (!('notifyAt' in d) || d.notifyAt == null || d.notifyAt is timestamp);
+      }
+
       match /yotei/{yoteiId} {
         allow read: if (isApproved(groupId) && hasConsent()) || deletingOwner(groupId);
 
@@ -176,8 +183,9 @@ service cloud.firestore {
           && request.resource.data.get('uid', null) == request.auth.uid
           && request.resource.data.keys().hasOnly([
             'kind', 'date', 'time', 'label', 'color', 'repeat',
-            'uid', 'createdAt', 'updatedAt'
+            'uid', 'createdAt', 'updatedAt', 'place', 'notifyAt'
           ])
+          && validYoteiExtras(request.resource.data)
           && request.resource.data.keys().hasAll([
             'kind', 'date', 'time', 'label', 'color', 'repeat',
             'uid', 'createdAt', 'updatedAt'
@@ -194,8 +202,10 @@ service cloud.firestore {
           && (resource.data.get('uid', null) == null
               || resource.data.get('uid', null) == request.auth.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'kind', 'date', 'time', 'label', 'color', 'repeat', 'uid', 'updatedAt'
+            'kind', 'date', 'time', 'label', 'color', 'repeat', 'uid', 'updatedAt',
+            'place', 'notifyAt'
           ])
+          && validYoteiExtras(request.resource.data)
           && request.resource.data.get('updatedAt', null) == request.time
           && (
             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid'])
@@ -269,6 +279,32 @@ service cloud.firestore {
       allow delete: if (signedIn() && request.auth.uid == uid
           && connectionReleasedAfter(resource.data.groupId))
         || (signedIn() && request.auth.uid != uid && deletingOwner(resource.data.groupId));
+    }
+
+    // LINE連携コード(予定のお知らせ用・2026-09-26)。
+    // 承認済みの本人名義で作り、10分だけ有効。照合と連携は送信役(サーバー)が行う。
+    match /lineLinkCodes/{code} {
+      allow get: if signedIn() && resource.data.uid == request.auth.uid;
+      allow list: if false;
+      allow create: if code.matches('^[A-HJ-NP-Z2-9]{8}$')
+        && request.resource.data.keys().hasOnly(['uid', 'groupId', 'createdAt', 'expiresAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.groupId is string
+        && isApproved(request.resource.data.groupId) && hasConsent()
+        && writableGroup(request.resource.data.groupId)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(11, 'm');
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // LINE連携の状態。書き込みは送信役(サーバー)だけ。本人は確認と解除ができる。
+    match /lineLinks/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create, update: if false;
+      allow delete: if signedIn() && request.auth.uid == uid;
     }
 
     match /invites/{code} {
