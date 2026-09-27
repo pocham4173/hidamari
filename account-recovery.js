@@ -145,9 +145,13 @@
         const email=emailValue(params.email),password=String(params.password||'');
         if(!password)throw problem('auth/invalid-credential');
         if(before&&localGroupId){
-          if(!passwordUser(before))throw problem('recovery/preserve-current');
-          const ready=await checked(before,localGroupId);
-          if(!ready.ready)throw problem('recovery/current-unverified');
+          const consent=params.leaveUnconfigured;
+          const mayLeave=before.isAnonymous===true && consent && consent.uid===expected && consent.groupId===localGroupId && consent.noRecordsToKeep===true;
+          if(!mayLeave){
+            if(!passwordUser(before))throw problem('recovery/preserve-current');
+            const ready=await checked(before,localGroupId);
+            if(!ready.ready)throw problem('recovery/current-unverified');
+          }
         }
         let session;
         try{

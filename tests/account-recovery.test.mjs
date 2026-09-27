@@ -208,3 +208,28 @@ test('changing the account while the recovery journal is being saved aborts the 
   await assert.rejects(f.service.recover(login),code('recovery/session-changed'));
   assert.equal(count(f,'switch'),0);assert.equal(f.auth.currentUser.uid,'another-tab');
 });
+
+test('no-records consent is scoped to the current anonymous household',async()=>{
+  const consent={uid:'old',groupId:'g1',noRecordsToKeep:true};
+  for(const invalid of [undefined,{...consent,uid:'other'},{...consent,groupId:'other'},{...consent,noRecordsToKeep:false}]){
+    const f=fixture({localGroupId:'g1'});
+    await assert.rejects(f.service.recover({...login,leaveUnconfigured:invalid}),code('recovery/preserve-current'));
+    assert.equal(count(f,'session'),0);
+  }
+  const f=fixture({localGroupId:'g1'});
+  assert.equal((await f.service.recover({...login,leaveUnconfigured:consent})).uid,'restored');
+  assert.equal(f.records.has('groups/g1'),true);
+  const linked=fixture({localGroupId:'g1',linked:true});
+  await assert.rejects(linked.service.recover({...login,leaveUnconfigured:consent}),code('recovery/current-unverified'));
+});
+test('consented switch keeps the old session on invalid target, network, journal or scope failure',async()=>{
+  const params={...login,leaveUnconfigured:{uid:'old',groupId:'g1',noRecordsToKeep:true}};
+  for(const change of [f=>{f.faults.login=fail('auth/wrong-password');},f=>{f.faults.get=fail('unavailable');},f=>{f.restored.emailVerified=false;},f=>f.records.delete('accounts/restored'),f=>f.records.delete('groups/g2/members/restored')]){
+    const f=fixture({localGroupId:'g1'});change(f);
+    await assert.rejects(f.service.recover(params));assert.equal(f.auth.currentUser.uid,'old');assert.equal(count(f,'switch'),0);assert.equal(count(f,'dispose'),1);
+  }
+  const f=fixture({localGroupId:'g1',beforeSwitch:async()=>{throw fail('storage-failed');}});
+  await assert.rejects(f.service.recover(params));assert.equal(f.auth.currentUser.uid,'old');
+  const changed=fixture({localGroupId:'g1'});changed.setLoginHook(()=>changed.setLocalGroupId('g3'));
+  await assert.rejects(changed.service.recover(params),code('recovery/session-changed'));assert.equal(count(changed,'switch'),0);
+});

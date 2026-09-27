@@ -825,6 +825,10 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
     <button class="set-btn" onclick="runRecoveryAction('check')">確認できたか調べる</button>
     <button class="set-btn" onclick="runRecoveryAction('resend')">確認メールを再送する</button>
   </div>
+  <div id="recovery-switch-warning" hidden>
+    <p class="note">この端末で今開いている登録には復旧設定がありません。切り替えると今の登録に戻れなくなることがあります。今の記録やお薬手帳は、切り替え先には移りません。</p>
+    <label style="display:block;padding:16px 0"><input type="checkbox" id="recovery-leave-confirm"> 今の登録に残したい記録・お薬手帳はありません</label>
+  </div>
   <button class="set-btn" id="recovery-login" onclick="runRecoveryAction('login')">以前のアカウントを復旧する</button>
   <button class="set-btn" onclick="runRecoveryAction('reset')">パスワードを忘れた方</button>
   <p class="note">写真・PDFのお薬手帳は、このログイン復旧では戻りません。機種変更後の旧端末で、参加解除やアカウント削除はしないでください。</p>
@@ -1037,6 +1041,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
     <p class="note" data-household-role></p>
     <button class="set-btn warn" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
     <button class="set-btn" onclick="openRecovery()">端末をなくす前に復旧を設定する</button>
+    <button class="set-btn" onclick="openRecovery(true)">復旧設定済みのアカウントでログインする</button>
     <div class="note">ご自身のメールアドレスを使います。本人にパスワードを覚えてもらう必要はありません。家族は自分のアカウントで設定してください。</div>
     <button class="set-btn warn" data-owner-only hidden onclick="deleteAllData()">共有データをすべて削除する</button>
   </div>
@@ -1260,6 +1265,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       <summary>機種変更・アカウントの復旧</summary>
       <div class="set-menu-body">
         <button class="set-btn" onclick="openRecovery()">端末をなくす前に復旧を設定する</button>
+    <button class="set-btn" onclick="openRecovery(true)">復旧設定済みのアカウントでログインする</button>
         <a class="set-btn" href="help.html#recovery" target="_blank" rel="noopener">機種変更・復旧の手順を見る</a>
         <div class="note">ご自身のメールアドレスを使います。家族は自分のアカウントで設定してください。</div>
       </div>
@@ -1762,10 +1768,10 @@ setTimeout(function(){
 <script src="ueda-centers.js?v=20260918"></script>
 <script src="consent.js?v=20260919"></script>
 <script src="consent-ui.js?v=20260921-scroll"></script>
-<script src="account-recovery.js"></script>
+<script src="account-recovery.js?v=20260927-account-switch"></script>
 <script src="account-deletion.js?v=20260918-consent"></script>
 <script src="household-deletion.js"></script>
-<script src="household-ui.js?v=20260927-recovery-feedback"></script>
+<script src="household-ui.js?v=20260927-account-switch"></script>
 <script src="medicine-notebook.js?v=20260921"></script>
 <script src="notebook-integration.js"></script>
 <script src="person-speech.js?v=20260917-voice"></script>

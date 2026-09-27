@@ -5,6 +5,7 @@ let householdUnsub=null, ownMemberUnsub=null, recoveryBusy=false, deletionBusy=f
 let recoveryService=null, deletionService=null, householdBootGeneration=0;
 const RECOVERY_JOURNAL='mainico_recovery_journal_v1';
 let deletionResumeOnly=false;
+let recoverySwitchScope=null;
 
 function isHouseholdOwner(){ return householdVerified && householdOwnerId===uid(); }
 function requireHouseholdOwner(){
@@ -132,15 +133,18 @@ function applyRecoveryJournal(){
   localStorage.removeItem(RECOVERY_JOURNAL);
   return true;
 }
-async function openRecovery(){
+async function openRecovery(switchAccount=false){
+  recoverySwitchScope=switchAccount && gid()?{uid:uid(),groupId:gid()}:null;
   document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
   document.getElementById('recovery-modal').classList.add('show');
   document.getElementById('recovery-password').value='';
   renderRecoveryPointerSync();
-  document.getElementById('recovery-register').hidden=!gid();
-  document.getElementById('recovery-login').hidden=!!gid();
+  document.getElementById('recovery-register').hidden=!gid() || switchAccount;
+  document.getElementById('recovery-login').hidden=!!gid() && !switchAccount;
+  document.getElementById('recovery-switch-warning').hidden=!(recoverySwitchScope && auth.currentUser?.isAnonymous);
+  document.getElementById('recovery-leave-confirm').checked=false;
   document.getElementById('recovery-email').value=auth.currentUser?.email||'';
-  recoveryState(gid()?'このアカウントに、復旧用のメールアドレスを登録します。確認メールのリンクを開いたあと「確認できたか調べる」を押してください。':'以前に登録・確認したメールアドレスで、家族との接続を復旧します。');
+  recoveryState(switchAccount?'復旧設定を済ませたメールアドレスとパスワードを入力してください。':gid()?'このアカウントに、復旧用のメールアドレスを登録します。確認メールのリンクを開いたあと「確認できたか調べる」を押してください。':'以前に登録・確認したメールアドレスで、家族との接続を復旧します。');
 }
 function closeRecovery(){
   if(recoveryBusy || accountClosureBusy)return;
@@ -169,7 +173,8 @@ async function runRecoveryAction(action){
     }else if(action==='reset'){
       await service.resetPassword(email);recoveryState('登録がある場合は、パスワード再設定のメールが届きます。メールの案内に従ってください。');
     }else if(action==='login'){
-      const result=await service.recover({email,password});
+      const leaveUnconfigured=recoverySwitchScope && document.getElementById('recovery-leave-confirm').checked?{...recoverySwitchScope,noRecordsToKeep:true}:null;
+      const result=await service.recover({email,password,leaveUnconfigured});
       document.getElementById('recovery-password').value='';
       applyRecoveryJournal();
       recoveryState('共有記録への接続を復旧しました。写真の控えは端末内だけに保存され、別端末へは復旧しません。画面を開きます。');

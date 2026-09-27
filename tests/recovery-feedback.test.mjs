@@ -30,5 +30,22 @@ await c.runRecoveryAction('check');assert.equal(password.value,'short');assert.m
 await c.runRecoveryAction('resend');assert.equal(password.value,'short');assert.match(state.textContent,/送れませんでした/);
 assert.ok(scrolled>=8,'progress, success and errors are scrolled into view');
 assert.equal(d.getElementById('recovery-modal').getAttribute('aria-busy'),'false');
+// Switch entry exposes login and resets consent every time it opens.
+Object.assign(c,{auth:{currentUser:{uid:'user',isAnonymous:true}},recoverySwitchScope:null,renderRecoveryPointerSync:()=>{}});
+vm.runInContext(ui.slice(ui.indexOf('async function openRecovery('),ui.indexOf('function closeRecovery(')),c);
+await c.openRecovery(true);
+assert.equal(d.getElementById('recovery-login').hidden,false);
+assert.equal(d.getElementById('recovery-register').hidden,true);
+assert.equal(d.getElementById('recovery-switch-warning').hidden,false);
+const consent=d.getElementById('recovery-leave-confirm');
+consent.checked=true;await c.openRecovery(true);assert.equal(consent.checked,false);
+let passed;
+service.recover=async params=>{passed=params;throw Error('test login failure');};
+consent.checked=true;password.value='existing-password';
+await c.runRecoveryAction('login');
+assert.equal(passed.leaveUnconfigured.uid,'user');assert.equal(passed.leaveUnconfigured.groupId,'group');
+assert.equal(passed.leaveUnconfigured.noRecordsToKeep,true);assert.equal(password.value,'existing-password');
+await c.openRecovery();assert.equal(d.getElementById('recovery-login').hidden,true);
+assert.equal(d.getElementById('recovery-switch-warning').hidden,true);
 dom.window.close();
 console.log('recovery feedback: visible progress/results, preserved retry input, success clearing and duplicate-submit guard passed');
