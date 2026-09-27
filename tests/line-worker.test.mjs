@@ -162,7 +162,7 @@ assert.equal(pushes.length, 2, '連携した承認済みの2人だけに1通ず�
 assert.deepEqual(pushes.map((p) => p.to).sort(), ['Ufam', 'Uowner']);
 const text = pushes[0].messages[0].text;
 const wd = '日月火水木金土'.charAt(tomorrow.getUTCDay());
-assert.equal(text, '📅 予定のお知らせ（まいにこ）\n明日 ' + (tomorrow.getUTCMonth() + 1) + '月' + tomorrow.getUTCDate() + '日（' + wd + '） 13:30\n📍 上田市サントミューゼ\n🏥 通院\n（登録：理絵）\n\nまいにこで確認する\nhttps://pocham4173.github.io/hidamari/');
+assert.equal(text, '📅 予定のお知らせ（まいにこ）\n明日 ' + (tomorrow.getUTCMonth() + 1) + '月' + tomorrow.getUTCDate() + '日（' + wd + '） 13:30\n📍 上田市サントミューゼ\n🏥 通院\n（登録：理絵）\n\nカレンダーでこの予定を確認する\nhttps://pocham4173.github.io/hidamari/?openExternalBrowser=1#schedule=y1&group=g1');
 assert.ok('nullValue' in db.get('groups/g1/yotei/y1').fields.notifyAt, '送ったら印を付ける');
 assert.ok(db.get('groups/g1/yotei/y1').fields.notifiedAt.timestampValue);
 assert.ok(db.get('groups/g1/yotei/y2').fields.notifyAt.timestampValue, 'まだ先の予定はそのまま');

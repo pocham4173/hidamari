@@ -130,6 +130,7 @@ for(const previous of ['honnin','kazoku','konly']){
     vm.runInContext(source('let pendingMode=null;','function agreeConsent('),f.c);
     vm.runInContext(source('function afterConsent(','function setupConnectPage(){'),f.c);
     vm.runInContext(source('async function finishSetup(){','async function copyPendingHelp(){'),f.c);
+    vm.runInContext(source('/* LINE通知の行き先はURLに残し','/* ===== 画面遷移 ===== */'),f.c);
     vm.runInContext(source('function startMode(){','function resetMode(){'),f.c);
     const finish=f.c.finishSetup;f.c.finishSetup=()=>{finished=finish();return finished;};
     saved.setItem('mainicoMode','honnin');saved.setItem('kazokuOnly','1');

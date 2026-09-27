@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {JSDOM} from 'jsdom';
+const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+const start=html.indexOf('/* LINE通知の行き先はURLに残し');
+const source=html.slice(start,html.indexOf('/* ===== 画面遷移 ===== */',start));
+for(const mode of ['kazoku','honnin']){
+ const dom=new JSDOM(html,{url:'https://example.test/#schedule=y1&group=g1',runScripts:'outside-only'});
+ const c=dom.getInternalVMContext(),d=dom.window.document;
+ let group='g1',tab='',cal=0;
+ Object.assign(c,{gid:()=>group,yoteiCache:[],showTab:t=>{tab=t;},openCal:()=>{cal++;d.getElementById('cal-modal').classList.add('show');},renderFamilyCal(){},dateOnly:s=>new Date(s+'T00:00:00')});
+ vm.runInContext(source,c);
+ c.openScheduleLink();assert.equal(tab,'');assert.equal(cal,0,'entry does not bypass login');
+ d.getElementById(mode).classList.add('active');c.openScheduleLink();
+ if(mode==='kazoku')assert.equal(tab,'t-yotei');else assert.equal(cal,1);
+ c.yoteiCache=[{_id:'y1',date:'2026-10-06',time:'09:00',label:'<script>test</script>',place:'場所'}];
+ c.renderScheduleLink(true);
+ const box=d.getElementById(mode==='kazoku'?'line-schedule-detail':'cal-day-detail');
+ assert.match(box.textContent,/2026-10-06/);assert.equal(box.querySelector('script'),null);
+ assert.equal(vm.runInContext('scheduleCalendarDate.getMonth()',c),9,'opens scheduled month');
+ c.yoteiCache=[];c.renderScheduleLink(true);assert.match(box.textContent,/削除されたか/);
+ group='other';c.renderScheduleLink(true);assert.match(box.textContent,/別の家庭/);
+ assert.equal(c.readScheduleLink('#schedule=../bad&group=g1'),null);
+ assert.equal(c.readScheduleLink(''),null);
+ assert.match(d.getElementById('entry').textContent,/新しく登録せず/);
+ dom.window.close();
+}
+assert.match(html,/applyHouseholdPermissions\(\);\s+openScheduleLink\(\);/);
+assert.match(html,/if\(cb\) cb\(list,snap.metadata\);\s+renderScheduleLink/);
+console.log('schedule link: auth wait, both modes, month, deleted, household boundary and escaping passed');

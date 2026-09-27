@@ -74,6 +74,7 @@ jobs:
           node tests/home-conversation-dom.test.mjs
           node tests/person-speech.test.mjs
           node tests/simple-navigation.test.mjs
+          node tests/schedule-link.test.mjs
           node tests/family-only-records.test.mjs
           node tests/consent.test.mjs
           node tests/consent-routing.test.mjs

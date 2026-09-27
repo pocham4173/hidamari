@@ -1500,6 +1500,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 
     <!-- 予定 -->
     <div class="ftab" id="t-yotei" style="display:none;">
+      <div class="card dom-yotei" id="line-schedule-detail" style="display:none;" aria-live="polite"></div>
       <div class="card dom-yotei">
         <h3 id="f-cal-ttl">今月のカレンダー</h3>
         <table class="cal" id="f-cal-table"></table>
@@ -2336,6 +2337,55 @@ function installApp(){
 }
 updateInstallButton();
 
+/* LINE通知の行き先はURLに残し、認証・同意・家庭確認が済んでから開く。 */
+function readScheduleLink(hash){
+  const params=new URLSearchParams(String(hash||'').replace(/^#/,''));
+  const id=params.get('schedule'),group=params.get('group');
+  if(!id||!group||!/^[-A-Za-z0-9_]{1,128}$/.test(id)||!/^[-A-Za-z0-9_]{1,128}$/.test(group))return null;
+  return {id,group};
+}
+let scheduleLink=readScheduleLink(location.hash),scheduleLinkOpened=false,scheduleCalendarDate=null;
+function openScheduleLink(){
+  if(!scheduleLink||scheduleLinkOpened||!gid())return;
+  const family=document.getElementById('kazoku').classList.contains('active');
+  const person=document.getElementById('honnin').classList.contains('active');
+  if(!family&&!person)return;
+  scheduleLinkOpened=true;
+  if(family)showTab('t-yotei');
+  else openCal();
+  renderScheduleLink(false,true);
+}
+function renderScheduleLink(ready,loading){
+  if(!scheduleLinkOpened||!scheduleLink)return;
+  const family=document.getElementById('kazoku').classList.contains('active');
+  const person=document.getElementById('honnin').classList.contains('active');
+  if(!family&&!person)return;
+  if(person&&!document.getElementById('cal-modal').classList.contains('show'))return;
+  const box=document.getElementById(family?'line-schedule-detail':'cal-day-detail');
+  if(!box)return;
+  box.style.display='block';box.replaceChildren();
+  const title=document.createElement('h3');title.textContent='LINEでお知らせした予定';box.appendChild(title);
+  const v=!loading&&scheduleLink.group===gid()?yoteiCache.find(x=>x._id===scheduleLink.id):null;
+  const body=document.createElement('p');box.appendChild(body);
+  if(scheduleLink.group!==gid()){body.textContent='この通知は別の家庭の予定です。いつもお使いのアカウントで開いてください。';return;}
+  if(!v){body.textContent=ready?'この予定は削除されたか、現在は確認できません。':'予定を読み込んでいます…';return;}
+  const date=/^\d{4}-\d{2}-\d{2}$/.test(v.date||'')?dateOnly(v.date):null;
+  if(date&&!isNaN(date.getTime()))scheduleCalendarDate=date;
+  if(family)renderFamilyCal();
+  // 本人側も対象の月を描き直し、詳細はこの下で表示する。
+  else {openCal();box.style.display='block';box.replaceChildren(title,body);}
+  body.textContent=[v.date,v.time,v.label,v.place].filter(Boolean).join('　');
+}
+if(scheduleLink){
+  const note=document.createElement('p');note.className='note';
+  note.textContent='LINEの予定を開こうとしています。初めての画面が出た場合は、新しく登録せず、右下のメニューからいつものブラウザで開いてください。ログインが必要な場合は「以前のアカウントで再開する」を選んでください。再開後に予定を表示します。';
+  const entry=document.getElementById('entry');entry.insertBefore(note,entry.firstChild);
+}
+window.addEventListener('hashchange',()=>{
+  scheduleLink=readScheduleLink(location.hash);scheduleLinkOpened=false;scheduleCalendarDate=null;
+  openScheduleLink();
+});
+
 /* ===== 画面遷移 ===== */
 function resetFamilyScroll(){
   var body=document.querySelector('.f-body');
@@ -2785,6 +2835,7 @@ function startMode(){
   else if(m==='kazoku' && gid()){ showPage('kazoku'); initKazoku(); }
   else showPage('entry');
   applyHouseholdPermissions();
+  openScheduleLink();
 }
 function resetMode(){ previewStorage.removeItem('mainicoMode'); location.reload(); }
 function openBackConfirm(){
@@ -2811,6 +2862,7 @@ function subscribeYotei(cb){
     });
     yoteiCache=list;
     if(cb) cb(list,snap.metadata);
+    renderScheduleLink(!snap.metadata.fromCache);
   }, err=>{
     console.warn('yotei', err);
     if(isKOnly() && document.getElementById('kazoku').classList.contains('active')){
@@ -3190,7 +3242,7 @@ function sendOnegai(text, inputId){
 /* カレンダー */
 function openCal(){
   speak('カレンダーを ひらきました');
-  const d=new Date();
+  const d=scheduleCalendarDate||new Date();
   const y=d.getFullYear(), m=d.getMonth();
   document.getElementById('cal-ttl').textContent=(m+1)+'月のカレンダー';
   const marks={};
@@ -3208,7 +3260,7 @@ function openCal(){
   let html='<tr><th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr><tr>';
   for(let i=0;i<first;i++) html+='<td></td>';
   for(let day=1;day<=last;day++){
-    const cls=(day===d.getDate())?' today':'';
+    const cls=(dateString(new Date(y,m,day))===todayStr())?' today':'';
     const tap=marks[day]?' class="has-yotei'+cls+'" onclick="speakCalDay('+y+','+m+','+day+')"':(cls?' class="today"':'');
     html+='<td'+tap+'>'+day+(marks[day]?'<span class="mk">'+marks[day].join('')+'</span>':'')+'</td>';
     if((first+day)%7===0) html+='</tr><tr>';
@@ -3258,7 +3310,7 @@ function renderPendingCard(elId, snap){
 function renderFamilyCal(){
   const tbl=document.getElementById('f-cal-table');
   if(!tbl) return;
-  const d=new Date();
+  const d=scheduleCalendarDate||new Date();
   const y=d.getFullYear(), m=d.getMonth();
   document.getElementById('f-cal-ttl').textContent=(m+1)+'月のカレンダー';
   const marks={};
@@ -3276,7 +3328,7 @@ function renderFamilyCal(){
   let html='<tr><th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr><tr>';
   for(let i=0;i<first;i++) html+='<td></td>';
   for(let day=1;day<=last;day++){
-    const cls=(day===d.getDate())?' class="today"':'';
+    const cls=(dateString(new Date(y,m,day))===todayStr())?' class="today"':'';
     html+='<td'+cls+'>'+day+(marks[day]?'<span class="mk">'+marks[day].join('')+'</span>':'')+'</td>';
     if((first+day)%7===0) html+='</tr><tr>';
   }

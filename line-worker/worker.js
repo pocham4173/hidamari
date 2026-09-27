@@ -200,7 +200,7 @@ async function runNotifications(env) {
           where:fieldEq('groupId',{stringValue:g.id})});
         const members = await fs.list(g.path + '/members', ['name']);
         const owner = members.find(m => m.id === y.fields.uid);
-        const text = buildMessage(y.fields, owner && owner.fields.name || '', now);
+        const text = buildMessage(y.fields, owner && owner.fields.name || '', now, g.id, y.id);
         let complete = true, accepted = 0;
         const seen = new Set();
         const start = links.length ? Math.floor(now.getTime()/900000) % links.length : 0;
@@ -266,7 +266,7 @@ async function deliveryKey(value) {
   return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
 }
 
-function buildMessage(y, ownerName, now) {
+function buildMessage(y, ownerName, now, groupId, scheduleId) {
   const WD = '日月火水木金土';
   const lines = ['📅 予定のお知らせ（まいにこ）'];
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(y.date || ''));
@@ -284,7 +284,8 @@ function buildMessage(y, ownerName, now) {
   if (y.place) lines.push('📍 ' + clip(y.place, 60));
   lines.push((y.kind ? clip(y.kind, 8) + ' ' : '') + clip(y.label || '予定', 60));
   if (ownerName) lines.push('（登録：' + clip(ownerName, 40) + '）');
-  lines.push('', 'まいにこで確認する', APP_URL);
+  const url = APP_URL + '?openExternalBrowser=1#schedule=' + encodeURIComponent(scheduleId) + '&group=' + encodeURIComponent(groupId);
+  lines.push('', 'カレンダーでこの予定を確認する', url);
   return lines.join('\n');
 }
 function clip(v, n) { const s = String(v == null ? '' : v); return s.length > n ? s.slice(0, n) + '…' : s; }
