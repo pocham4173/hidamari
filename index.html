@@ -142,6 +142,15 @@ table.cal td{padding:6px 0 4px;font-size:1.15rem;border-radius:12px;height:52px;
 table.cal td:empty{background:none;}
 table.cal td .mk{font-size:.95rem;display:block;line-height:1.15;margin-top:1px;}
 td.today{background:var(--hi);color:#fff;}
+.schedule-month-nav{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;margin:10px 0 14px;}
+.schedule-month-nav button{min-height:48px;padding:8px;font:inherit;font-size:.95rem;font-weight:800;border:2px solid var(--ao);border-radius:12px;background:#fff;color:var(--ao-koi);cursor:pointer;}
+.schedule-month-nav button:active{background:var(--ao-usui);}
+table.schedule-cal td{padding:0;background:none;}
+.schedule-day{width:100%;min-height:52px;padding:6px 0;font:inherit;font-weight:700;color:var(--cha);border:2px solid transparent;border-radius:12px;background:#FBF8F2;cursor:pointer;}
+.schedule-day.today{background:var(--hi);color:#fff;}
+.schedule-day[aria-pressed="true"]{border-color:var(--ao-koi);}
+.schedule-day:focus-visible,.schedule-month-nav button:focus-visible{outline:3px solid var(--ao-koi);outline-offset:2px;}
+#f-cal-day-detail{margin-top:14px;}
 
 /* ===== 記録タブ(月間記録) ===== */
 .rec-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
@@ -1071,8 +1080,13 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 
 <div class="modal" id="cal-modal">
   <div class="modal-box">
-    <div class="ttl" id="cal-ttl"></div>
-    <table class="cal" id="cal-table"></table>
+    <div class="ttl" id="cal-ttl" aria-live="polite"></div>
+    <div class="schedule-month-nav" role="group" aria-label="カレンダーの月を選ぶ">
+      <button type="button" onclick="changeScheduleMonth(-1,'person')">‹ 前の月</button>
+      <button type="button" onclick="changeScheduleMonth(0,'person')">今月</button>
+      <button type="button" onclick="changeScheduleMonth(1,'person')">次の月 ›</button>
+    </div>
+    <table class="cal schedule-cal" id="cal-table" aria-labelledby="cal-ttl"></table>
     <div id="cal-day-detail" style="display:none;"></div>
     <div class="cal-legend"><span>絵文字と色は、登録した予定ごとに変わります</span></div>
     <button class="modal-close" onclick="closeCal()">とじる</button>
@@ -1502,8 +1516,14 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
     <div class="ftab" id="t-yotei" style="display:none;">
       <div class="card dom-yotei" id="line-schedule-detail" style="display:none;" aria-live="polite"></div>
       <div class="card dom-yotei">
-        <h3 id="f-cal-ttl">今月のカレンダー</h3>
-        <table class="cal" id="f-cal-table"></table>
+        <h3 id="f-cal-ttl" aria-live="polite">今月のカレンダー</h3>
+        <div class="schedule-month-nav" role="group" aria-label="カレンダーの月を選ぶ">
+          <button type="button" onclick="changeScheduleMonth(-1,'family')">‹ 前の月</button>
+          <button type="button" onclick="changeScheduleMonth(0,'family')">今月</button>
+          <button type="button" onclick="changeScheduleMonth(1,'family')">次の月 ›</button>
+        </div>
+        <table class="cal schedule-cal" id="f-cal-table" aria-labelledby="f-cal-ttl"></table>
+        <div id="f-cal-day-detail" style="display:none;" aria-live="polite"></div>
       </div>
       <div class="card dom-yotei">
         <h3>これからの予定</h3>
@@ -2344,7 +2364,7 @@ function readScheduleLink(hash){
   if(!id||!group||!/^[-A-Za-z0-9_]{1,128}$/.test(id)||!/^[-A-Za-z0-9_]{1,128}$/.test(group))return null;
   return {id,group};
 }
-let scheduleLink=readScheduleLink(location.hash),scheduleLinkOpened=false,scheduleCalendarDate=null;
+let scheduleLink=readScheduleLink(location.hash),scheduleLinkOpened=false,scheduleCalendarDate=null,scheduleLinkDismissed=false,scheduleSelectedDay='';
 function openScheduleLink(){
   if(!scheduleLink||scheduleLinkOpened||!gid())return;
   const family=document.getElementById('kazoku').classList.contains('active');
@@ -2356,7 +2376,7 @@ function openScheduleLink(){
   renderScheduleLink(false,true);
 }
 function renderScheduleLink(ready,loading){
-  if(!scheduleLinkOpened||!scheduleLink)return;
+  if(!scheduleLinkOpened||!scheduleLink||scheduleLinkDismissed)return;
   const family=document.getElementById('kazoku').classList.contains('active');
   const person=document.getElementById('honnin').classList.contains('active');
   if(!family&&!person)return;
@@ -2382,7 +2402,7 @@ if(scheduleLink){
   const entry=document.getElementById('entry');entry.insertBefore(note,entry.firstChild);
 }
 window.addEventListener('hashchange',()=>{
-  scheduleLink=readScheduleLink(location.hash);scheduleLinkOpened=false;scheduleCalendarDate=null;
+  scheduleLink=readScheduleLink(location.hash);scheduleLinkOpened=false;scheduleCalendarDate=null;scheduleLinkDismissed=false;scheduleSelectedDay='';
   openScheduleLink();
 });
 
@@ -3240,11 +3260,23 @@ function sendOnegai(text, inputId){
 }
 
 /* カレンダー */
-function openCal(){
-  speak('カレンダーを ひらきました');
+function dismissScheduleLink(){
+  scheduleLinkDismissed=true;
+  const box=document.getElementById('line-schedule-detail');
+  if(box)box.style.display='none';
+}
+function changeScheduleMonth(step,mode){
+  const base=scheduleCalendarDate||new Date(),now=new Date();
+  scheduleCalendarDate=step===0?new Date(now.getFullYear(),now.getMonth(),1):new Date(base.getFullYear(),base.getMonth()+step,1);
+  scheduleSelectedDay='';
+  dismissScheduleLink();
+  if(mode==='person')openCal();else renderFamilyCal();
+}
+function renderScheduleMonth(mode){
+  const prefix=mode==='person'?'':'f-';
   const d=scheduleCalendarDate||new Date();
   const y=d.getFullYear(), m=d.getMonth();
-  document.getElementById('cal-ttl').textContent=(m+1)+'月のカレンダー';
+  document.getElementById(prefix+'cal-ttl').textContent=y+'年'+(m+1)+'月のカレンダー';
   const marks={};
   for(let day=1;day<=new Date(y,m+1,0).getDate();day++){
     const ds=dateString(new Date(y,m,day));
@@ -3260,30 +3292,61 @@ function openCal(){
   let html='<tr><th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr><tr>';
   for(let i=0;i<first;i++) html+='<td></td>';
   for(let day=1;day<=last;day++){
-    const cls=(dateString(new Date(y,m,day))===todayStr())?' today':'';
-    const tap=marks[day]?' class="has-yotei'+cls+'" onclick="speakCalDay('+y+','+m+','+day+')"':(cls?' class="today"':'');
-    html+='<td'+tap+'>'+day+(marks[day]?'<span class="mk">'+marks[day].join('')+'</span>':'')+'</td>';
+    const ds=dateString(new Date(y,m,day)),isToday=ds===todayStr();
+    html+='<td><button type="button" class="schedule-day'+(isToday?' today':'')+'" aria-pressed="'+(ds===scheduleSelectedDay)+'"'+(isToday?' aria-current="date"':'')+' aria-label="'+y+'年'+(m+1)+'月'+day+'日'+(marks[day]?'、予定'+marks[day].length+'件':'')+'" onclick="selectScheduleDay(\''+mode+'\',\''+ds+'\')">'+day+(marks[day]?'<span class="mk" aria-hidden="true">'+marks[day].join('')+'</span>':'')+'</button></td>';
     if((first+day)%7===0) html+='</tr><tr>';
   }
   html+='</tr>';
-  document.getElementById('cal-table').innerHTML=html;
-  const det=document.getElementById('cal-day-detail'); if(det){det.style.display='none';det.innerHTML='';}
+  document.getElementById(prefix+'cal-table').innerHTML=html;
+}
+function openCal(){
+  const d=scheduleCalendarDate||new Date();
+  speak(d.getFullYear()+'年'+(d.getMonth()+1)+'月のカレンダーを ひらきました');
+  renderScheduleMonth('person');
+  renderSelectedScheduleDay('person');
   document.getElementById('cal-modal').classList.add('show');
 }
 function closeCal(){ speak('とじました'); document.getElementById('cal-modal').classList.remove('show'); }
 function speakCalDay(y,m,day){
-  const ds=dateString(new Date(y,m,day));
+  selectScheduleDay('person',dateString(new Date(y,m,day)));
+}
+function selectScheduleDay(mode,ds){
+  dismissScheduleLink();scheduleSelectedDay=ds;
+  renderScheduleMonth(mode);renderSelectedScheduleDay(mode);
+  if(mode!=='person')return;
   const items=yoteiCache.filter(v=>yoteiOccursOn(v,ds));
-  if(items.length===0) return;
-  const det=document.getElementById('cal-day-detail');
-  if(det){
-    det.innerHTML='<div class="cdd-date">'+(m+1)+'月'+day+'日の予定</div>'+
-      items.map(v=>'<div class="cdd-item">'+(v.time?'<small>'+esc(v.time)+'</small> ':'')+esc((v.kind||'📌')+' '+(v.label||''))+
-        (v.uid===uid()?'<button class="set-btn" type="button" onclick="openHYotei(\''+jsArg(v._id)+'\')">この予定を変更・削除する</button>':'<div class="note">この予定は、登録した家族が変更できます。</div>')+'</div>').join('');
-    det.style.display='block';
-  }
   const parts=items.map(v=>(v.time?timeYomi(v.time)+'に、':'')+(v.label||'よてい'));
-  speak((m+1)+'がつ'+day+'にちは、'+parts.join('。つぎに、')+'、です。', true);
+  speak(dateYomi(ds)+'の予定は、'+(parts.length?parts.join('。つぎに、')+'、です。':'ありません。'),true);
+}
+function renderSelectedScheduleDay(mode){
+  const det=document.getElementById(mode==='person'?'cal-day-detail':'f-cal-day-detail');
+  if(!det)return;
+  det.replaceChildren();det.style.display=scheduleSelectedDay?'block':'none';
+  if(!scheduleSelectedDay)return;
+  const title=document.createElement('h4');title.textContent=dateJp(dateOnly(scheduleSelectedDay))+'の予定';det.appendChild(title);
+  const items=yoteiCache.filter(v=>yoteiOccursOn(v,scheduleSelectedDay));
+  if(!items.length){
+    const empty=document.createElement('p');
+    empty.textContent=mode==='family'&&familyYoteiStatus!=='ready'?'予定を確認できていません。通信状態を確認してください。':'この日の予定はありません';
+    det.appendChild(empty);
+  }
+  items.forEach(v=>{
+    const item=document.createElement('div');item.className='yt-item';
+    const label=document.createElement('b');label.textContent=(v.kind||'📌')+' '+(v.label||'予定');item.appendChild(label);
+    const detail=document.createElement('div');detail.textContent=[v.time,v.place].filter(Boolean).join('　');item.appendChild(detail);
+    if(typeof MainicoLine!=='undefined'){
+      const status=document.createElement('small');status.textContent=MainicoLine.describe(v);item.appendChild(status);
+    }
+    if(v.uid===uid()||(mode==='family'&&!v.uid)){
+      const edit=document.createElement('button');edit.type='button';edit.className='set-btn';edit.textContent=mode==='person'?'この予定を変更・削除する':'この予定を修正する';
+      edit.addEventListener('click',()=>{if(mode==='person')openHYotei(v._id);else editYotei(v._id);});item.appendChild(edit);
+      if(mode==='family'){
+        const remove=document.createElement('button');remove.type='button';remove.className='set-btn warn';remove.textContent='この予定を削除する';
+        remove.addEventListener('click',()=>delYotei(v._id));item.appendChild(remove);
+      }
+    }
+    det.appendChild(item);
+  });
 }
 
 /* 承認待ちカード(本人・家族共通) */
@@ -3308,32 +3371,9 @@ function renderPendingCard(elId, snap){
 
 /* 家族側の月カレンダー */
 function renderFamilyCal(){
-  const tbl=document.getElementById('f-cal-table');
-  if(!tbl) return;
-  const d=scheduleCalendarDate||new Date();
-  const y=d.getFullYear(), m=d.getMonth();
-  document.getElementById('f-cal-ttl').textContent=(m+1)+'月のカレンダー';
-  const marks={};
-  for(let day=1;day<=new Date(y,m+1,0).getDate();day++){
-    const ds=dateString(new Date(y,m,day));
-    yoteiCache.forEach(v=>{
-      if(yoteiOccursOn(v,ds)){
-        marks[day]=marks[day]||[];
-        marks[day].push('<span class="cal-event" style="background:'+yoteiColor(v)+'">'+esc(v.kind||'📌')+'</span>');
-      }
-    });
-  }
-  const first=new Date(y,m,1).getDay();
-  const last=new Date(y,m+1,0).getDate();
-  let html='<tr><th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr><tr>';
-  for(let i=0;i<first;i++) html+='<td></td>';
-  for(let day=1;day<=last;day++){
-    const cls=(dateString(new Date(y,m,day))===todayStr())?' class="today"':'';
-    html+='<td'+cls+'>'+day+(marks[day]?'<span class="mk">'+marks[day].join('')+'</span>':'')+'</td>';
-    if((first+day)%7===0) html+='</tr><tr>';
-  }
-  html+='</tr>';
-  tbl.innerHTML=html;
+  if(!document.getElementById('f-cal-table'))return;
+  renderScheduleMonth('family');
+  renderSelectedScheduleDay('family');
 }
 
 /* 今日の記録のとりけし(本人) */
