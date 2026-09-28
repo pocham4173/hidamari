@@ -511,6 +511,21 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .lnh-row small{display:block;color:var(--usucha);}
 .lnh-row .lnh-when{color:#1F7A43;font-weight:800;}
 .lnh-row .lnh-when.exp{color:#A8422E;}
+.yt-cat-field{margin:2px 0 4px;}
+.yt-cat-ttl{font-weight:900;font-size:.85rem;color:var(--cha);margin-bottom:6px;}
+.yt-cats{display:flex;flex-wrap:wrap;gap:8px;}
+.yt-cats button{min-height:44px;padding:6px 14px;border-radius:22px;border:2px solid #C9D6E6;background:#fff;color:var(--cha);font-family:inherit;font-size:.95rem;font-weight:800;cursor:pointer;}
+.yt-cats button.on{background:#2F5C93;border-color:#2F5C93;color:#fff;}
+.yr-cats{margin:4px 0 6px;}
+.yt-cat-edit{margin-top:8px;border:1.5px dashed #B9C7D8;border-radius:11px;padding:0 12px;background:#FAFCFE;}
+.yt-cat-edit summary{min-height:44px;display:flex;align-items:center;font-weight:900;color:#2F5C93;cursor:pointer;list-style:none;}
+.yt-cat-edit summary::-webkit-details-marker{display:none;}
+.yt-cat-edit[open]{padding-bottom:12px;}
+.yt-cat-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #E8EEF5;font-weight:800;}
+.yt-cat-row button{min-height:36px;padding:4px 12px;border-radius:9px;border:1px solid #C97A6A;background:#fff;color:#A8422E;font-family:inherit;font-weight:700;cursor:pointer;}
+.yt-cat-new{margin-top:8px;}
+.yt-cat-new label:first-child{max-width:90px;}
+.yt-catbadge{display:inline-block;font-size:.75rem;font-weight:800;color:#2F5C93;background:#EEF3FA;border-radius:8px;padding:1px 8px;margin-left:4px;vertical-align:middle;}
 .yr-search{display:block;width:100%;min-height:48px;margin:4px 0 8px;font:inherit;padding:10px;border:1px solid #D8CDBA;border-radius:8px;background:#fff;}
 .yr-item{display:block;width:100%;text-align:left;background:#fff;border:1px solid #E5DCCB;border-left-width:6px;border-radius:11px;padding:10px 12px;margin-top:8px;font-family:inherit;color:var(--cha);cursor:pointer;line-height:1.5;}
 .yr-item small{display:block;color:var(--usucha);font-size:.8rem;}
@@ -1608,6 +1623,22 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
         <h3 id="yt-form-title">予定を登録する</h3>
         <div class="yt-simple">
           <label>予定名<input type="text" id="yt-label" placeholder="例：美容院、買い物"></label>
+          <div class="yt-cat-field">
+            <div class="yt-cat-ttl">分類（押して選ぶ・もう一度押すと外れます）</div>
+            <div class="yt-cats" id="yt-cats" role="group" aria-label="予定の分類"></div>
+            <input type="hidden" id="yt-category">
+            <details class="yt-cat-edit" id="yt-cat-edit">
+              <summary>＋ 分類を追加・削除</summary>
+              <div id="yt-cat-edit-list"></div>
+              <div class="yt-form-row yt-cat-new">
+                <label>絵文字<input type="text" id="yt-cat-emoji" maxlength="4" placeholder="🚐"></label>
+                <label>分類名<input type="text" id="yt-cat-name" maxlength="20" placeholder="例：デイサービス"></label>
+              </div>
+              <button class="set-btn" type="button" id="yt-cat-add-btn" onclick="addYoteiCategory()">この分類を追加する</button>
+              <div class="note">分類は家族みんなで共通です。消しても、登録済みの予定の分類は残ります。</div>
+              <div class="save-state" id="yt-cat-state" aria-live="polite"></div>
+            </details>
+          </div>
           <div class="yt-form-row">
             <label>日付<input type="date" id="yt-date"></label>
             <label>時間<input type="time" id="yt-time"></label>
@@ -1645,6 +1676,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
     <div class="ftab" id="t-kiroku" style="display:none;">
       <div class="card dom-record" id="yr-card"><h3>予定のふり返り</h3>
         <div class="note" style="margin-top:0;">これまでの予定を、予定ごとに見返せます。押すと、その日の様子やメモを確認できます。</div>
+        <div class="yt-cats yr-cats" id="yr-cats" role="group" aria-label="分類で絞り込む"></div>
         <input type="search" class="yr-search" id="yr-search" placeholder="予定名・場所で探す（例：病院）" oninput="yoteiReviewShown=15;renderYoteiReview()" aria-label="予定名・場所で探す">
         <div id="yr-list"><div class="empty">読み込み中…</div></div>
       </div>
@@ -3879,6 +3911,7 @@ function initKazoku(){
   initMedicineInfo();
   initKibunConfig();
   initYoteiNotes();
+  initYoteiCategories();
   initDisaster();
   loadWatchTag();
   if(memWatchUnsub) memWatchUnsub();
@@ -3917,7 +3950,7 @@ function initKazoku(){
         ? '<span class="yt-actions"><button class="yt-del" onclick="editYotei(\''+jsArg(v._id)+'\')">修正する</button>'+
           '<button class="yt-del danger" onclick="delYotei(\''+jsArg(v._id)+'\')">削除する</button></span>'
         : '<small>'+(v.uid?'この予定は、登録した家族だけが変更・削除できます':'以前の予定（承認済みの家族が整理できます）')+'</small>';
-      return '<div class="yt-item" style="border-left:6px solid '+yoteiColor(v)+';padding-left:8px"><span class="yt-main"><small class="yt-date">'+esc(v.kind||'📌')+' '+dateJp(dd)+'</small><b>'+esc(v.label)+'</b>'+
+      return '<div class="yt-item" style="border-left:6px solid '+yoteiColor(v)+';padding-left:8px"><span class="yt-main"><small class="yt-date">'+esc(v.kind||'📌')+' '+dateJp(dd)+(v.category?'<span class="yt-catbadge">'+esc(v.category)+'</span>':'')+'</small><b>'+esc(v.label)+'</b>'+
         (detail?'<br><small>'+esc(detail)+'</small>':'')+
         (typeof MainicoLine!=='undefined'&&MainicoLine.describe(v)?'<br><small class="yt-notify">'+esc(MainicoLine.describe(v))+'</small>':'')+'</span>'+
         '<span class="yt-links"><a href="'+esc(gcalUrl(v,v._nextDate))+'" target="_blank" rel="noopener noreferrer">📅 Googleカレンダーに追加</a>'+
@@ -4156,6 +4189,7 @@ var REC_META_TYPES = {
   'kibun-config':1,
   'medicine-info':1,
   'yotei-note':1,
+  'yotei-cat-config':1,
   'family-note':1,'family-note-ack':1,'family-note-reply':1,
   'family-task':1,'family-task-done':1,'family-task-help':1,
   'family-contact':1
@@ -5841,6 +5875,7 @@ function setYoteiSaveState(text,isError){
 function clearYoteiForm(){
   editingYoteiId='';
   ['yt-date','yt-time','yt-label','yt-place','yt-notify'].forEach(id=>document.getElementById(id).value='');
+  setYoteiCategory('');
   document.getElementById('yt-kind').value='📌';
   setYoteiColor('#4F7FD3');
   document.getElementById('yt-form-title').textContent='予定の登録';
@@ -5858,6 +5893,7 @@ function editYotei(id){
   document.getElementById('yt-label').value=v.label||'';
   document.getElementById('yt-place').value=v.place||'';
   document.getElementById('yt-notify').value=typeof MainicoLine!=='undefined'?MainicoLine.toInputValue(v.notifyAt):'';
+  setYoteiCategory(v.category||'');
   setYoteiColor(yoteiColor(v));
   document.getElementById('yt-form-title').textContent='予定を修正する';
   document.getElementById('yt-save-btn').textContent='修正を保存する';
@@ -5878,6 +5914,9 @@ async function saveYotei(){
   const notify=lineNotifyInput('yt-notify',origin);
   if(!notify.ok){alert(notify.message);return;}
   const data={kind,date,time,label,color,repeat:'none',uid:uid(),place,...notify.fields,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  /* 分類は選んだとき、または以前に分類があった予定を直すときだけ保存する */
+  const category=document.getElementById('yt-category').value.slice(0,20);
+  if(category||(origin&&origin.category)) data.category=category;
   const btn=document.getElementById('yt-save-btn');
   btn.disabled=true;
   setYoteiSaveState('保存中…');
@@ -6615,14 +6654,17 @@ function renderYoteiReview(){
   const qEl=document.getElementById('yr-search');
   const q=(qEl&&qEl.value||'').trim();
   let past=yoteiCache.filter(v=>v.date&&v.date<=t);
+  renderReviewCategoryChips(past);
+  if(yoteiReviewCat) past=past.filter(v=>(v.category||'')===yoteiReviewCat);
   if(q) past=past.filter(v=>String(v.label||'').indexOf(q)>=0||String(v.place||'').indexOf(q)>=0);
   past.sort((a,b)=>a.date!==b.date?(a.date<b.date?1:-1):String(b.time||'').localeCompare(String(a.time||'')));
-  if(!past.length){ box.innerHTML='<div class="empty">'+(q?'「'+esc(q)+'」に当てはまる予定はありません':'まだ過ぎた予定はありません。予定の日が来ると、ここで見返せます')+'</div>'; return; }
+  if(!past.length){ box.innerHTML='<div class="empty">'+(q||yoteiReviewCat?'条件に当てはまる予定はありません':'まだ過ぎた予定はありません。予定の日が来ると、ここで見返せます')+'</div>'; return; }
   const count={}; yoteiNotes.forEach(n=>{count[n.yoteiId]=(count[n.yoteiId]||0)+1;});
   box.innerHTML=past.slice(0,yoteiReviewShown).map(v=>
     '<button type="button" class="yr-item" style="border-left-color:'+yoteiColor(v)+'" onclick="openYoteiReview(\''+jsArg(v._id)+'\')">'+
     '<small>'+esc(yoteiDateJp(v))+(v.date===t?'（今日）':'')+'</small><b>'+esc(v.kind||'📌')+' '+esc(v.label||'予定')+'</b>'+
     (v.place?'<small>📍'+esc(v.place)+'</small>':'')+
+    (v.category?'<span class="yr-badge">🏷 '+esc(v.category)+'</span> ':'')+
     (count[v._id]?'<span class="yr-badge">📝 メモ '+count[v._id]+'件</span>':'')+'</button>').join('')+
     (past.length>yoteiReviewShown?'<button type="button" class="set-btn" onclick="yoteiReviewShown+=15;renderYoteiReview()">もっと見る（あと'+(past.length-yoteiReviewShown)+'件）</button>':'');
 }
@@ -6633,6 +6675,7 @@ function openYoteiReview(id){
   document.getElementById('yr-title').textContent=(v.kind||'📌')+' '+(v.label||'予定');
   const lines=['📅 '+yoteiDateJp(v)];
   if(v.place) lines.push('📍 '+v.place);
+  if(v.category) lines.push('🏷 分類：'+v.category);
   lines.push('✍ '+(v.uid===uid()?'あなたが登録':(v.uid&&memberNames[jsArg(v.uid)]?memberNames[jsArg(v.uid)]+'さんが登録':'家族が登録')));
   if(v.notifiedAt) lines.push('🔔 LINEで '+lnTime(v.notifiedAt)+' にお知らせ済み');
   else if(v.notificationStatus==='expired') lines.push('🔔 LINEのお知らせは送れないまま期限が過ぎました');
@@ -6695,6 +6738,99 @@ async function addCareButton(){
     foState(st,'「'+label+'」のボタンを追加しました',false);
   }catch(e){ foState(st,'保存できませんでした。通信状態を確認してください',true); }
   finally{ btn.disabled=false; }
+}
+
+/* ===== 予定の分類(2026-09-28・ヒビルカ方式) =====
+   分類の一覧は events の type:'yotei-cat-config'(最新1件)で家族共通。予定には category(文字)で保存。 */
+const YOTEI_CAT_DEFAULT=[{label:'病院・通院',emoji:'🏥'}];
+let yoteiCats=YOTEI_CAT_DEFAULT.slice(),yoteiCatUnsub=null,yoteiReviewCat='';
+function initYoteiCategories(){
+  if(yoteiCatUnsub){try{yoteiCatUnsub();}catch(e){}}
+  yoteiCats=YOTEI_CAT_DEFAULT.slice(); renderYoteiCategories();
+  yoteiCatUnsub=col('events').where('type','==','yotei-cat-config').onSnapshot(snap=>{
+    const rows=[];snap.forEach(doc=>{const v=doc.data();v._id=doc.id;rows.push(v);});
+    rows.sort(foByNewest);
+    const latest=rows[0];
+    yoteiCats=latest&&Array.isArray(latest.items)?latest.items.filter(o=>o&&typeof o.label==='string'&&o.label.trim()).slice(0,20):YOTEI_CAT_DEFAULT.slice();
+    renderYoteiCategories(); renderYoteiReview();
+  },()=>{});
+}
+function yoteiCatEmoji(label){ const c=yoteiCats.find(o=>o.label===label); return c&&c.emoji||''; }
+function renderYoteiCategories(){
+  const box=document.getElementById('yt-cats'); if(!box) return;
+  const cur=document.getElementById('yt-category').value;
+  const list=yoteiCats.slice();
+  if(cur&&!list.some(o=>o.label===cur)) list.push({label:cur,emoji:''});
+  box.textContent='';
+  if(!list.length){ const e=document.createElement('div');e.className='note';e.textContent='分類はまだありません。下の「＋ 分類を追加・削除」から作れます。';box.appendChild(e); }
+  list.forEach(o=>{
+    const b=document.createElement('button'); b.type='button';
+    b.textContent=(o.emoji?o.emoji+' ':'')+o.label; b.classList.toggle('on',o.label===cur);
+    b.setAttribute('aria-pressed',o.label===cur?'true':'false');
+    b.addEventListener('click',()=>setYoteiCategory(o.label===document.getElementById('yt-category').value?'':o.label,true));
+    box.appendChild(b);
+  });
+  const ed=document.getElementById('yt-cat-edit-list'); if(!ed) return;
+  ed.textContent='';
+  yoteiCats.forEach((o,i)=>{
+    const row=document.createElement('div'); row.className='yt-cat-row';
+    const name=document.createElement('span'); name.textContent=(o.emoji?o.emoji+' ':'')+o.label; row.appendChild(name);
+    const del=document.createElement('button'); del.type='button'; del.textContent='削除';
+    del.addEventListener('click',()=>removeYoteiCategory(i)); row.appendChild(del);
+    ed.appendChild(row);
+  });
+}
+function setYoteiCategory(label,fromTap){
+  const hid=document.getElementById('yt-category'); if(!hid) return;
+  const prev=hid.value; hid.value=label||'';
+  if(fromTap){
+    const kind=document.getElementById('yt-kind');
+    const prevEmoji=yoteiCatEmoji(prev), nextEmoji=yoteiCatEmoji(label);
+    if(nextEmoji&&(kind.value==='📌'||kind.value===prevEmoji||!kind.value)) kind.value=nextEmoji;
+    else if(!label&&prevEmoji&&kind.value===prevEmoji) kind.value='📌';
+  }
+  renderYoteiCategories();
+}
+async function saveYoteiCategories(items,okText){
+  foState('yt-cat-state','保存しています…',false);
+  try{
+    await addEvent({type:'yotei-cat-config',items:items,name:myName(),clientAt:Date.now()});
+    foState('yt-cat-state',okText,false); return true;
+  }catch(e){ foState('yt-cat-state','保存できませんでした。通信状態を確認してください',true); return false; }
+}
+async function addYoteiCategory(){
+  const nameEl=document.getElementById('yt-cat-name'), emEl=document.getElementById('yt-cat-emoji');
+  const label=nameEl.value.trim().slice(0,20), emoji=emEl.value.trim().slice(0,4);
+  if(!label){ foState('yt-cat-state','分類名を入力してください',true); return; }
+  if(yoteiCats.some(o=>o.label===label)){ foState('yt-cat-state','同じ名前の分類がすでにあります',true); return; }
+  if(yoteiCats.length>=20){ foState('yt-cat-state','分類は20個までです',true); return; }
+  const btn=document.getElementById('yt-cat-add-btn'); btn.disabled=true;
+  const ok=await saveYoteiCategories(yoteiCats.concat([{label:label,emoji:emoji}]),'「'+label+'」を追加しました');
+  btn.disabled=false;
+  if(ok){ nameEl.value=''; emEl.value=''; }
+}
+async function removeYoteiCategory(i){
+  const o=yoteiCats[i]; if(!o) return;
+  if(!confirm('分類「'+o.label+'」を一覧から消しますか？\n登録済みの予定の分類はそのまま残ります。')) return;
+  await saveYoteiCategories(yoteiCats.filter((_,k)=>k!==i),'「'+o.label+'」を一覧から消しました');
+}
+function renderReviewCategoryChips(past){
+  const box=document.getElementById('yr-cats'); if(!box) return;
+  const labels=yoteiCats.map(o=>o.label);
+  past.forEach(v=>{ if(v.category&&labels.indexOf(v.category)<0) labels.push(v.category); });
+  if(yoteiReviewCat&&labels.indexOf(yoteiReviewCat)<0) yoteiReviewCat='';
+  box.textContent='';
+  if(!labels.length){ box.style.display='none'; return; }
+  box.style.display='';
+  [''].concat(labels).forEach(l=>{
+    const b=document.createElement('button'); b.type='button';
+    const em=yoteiCatEmoji(l);
+    b.textContent=l?(em?em+' ':'')+l:'すべて';
+    b.classList.toggle('on',l===yoteiReviewCat);
+    b.setAttribute('aria-pressed',l===yoteiReviewCat?'true':'false');
+    b.addEventListener('click',()=>{ yoteiReviewCat=l; yoteiReviewShown=15; renderYoteiReview(); });
+    box.appendChild(b);
+  });
 }
 
 function resetDisasterConsent(){
