@@ -62,6 +62,14 @@ try {
     getDoc(doc(m2, 'lineLinks', 'm1')), false);
   await check('12. 自分の連携は確認・解除できる',
     getDoc(doc(m2, 'lineLinks', 'm2')).then(() => deleteDoc(doc(m2, 'lineLinks', 'm2'))), true);
+  await check('13. 分類つきの予定を作成できる',
+    setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y5'), yotei('m1', { category: '病院・通院' })), true);
+  await check('14. 21文字以上の分類は拒否される',
+    setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y6'), yotei('m1', { category: 'あ'.repeat(21) })), false);
+  await check('15. 自分の予定の分類を変更できる',
+    setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y5'), { category: 'デイサービス', updatedAt: serverTimestamp() }, { merge: true }), true);
+  await check('16. 他人の予定の分類は変更できない',
+    setDoc(doc(m2, 'groups', 'g1', 'yotei', 'y5'), { category: '買い物', updatedAt: serverTimestamp() }, { merge: true }), false);
 
   console.log('\n===== 検査結果 =====');
   for (const [mark, name] of results) console.log(mark, name);
