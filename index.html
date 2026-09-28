@@ -496,6 +496,34 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .family-task-preview{background:#F5FAF7;border-color:#BBD9C5;}
 .handoff-request{border-top:1px solid #BBD9C5;margin-top:10px;padding-top:10px;}
 .family-task-preview strong{color:var(--ha-koi);}
+.care-add{margin-top:10px;border:2px dashed #7FB195;border-radius:11px;background:#fff;padding:0 12px;}
+.care-add summary{min-height:48px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#2E7A55;cursor:pointer;list-style:none;}
+.care-add summary::-webkit-details-marker{display:none;}
+.care-add[open]{padding-bottom:12px;}
+.care-add-label{display:block;font-weight:900;font-size:.85rem;margin:4px 0 6px;color:var(--cha);}
+.yt-links{display:flex;flex-wrap:wrap;gap:8px;}
+.yt-links a,.yt-links button{display:inline-flex;align-items:center;min-height:36px;padding:5px 12px;border-radius:9px;border:1px solid #B9C7D8;background:#fff;color:#2F5C93;font-family:inherit;font-size:.82rem;font-weight:700;text-decoration:none;cursor:pointer;}
+.yt-links button.ln{border-color:#7FCB98;color:#1F7A43;}
+.lnh-sec{font-weight:900;font-size:.9rem;color:var(--cha);margin:12px 0 4px;}
+.lnh-row{padding:10px 2px;border-bottom:1px solid #F0EAE0;line-height:1.55;}
+.lnh-row:last-child{border-bottom:none;}
+.lnh-row b{font-size:1.02rem;}
+.lnh-row small{display:block;color:var(--usucha);}
+.lnh-row .lnh-when{color:#1F7A43;font-weight:800;}
+.lnh-row .lnh-when.exp{color:#A8422E;}
+.yr-search{display:block;width:100%;min-height:48px;margin:4px 0 8px;font:inherit;padding:10px;border:1px solid #D8CDBA;border-radius:8px;background:#fff;}
+.yr-item{display:block;width:100%;text-align:left;background:#fff;border:1px solid #E5DCCB;border-left-width:6px;border-radius:11px;padding:10px 12px;margin-top:8px;font-family:inherit;color:var(--cha);cursor:pointer;line-height:1.5;}
+.yr-item small{display:block;color:var(--usucha);font-size:.8rem;}
+.yr-item b{font-size:1.05rem;}
+.yr-item .yr-badge{display:inline-block;margin-top:4px;font-size:.75rem;font-weight:800;color:#2F5C93;background:#EEF3FA;border-radius:8px;padding:1px 8px;}
+#yr-modal .modal-box,#ln-edit-modal .modal-box,#line-history,#yr-list{text-align:left;}
+.yr-head{border-left:6px solid #4F7FD3;padding-left:10px;margin-bottom:10px;}
+.yr-head b{display:block;font-size:1.25rem;line-height:1.4;}
+.yr-meta{font-size:.9rem;line-height:1.7;color:var(--cha);}
+.yr-note{border:1px solid #E5DCCB;border-radius:10px;padding:9px 11px;margin-top:8px;background:#FFFCF6;line-height:1.6;white-space:pre-wrap;}
+.yr-note small{display:block;color:var(--usucha);white-space:normal;}
+.yr-note button{margin-top:6px;}
+#yr-note-input{width:100%;min-height:90px;font:inherit;padding:10px;border:1px solid #D8CDBA;border-radius:8px;}
 .care-today{margin-top:12px;padding:10px 12px;border-radius:11px;background:#F5FAF7;color:var(--cha);font-size:.83rem;line-height:1.6;}
 .care-today b{display:block;color:#33704D;}
 .medicine-info{margin-top:14px;padding-top:14px;border-top:1px solid #E4EAF0;}
@@ -1083,6 +1111,33 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
   <button class="modal-close" onclick="closeHYotei()">とじる</button>
 </div></div>
 
+<div class="modal" id="yr-modal" role="dialog" aria-modal="true" aria-labelledby="yr-title"><div class="modal-box adult-font">
+  <div class="yr-head" id="yr-head"><b id="yr-title">予定</b></div>
+  <div class="yr-meta" id="yr-meta"></div>
+  <button class="set-btn" type="button" onclick="openYoteiDayRecords()">この日の記録を見る</button>
+  <h4 style="margin:16px 0 4px;">この予定のメモ</h4>
+  <div id="yr-notes"></div>
+  <label for="yr-note-input" style="display:block;font-weight:900;font-size:.85rem;margin-top:12px;">メモを残す（どうだったか・次に伝えたいことなど）</label>
+  <textarea id="yr-note-input" maxlength="300" placeholder="例：先生から次回は採血と言われた"></textarea>
+  <button class="set-btn" type="button" id="yr-note-btn" onclick="addYoteiNote()">メモを保存する</button>
+  <div class="save-state" id="yr-note-state" aria-live="polite"></div>
+  <div class="note">メモは参加している家族みんなが見られます。</div>
+  <button class="modal-close" type="button" onclick="closeYoteiReview()">とじる</button>
+</div></div>
+<div class="modal" id="ln-edit-modal" role="dialog" aria-modal="true" aria-labelledby="ln-edit-title"><div class="modal-box adult-font">
+  <h3 id="ln-edit-title" style="margin-top:0;">LINEのお知らせ</h3>
+  <div class="yr-meta" id="ln-edit-target"></div>
+  <input type="hidden" id="ln-edit-date">
+  <div class="line-notify-field">
+    <label class="ln-ttl" for="ln-edit-at">LINEで知らせる日時</label>
+    <input type="datetime-local" id="ln-edit-at">
+    <div class="ln-quick"><button type="button" onclick="MainicoLine.preset('ln-edit-at','ln-edit-date','eve')">前日の夜7時</button><button type="button" onclick="MainicoLine.preset('ln-edit-at','ln-edit-date','morning')">当日の朝7時</button><button type="button" onclick="document.getElementById('ln-edit-at').value=''">知らせない</button></div>
+    <div class="note">LINE連携した家族とご本人へ届きます（15分ほど遅れることがあります）。</div>
+  </div>
+  <button class="big-btn yotei" type="button" id="ln-edit-save" onclick="saveLineNotifyEdit()">この内容で保存する</button>
+  <div class="save-state" id="ln-edit-state" aria-live="polite"></div>
+  <button class="modal-close" type="button" onclick="closeLineNotifyEdit()">とじる</button>
+</div></div>
 <div class="modal" id="cal-modal">
   <div class="modal-box">
     <div class="ttl" id="cal-ttl" aria-live="polite"></div>
@@ -1498,12 +1553,20 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
         <div class="note" style="margin-top:0;">実際に確認したときだけ押してください。押した内容・家族の名前・時刻は「ふり返り」にも残ります。</div>
         <div class="family-tool-grid" id="care-quick-buttons"><div class="empty">読み込み中…</div></div>
         <div class="save-state" id="care-log-state" aria-live="polite"></div>
+        <details class="care-add" id="care-add-details">
+          <summary>＋ ボタンを増やす</summary>
+          <label class="care-add-label" for="care-add-input">新しいボタンの名前</label>
+          <div class="in-row"><input type="text" id="care-add-input" maxlength="30" placeholder="例：デイサービスに行った"></div>
+          <button class="set-btn" type="button" id="care-add-btn" onclick="addCareButton()">このボタンを追加する</button>
+          <div class="note">家族みんなの画面に同じボタンが表示されます（自由に作れるのは8個まで）。</div>
+          <div class="save-state" id="care-add-state" aria-live="polite"></div>
+        </details>
         <div class="care-today" id="care-today">今日押した記録を読み込んでいます…</div>
         <details class="care-config" id="care-config-details">
-          <summary style="font-weight:900;cursor:pointer;">表示するボタンを変える</summary>
+          <summary style="font-weight:900;cursor:pointer;">ボタンを選び直す・消す</summary>
           <div class="care-checks" id="care-config-checks"></div>
           <div class="in-row"><input type="text" id="care-custom-input" maxlength="100" placeholder="自由項目（例：デイサービスに行った）"></div>
-          <div class="note">複数作るときは「、」で区切ってください（5項目まで）。</div>
+          <div class="note">自由に作ったボタンは「、」で区切って並んでいます。消したい言葉を消して保存してください（8項目まで）。</div>
           <button class="set-btn" type="button" onclick="saveCareConfig()">この項目で使う</button>
           <div class="save-state" id="care-config-state" aria-live="polite"></div>
         </details>
@@ -1534,7 +1597,13 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       <div class="card dom-yotei">
         <h3>これからの予定</h3>
         <div id="yt-list"><div class="empty">まだ登録がありません</div></div>
+        <div class="note">「Googleカレンダーに追加」を押すと、Googleカレンダーの登録画面が開きます。内容を確かめて保存してください（まいにこから自動では書き込みません）。</div>
       </div>
+      <details class="card dom-yotei" id="line-history-card">
+        <summary class="fold-ttl">LINEでお知らせした履歴</summary>
+        <div id="line-history"><div class="empty">読み込み中…</div></div>
+        <div class="note">「送信済み」はLINE側が受け付けた記録で、読んだことの確認ではありません。同じ予定で何度か送った場合は、最後に送った日時を表示します。お知らせの変更は、予定を登録した人だけができます。</div>
+      </details>
       <div class="card dom-yotei schedule-form-card">
         <h3 id="yt-form-title">予定を登録する</h3>
         <div class="yt-simple">
@@ -1574,6 +1643,11 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 
     <!-- ふり返り -->
     <div class="ftab" id="t-kiroku" style="display:none;">
+      <div class="card dom-record" id="yr-card"><h3>予定のふり返り</h3>
+        <div class="note" style="margin-top:0;">これまでの予定を、予定ごとに見返せます。押すと、その日の様子やメモを確認できます。</div>
+        <input type="search" class="yr-search" id="yr-search" placeholder="予定名・場所で探す（例：病院）" oninput="yoteiReviewShown=15;renderYoteiReview()" aria-label="予定名・場所で探す">
+        <div id="yr-list"><div class="empty">読み込み中…</div></div>
+      </div>
       <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div id="rec-source-legend" class="note" style="margin:0 0 10px;">記録した人と時間を確認できます。</div><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
       <details class="card dom-record"><summary class="fold-ttl" id="rec-sum-ttl">今月のまとめ</summary><div class="rec-sum" id="rec-sum"></div><div class="note">「今月の経過日数中に何件あり、何日に記録があったか」を同じ形でまとめています。良い・悪いや健康状態の判断はしていません。この記録は医療機関の診療記録ではありません。</div></details>
       <details class="card dom-record"><summary class="fold-ttl">期間のグラフ</summary>
@@ -3804,6 +3878,7 @@ function initKazoku(){
   initFamilyOnlyTools();
   initMedicineInfo();
   initKibunConfig();
+  initYoteiNotes();
   initDisaster();
   loadWatchTag();
   if(memWatchUnsub) memWatchUnsub();
@@ -3832,6 +3907,8 @@ function initKazoku(){
     future.sort((a,b)=>a._nextDate<b._nextDate?-1:1);
     const box=document.getElementById('yt-list');
     renderFamilyCal();
+    renderLineHistory();
+    renderYoteiReview();
     if(future.length===0){box.innerHTML='<div class="empty">'+(familyYoteiStatus==='cached'?'保存済みの予定はありません。通信が戻るまで最新の予定は確認できません。':'これからの予定はありません')+'</div>';return;}
     box.innerHTML=future.map(v=>{
       const dd=new Date(v._nextDate+'T00:00:00');
@@ -3842,7 +3919,10 @@ function initKazoku(){
         : '<small>'+(v.uid?'この予定は、登録した家族だけが変更・削除できます':'以前の予定（承認済みの家族が整理できます）')+'</small>';
       return '<div class="yt-item" style="border-left:6px solid '+yoteiColor(v)+';padding-left:8px"><span class="yt-main"><small class="yt-date">'+esc(v.kind||'📌')+' '+dateJp(dd)+'</small><b>'+esc(v.label)+'</b>'+
         (detail?'<br><small>'+esc(detail)+'</small>':'')+
-        (typeof MainicoLine!=='undefined'&&MainicoLine.describe(v)?'<br><small class="yt-notify">'+esc(MainicoLine.describe(v))+'</small>':'')+'</span>'+actions+'</div>';
+        (typeof MainicoLine!=='undefined'&&MainicoLine.describe(v)?'<br><small class="yt-notify">'+esc(MainicoLine.describe(v))+'</small>':'')+'</span>'+
+        '<span class="yt-links"><a href="'+esc(gcalUrl(v,v._nextDate))+'" target="_blank" rel="noopener noreferrer">📅 Googleカレンダーに追加</a>'+
+        (v.uid===uid()?'<button type="button" class="ln" onclick="openLineNotifyEdit(\''+jsArg(v._id)+'\')">🔔 LINEのお知らせを'+(v.notifyAt?'変更':'設定')+'</button>':'')+'</span>'+
+        actions+'</div>';
     }).join('');
   });
 }
@@ -4075,6 +4155,7 @@ var REC_META_TYPES = {
   'care-config':1,
   'kibun-config':1,
   'medicine-info':1,
+  'yotei-note':1,
   'family-note':1,'family-note-ack':1,'family-note-reply':1,
   'family-task':1,'family-task-done':1,'family-task-help':1,
   'family-contact':1
@@ -5095,12 +5176,15 @@ function sendMemo(){
 /* ===== 家族のみモード: 家庭ごとに選べる共有道具 =====
    既存のeventsへ追加し、承認済み家族だけで共有します。外部APIや有料サービスは使いません。 */
 const CARE_OPTIONS=[
-  {key:'meal',label:'食事をとった'},{key:'water',label:'水分をとった'},
+  {key:'meal',label:'食事をとった'},
   {key:'toilet',label:'排泄があった'},{key:'sleep',label:'睡眠の様子を確認'},
   {key:'bath',label:'入浴した'},{key:'call',label:'電話で確認した'},
   {key:'visit',label:'訪問した'},{key:'hospital',label:'通院した'}
 ];
-const CARE_DEFAULT=['meal','water','call','visit'];
+const CARE_DEFAULT=['meal','call','visit'];
+/* 「水分をとった」は廃止(2026-09-28)。以前の設定に残っていても表示しない */
+const CARE_RETIRED={water:1};
+const CARE_CUSTOM_MAX=8;
 let familyOnlyUnsubs=[];
 let familyOnlyData={config:[],notes:[],noteAcks:[],noteReplies:[],tasks:[],taskDone:[],taskHelpers:[],contacts:[]};
 let familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading',taskHelpers:'loading'};
@@ -5251,7 +5335,7 @@ function initFamilyOnlyTools(){
 function currentCareItems(){
   const v=familyOnlyData.config[0];
   if(v&&Array.isArray(v.items)&&v.items.length){
-    return v.items.filter(function(o){return o&&o.key&&o.label;}).slice(0,13);
+    return v.items.filter(function(o){return o&&o.key&&o.label&&!CARE_RETIRED[o.key];}).slice(0,15);
   }
   const keys=v&&Array.isArray(v.keys)?v.keys:CARE_DEFAULT;
   return CARE_OPTIONS.filter(function(o){return keys.indexOf(o.key)>=0;});
@@ -5303,7 +5387,7 @@ async function saveCareConfig(){
   const keys=Array.from(document.querySelectorAll('#care-config-checks input:checked')).map(function(x){return x.value;});
   const items=CARE_OPTIONS.filter(function(o){return keys.indexOf(o.key)>=0;}).map(function(o){return {key:o.key,label:o.label};});
   const free=document.getElementById('care-custom-input').value.trim();
-  const custom=free.split(/[、,\n]/).map(function(s){return s.trim();}).filter(Boolean).slice(0,5);
+  const custom=free.split(/[、,\n]/).map(function(s){return s.trim();}).filter(Boolean).slice(0,CARE_CUSTOM_MAX);
   custom.forEach(function(label,i){items.push({key:'custom-'+i+'-'+label.slice(0,12),label:label.slice(0,30)});});
   if(!items.length){ foState('care-config-state','少なくとも1つ選ぶか、自由項目を入力してください',true); return; }
   foState('care-config-state','保存しています…',false);
@@ -6439,6 +6523,180 @@ try{auth.onAuthStateChanged(bootHouseholdUser,function(e){
 
 /* ===== 災害用QR（端末内保存・オフライン読取） ===== */
 const DISASTER_QR_KEY='mainico_preview_disaster_qr_v1';
+/* ===== 予定: Googleカレンダー・LINEのお知らせ履歴と変更・予定のふり返り(2026-09-28) =====
+   Googleカレンダーは「登録画面を開く」だけで、アカウント連携やデータ送信はしない。
+   予定のメモは既存のeventsへ type:'yotei-note' で追加する(ルール変更なし)。 */
+function gcalUrl(v,dateStr){
+  const ds=String(dateStr||v.date||'');
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(ds);
+  if(!m) return 'https://calendar.google.com/calendar/';
+  const ymd=m[1]+m[2]+m[3];
+  let dates;
+  const t=/^(\d{2}):(\d{2})/.exec(v.time||'');
+  if(t){
+    const st=new Date(+m[1],+m[2]-1,+m[3],+t[1],+t[2]);
+    const en=new Date(st.getTime()+60*60*1000);
+    const f=d=>d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate())+'T'+pad2(d.getHours())+pad2(d.getMinutes())+'00';
+    dates=f(st)+'/'+f(en);
+  }else{
+    const nx=new Date(+m[1],+m[2]-1,+m[3]+1);
+    dates=ymd+'/'+nx.getFullYear()+pad2(nx.getMonth()+1)+pad2(nx.getDate());
+  }
+  const q=new URLSearchParams({action:'TEMPLATE',text:(v.kind&&v.kind!=='📌'?v.kind+' ':'')+(v.label||'予定'),dates:dates,ctz:'Asia/Tokyo',details:'まいにこの予定'});
+  if(v.place) q.set('location',v.place);
+  return 'https://calendar.google.com/calendar/render?'+q.toString();
+}
+function lnTime(ts){
+  const d=ts&&typeof ts.toDate==='function'?ts.toDate():(ts instanceof Date?ts:null);
+  if(!d) return '';
+  return (d.getMonth()+1)+'月'+d.getDate()+'日（'+'日月火水木金土'.charAt(d.getDay())+'）'+pad2(d.getHours())+':'+pad2(d.getMinutes());
+}
+function yoteiDateJp(v){ return v.date?dateJp(dateOnly(v.date))+(v.time?' '+v.time:''):''; }
+function renderLineHistory(){
+  const box=document.getElementById('line-history'); if(!box) return;
+  const planned=yoteiCache.filter(v=>v.notifyAt&&typeof v.notifyAt.toMillis==='function').sort((a,b)=>a.notifyAt.toMillis()-b.notifyAt.toMillis());
+  const sentMs=v=>v.notifiedAt&&typeof v.notifiedAt.toMillis==='function'?v.notifiedAt.toMillis():0;
+  const done=yoteiCache.filter(v=>sentMs(v)||v.notificationStatus==='expired')
+    .sort((a,b)=>(sentMs(b)||(b.updatedAt&&b.updatedAt.toMillis?b.updatedAt.toMillis():0))-(sentMs(a)||(a.updatedAt&&a.updatedAt.toMillis?a.updatedAt.toMillis():0))).slice(0,30);
+  const row=(v,when,cls)=>'<div class="lnh-row"><b>'+esc(v.kind||'📌')+' '+esc(v.label||'予定')+'</b><small>予定日：'+esc(yoteiDateJp(v))+'</small><small class="lnh-when'+(cls?' '+cls:'')+'">'+esc(when)+'</small>'+
+    (v.uid===uid()?'<span class="yt-links" style="margin-top:6px;"><button type="button" class="ln" onclick="openLineNotifyEdit(\''+jsArg(v._id)+'\')">🔔 お知らせを変更</button></span>':'')+'</div>';
+  let html='<div class="lnh-sec">これから送る予定</div>';
+  html+=planned.length?planned.map(v=>row(v,'🔔 '+lnTime(v.notifyAt)+' に送ります')).join(''):'<div class="empty">送る予定のお知らせはありません</div>';
+  html+='<div class="lnh-sec">送ったお知らせ</div>';
+  html+=done.length?done.map(v=>sentMs(v)?row(v,'✅ '+lnTime(v.notifiedAt)+' に送信済み'):row(v,'⚠ 送れないまま期限が過ぎました','exp')).join(''):'<div class="empty">まだ送ったお知らせはありません</div>';
+  box.innerHTML=html;
+}
+let lnEditId=null;
+function openLineNotifyEdit(id){
+  const v=yoteiCache.find(x=>x._id===id);
+  if(!v) return;
+  if(v.uid!==uid()){ alert('お知らせの変更は、予定を登録した人だけができます'); return; }
+  if(typeof MainicoLine==='undefined'){ alert('LINEの機能を読み込めませんでした。アプリを開き直してください'); return; }
+  lnEditId=id;
+  document.getElementById('ln-edit-target').innerHTML='<b>'+esc(v.kind||'📌')+' '+esc(v.label||'予定')+'</b><br>予定日：'+esc(yoteiDateJp(v))+
+    (v.notifiedAt?'<br><small>前回の送信：'+esc(lnTime(v.notifiedAt))+'</small>':'');
+  document.getElementById('ln-edit-date').value=v.date||'';
+  document.getElementById('ln-edit-at').value=MainicoLine.toInputValue(v.notifyAt);
+  document.getElementById('ln-edit-state').textContent='';
+  document.getElementById('ln-edit-state').classList.remove('err');
+  document.getElementById('ln-edit-modal').classList.add('show');
+}
+function closeLineNotifyEdit(){ lnEditId=null; document.getElementById('ln-edit-modal').classList.remove('show'); }
+async function saveLineNotifyEdit(){
+  const v=yoteiCache.find(x=>x._id===lnEditId);
+  const st=document.getElementById('ln-edit-state');
+  if(!v){ closeLineNotifyEdit(); return; }
+  const r=MainicoLine.readNotify('ln-edit-at',v.notifyAt);
+  if(!r.ok){ st.textContent=r.message; st.classList.add('err'); return; }
+  const btn=document.getElementById('ln-edit-save'); btn.disabled=true;
+  st.classList.remove('err'); st.textContent='保存しています…';
+  try{
+    await col('yotei').doc(v._id).update({notifyAt:r.value,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    st.textContent=r.value?'お知らせの日時を保存しました':'この予定はLINEで知らせない設定にしました';
+    setTimeout(()=>{ if(lnEditId===v._id) closeLineNotifyEdit(); },900);
+  }catch(e){ st.textContent='保存できませんでした。通信状態を確認して、もう一度押してください'; st.classList.add('err'); }
+  finally{ btn.disabled=false; }
+}
+
+/* 予定のふり返り */
+let yoteiNotes=[],yoteiNotesUnsub=null,yoteiReviewShown=15,yoteiReviewId=null;
+function initYoteiNotes(){
+  if(yoteiNotesUnsub){try{yoteiNotesUnsub();}catch(e){}}
+  yoteiNotes=[];
+  yoteiNotesUnsub=col('events').where('type','==','yotei-note').onSnapshot(snap=>{
+    const rows=[];snap.forEach(doc=>{const v=doc.data();v._id=doc.id;rows.push(v);});
+    rows.sort((a,b)=>foMillis(a)-foMillis(b));
+    yoteiNotes=rows; renderYoteiReview(); if(yoteiReviewId) renderYoteiReviewNotes();
+  },()=>{});
+}
+function renderYoteiReview(){
+  const box=document.getElementById('yr-list'); if(!box) return;
+  const t=todayStr();
+  const qEl=document.getElementById('yr-search');
+  const q=(qEl&&qEl.value||'').trim();
+  let past=yoteiCache.filter(v=>v.date&&v.date<=t);
+  if(q) past=past.filter(v=>String(v.label||'').indexOf(q)>=0||String(v.place||'').indexOf(q)>=0);
+  past.sort((a,b)=>a.date!==b.date?(a.date<b.date?1:-1):String(b.time||'').localeCompare(String(a.time||'')));
+  if(!past.length){ box.innerHTML='<div class="empty">'+(q?'「'+esc(q)+'」に当てはまる予定はありません':'まだ過ぎた予定はありません。予定の日が来ると、ここで見返せます')+'</div>'; return; }
+  const count={}; yoteiNotes.forEach(n=>{count[n.yoteiId]=(count[n.yoteiId]||0)+1;});
+  box.innerHTML=past.slice(0,yoteiReviewShown).map(v=>
+    '<button type="button" class="yr-item" style="border-left-color:'+yoteiColor(v)+'" onclick="openYoteiReview(\''+jsArg(v._id)+'\')">'+
+    '<small>'+esc(yoteiDateJp(v))+(v.date===t?'（今日）':'')+'</small><b>'+esc(v.kind||'📌')+' '+esc(v.label||'予定')+'</b>'+
+    (v.place?'<small>📍'+esc(v.place)+'</small>':'')+
+    (count[v._id]?'<span class="yr-badge">📝 メモ '+count[v._id]+'件</span>':'')+'</button>').join('')+
+    (past.length>yoteiReviewShown?'<button type="button" class="set-btn" onclick="yoteiReviewShown+=15;renderYoteiReview()">もっと見る（あと'+(past.length-yoteiReviewShown)+'件）</button>':'');
+}
+function openYoteiReview(id){
+  const v=yoteiCache.find(x=>x._id===id); if(!v) return;
+  yoteiReviewId=id;
+  document.getElementById('yr-head').style.borderLeftColor=yoteiColor(v);
+  document.getElementById('yr-title').textContent=(v.kind||'📌')+' '+(v.label||'予定');
+  const lines=['📅 '+yoteiDateJp(v)];
+  if(v.place) lines.push('📍 '+v.place);
+  lines.push('✍ '+(v.uid===uid()?'あなたが登録':(v.uid&&memberNames[jsArg(v.uid)]?memberNames[jsArg(v.uid)]+'さんが登録':'家族が登録')));
+  if(v.notifiedAt) lines.push('🔔 LINEで '+lnTime(v.notifiedAt)+' にお知らせ済み');
+  else if(v.notificationStatus==='expired') lines.push('🔔 LINEのお知らせは送れないまま期限が過ぎました');
+  else if(v.notifyAt) lines.push('🔔 LINEで '+lnTime(v.notifyAt)+' に送る予定');
+  document.getElementById('yr-meta').innerHTML=lines.map(esc).join('<br>');
+  document.getElementById('yr-note-input').value='';
+  document.getElementById('yr-note-state').textContent='';
+  renderYoteiReviewNotes();
+  document.getElementById('yr-modal').classList.add('show');
+}
+function closeYoteiReview(){ yoteiReviewId=null; document.getElementById('yr-modal').classList.remove('show'); }
+function renderYoteiReviewNotes(){
+  const box=document.getElementById('yr-notes'); if(!box) return;
+  const rows=yoteiNotes.filter(n=>n.yoteiId===yoteiReviewId);
+  if(!rows.length){ box.innerHTML='<div class="empty">まだメモはありません</div>'; return; }
+  box.innerHTML=rows.map(n=>'<div class="yr-note">'+esc(n.text||'')+'<small>'+esc((n.uid===uid()?'あなた':(n.name||'家族')+'さん')+' ・ '+foDateTime(n))+'</small>'+
+    (n.uid===uid()?'<button type="button" class="yt-del danger" onclick="delYoteiNote(\''+jsArg(n._id)+'\')">このメモを消す</button>':'')+'</div>').join('');
+}
+async function addYoteiNote(){
+  const el=document.getElementById('yr-note-input'), st=document.getElementById('yr-note-state');
+  const text=el.value.trim().slice(0,300);
+  if(!text){ st.textContent='メモを入力してください'; st.classList.add('err'); return; }
+  const id=yoteiReviewId; if(!id) return;
+  const btn=document.getElementById('yr-note-btn'); btn.disabled=true;
+  st.classList.remove('err'); st.textContent='保存しています…';
+  try{
+    await addEvent({type:'yotei-note',yoteiId:id,text:text,name:myName(),clientAt:Date.now()});
+    if(el.value.trim().slice(0,300)===text) el.value='';
+    st.textContent='メモを保存しました';
+  }catch(e){ st.textContent='保存できませんでした。入力は残っています'; st.classList.add('err'); }
+  finally{ btn.disabled=false; }
+}
+async function delYoteiNote(id){
+  if(!confirm('このメモを消しますか？')) return;
+  try{ await col('events').doc(id).delete(); }
+  catch(e){ const st=document.getElementById('yr-note-state'); st.textContent='消せませんでした。通信状態を確認してください'; st.classList.add('err'); }
+}
+function openYoteiDayRecords(){
+  const v=yoteiCache.find(x=>x._id===yoteiReviewId); if(!v) return;
+  closeYoteiReview();
+  const inp=document.getElementById('rec-date'); inp.value=v.date; recChooseDate();
+  const ttl=document.getElementById('rec-day-ttl'); if(ttl) ttl.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ===== 確認ボタンを1つずつ増やす(2026-09-28) ===== */
+async function addCareButton(){
+  const el=document.getElementById('care-add-input'), st='care-add-state';
+  const label=el.value.trim().slice(0,30);
+  if(!label){ foState(st,'ボタンの名前を入力してください',true); return; }
+  const items=currentCareItems().map(o=>({key:o.key,label:o.label}));
+  if(items.some(o=>o.label===label)){ foState(st,'同じ名前のボタンがすでにあります',true); return; }
+  if(items.filter(o=>String(o.key).indexOf('custom-')===0).length>=CARE_CUSTOM_MAX){ foState(st,'自由に作れるボタンは8個までです。「ボタンを選び直す・消す」で整理してください',true); return; }
+  items.push({key:'custom-'+Date.now().toString(36),label:label});
+  const keys=items.filter(o=>String(o.key).indexOf('custom-')!==0).map(o=>o.key);
+  const btn=document.getElementById('care-add-btn'); btn.disabled=true;
+  foState(st,'保存しています…',false);
+  try{
+    await addEvent({type:'care-config',keys:keys,items:items,name:myName(),clientAt:Date.now()});
+    el.value='';
+    foState(st,'「'+label+'」のボタンを追加しました',false);
+  }catch(e){ foState(st,'保存できませんでした。通信状態を確認してください',true); }
+  finally{ btn.disabled=false; }
+}
+
 function resetDisasterConsent(){
   ['disaster-consent','disaster-contact-consent'].forEach(id=>document.getElementById(id).checked=false);
 }
