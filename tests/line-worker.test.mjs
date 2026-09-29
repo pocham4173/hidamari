@@ -123,6 +123,11 @@ await hook([{ type: 'message', replyToken: 'r2', source: user('Uowner'), message
 assert.match(replies.at(-1).messages[0].text, /理絵さん、LINE連携しました/);
 assert.equal(db.get('lineLinks/owner').fields.lineUserId.stringValue, 'Uowner');
 assert.equal(db.has('lineLinkCodes/ABCD2345'), false, '使ったコードは消える');
+const linkLogs = (action) => [...db].filter(([p, d]) => p.startsWith('groups/g1/events/') && d.fields.type?.stringValue === 'line-link-log' && d.fields.action.stringValue === action).map(([, d]) => d.fields);
+assert.equal(linkLogs('linked').length, 1, '連携の記録が家庭に残る');
+assert.equal(linkLogs('linked')[0].uid.stringValue, 'owner');
+assert.equal(linkLogs('linked')[0].name.stringValue, '理絵');
+assert.ok(!JSON.stringify(linkLogs('linked')[0]).includes('Uowner'), '記録にLINEの利用者識別子は入れない');
 // 5. 期限切れのコードは連携しない
 put('lineLinkCodes/EFGH6789', { uid: S('fam'), groupId: S('g1'), expiresAt: T(new Date(Date.now() - 1000)) });
 await hook([{ type: 'message', replyToken: 'r3', source: user('Ufam'), message: { type: 'text', text: 'EFGH6789' } }]);
@@ -167,6 +172,11 @@ assert.ok('nullValue' in db.get('groups/g1/yotei/y1').fields.notifyAt, '送っ�
 assert.ok(db.get('groups/g1/yotei/y1').fields.notifiedAt.timestampValue);
 assert.ok(db.get('groups/g1/yotei/y2').fields.notifyAt.timestampValue, 'まだ先の予定はそのまま');
 assert.ok('nullValue' in db.get('groups/g1/yotei/yOld').fields.notifyAt, '古すぎる予定は送らずに印だけ');
+const y1log = db.get('groups/g1/yotei/y1').fields.notifyLog.arrayValue.values;
+assert.equal(y1log.length, 1, '送信の記録が予定に残る');
+assert.equal(y1log[0].mapValue.fields.status.stringValue, 'accepted');
+assert.equal(y1log[0].mapValue.fields.count.integerValue, '2');
+assert.equal(db.get('groups/g1/yotei/yOld').fields.notifyLog.arrayValue.values[0].mapValue.fields.status.stringValue, 'expired');
 assert.ok(db.get('groups/g2/yotei/yDel').fields.notifyAt.timestampValue, '削除中の家庭には触れない');
 assert.ok(!pushes.some(p=>p.to==='Ugone'),'家庭から抜けた人には送らない');
 assert.ok(!pushes.some(p=>['Udel','Uno'].includes(p.to)),'削除された家庭には送らない');
@@ -179,9 +189,11 @@ assert.equal(pushes.length, 2);
 await hook([{ type: 'message', replyToken: 'r6', source: user('Ufam'), message: { type: 'text', text: '解除' } }]);
 assert.match(replies.at(-1).messages[0].text, /解除しました/);
 assert.equal(db.has('lineLinks/fam'), false);
+assert.ok(linkLogs('unlinked').some((f) => f.uid.stringValue === 'fam' && f.via.stringValue === 'line'), '「解除」の記録が残る');
 // 11. ブロック(unfollow)でも連携解除
 await hook([{ type: 'unfollow', source: user('Uowner') }]);
 assert.equal(db.has('lineLinks/owner'), false);
+assert.ok(linkLogs('unlinked').some((f) => f.uid.stringValue === 'owner' && f.via.stringValue === 'block'), 'ブロックでの解除も記録が残る');
 // 12. 関係ない文は案内だけ返す
 await hook([{ type: 'message', replyToken: 'r7', source: user('Ux'), message: { type: 'text', text: 'こんにちは' } }]);
 assert.match(replies.at(-1).messages[0].text, /お返事や相談は届きません/);
