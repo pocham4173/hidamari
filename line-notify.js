@@ -171,14 +171,59 @@
     setState(area,'解除しています…');
     try{
       await global.db.collection('lineLinks').doc(global.uid()).delete();
+      /* 家族が見られる「LINE連携の記録」に残す。残せなくても解除は済んでいる */
+      try{ if(typeof global.addEvent==='function') await global.addEvent({type:'line-link-log',action:'unlinked',via:'app',name:typeof global.myName==='function'?global.myName():'',clientAt:Date.now()}); }catch(ignore){}
       render(areaId);
+      renderLog('settings-line-log');
     }catch(e){
       btn.disabled=false;
       setState(area,'解除できませんでした。通信を確認して、もう一度押してください',true);
     }
   }
 
+  /* ===== 家族のLINE連携の記録(2026-09-29) =====
+     連携・解除のたびに events へ type:'line-link-log' で残る(連携は送信役、アプリからの解除はアプリが書く)。 */
+  var VIA={code:'連携コードで',app:'アプリから',line:'LINEで「解除」と送って',block:'公式LINEをブロックして'};
+  function ms(v){ var d=toDate(v&&v.at); return d?d.getTime():(Number(v&&v.clientAt)||0); }
+  async function renderLog(boxId){
+    var box=document.getElementById(boxId);
+    if(!box) return;
+    if(typeof global.col!=='function'){ box.innerHTML=''; return; }
+    box.innerHTML='<p class="note">記録を読み込んでいます…</p>';
+    var rows=[];
+    try{
+      var snap=await global.col('events').where('type','==','line-link-log').get();
+      snap.forEach(function(d){ rows.push(d.data()); });
+    }catch(e){ box.innerHTML='<p class="note">記録を読み込めませんでした。通信を確認してください。</p>'; return; }
+    rows.sort(function(a,b){ return ms(b)-ms(a); });
+    var head='<p class="note">家族のだれが、いつLINEと連携・解除したかの記録です（2026年9月29日以降の分から残ります）。</p>';
+    if(!rows.length){ box.innerHTML=head+'<p class="note">まだ記録はありません。</p>'; return; }
+    var latest={}, order=[];
+    rows.forEach(function(v){ if(v.uid&&!latest[v.uid]){ latest[v.uid]=v; order.push(v.uid); } });
+    var now=order.filter(function(u){ return latest[u].action==='linked'; }).map(function(u){ return h(latest[u].name||'家族')+'さん'; });
+    var html=head+'<div class="line-log-now"><b>記録上、LINEで受け取っている人：</b>'+(now.length?now.join('、'):'いません')+'</div><ul class="line-log-list">';
+    rows.slice(0,30).forEach(function(v){
+      var d=new Date(ms(v));
+      var who=h(v.name||'家族')+'さん';
+      var what=v.action==='linked'?'✅ 連携しました':'⏹ 解除しました';
+      var how=VIA[v.via]?'（'+VIA[v.via]+'）':'';
+      html+='<li><span class="line-log-when">'+(ms(v)?h(jpDateTime(d)):'')+'</span>'+who+' '+what+'<small>'+h(how)+'</small></li>';
+    });
+    box.innerHTML=html+'</ul>';
+  }
+  /* 予定ごとのLINE送信の記録(送信役が notifyLog に残す) */
+  function sendLog(v){
+    var list=Array.isArray(v&&v.notifyLog)?v.notifyLog:[];
+    return list.map(function(e){
+      var at=toDate(e&&e.at), sch=toDate(e&&e.scheduledAt);
+      if(e&&e.status==='accepted') return {ok:true,at:at,text:'✅ '+(at?jpDateTime(at):'')+' に送信済み'+(e.count?'（'+e.count+'人）':'')};
+      if(e&&e.status==='expired') return {ok:false,at:at,text:'⚠ '+(sch?jpDateTime(sch):'')+' の分は送れないまま期限が過ぎました'};
+      return null;
+    }).filter(Boolean).reverse();
+  }
+
   global.MainicoLine={
+    renderLog:renderLog, sendLog:sendLog,
     LINE_ID:LINE_ID, ADD_FRIEND_URL:ADD_FRIEND_URL,
     render:render, preset:preset, readNotify:readNotify,
     toInputValue:toInputValue, fromInputValue:fromInputValue, describe:describe, newCode:newCode
