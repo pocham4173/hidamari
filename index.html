@@ -502,6 +502,10 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 #offline-bar{position:sticky;top:0;z-index:60;background:#FFF4E8;border-bottom:2px solid #E8731A;color:#5A3510;font-weight:800;font-size:.92rem;line-height:1.6;padding:10px 14px;text-align:center;}
 #offline-bar[hidden]{display:none;}
 #offline-bar a{display:inline-block;margin-left:6px;color:#1D4E9E;font-weight:900;}
+.open-place-note{margin:0 0 14px;padding:12px 14px;border-radius:14px;background:#FFF4E8;border:2px solid #E8731A;color:#4A2E10;font-weight:800;line-height:1.65;text-align:left;}
+.open-place-note[hidden]{display:none;}
+.open-place-note b{display:block;font-size:1.05rem;margin-bottom:4px;}
+.open-place-note a{display:inline-block;margin-top:8px;padding:10px 14px;border-radius:10px;background:#1D4E9E;color:#fff;text-decoration:none;font-weight:900;}
 .care-add{margin-top:10px;border:2px dashed #7FB195;border-radius:11px;background:#fff;padding:0 12px;}
 .care-add summary{min-height:48px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#2E7A55;cursor:pointer;list-style:none;}
 .care-add summary::-webkit-details-marker{display:none;}
@@ -513,6 +517,14 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .lnh-sec{font-weight:900;font-size:.9rem;color:var(--cha);margin:12px 0 4px;}
 .lnh-row{padding:10px 2px;border-bottom:1px solid #F0EAE0;line-height:1.55;}
 .lnh-row:last-child{border-bottom:none;}
+.lnh-log{margin:4px 0 0;padding-left:1.1em;font-size:.82rem;color:var(--usucha);}
+.line-log-box{margin-top:14px;padding-top:10px;border-top:1px dashed #D8CDBA;}
+.line-log-box h4{margin:0 0 4px;}
+.line-log-now{background:#F0FAF3;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:.9rem;}
+.line-log-list{list-style:none;padding:0;margin:6px 0 0;}
+.line-log-list li{padding:7px 0;border-bottom:1px solid #F0EAE0;font-size:.92rem;line-height:1.5;}
+.line-log-list small{display:block;color:var(--usucha);}
+.line-log-when{display:block;font-size:.8rem;color:var(--usucha);}
 .lnh-row b{font-size:1.02rem;}
 .lnh-row small{display:block;color:var(--usucha);}
 .lnh-row .lnh-when{color:#1F7A43;font-weight:800;}
@@ -733,6 +745,24 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 (function(){
   function bar(){var b=document.getElementById('offline-bar');if(b)b.hidden=navigator.onLine!==false;}
   bar();window.addEventListener('offline',bar);window.addEventListener('online',bar);
+  /* LINEの中のブラウザーや、ホーム画面のアイコン以外で開いた時の案内(2026-09-29)。
+     開いた場所ごとに保存場所が別になるため、最初の画面で新しい家族を作ってしまう事故を防ぐ。 */
+  window.addEventListener('DOMContentLoaded',function(){
+    try{
+      var ua=navigator.userAgent||'';
+      var inLine=/ Line\//i.test(ua);
+      var standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+      var known=false;try{known=!!localStorage.getItem('mainicoGid');}catch(e){}
+      var box=document.getElementById('open-place-note');
+      if(!box||known||(standalone&&!inLine))return;
+      var url=location.href.split('#')[0];
+      url+=(url.indexOf('?')<0?'?':'&')+'openExternalBrowser=1';
+      box.innerHTML=inLine
+        ?'<b>LINEの中で開いています</b>すでにまいにこを使っている方は、ここで新しく始めず、ホーム画面の「まいにこ」アイコンから開いてください。<br>はじめて使う方は、下のボタンでいつものブラウザーに移ってから始めてください（LINEの中では、次に開いたとき続きから使えないことがあります）。<br><a href="'+url.replace(/"/g,'&quot;')+'">いつものブラウザーで開く</a>'
+        :'<b>すでに使っている方へ</b>ホーム画面に「まいにこ」を追加している方は、ここで新しく始めず、ホーム画面のアイコンから開いてください。';
+      box.hidden=false;
+    }catch(e){}
+  });
   /* アプリ本体が始まらなくても、控えの仕組み(Service Worker)は先に登録しておく */
   try{if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});}catch(e){}
   window.addEventListener('load',function(){
@@ -751,6 +781,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
   <img class="appicon" src="icon-192.png" alt="まいにこ">
   <h1>まいにこ</h1>
   <div class="entry-catch">不安を軽く、安心を深く、<br>上田でつなぐ。</div>
+  <div class="open-place-note" id="open-place-note" hidden></div>
   <div class="q">どなたのスマホで使いますか？</div>
   <div id="entry-state" class="save-state" role="status" aria-live="polite"></div>
   <div id="select-box">
@@ -1339,10 +1370,11 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       </div>
     </details>
 
-    <details class="set-menu" id="menu-line" ontoggle="if(this.open&&window.MainicoLine)MainicoLine.render('settings-line-area')">
+    <details class="set-menu" id="menu-line" ontoggle="if(this.open&&window.MainicoLine){MainicoLine.render('settings-line-area');if(MainicoLine.renderLog)MainicoLine.renderLog('settings-line-log');}">
       <summary>LINEで予定のお知らせ</summary>
       <div class="set-menu-body">
         <div id="settings-line-area"></div>
+        <div class="line-log-box"><h4>家族のLINE連携の記録</h4><div id="settings-line-log"></div></div>
       </div>
     </details>
 
@@ -1694,7 +1726,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       <details class="card dom-yotei" id="line-history-card">
         <summary class="fold-ttl">LINEでお知らせした履歴</summary>
         <div id="line-history"><div class="empty">読み込み中…</div></div>
-        <div class="note">「送信済み」はLINE側が受け付けた記録で、読んだことの確認ではありません。同じ予定で何度か送った場合は、最後に送った日時を表示します。お知らせの変更は、予定を登録した人だけができます。</div>
+        <div class="note">「送信済み」はLINE側が受け付けた記録で、読んだことの確認ではありません。同じ予定で何度か送った場合は、その下にすべての送信記録を表示します（2026年9月29日以降の送信から）。お知らせの変更は、予定を登録した人だけができます。</div>
       </details>
     </div>
 
@@ -1910,7 +1942,7 @@ setTimeout(function(){
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260917-voice"></script>
-<script src="line-notify.js?v=20260926"></script>
+<script src="line-notify.js?v=20260929"></script>
 <script>
 const previewStorage={
   getItem:k=>localStorage.getItem(k),
@@ -4216,6 +4248,7 @@ var REC_META_TYPES = {
   'kibun-config':1,
   'medicine-info':1,
   'yotei-note':1,
+  'line-link-log':1,
   'yotei-cat-config':1,
   'family-note':1,'family-note-ack':1,'family-note-reply':1,
   'family-task':1,'family-task-done':1,'family-task-help':1,
@@ -6628,7 +6661,8 @@ function renderLineHistory(){
   const sentMs=v=>v.notifiedAt&&typeof v.notifiedAt.toMillis==='function'?v.notifiedAt.toMillis():0;
   const done=yoteiCache.filter(v=>sentMs(v)||v.notificationStatus==='expired')
     .sort((a,b)=>(sentMs(b)||(b.updatedAt&&b.updatedAt.toMillis?b.updatedAt.toMillis():0))-(sentMs(a)||(a.updatedAt&&a.updatedAt.toMillis?a.updatedAt.toMillis():0))).slice(0,30);
-  const row=(v,when,cls)=>'<div class="lnh-row"><b>'+esc(v.kind||'📌')+' '+esc(v.label||'予定')+'</b><small>予定日：'+esc(yoteiDateJp(v))+'</small><small class="lnh-when'+(cls?' '+cls:'')+'">'+esc(when)+'</small>'+
+  const logOf=v=>{const l=(typeof MainicoLine!=='undefined'&&MainicoLine.sendLog)?MainicoLine.sendLog(v):[];return l.length>1?'<ul class="lnh-log">'+l.map(e=>'<li>'+esc(e.text)+'</li>').join('')+'</ul>':'';};
+  const row=(v,when,cls)=>'<div class="lnh-row"><b>'+esc(v.kind||'📌')+' '+esc(v.label||'予定')+'</b><small>予定日：'+esc(yoteiDateJp(v))+'</small><small class="lnh-when'+(cls?' '+cls:'')+'">'+esc(when)+'</small>'+logOf(v)+
     (v.uid===uid()?'<span class="yt-links" style="margin-top:6px;"><button type="button" class="ln" onclick="openLineNotifyEdit(\''+jsArg(v._id)+'\')">🔔 お知らせを変更</button></span>':'')+'</div>';
   let html='<div class="lnh-sec">これから送る予定</div>';
   html+=planned.length?planned.map(v=>row(v,'🔔 '+lnTime(v.notifyAt)+' に送ります')).join(''):'<div class="empty">送る予定のお知らせはありません</div>';
@@ -6708,9 +6742,11 @@ function openYoteiReview(id){
   if(v.place) lines.push('📍 '+v.place);
   if(v.category) lines.push('🏷 分類：'+v.category);
   lines.push('✍ '+(v.uid===uid()?'あなたが登録':(v.uid&&memberNames[jsArg(v.uid)]?memberNames[jsArg(v.uid)]+'さんが登録':'家族が登録')));
-  if(v.notifiedAt) lines.push('🔔 LINEで '+lnTime(v.notifiedAt)+' にお知らせ済み');
-  else if(v.notificationStatus==='expired') lines.push('🔔 LINEのお知らせは送れないまま期限が過ぎました');
-  else if(v.notifyAt) lines.push('🔔 LINEで '+lnTime(v.notifyAt)+' に送る予定');
+  const slog=(typeof MainicoLine!=='undefined'&&MainicoLine.sendLog)?MainicoLine.sendLog(v):[];
+  if(slog.length) slog.forEach(e=>lines.push('🔔 LINE：'+e.text));
+  else if(v.notifiedAt) lines.push('🔔 LINEで '+lnTime(v.notifiedAt)+' にお知らせ済み');
+  else if(v.notificationStatus==='expired'&&!slog.length) lines.push('🔔 LINEのお知らせは送れないまま期限が過ぎました');
+  if(v.notifyAt) lines.push('🔔 LINEで '+lnTime(v.notifyAt)+' に送る予定');
   document.getElementById('yr-meta').innerHTML=lines.map(esc).join('<br>');
   const acts=document.getElementById('yr-actions');
   acts.innerHTML=(v.uid===uid()||!v.uid)
