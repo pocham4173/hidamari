@@ -169,10 +169,12 @@ service cloud.firestore {
       }
 
       /* 予定の追加項目(2026-09-26): 場所(60文字まで)と、LINEで知らせる日時。
+         (2026-09-28) 分類(20文字まで・空欄可)を追加。
          notifiedAt(送信済みの印)は送信役(サーバー)だけが書く。 */
       function validYoteiExtras(d) {
         return (!('place' in d) || (d.place is string && d.place.size() <= 60))
-          && (!('notifyAt' in d) || d.notifyAt == null || d.notifyAt is timestamp);
+          && (!('notifyAt' in d) || d.notifyAt == null || d.notifyAt is timestamp)
+          && (!('category' in d) || (d.category is string && d.category.size() <= 20));
       }
 
       match /yotei/{yoteiId} {
@@ -183,7 +185,7 @@ service cloud.firestore {
           && request.resource.data.get('uid', null) == request.auth.uid
           && request.resource.data.keys().hasOnly([
             'kind', 'date', 'time', 'label', 'color', 'repeat',
-            'uid', 'createdAt', 'updatedAt', 'place', 'notifyAt'
+            'uid', 'createdAt', 'updatedAt', 'place', 'notifyAt', 'category'
           ])
           && validYoteiExtras(request.resource.data)
           && request.resource.data.keys().hasAll([
@@ -203,7 +205,7 @@ service cloud.firestore {
               || resource.data.get('uid', null) == request.auth.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'kind', 'date', 'time', 'label', 'color', 'repeat', 'uid', 'updatedAt',
-            'place', 'notifyAt'
+            'place', 'notifyAt', 'category'
           ])
           && validYoteiExtras(request.resource.data)
           && request.resource.data.get('updatedAt', null) == request.time
