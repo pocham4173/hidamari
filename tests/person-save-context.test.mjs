@@ -9,7 +9,7 @@ function fixture(){
   const elements=new Map(),cache=new Map(),writes=[],spoken=[],marks=[],warnings=[],timers=new Map();let timerId=0;
   const el=id=>{if(!elements.has(id))elements.set(id,{textContent:'',value:'',disabled:false,style:{},classList:{add(){},remove(){}}});return elements.get(id);};
   let refreshes=0,closed=0,authorized=true;
-  const c={document:{getElementById:el},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),todayStr:()=>day,slot:()=>({key:currentSlot,tx:currentSlot==='yoru'?'おやすみ':'おはよう'}),
+  const c={document:{getElementById:el},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),todayStr:()=>day,personDay:()=>day,slot:()=>({key:currentSlot,tx:currentSlot==='yoru'?'おやすみ':'おはよう'}),
     communicationSession:()=>{const captured=[account,group,generation];return()=>captured[0]===account&&captured[1]===group&&captured[2]===generation;},
     previewStorage:{getItem:key=>cache.get(key),setItem:(key,value)=>cache.set(key,value)},
     validKusuriSlot:key=>['asa','hiru','yoru'].includes(key),kusuriSlotName:key=>({asa:'朝',hiru:'昼',yoru:'夜'}[key]),
