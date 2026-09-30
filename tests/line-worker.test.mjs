@@ -1,10 +1,11 @@
-/* LINE送信役(line-worker/worker.js)の模擬テスト。
+
+/* LINE送信役(worker.js)の模擬テスト。
    LINEとFirestoreを偽物に差し替えて、連携・解除・予定のお知らせを確かめる。 */
 import assert from 'node:assert/strict';
 import { webcrypto, generateKeyPairSync, createHmac } from 'node:crypto';
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
-const worker = (await import('../line-worker/worker.js')).default;
+const worker = (await import('../worker.js')).default;
 
 const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const SA = { project_id: 'demo', client_email: 'sa@demo.iam.gserviceaccount.com',
@@ -60,11 +61,13 @@ globalThis.fetch = async (url, opt = {}) => {
     rest = rest.replace(/:runQuery$/, '');
     const q = body.structuredQuery;
     const colPath = (rest ? rest + '/' : '') + q.from[0].collectionId;
-    const f = q.where.fieldFilter;
+    const f = q.where && q.where.fieldFilter;
     const out = [];
     for (const [p] of db) {
       const parts = p.split('/');
-      if (parts.slice(0, -1).join('/') !== colPath) continue;
+      if (q.from[0].allDescendants) { if (parts[parts.length - 2] !== q.from[0].collectionId) continue; }
+      else if (parts.slice(0, -1).join('/') !== colPath) continue;
+      if (!f) { out.push({ document: docJson(p) }); continue; }
       const v = db.get(p).fields[f.field.fieldPath];
       if (!v || 'nullValue' in v) continue;
       const c = cmp(v, f.value);
@@ -185,6 +188,21 @@ assert.ok(!pushes.some(p=>['Udel','Uno'].includes(p.to)),'削除された家庭�
 await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } });
 await waiter;
 assert.equal(pushes.length, 2);
+// 9b. おまもりタグが読み取られたら、LINE連携した承認済みの家族へ1回だけ知らせる
+put('watchTags/tagA', { groupId: S('g1'), active: { booleanValue: true } });
+put('watchTags/tagA/alerts/reader1', { type: S('found'), situation: S('lost'), count: { integerValue: '1' }, senderUid: S('reader1'), createdAt: T(new Date(Date.now() - 60000)) });
+put('watchTags/tagOld/alerts/reader2', { type: S('found'), situation: S('unwell'), count: { integerValue: '1' }, senderUid: S('reader2'), createdAt: T(new Date(Date.now() - 3 * 3600000)) });
+await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } });
+await waiter;
+const tagPushes = pushes.slice(2);
+assert.deepEqual(tagPushes.map((p) => p.to).sort(), ['Ufam', 'Uowner'], 'タグのお知らせは連携した家族へ');
+assert.match(tagPushes[0].messages[0].text, /おまもりタグのお知らせ/);
+assert.match(tagPushes[0].messages[0].text, /道に迷っているようです/);
+assert.ok(!tagPushes[0].messages[0].text.includes('reader1'), '読み取った方の情報は送らない');
+assert.ok(db.get('watchTags/tagA/alerts/reader1').fields.lineNotifiedAt.timestampValue, '知らせた印が付く');
+await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } });
+await waiter;
+assert.equal(pushes.length, 4, 'タグのお知らせを二重に送らない・古い読み取りは送らない');
 // 10. 「解除」と送ると連携解除
 await hook([{ type: 'message', replyToken: 'r6', source: user('Ufam'), message: { type: 'text', text: '解除' } }]);
 assert.match(replies.at(-1).messages[0].text, /解除しました/);
@@ -199,7 +217,7 @@ await hook([{ type: 'message', replyToken: 'r7', source: user('Ux'), message: { 
 assert.match(replies.at(-1).messages[0].text, /お返事や相談は届きません/);
 // 13. 動作確認ページ
 const res = await worker.fetch(new Request('https://w.example/'), env, {});
-assert.equal(await res.text(), 'まいにこ LINE送信役は動いています');
+assert.equal(await res.text(), 'まいにこ LINE送信役は動いています（版：2026-09-30 タグのお知らせつき）');
 
 console.log('line worker: 署名確認・友だち追加・連携(期限切れ/承認待ちは不可)・見回り送信(対象者/文面/二重送信なし/古い予定/削除中の家庭)・解除・ブロック 13項目 passed');
 
