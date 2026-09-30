@@ -8,7 +8,7 @@ function fixture(){
  const els=new Map(),cache=new Map(),timers=new Map(),writes=[],listReads=[],deleted=[],rows=new Map(),alerts=[],confirms=[];
  const doc={activeElement:null,getElementById:id=>el(id)};
  const el=id=>{if(!els.has(id))els.set(id,{textContent:'',innerHTML:'',value:'',hidden:false,disabled:false,isConnected:true,style:{},attrs:{},classList:{add(){},remove(){}},setAttribute(k,v){this.attrs[k]=v;},focus(){doc.activeElement=this;},addEventListener(k,fn){this[k]=fn;},querySelectorAll(){return this.targets||[];}});return els.get(id);};
- const c={document:doc,uid:()=>account,gid:()=>group,todayStr:()=>day,slot:()=>({key:'asa',tx:'おはよう'}),
+ const c={document:doc,uid:()=>account,gid:()=>group,todayStr:()=>day,personDay:()=>day,slot:()=>({key:'asa',tx:'おはよう'}),
   communicationSession:()=>{const a=account,g=group,v=generation;return ()=>a===account&&g===group&&v===generation;},
   setTimeout:(fn,ms)=>{timers.set(++timerId,{fn,ms});return timerId;},clearTimeout:id=>timers.delete(id),
   previewStorage:{getItem:k=>cache.get(k),setItem:(k,v)=>cache.set(k,v),removeItem:k=>cache.delete(k)},
