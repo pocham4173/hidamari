@@ -53,7 +53,7 @@ function createUi(options){
  panel.querySelector('[data-clear]').onclick=async()=>{if(!check()||!confirm('このブラウザーの全家庭のお薬手帳の控えをすべて削除します。よろしいですか？'))return;try{await store.clearAll();if(check())await render();}catch(e){message('削除できませんでした。再度お試しください。');}};
  panel.showModal();timer=setInterval(check,200);render();
  }
- async function openCleanup(){close();if(!confirm('このブラウザーに保存した全家庭のお薬手帳の控えをすべて削除します。書き出したファイルや他端末のコピーは消えません。続けますか？'))return false;try{await store.clearAll();alert('このブラウザーのお薬手帳の控えを削除しました。');return true;}catch(e){alert('削除できませんでした。画面を開き直して再度お試しください。');return false;}}
+ async function openCleanup(){close();if(!confirm('このブラウザーに保存した全家庭のお薬手帳の控えと、電波がないとき用の控え（連絡先・予定・お薬情報）をすべて削除します。書き出したファイルや他端末のコピーは消えません。続けますか？'))return false;try{await store.clearAll();alert('このブラウザーのお薬手帳の控えと、電波がないとき用の控えを削除しました。');return true;}catch(e){alert('削除できませんでした。画面を開き直して再度お試しください。');return false;}}
  return {open,close,invalidate:close,openCleanup};
 }
 return {createStore,createUi,validateFile,FILE_MAX,TOTAL_MAX,clearScope:(uid,gid)=>defaultStore().clearScope(uid,gid),clearUid:uid=>defaultStore().clearUid(uid),clearAll:()=>defaultStore().clearAll()};
