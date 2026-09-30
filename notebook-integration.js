@@ -21,7 +21,8 @@ function openMedicineNotebook(){
   try{notebookUi().open();}catch(error){alert('お薬手帳の控えを開けませんでした。通信を確認してページを読み込み直してください。保存情報は消さないでください。');}
 }
 function openNotebookCleanup(){
-  try{notebookUi().openCleanup();}catch(error){alert('端末内の控えの削除画面を開けませんでした。削除済みとは確認できません。ページを読み込み直してください。');}
+  /* お薬手帳の控えを消したときは、電波がないとき用の「もしもの控え」(連絡先・予定・お薬情報)も一緒に消す */
+  try{Promise.resolve(notebookUi().openCleanup()).then(function(ok){if(ok){try{localStorage.removeItem('mainicoOfflineCopy');}catch(ignore){}}});}catch(error){alert('端末内の控えの削除画面を開けませんでした。削除済みとは確認できません。ページを読み込み直してください。');}
 }
 window.mainicoNotebookClose=function(){
   if(mainicoNotebookUi)mainicoNotebookUi.invalidate();
