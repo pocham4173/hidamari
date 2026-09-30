@@ -66,6 +66,20 @@
     if(d.getTime()<Date.now()+60*1000) return {ok:false,message:'LINEで知らせる日時が、もう過ぎています。これから先の日時を入れてください'};
     return {ok:true,value:global.firebase.firestore.Timestamp.fromDate(d)};
   }
+  /* 予定の日付を変えたとき、LINEで知らせる日時を手で直していなければ、同じ日数だけずらす(2026-09-30)。
+     例: 10/6の「前日の夜7時」→ 日付を10/13に直すと 10/12の夜7時になる */
+  function shiftForDate(inputId,originalValue,oldDate,newDate){
+    var input=document.getElementById(inputId);
+    if(!input||!input.value||!originalValue||!oldDate||!newDate||oldDate===newDate) return false;
+    if(input.value!==toInputValue(originalValue)) return false;
+    var a=/^(\d{4})-(\d{2})-(\d{2})$/.exec(oldDate), b=/^(\d{4})-(\d{2})-(\d{2})$/.exec(newDate);
+    var d=fromInputValue(input.value);
+    if(!a||!b||!d) return false;
+    var days=Math.round((new Date(+b[1],+b[2]-1,+b[3])-new Date(+a[1],+a[2]-1,+a[3]))/86400000);
+    d.setDate(d.getDate()+days);
+    input.value=toInputValue(d);
+    return true;
+  }
   /* 予定一覧に出す短い説明 */
   function describe(v){
     var d=toDate(v&&v.notifyAt);
@@ -223,7 +237,7 @@
   }
 
   global.MainicoLine={
-    renderLog:renderLog, sendLog:sendLog,
+    renderLog:renderLog, sendLog:sendLog, shiftForDate:shiftForDate,
     LINE_ID:LINE_ID, ADD_FRIEND_URL:ADD_FRIEND_URL,
     render:render, preset:preset, readNotify:readNotify,
     toInputValue:toInputValue, fromInputValue:fromInputValue, describe:describe, newCode:newCode
