@@ -23,7 +23,7 @@
       own.forEach(function(task){
         var row=doc.createElement('div');row.className='family-tool-row';
         var title=doc.createElement('strong');title.textContent=task.text||'やること';row.appendChild(title);
-        if(task.due){var date=doc.createElement('div');date.textContent='日付：'+task.due;row.appendChild(date);}
+        if(task.due){var date=doc.createElement('div');date.textContent='期限：'+(function(d){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d||'');if(!m)return d;var t=new Date(+m[1],+m[2]-1,+m[3]);return (t.getMonth()+1)+'月'+t.getDate()+'日（'+'日月火水木金土'.charAt(t.getDay())+'）';})(task.due);row.appendChild(date);}
         var complete=done.some(function(v){return v.replyTo===task._id;});
         var label=doc.createElement('p');label.textContent=complete?'できました':'これから';row.appendChild(label);
         if(!complete){var button=doc.createElement('button');button.type='button';button.className='set-btn person-press-target';button.textContent='できた';button.disabled=!ready()||finishing.has(task._id);button.addEventListener('click',function(){return finish(task._id);});row.appendChild(button);}
