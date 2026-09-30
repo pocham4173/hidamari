@@ -36,7 +36,7 @@ export default {
         .filter((k) => !env[k]);
       const body = missing.length
         ? 'まいにこ LINE送信役：まだ設定が足りません → ' + missing.join('、')
-        : 'まいにこ LINE送信役は動いています（版：2026-09-29 連携の記録つき）';
+        : 'まいにこ LINE送信役は動いています（版：2026-09-30 タグのお知らせつき）';
       return new Response(body, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
     }
     return new Response('not found', { status: 404 });
@@ -202,6 +202,9 @@ async function runNotifications(env) {
   const now = new Date();
   let sent = 0;
   try {
+    // おまもりタグのお知らせを先に送る(予定のお知らせより急ぐため)。失敗しても予定の送信は続ける。
+    try { sent += await runTagAlerts(env, fs, now); }
+    catch (e) { if (e.message === 'request-budget') throw e; console.error('tag alerts', e.message); }
     const groups = await fs.list('groups', ['deletionState']);
     // Rotate the starting household; a busy household cannot monopolize every run.
     const offset = groups.length ? Math.floor(now.getTime() / 900000) % groups.length : 0;
@@ -286,6 +289,56 @@ async function runNotifications(env) {
   }
   console.log('notifications accepted:', sent, 'requests:', fs.count);
 }
+/* ================= おまもりタグのお知らせ(2026-09-30) =================
+ * 読み取った方が状況を選ぶと watchTags/{tagId}/alerts/{送った人} が書かれる(同じ人は10分ごと)。
+ * まだLINEで知らせていないものを、その家庭でLINE連携した承認済みの家族へ送る。
+ * 送る内容は「状況」と「時刻」だけ。読み取った方の情報や本人の名前は送らない。 */
+const TAG_SITUATIONS = { lost: '道に迷っているようです', unwell: '体調が心配です', safe: '安全な場所にいます', called: '警察・救急へ連絡しました' };
+const TAG_WINDOW_MS = 2 * 60 * 60 * 1000;   // 2時間より前の読み取りは送らない
+async function runTagAlerts(env, fs, now) {
+  let sent = 0;
+  const rows = await fs.query('', { from: [{ collectionId: 'alerts', allDescendants: true }], limit: 200 });
+  for (const a of rows) {
+    const at = a.fields.createdAt;
+    if (!(at instanceof Date) || now.getTime() - at.getTime() > TAG_WINDOW_MS) continue;
+    const done = a.fields.lineNotifiedAt;
+    if (done instanceof Date && done.getTime() >= at.getTime()) continue;
+    const parts = a.path.split('/');
+    if (parts.length !== 4 || parts[0] !== 'watchTags' || parts[2] !== 'alerts') continue;
+    const tag = await fs.get('watchTags/' + parts[1]);
+    const groupId = tag && tag.fields.groupId;
+    if (!tag || tag.fields.active !== true || typeof groupId !== 'string' || !groupId) {
+      await fs.patch(a.path, { lineNotifiedAt: now }, ['lineNotifiedAt'], a.updateTime);
+      continue;
+    }
+    const links = await fs.query('', { from: [{ collectionId: 'lineLinks' }], where: fieldEq('groupId', { stringValue: groupId }) });
+    const text = buildTagMessage(a.fields, at);
+    let complete = true;
+    const seen = new Set();
+    for (const link of links) {
+      const to = link.fields.lineUserId;
+      if (typeof to !== 'string' || !to || seen.has(to)) continue;
+      if (!await approvedMember(fs, groupId, link.id)) continue;
+      seen.add(to);
+      // 同じ読み取り・同じ相手には同じ再送キーを使う(LINE側で二重送信を防ぐ)
+      const key = await deliveryKey(a.path + '\n' + a.updateTime + '\n' + to);
+      if (await push(env, fs, to, text, key)) sent++; else complete = false;
+    }
+    if (complete) await fs.patch(a.path, { lineNotifiedAt: new Date() }, ['lineNotifiedAt'], a.updateTime);
+  }
+  return sent;
+}
+function buildTagMessage(f, at) {
+  const j = new Date(at.getTime() + 9 * 3600 * 1000);
+  const when = (j.getUTCMonth() + 1) + '月' + j.getUTCDate() + '日 ' + String(j.getUTCHours()).padStart(2, '0') + ':' + String(j.getUTCMinutes()).padStart(2, '0');
+  const situation = TAG_SITUATIONS[f.situation] || '読み取られました';
+  return ['🔔 おまもりタグのお知らせ（まいにこ）',
+    '読み取った方から「' + situation + '」と届きました（' + when + '）。',
+    'まず、ご本人に電話などで連絡してみてください。',
+    '急ぐとき・危ないときは、119番・110番へ。',
+    '', 'まいにこで確認する', APP_URL + '?openExternalBrowser=1'].join('\n');
+}
+
 async function deliveryKey(value) {
   const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));
   bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
