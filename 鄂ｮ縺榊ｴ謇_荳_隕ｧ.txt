@@ -1,0 +1,19 @@
+まいにこ 作り直し（2026-10-01）ファイル一式と置き場所
+
+■ GitHub（pocham4173/hidamari）… このフォルダの中身を、フォルダの形のまま一番上へ
+  一番上：index.html / hitokoe.js（新しい）/ setup-guide.html（新しい）/ worker.js / firestore.rules
+          line-notify.js / consent-ui.js / household-ui.js / medicine-notebook.js / medicine-notebook.css
+          help.html / privacy.html / tag.html / sw.js
+  tests フォルダ：app-dialog.test.mjs（新しい）/ hitokoe.test.mjs（新しい）/ consent-rules / exit-safety /
+          lifecycle-rules / line-rules / line-worker / person-record-feedback / pilot-safety（.test.mjs）
+  .github/workflows フォルダ：basic-checks.yml / firebase-rules-check.yml
+  .github/scripts フォルダ：check-basics.mjs
+  ※「置き場所一覧.txt」はアップロードしなくて大丈夫です
+
+■ Firebase（ルール）… GitHubの自動検査が緑になってから
+  firestore.rules の中身を、Firestore →「ルール」に全部選んで消してから貼り付け →「公開」
+
+■ Cloudflare（mainiko-line）… worker.js
+  「コードを編集」→ 全部選んで消してから貼り付け →「デプロイ」
+  確かめ方：https://mainiko-line.okm-co.workers.dev/ に「版：2026-10-01 作り直し・上限ガードつき」と出ればOK
+  ※ .jsファイルはダブルクリックせず、メモ帳で開いてコピーしてください

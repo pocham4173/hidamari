@@ -1,0 +1,65 @@
+name: Firebaseルール検査
+
+on:
+  # 理絵さんがGitHubに直接アップロードしたときも検査する(2026-10-01)。
+  # 結果が緑になってから、Firebaseのコンソールにルールを貼る。
+  push:
+    branches:
+      - main
+    paths:
+      - 'firestore.rules'
+      - 'worker.js'
+      - 'tests/**'
+      - '.github/workflows/firebase-rules-check.yml'
+  pull_request:
+    paths:
+      - 'firestore.rules'
+      - 'consent.js'
+      - 'tests/consent-rules.test.mjs'
+      - 'tests/helpers/consent-fixture.mjs'
+      - 'firebase.json'
+      - 'tests/alerts.test.mjs'
+      - 'tests/line-rules.test.mjs'
+      - 'worker.js'
+      - 'tests/lifecycle-rules.test.mjs'
+      - 'tests/lifecycle-integration.test.mjs'
+      - 'household-deletion.js'
+      - 'account-recovery.js'
+      - 'account-deletion.js'
+      - 'tests/account-closure-integration.test.mjs'
+      - 'tests/home-conversation-emulator.test.mjs'
+      - 'tests/helpers/home-conversation-fixture.mjs'
+      - '.github/workflows/firebase-rules-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firestore-rules:
+    name: Firestoreルール構文検査
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: コードを取得
+        uses: actions/checkout@v4
+
+      - name: Java 21を準備
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Node.jsを準備
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Firebase CLIを準備
+        run: npm install --global firebase-tools
+
+      - name: ルール動作検査の依存関係を準備
+        run: npm install --no-save firebase@11.10.0 @firebase/rules-unit-testing@4.0.1 jsdom@26.1.0
+
+      - name: Firestore Emulatorで通知・予定・権限・復旧・削除を検査
+        run: firebase emulators:exec --only firestore --project demo-mainico "node tests/alerts.test.mjs && node tests/lifecycle-rules.test.mjs && node tests/lifecycle-integration.test.mjs && node tests/account-closure-integration.test.mjs && node tests/home-conversation-emulator.test.mjs && node tests/consent-rules.test.mjs && node tests/line-rules.test.mjs"

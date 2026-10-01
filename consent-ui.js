@@ -11,7 +11,7 @@ function clearConsentSession(){
 function hasSessionConsent(mode){return !!consentSession && consentSession.uid===uid() && MainicoConsent.valid(consentSession.value,mode);}
 function showConsentModeChoice(message='使い方を選んでから、同意内容を確認してください。'){
   consentFlow=null;clearConsentSession();stopHouseholdSubscriptions();pendingMode=null;
-  document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
+  if(typeof appDialogCancelAll==='function')appDialogCancelAll();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
   document.getElementById('loading').style.display='none';
   showPage('entry');document.getElementById('entry-state').textContent=message;
   document.querySelector('#select-box button')?.focus();
@@ -20,7 +20,7 @@ function showConsentFlow(mode,resume,message=''){
   clearConsentSession();stopHouseholdSubscriptions();
   pendingMode=mode;
   consentFlow={uid:uid(),mode,resume,generation:consentGeneration};
-  document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
+  if(typeof appDialogCancelAll==='function')appDialogCancelAll();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
   const kind=mode==='konly'?'b':'a';
   document.getElementById('consent-mode-'+kind).textContent='選んだ使い方：'+({honnin:'本人が使う',kazoku:'本人と家族が使う（家族用の画面）',konly:'家族だけで使う'}[mode]);
   document.querySelectorAll('#consent-'+kind+' input[type="checkbox"]').forEach(el=>el.checked=false);
@@ -76,13 +76,13 @@ async function openConsentExit(){
     if(gid()){
       await refreshHousehold();
       if(isHouseholdOwner()){openHouseholdDeletion();return;}
-      if(confirm('家庭への参加を解除します。共有記録は残り、この端末の対象のお薬手帳の控えは削除します。続けますか？') && await leaveHouseholdAccount())location.reload();
+      if(await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('家庭への参加を解除します。共有記録は残り、この端末の対象のお薬手帳の控えは削除します。続けますか？','解除する') && await leaveHouseholdAccount())location.reload();
     }else openAccountDeletion();
   }catch(error){alert('利用終了の状態を確認できません。通信を確認して再試行してください。');}
 }
 async function withdrawCurrentConsent(){
   if(consentSaving)return;
-  if(!confirm('このアカウントの同意を取り消し、記録の利用を止めます。共有済みの記録や他の家族の同意は自動削除されません。削除・退会は別の操作で行えます。'))return;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('このアカウントの同意を取り消し、記録の利用を止めます。共有済みの記録や他の家族の同意は自動削除されません。削除・退会は別の操作で行えます。','同意を取り消す'))return;
   const mode=consentSession?.value.mode || (isKOnly()?'konly':previewStorage.getItem('mainicoMode')) || 'kazoku';
   showConsentFlow(mode,()=>afterConsent(mode),'同意の取り消しを保存しています…');
   const kind=mode==='konly'?'b':'a';
@@ -91,3 +91,4 @@ async function withdrawCurrentConsent(){
   catch(error){document.getElementById('consent-state-'+kind).textContent='取り消しの保存を確認できません。通信を確認し、下の「取り消しを再試行」からやり直してください。';}
   finally{consentSaving=false;document.getElementById('consent-submit-'+kind).disabled=false;}
 }
+

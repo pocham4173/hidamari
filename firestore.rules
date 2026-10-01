@@ -159,10 +159,32 @@ service cloud.firestore {
             && (activeOwner(groupId) || (signedIn() && request.auth.uid == uid)));
       }
 
+      /* 記録の種類(2026-10-01): アプリが書く種類だけを受け付ける。
+         LINE連携の記録は送信役(サーバー)が書く。家族がアプリから書けるのは「アプリから解除した」記録だけ。
+         「ひと声のきっかけ」への了解は、ご本人だけが書ける。 */
+      function isHonninMember(groupId) {
+        return get(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.get('role', '') == 'honnin'
+          || get(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.get('mode', '') == 'honnin';
+      }
+      function validEventType(groupId, d) {
+        return d.get('type', '') in [
+            'aisatsu', 'aisatsu-back', 'kusuri', 'kusuri-kakunin', 'ask-kusuri', 'kibun', 'kibun-kazoku', 'kibun-config',
+            'onegai', 'onegai-back', 'memo', 'care-log', 'care-config', 'member-joined', 'medicine-info', 'family-contact',
+            'family-message', 'family-message-back', 'family-note', 'family-note-ack', 'family-note-reply',
+            'family-task', 'family-task-done', 'family-task-help', 'person-ui-config', 'tag-alert',
+            'yotei-note', 'yotei-cat-config', 'line-link-log',
+            'disaster-safe', 'disaster-evacuating', 'disaster-help',
+            'hitokoe-config', 'hitokoe-consent', 'hitokoe-contacted', 'device-recovery'
+          ]
+          && (d.type != 'line-link-log' || (d.get('action', '') == 'unlinked' && d.get('via', '') == 'app'))
+          && (d.type != 'hitokoe-consent' || isHonninMember(groupId));
+      }
+
       match /events/{eventId} {
         allow read: if (isApproved(groupId) && hasConsent()) || deletingOwner(groupId);
         allow create: if isApproved(groupId) && hasConsent() && writableGroup(groupId)
-          && request.resource.data.uid == request.auth.uid;
+          && request.resource.data.uid == request.auth.uid
+          && validEventType(groupId, request.resource.data);
         allow update: if false;
         allow delete: if deletingOwner(groupId) || (usableAccount() && isApproved(groupId)
           && resource.data.uid == request.auth.uid);
@@ -299,6 +321,12 @@ service cloud.firestore {
         && request.resource.data.expiresAt <= request.time + duration.value(11, 'm');
       allow update: if false;
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // 今月のLINEの残り通数(2026-10-01)。送信役だけが書き、同意済みの利用者は見られる(まいにこ全体で共通の数)。
+    match /lineStatus/{docId} {
+      allow get: if hasConsent();
+      allow list, create, update, delete: if false;
     }
 
     // LINE連携の状態。書き込みは送信役(サーバー)だけ。本人は確認と解除ができる。

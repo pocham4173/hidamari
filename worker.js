@@ -1,4 +1,4 @@
-/* まいにこ LINE送信役（Cloudflare Workers・無料プラン用）2026-09-26
+/* まいにこ LINE送信役（Cloudflare Workers・無料プラン用）2026-10-01 作り直し版
  *
  * できること
  *  1. LINEからの受付（Webhook: https://〜.workers.dev/line）
@@ -9,6 +9,13 @@
  *  2. 15分ごとの見回り（Cron）
  *     - 「LINEで知らせる日時」を過ぎた予定を探し、その家庭でLINE連携した
  *       承認済みの人へ「予定のお知らせ」を送る。送ったら予定に送信済みの印を付ける。
+ *     - おまもりタグが読み取られたら、LINE連携した家族(ご本人以外)へ知らせる。
+ *  3. 月200通(無料プラン)を守る上限ガード
+ *     - 残りが TAG_RESERVE 通以下になったら予定のお知らせを止め、タグの分を残す
+ *     - 家庭ごとに1日 HOUSEHOLD_DAILY_LIMIT 通まで(タグは止めずに数だけ数える)
+ *     - タグごとに1時間 TAG_HOURLY_LIMIT 回・1日 TAG_DAILY_LIMIT 回まで
+ *     - 1回の見回りで知らせるタグの読み取りは TAGS_PER_RUN 件まで(残りは次の回)
+ *     - 残り通数は lineStatus/quota に書き、家族が設定画面で見られる
  *
  * 設定する秘密の値（Cloudflareの「設定 → 変数とシークレット」に、種類「シークレット」で登録）
  *  LINE_CHANNEL_SECRET        … LINE Developers の チャネルシークレット
@@ -24,6 +31,15 @@ const CODE_RE = /^[A-HJ-NP-Z2-9]{8}$/;
 const LATE_LIMIT_MS = 12 * 60 * 60 * 1000;   // 12時間以上遅れた通知は送らずに印だけ付ける
 const CONSENT_VERSION = '2026-09-19.1';
 const SUBREQUEST_BUDGET = 45;                // 無料プランの上限(50)より少し手前で止める
+const HARD_BUDGET = 49;                      // 数の記録など、最後の後片付けだけはここまで使える
+const TAG_RESERVE = 50;                      // 毎月、タグのお知らせ用に残す通数
+const HOUSEHOLD_DAILY_LIMIT = 20;            // 1家庭1日あたりの通数(予定のお知らせを止める目安)
+const TAG_HOURLY_LIMIT = 3, TAG_DAILY_LIMIT = 10;
+const TAGS_PER_RUN = 3;                      // 1回の見回りで知らせるタグの読み取り
+const TAG_SCAN_PER_RUN = 8;                  // 1回の見回りで調べる使用中のタグ(多いときは8件ずつ順番に)
+const TAG_REQUEST_BUDGET = 30;               // タグの処理に使う通信の上限。残りは予定のお知らせに回す
+                                             // (途中で止まった読み取りは、次の回に同じ再送キーで続きから送る)
+const VERSION_TEXT = '版：2026-10-01 作り直し・上限ガードつき';
 
 export default {
   async fetch(request, env, ctx) {
@@ -36,7 +52,7 @@ export default {
         .filter((k) => !env[k]);
       const body = missing.length
         ? 'まいにこ LINE送信役：まだ設定が足りません → ' + missing.join('、')
-        : 'まいにこ LINE送信役は動いています（版：2026-09-30 タグのお知らせつき）';
+        : 'まいにこ LINE送信役は動いています（' + VERSION_TEXT + '）';
       return new Response(body, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
     }
     return new Response('not found', { status: 404 });
@@ -176,8 +192,11 @@ function linkLogWrite(fs, groupId, uid, name, action, via, at) {
 }
 
 /* 承認済みで、退会処理中でもなく、家庭が削除中でもない人だけ */
-async function approvedMember(fs, groupId, uid) {
-  const group = await fs.get('groups/' + groupId);
+async function approvedMember(fs, groupId, uid, groupCache) {
+  // groupCache: 同じ見回りの中で家庭の文書を読み直さないための控え(タグの処理だけで使う)
+  let group;
+  if (groupCache && groupCache.has(groupId)) group = groupCache.get(groupId);
+  else { group = await fs.get('groups/' + groupId); if (groupCache) groupCache.set(groupId, group); }
   if (!group || group.fields.deletionState === 'deleting') return null;
   const m = await fs.get('groups/' + groupId + '/members/' + uid);
   if (!m) return null;
@@ -186,7 +205,7 @@ async function approvedMember(fs, groupId, uid) {
   if (await fs.get('accountClosures/' + uid)) return null;
   const consent = await fs.get('consents/' + uid);
   if (!validConsent(consent && consent.fields)) return null;
-  return m.fields;
+  return { ...m.fields, consentMode: consent.fields.mode };
 }
 function validConsent(c) {
   return !!c && c.version === CONSENT_VERSION && ['honnin','kazoku','konly'].includes(c.mode)
@@ -201,10 +220,14 @@ async function runNotifications(env) {
   const fs = new Firestore(env);
   const now = new Date();
   let sent = 0;
+  const book = new UsageBook(fs, now);
   try {
+    book.quota = await lineQuota(env, fs);
     // おまもりタグのお知らせを先に送る(予定のお知らせより急ぐため)。失敗しても予定の送信は続ける。
-    try { sent += await runTagAlerts(env, fs, now); }
-    catch (e) { if (e.message === 'request-budget') throw e; console.error('tag alerts', e.message); }
+    fs.softLimit = TAG_REQUEST_BUDGET;
+    try { sent += await runTagAlerts(env, fs, now, book); }
+    catch (e) { if (e.message === 'request-budget' && fs.count >= SUBREQUEST_BUDGET) throw e; console.error('tag alerts', e.message); }
+    finally { fs.softLimit = 0; }
     const groups = await fs.list('groups', ['deletionState']);
     // Rotate the starting household; a busy household cannot monopolize every run.
     const offset = groups.length ? Math.floor(now.getTime() / 900000) % groups.length : 0;
@@ -226,6 +249,15 @@ async function runNotifications(env) {
         }
         const links = await fs.query('', {from:[{collectionId:'lineLinks'}],
           where:fieldEq('groupId',{stringValue:g.id})});
+        // 上限ガード: 月の残りが少ない・この家庭の今日の分を使い切ったときは送らず、理由を記録に残す
+        const recipients = new Set(links.map(l => l.fields.lineUserId).filter(v => typeof v === 'string' && v)).size;
+        const blocked = recipients ? await book.scheduleBlocked(g.id, recipients) : '';
+        if (blocked) {
+          await fs.patch(y.path, {notifyAt:null, notifiedAt:null, notificationStatus:'limited',
+            notifyLog: appendNotifyLog(y.fields.notifyLog, {status:'limited', reason:blocked, at:now, scheduledAt:at})},
+            ['notifyAt','notifiedAt','notificationStatus','notifyLog'], y.updateTime);
+          continue;
+        }
         const members = await fs.list(g.path + '/members', ['name']);
         const owner = members.find(m => m.id === y.fields.uid);
         const text = buildMessage(y.fields, owner && owner.fields.name || '', now, g.id, y.id);
@@ -257,8 +289,10 @@ async function runNotifications(env) {
           }
           if (!receipt || typeof receipt.fields.text !== 'string') {complete=false;continue;}
           seen.add(to);
-          if (!await push(env, fs, to, receipt.fields.text, key)) {complete=false;continue;}
-          sent++; accepted++;
+          const r = await push(env, fs, to, receipt.fields.text, key);
+          if (!r) {complete=false;continue;}
+          if (r === 'sent') { sent++; await book.count(g.id); }
+          accepted++;
           // A crash before this write is safe: LINE recognizes the same retry key.
           await fs.set(receiptPath, {acceptedAt:new Date(), expiresAt:new Date(at.getTime()+13*3600000)});
         }
@@ -278,7 +312,7 @@ async function runNotifications(env) {
       if (!await approvedMember(fs, link.fields.groupId, link.id)) await fs.delete(link.path);
     }
     // Bounded maintenance. Never infer a deleted household from a partial list.
-    for (const collectionId of ['lineLinkCodes','lineDeliveryReceipts']) {
+    for (const collectionId of ['lineLinkCodes','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
       const expired = await fs.query('', {from:[{collectionId}],
         where:{fieldFilter:{field:{fieldPath:'expiresAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},limit:3});
       for (const d of expired) await fs.delete(d.path);
@@ -286,47 +320,166 @@ async function runNotifications(env) {
   } catch (e) {
     if (e.message !== 'request-budget') throw e;
     // Pending schedules retain their notifyAt and receipts for the next run.
+  } finally {
+    // 数えた通数と残り通数は、途中で止まっても必ず書き残す(最後の後片付け枠を使う)
+    try { await book.flush(); } catch (e) { console.error('usage flush', e.message); }
   }
   console.log('notifications accepted:', sent, 'requests:', fs.count);
 }
+
+/* ================= 月200通を守る上限ガード(2026-10-01) =================
+ * 残り通数は LINE から取得する。取れないときは止めない(無料プランは超えても課金されず、送れなくなるだけ)。
+ * 家庭ごとの通数は lineUsage/{家庭}、タグごとの回数は tagAlertCounters/{タグ} に、日本時間の日付ごとに数える。 */
+async function lineQuota(env, fs) {
+  try {
+    const get = async (path) => {
+      fs.reserve();
+      const res = await fetch('https://api.line.me/v2/bot/message/' + path,
+        { headers: { authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN } });
+      return res.ok ? res.json() : null;
+    };
+    const q = await get('quota');
+    if (!q) return null;
+    const c = await get('quota/consumption');
+    if (!c || !Number.isFinite(Number(c.totalUsage))) return null;
+    const used = Number(c.totalUsage);
+    if (q.type !== 'limited' || !Number.isFinite(Number(q.value))) return { limit: null, used };
+    return { limit: Number(q.value), used };
+  } catch (e) {
+    if (e.message === 'request-budget') throw e;
+    return null;
+  }
+}
+function jstHourString(d) { return new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 13); }
+class UsageBook {
+  constructor(fs, now) { this.fs = fs; this.now = now; this.day = jstDateString(now); this.quota = null; this.homes = new Map(); this.dirty = new Set(); this.quotaDirty = false; }
+  remaining() { return this.quota && this.quota.limit !== null ? this.quota.limit - this.quota.used : Infinity; }
+  async home(groupId) {
+    if (!this.homes.has(groupId)) {
+      const d = await this.fs.get('lineUsage/' + groupId);
+      const f = d ? d.fields : {};
+      this.homes.set(groupId, f.day === this.day && Number.isFinite(f.count) ? f.count : 0);
+    }
+    return this.homes.get(groupId);
+  }
+  /* 予定のお知らせを止める理由(止めないときは空文字) */
+  async scheduleBlocked(groupId, recipients) {
+    if (this.remaining() - recipients < TAG_RESERVE) return 'monthly';
+    if (await this.home(groupId) + recipients > HOUSEHOLD_DAILY_LIMIT) return 'household';
+    return '';
+  }
+  canSendTag(recipients) { return this.remaining() >= Math.max(1, recipients || 1); }
+  async count(groupId) {
+    this.homes.set(groupId, await this.home(groupId) + 1);
+    this.dirty.add(groupId);
+    if (this.quota) { this.quota.used++; this.quotaDirty = true; }
+  }
+  async flush() {
+    for (const groupId of this.dirty) {
+      await this.fs.set('lineUsage/' + groupId, { day: this.day, count: this.homes.get(groupId), updatedAt: new Date(), expiresAt: new Date(this.now.getTime() + 2 * 86400000) }, true);
+    }
+    this.dirty.clear();
+    if (this.quota) {
+      const remaining = this.quota.limit === null ? null : Math.max(0, this.quota.limit - this.quota.used);
+      await this.fs.set('lineStatus/quota', { limit: this.quota.limit, used: this.quota.used, remaining,
+        reserve: TAG_RESERVE, checkedAt: new Date() }, true);
+    }
+  }
+}
+
 /* ================= おまもりタグのお知らせ(2026-09-30) =================
  * 読み取った方が状況を選ぶと watchTags/{tagId}/alerts/{送った人} が書かれる(同じ人は10分ごと)。
  * まだLINEで知らせていないものを、その家庭でLINE連携した承認済みの家族へ送る。
  * 送る内容は「状況」と「時刻」だけ。読み取った方の情報や本人の名前は送らない。 */
 const TAG_SITUATIONS = { lost: '道に迷っているようです', unwell: '体調が心配です', safe: '安全な場所にいます', called: '警察・救急へ連絡しました' };
 const TAG_WINDOW_MS = 2 * 60 * 60 * 1000;   // 2時間より前の読み取りは送らない
-async function runTagAlerts(env, fs, now) {
-  let sent = 0;
-  const rows = await fs.query('', { from: [{ collectionId: 'alerts', allDescendants: true }], limit: 200 });
-  for (const a of rows) {
-    const at = a.fields.createdAt;
-    if (!(at instanceof Date) || now.getTime() - at.getTime() > TAG_WINDOW_MS) continue;
-    const done = a.fields.lineNotifiedAt;
-    if (done instanceof Date && done.getTime() >= at.getTime()) continue;
-    const parts = a.path.split('/');
-    if (parts.length !== 4 || parts[0] !== 'watchTags' || parts[2] !== 'alerts') continue;
-    const tag = await fs.get('watchTags/' + parts[1]);
-    const groupId = tag && tag.fields.groupId;
-    if (!tag || tag.fields.active !== true || typeof groupId !== 'string' || !groupId) {
-      await fs.patch(a.path, { lineNotifiedAt: now }, ['lineNotifiedAt'], a.updateTime);
-      continue;
+async function runTagAlerts(env, fs, now, book) {
+  let sent = 0, handled = 0;
+  // 同じ見回りの中では、家族の承認状態の確認を使い回す(通信回数を節約)
+  const memberCache = new Map(), groupCache = new Map();
+  const checkMember = async (groupId, uid) => {
+    const k = groupId + '/' + uid;
+    if (!memberCache.has(k)) memberCache.set(k, await approvedMember(fs, groupId, uid, groupCache));
+    return memberCache.get(k);
+  };
+  // 使用中のタグごとに、新しい読み取りから5件だけ見る(古い記録がいくら増えても新しい分を拾える)
+  const tags = await fs.query('', { from: [{ collectionId: 'watchTags' }], where: fieldEq('active', { booleanValue: true }), limit: 100 });
+  // 8件ずつ順番に調べる(16件あれば30分ごとに一巡。1件ずつずらすと、読み取りの2時間を過ぎてしまうため)
+  const offset = tags.length ? (Math.floor(now.getTime() / 900000) * TAG_SCAN_PER_RUN) % tags.length : 0;
+  const scan = [...tags.slice(offset), ...tags.slice(0, offset)].slice(0, TAG_SCAN_PER_RUN);
+  for (const tag of scan) {
+    if (handled >= TAGS_PER_RUN || fs.count >= TAG_REQUEST_BUDGET) break;
+    const groupId = tag.fields.groupId;
+    const rows = await fs.query(tag.path, { from: [{ collectionId: 'alerts' }],
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 5 });
+    for (const a of rows) {
+      if (handled >= TAGS_PER_RUN || fs.count >= TAG_REQUEST_BUDGET) break;
+      // 9/30版の名残: 読み取り者の文書に付けた印は、読み取りページの再送を妨げるので取り除く
+      if ('lineNotifiedAt' in a.fields) await fs.patch(a.path, {}, ['lineNotifiedAt'], a.updateTime);
+      const at = a.fields.createdAt;
+      if (!(at instanceof Date) || now.getTime() - at.getTime() > TAG_WINDOW_MS) continue;
+      // 送った印は、読み取り者の文書ではなく別の置き場(tagAlertReceipts)に残す
+      const receiptPath = 'tagAlertReceipts/' + await deliveryKey(a.path);
+      const receipt = await fs.get(receiptPath);
+      const done = receipt && receipt.fields.notifiedCreatedAt;
+      if (done instanceof Date && done.getTime() >= at.getTime()) continue;
+      handled++;
+      const mark = (result) => fs.set(receiptPath, { notifiedCreatedAt: at, result, expiresAt: new Date(at.getTime() + TAG_WINDOW_MS + 3600000) });
+      if (typeof groupId !== 'string' || !groupId) { await mark('no-home'); continue; }
+      // 前の回で途中まで送った読み取りなら、送り終えた相手を控えから続ける(家族が多いと1回で送り切れないため)
+      const started = receipt && receipt.fields.pendingAt instanceof Date && receipt.fields.pendingAt.getTime() === at.getTime();
+      const sentTo = new Set(started && Array.isArray(receipt.fields.sentTo) ? receipt.fields.sentTo : []);
+      // タグごとの上限(いたずらで通数を使い切らないように)。超えた分はアプリの中だけに出る。続きの送信は止めない
+      const counter = await tagCounter(fs, tag.id, now);
+      if (!started && (counter.hourCount >= TAG_HOURLY_LIMIT || counter.dayCount >= TAG_DAILY_LIMIT)) { await mark('tag-limit'); continue; }
+      const links = await fs.query('', { from: [{ collectionId: 'lineLinks' }], where: fieldEq('groupId', { stringValue: groupId }) });
+      // 月の残りが、この家族へ送る人数に足りないときは送らない(途中まで届いて残りが毎回やり直しになるのを防ぐ)
+      const linked = new Set(links.map((l) => l.fields.lineUserId).filter((v) => typeof v === 'string' && v)).size;
+      if (!started && !book.canSendTag(linked)) { await mark('monthly'); continue; }
+      const text = buildTagMessage(a.fields, at);
+      let complete = true, reached = 0;
+      const seen = new Set();
+      try {
+        for (const link of links) {
+          const to = link.fields.lineUserId;
+          if (typeof to !== 'string' || !to || seen.has(to)) continue;
+          // 同じ読み取り・同じ相手には同じ再送キーを使う(LINE側で二重送信を防ぐ)
+          const key = await deliveryKey(a.path + '\n' + at.toISOString() + '\n' + to);
+          if (sentTo.has(key)) { seen.add(to); reached++; continue; }
+          const member = await checkMember(groupId, link.id);
+          if (!member) continue;
+          // ご本人には送らない(「ご本人に電話して」という家族向けの知らせのため)
+          if (member.mode === 'honnin' || member.role === 'honnin' || member.consentMode === 'honnin') continue;
+          seen.add(to);
+          const r = await push(env, fs, to, text, key);
+          if (!r) { complete = false; continue; }
+          reached++; sentTo.add(key);
+          if (r === 'sent') { sent++; await book.count(groupId); }
+        }
+      } catch (e) {
+        // 通信の上限で止まったら、送り終えた相手を控えて次の回に続きから送る(後片付け枠で書く)
+        if (e.message === 'request-budget' && sentTo.size) {
+          try { await fs.set(receiptPath, { pendingAt: at, sentTo: [...sentTo], expiresAt: new Date(at.getTime() + TAG_WINDOW_MS + 3600000) }, true); } catch (ignore) {}
+        }
+        throw e;
+      }
+      if (complete) {
+        if (reached) await fs.set('tagAlertCounters/' + tag.id, {
+          day: counter.day, dayCount: counter.dayCount + 1, hour: counter.hour, hourCount: counter.hourCount + 1,
+          expiresAt: new Date(now.getTime() + 2 * 86400000) });
+        await mark(reached ? 'sent' : 'no-recipient');
+      }
     }
-    const links = await fs.query('', { from: [{ collectionId: 'lineLinks' }], where: fieldEq('groupId', { stringValue: groupId }) });
-    const text = buildTagMessage(a.fields, at);
-    let complete = true;
-    const seen = new Set();
-    for (const link of links) {
-      const to = link.fields.lineUserId;
-      if (typeof to !== 'string' || !to || seen.has(to)) continue;
-      if (!await approvedMember(fs, groupId, link.id)) continue;
-      seen.add(to);
-      // 同じ読み取り・同じ相手には同じ再送キーを使う(LINE側で二重送信を防ぐ)
-      const key = await deliveryKey(a.path + '\n' + a.updateTime + '\n' + to);
-      if (await push(env, fs, to, text, key)) sent++; else complete = false;
-    }
-    if (complete) await fs.patch(a.path, { lineNotifiedAt: new Date() }, ['lineNotifiedAt'], a.updateTime);
   }
   return sent;
+}
+async function tagCounter(fs, tagId, now) {
+  const day = jstDateString(now), hour = jstHourString(now);
+  const d = await fs.get('tagAlertCounters/' + tagId);
+  const f = d ? d.fields : {};
+  return { day, hour,
+    dayCount: f.day === day && Number.isFinite(f.dayCount) ? f.dayCount : 0,
+    hourCount: f.hour === hour && Number.isFinite(f.hourCount) ? f.hourCount : 0 };
 }
 function buildTagMessage(f, at) {
   const j = new Date(at.getTime() + 9 * 3600 * 1000);
@@ -394,7 +547,9 @@ async function push(env, fs, to, text, retryKey) {
     },
     body: JSON.stringify({ to, messages: [{ type: 'text', text }] }),
   });
-  if (res.ok || (res.status === 409 && res.headers.get('x-line-accepted-request-id'))) return true;
+  if (res.ok) return 'sent';
+  // 同じ再送キーで受付済み(前の回で送れていた)。二重には届かず、通数も増えない
+  if (res.status === 409 && res.headers.get('x-line-accepted-request-id')) return 'dup';
   console.error('push failed', res.status);
   return false;
   } catch (e) { console.error('push response unavailable'); return false; }
@@ -415,9 +570,11 @@ class Firestore {
     this.root = 'projects/' + this.sa.project_id + '/databases/(default)/documents';
     this.base = 'https://firestore.googleapis.com/v1/' + this.root;
     this.count = 0;
+    this.softLimit = 0;
   }
-  reserve() {
-    if (this.count >= SUBREQUEST_BUDGET) throw new Error('request-budget');
+  reserve(limit) {
+    // softLimit: タグの処理中だけ使う低めの上限(予定のお知らせの分を残す)。後片付けの HARD_BUDGET はこれより優先
+    if (this.count >= (limit || this.softLimit || SUBREQUEST_BUDGET)) throw new Error('request-budget');
     this.count++;
   }
   async commit(writes) {
@@ -452,9 +609,9 @@ class Firestore {
     cachedToken = { token: data.access_token, exp: now + (data.expires_in || 3600), email: this.sa.client_email };
     return cachedToken.token;
   }
-  async call(method, url, body) {
+  async call(method, url, body, hard) {
     const token = await this.token();
-    this.reserve();
+    this.reserve(hard ? HARD_BUDGET : 0);
     const res = await fetch(url, {
       method,
       headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
@@ -468,8 +625,8 @@ class Firestore {
     if (!res.ok) throw new Error('get ' + path + ' ' + res.status + ' ' + await res.text());
     return parseDoc(await res.json(), this.root);
   }
-  async set(path, obj) {
-    const res = await this.call('PATCH', this.base + '/' + path, { fields: toFields(obj) });
+  async set(path, obj, hard) {
+    const res = await this.call('PATCH', this.base + '/' + path, { fields: toFields(obj) }, hard);
     if (!res.ok) throw new Error('set ' + path + ' ' + res.status + ' ' + await res.text());
   }
   /* 指定した項目だけ更新。updateTime を渡すと「その時点から変わっていない時だけ」更新し、失敗なら false */

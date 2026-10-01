@@ -35,7 +35,7 @@ function stopHouseholdSubscriptions(){
 }
 function showHouseholdBlocked(message){
   stopHouseholdSubscriptions(); householdVerified=false;
-  document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
+  if(typeof appDialogCancelAll==='function')appDialogCancelAll();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
   showPage('household-status-page');
   document.getElementById('household-status-text').textContent=message;
   document.getElementById('loading').style.display='none';
@@ -135,7 +135,7 @@ function applyRecoveryJournal(){
 }
 async function openRecovery(switchAccount=false){
   recoverySwitchScope=switchAccount && gid()?{uid:uid(),groupId:gid()}:null;
-  document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
+  if(typeof appDialogCancelAll==='function')appDialogCancelAll();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
   document.getElementById('recovery-modal').classList.add('show');
   document.getElementById('recovery-password').value='';
   renderRecoveryPointerSync();
@@ -206,7 +206,7 @@ function getDeletionService(){
 }
 function openHouseholdDeletion(){
   if(!isHouseholdOwner() && !deletionResumeOnly){alert('共有データ全体の削除は管理者が行えます。');return;}
-  document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
+  if(typeof appDialogCancelAll==='function')appDialogCancelAll();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
   if(householdDeleting){showPage('household-status-page');document.getElementById('household-status-text').textContent='共有データの削除は未完了です。下の画面から再開してください。';}
   document.getElementById('deletion-modal').classList.add('show');
   document.getElementById('deletion-confirm').value='';
@@ -237,7 +237,7 @@ async function runHouseholdDeletion(){
     showHouseholdBlocked('共有サーバーの記録・予定・招待・タグとお知らせ・家族との接続・復旧先登録を削除したことを確認しました。'+(localCleared?'この端末の、この家庭・アカウントのお薬手帳の控えとアプリ内設定を削除しました。他の家庭・アカウントの控えは別に残ります。':'この端末の保存内容は消去を確認できません。ブラウザーのサイトデータを削除してください。')+' 印刷物・撮影済みQR・他端末のコピーと、ログイン用アカウントは別に残ります。');
   }catch(error){
     try{const group=await refreshHousehold();householdDeleting=!!group&&group.deletionState==='deleting';}catch(ignore){}
-    document.getElementById('deletion-state').textContent='削除の完了は確認できません。'+(error.message||'通信を確認して再開してください。')+(error.backendCode==='permission-denied'?' 管理者の確認またはサービスの設定確認が必要です。':'');
+    document.getElementById('deletion-state').textContent='削除の完了は確認できません。'+(/[ぁ-んァ-ヶ一-龥]/.test(error&&error.message||'')?error.message:'通信を確認して再開してください。')+(error.backendCode==='permission-denied'?' 管理者の確認またはサービスの設定確認が必要です。':'');
   }finally{
     deletionBusy=false;
     document.querySelectorAll('#deletion-modal button').forEach(el=>el.disabled=false);
@@ -374,7 +374,7 @@ async function bootHouseholdUser(user){
   try{startMode();if(gid()){watchHouseholdAccess();void syncStartupRecoveryPointer();}}catch(error){showHouseholdBlocked('画面を開けませんでした。保存情報は消さず、再確認してください。');}
 }
 async function retryHouseholdConnection(){
-  document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
+  if(typeof appDialogCancelAll==='function')appDialogCancelAll();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
   document.getElementById('loading').style.display='flex';
   await bootHouseholdUser(auth.currentUser);
 }
@@ -394,7 +394,11 @@ let disconnectedDeviceResetBusy=false;
 async function resetDisconnectedDevice(){
   if(disconnectedDeviceResetBusy||deletionBusy||recoveryBusy||accountClosureBusy)return;
   const notebookScope={uid:uid(),groupId:gid()};
-  if(!confirm('この端末の現在の家庭の設定・災害QR・お薬手帳の控えを消して、入口に戻りますか？ サーバーの共有記録は消しません。'))return;
+  /* 確認を待つ間の連打で二重に始まらないよう、先に「処理中」にする */
+  disconnectedDeviceResetBusy=true;let resetAnswer=false;
+  try{resetAnswer=await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('この端末の現在の家庭の設定・災害QR・お薬手帳の控えを消して、入口に戻りますか？ サーバーの共有記録は消しません。','入口に戻る');}
+  finally{disconnectedDeviceResetBusy=false;}
+  if(!resetAnswer)return;
   let generation=householdBootGeneration,localCleanupStarted=false;
   const current=()=>notebookScope.uid===uid()&&notebookScope.groupId===gid()&&generation===householdBootGeneration;
   const assertCurrent=()=>{if(!current())throw new Error('session-changed');};
@@ -441,7 +445,7 @@ async function resetDisconnectedDevice(){
 let accountClosureBusy=false,accountClosureStopping=false,accountClosureService=null;
 const ACCOUNT_CLOSED_KEY='mainico_account_closed_v1';
 function accountClosureEnded(){try{return accountClosureStopping || localStorage.getItem(ACCOUNT_CLOSED_KEY)==='1';}catch(e){return accountClosureStopping;}}
-function showAccountClosed(message){stopHouseholdSubscriptions();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));document.getElementById('loading').style.display='none';showPage('account-closed-page');document.getElementById('account-closed-state').textContent=message;}
+function showAccountClosed(message){stopHouseholdSubscriptions();if(typeof appDialogCancelAll==='function')appDialogCancelAll();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));document.getElementById('loading').style.display='none';showPage('account-closed-page');document.getElementById('account-closed-state').textContent=message;}
 function getAccountClosureService(){
   if(!accountClosureService)accountClosureService=MainicoAccountDeletion.create({db,auth,
     serverTimestamp:()=>firebase.firestore.FieldValue.serverTimestamp(),
@@ -453,7 +457,7 @@ function getAccountClosureService(){
 }
 function openAccountDeletion(){
   if(deletionBusy || recoveryBusy || accountClosureBusy)return;
-  document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
+  if(typeof appDialogCancelAll==='function')appDialogCancelAll();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
   document.getElementById('account-deletion-modal').classList.add('show');
   document.getElementById('account-deletion-identity').textContent='削除対象：'+(auth.currentUser?.email||'この端末でログインしている、メール未登録のアカウント');
   document.getElementById('account-deletion-password').value='';document.getElementById('account-deletion-confirm').value='';
@@ -487,7 +491,8 @@ async function finishAccountDeletion(){
   finally{accountClosureBusy=false;}
 }
 async function restartAfterAccountClosure(){
-  if(!confirm('新しいアカウントで利用を始めますか？ 削除した登録や記録は戻りません。'))return;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('新しいアカウントで利用を始めますか？ 削除した登録や記録は戻りません。','始める'))return;
   try{await auth.signOut();localStorage.removeItem(ACCOUNT_CLOSED_KEY);accountClosureStopping=false;location.reload();}
   catch(e){showAccountClosed('再開できませんでした。通信とブラウザーの保存設定を確認してください。');}
 }
+

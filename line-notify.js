@@ -85,6 +85,7 @@
     var d=toDate(v&&v.notifyAt);
     if(d) return '🔔 LINEで知らせる：'+jpDateTime(d);
     if(v&&v.notificationStatus==='expired') return '🔔 LINEのお知らせ期限が過ぎました（送信完了は未確認）';
+    if(v&&v.notificationStatus==='limited') return '🔔 LINEで送れる数の上限のため、この予定は送りませんでした';
     var sent=toDate(v&&v.notifiedAt);
     if(sent) return '🔔 LINEでお知らせ済み（'+jpDateTime(sent)+'）';
     return '';
@@ -180,7 +181,8 @@
     bind(area,areaId);
   }
   async function unlink(area,areaId,btn){
-    if(!global.confirm('LINE連携を解除しますか？\nこのLINEには、予定のお知らせが届かなくなります。予定そのものは消えません。')) return;
+    var q='LINE連携を解除しますか？\nこのLINEには、予定のお知らせが届かなくなります。予定そのものは消えません。';
+    if(!(typeof global.appConfirm==='function'?await global.appConfirm(q,'解除する'):global.confirm(q))) return;
     btn.disabled=true;
     setState(area,'解除しています…');
     try{
@@ -225,6 +227,30 @@
     });
     box.innerHTML=html+'</ul>';
   }
+  /* 今月のLINEの残り通数(2026-10-01)。送信役が lineStatus/quota に書く。まいにこ全体で共通の数 */
+  async function readQuota(){
+    try{
+      var snap=await global.db.collection('lineStatus').doc('quota').get();
+      return snap.exists?snap.data():null;
+    }catch(e){ return null; }
+  }
+  function quotaText(q){
+    if(!q) return '';
+    var at=toDate(q.checkedAt);
+    if(q.limit===null||q.limit===undefined) return '今月のLINEのお知らせ：上限なしのプランです'+(at?'（'+jpDateTime(at)+' 時点）':'');
+    var rest=Math.max(0,Number(q.remaining)||0);
+    var line='今月のLINEの残り：'+rest+'通（まいにこ全体で月'+q.limit+'通まで）'+(at?'・'+jpDateTime(at)+' 時点':'');
+    if(rest<=0) line+='\n今月はもう送れません。来月1日に戻ります。アプリの中のお知らせは今まで通り届きます。';
+    else if(rest<=(Number(q.reserve)||50)) line+='\n残りが少ないため、予定のお知らせは止めて、おまもりタグの分を残しています。';
+    return line;
+  }
+  async function renderQuota(boxId){
+    var box=document.getElementById(boxId);
+    if(!box) return;
+    var q=await readQuota();
+    box.textContent=q?quotaText(q):'今月のLINEの残り通数は、まだ確認できていません（送信役が15分ごとに記録します）。';
+    box.style.whiteSpace='pre-line';
+  }
   /* 予定ごとのLINE送信の記録(送信役が notifyLog に残す) */
   function sendLog(v){
     var list=Array.isArray(v&&v.notifyLog)?v.notifyLog:[];
@@ -232,12 +258,14 @@
       var at=toDate(e&&e.at), sch=toDate(e&&e.scheduledAt);
       if(e&&e.status==='accepted') return {ok:true,at:at,text:'✅ '+(at?jpDateTime(at):'')+' に送信済み'+(e.count?'（'+e.count+'人）':'')};
       if(e&&e.status==='expired') return {ok:false,at:at,text:'⚠ '+(sch?jpDateTime(sch):'')+' の分は送れないまま期限が過ぎました'};
+      if(e&&e.status==='limited') return {ok:false,at:at,text:'⚠ '+(sch?jpDateTime(sch):'')+' の分は、'+(e.reason==='household'?'今日この家族で送れる数（20通）に達したため':'今月のLINEの残りが少ないため（おまもりタグの分を残しています）')+'送りませんでした'};
       return null;
     }).filter(Boolean).reverse();
   }
 
   global.MainicoLine={
     renderLog:renderLog, sendLog:sendLog, shiftForDate:shiftForDate,
+    readQuota:readQuota, quotaText:quotaText, renderQuota:renderQuota,
     LINE_ID:LINE_ID, ADD_FRIEND_URL:ADD_FRIEND_URL,
     render:render, preset:preset, readNotify:readNotify,
     toInputValue:toInputValue, fromInputValue:fromInputValue, describe:describe, newCode:newCode

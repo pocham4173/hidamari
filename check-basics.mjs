@@ -1,0 +1,330 @@
+#!/usr/bin/env node
+/*
+ * まいにこ 基本検査
+ *
+ * Pull Request ごとに、アプリが「基本的なところで壊れていないか」を機械的に確かめます。
+ * 追加のパッケージは使わず、Node.js の標準機能だけで動きます。
+ *
+ * 確認するのは次の6点です。
+ *   1. index.html の中の JavaScript に構文エラーがない
+ *   2. onclick から呼ばれる関数が、すべて定義されている
+ *   3. manifest.json が正しい JSON として読める
+ *   4. sw.js に構文エラーがない
+ *   5. tag.html(おまもりタグ読み取りページ)の JavaScript に構文エラーがない
+ *   6. 公開に必要なファイル(アイコンなど)が実際に存在する
+ *
+ * これは「明らかな壊れ方」を見つけるための検査です。
+ * 実機での画面確認や、Firestore を使った通し確認の代わりにはなりません。
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const results = [];
+
+/* ---------- 表示まわり ---------- */
+
+function record(title, ok, detail = '') {
+  results.push({ title, ok, detail });
+  console.log(`${ok ? '✅' : '❌'} ${title}${detail ? `\n   ${detail.replace(/\n/g, '\n   ')}` : ''}`);
+  if (!ok) console.log(`::error::${title}${detail ? ` — ${detail.split('\n')[0]}` : ''}`);
+}
+
+function read(rel) {
+  const abs = path.join(ROOT, rel);
+  if (!fs.existsSync(abs)) return null;
+  return fs.readFileSync(abs, 'utf8');
+}
+
+/* ---------- 共通の部品 ---------- */
+
+/** index.html の中から、外部ファイルではないスクリプト部分を、行番号つきで取り出す */
+function inlineScripts(html) {
+  const blocks = [];
+  const re = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    if (/\bsrc\s*=/i.test(m[1])) continue; // 外部ファイルの読み込みは対象外
+    const startLine = html.slice(0, m.index).split('\n').length;
+    blocks.push({ code: m[2], startLine });
+  }
+  return blocks;
+}
+
+/** 構文だけを確かめる(中身は実行しない) */
+function syntaxError(code, filename, lineOffset = 0) {
+  try {
+    new vm.Script(code, { filename, lineOffset });
+    return null;
+  } catch (e) {
+    return `${e.message}${e.stack && e.stack.includes(filename) ? `\n   ${e.stack.split('\n')[0]}` : ''}`;
+  }
+}
+
+/** HTML ファイルの中に直接書かれた JavaScript の構文を確かめる */
+function checkHtmlSyntax(html, name) {
+  const blocks = inlineScripts(html);
+  if (blocks.length === 0) {
+    record(`${name} の JavaScript に構文エラーがない`, false, 'スクリプト部分が1つも見つかりませんでした');
+    return;
+  }
+  const errors = blocks
+    .map((b) => syntaxError(b.code, name, b.startLine - 1))
+    .filter(Boolean);
+  record(
+    `${name} の JavaScript に構文エラーがない (${blocks.length}か所を確認)`,
+    errors.length === 0,
+    errors.join('\n')
+  );
+}
+
+/* ---------- 1. index.html の JavaScript 構文 ---------- */
+
+const html = read('index.html');
+if (html === null) {
+  record('index.html がある', false, 'index.html が見つかりません');
+} else {
+  checkHtmlSyntax(html, 'index.html');
+}
+
+/* ---------- 2. onclick から呼ばれる関数が定義されている ---------- */
+
+if (html !== null) {
+  const localScripts=[];
+  for(const match of html.matchAll(/<script\b[^>]*\bsrc="([^\"]+)"/gi)){
+    const src=match[1];
+    if(/^(?:https?:|\/\/)/.test(src))continue;
+    const code=read(src.split(/[?#]/)[0]);
+    if(code===null){record(`${src} を読める`,false);continue;}
+    const error=syntaxError(code,src);
+    record(`${src} の JavaScript に構文エラーがない`,!error,error||'');
+    localScripts.push(code);
+  }
+  const js = inlineScripts(html).map((b) => b.code).concat(localScripts).join('\n');
+
+  const defined = new Set();
+  for (const m of js.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g)) defined.add(m[1]);
+  for (const m of js.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\()/g)) defined.add(m[1]);
+  for (const m of js.matchAll(/\bwindow\.([A-Za-z_$][\w$]*)\s*=/g)) defined.add(m[1]);
+
+  /* onclick="なまえ(" の形を、HTML 全体から拾う。
+     画面を作るときに JavaScript の中で組み立てているボタンも、
+     文字列としてこのファイルに書かれているため一緒に拾えます。 */
+  const called = new Set();
+  for (const m of html.matchAll(/\bonclick\s*=\s*"\s*([A-Za-z_$][\w$]*)\s*\(/g)) called.add(m[1]);
+
+  const missing = [...called].filter((n) => !defined.has(n)).sort();
+  record(
+    `onclick から呼ばれる関数が定義されている (${called.size}種類を確認)`,
+    missing.length === 0,
+    missing.length ? `定義が見つからない関数: ${missing.join(', ')}` : ''
+  );
+}
+
+/* ---------- 利用方法に応じた記録表示（DOMの詳しい検査は別途実行） ---------- */
+
+if (html !== null) {
+  let separated=false;
+  try {
+    const ctx={isKOnly:()=>true};
+    vm.createContext(ctx);
+    vm.runInContext(html.slice(html.indexOf('var REC_PERSON_TYPES'),html.indexOf('function eventWhoClass')),ctx);
+    separated=!ctx.recVisible({type:'kusuri'}) && !ctx.recVisible({type:'family-message'}) && ctx.recVisible({type:'kusuri-kakunin'});
+    ctx.isKOnly=()=>false;
+    separated=separated && ctx.recVisible({type:'kusuri'}) && ctx.recVisible({type:'family-message'});
+  } catch {}
+  record('家族だけの集計を本人の操作・会話から分ける',separated,separated?'':'利用方法に応じた表示範囲が不正です');
+  const archive=html.includes('id="rec-person-archive" hidden') && html.includes('function recRenderArchive()');
+  record('本人の元記録を別の履歴で確認できる',archive,archive?'':'別枠の履歴がありません');
+
+  const actorColors = ['who-honnin', 'who-kazoku', 'who-shared'].every((name) =>
+    html.includes(`.rec-kind.${name}`)
+  ) && /function\s+eventWhoClass\s*\(/.test(html);
+  record(
+    '本人・家族・共有情報を色で区別する',
+    actorColors,
+    actorColors ? '' : '記録した人を区別する色または判定処理が不足しています'
+  );
+
+  const unifiedSummary =
+    /function\s+addGraph\s*\(title,\s*rows,\s*note\)/.test(html) &&
+    /function\s+addList\s*\(title,\s*rows,\s*note\)/.test(html) &&
+    html.includes("className='sum-overview'") &&
+    html.includes("className='sum-points'") &&
+    html.includes("pt.textContent='記録からわかること（'+insights.length+'項目）'") &&
+    html.includes("addInsight('前月との比較'") &&
+    html.includes("addInsight('生活リズム'") &&
+    html.includes("addInsight('本人と家族のやり取り'") &&
+    html.includes("addInsight('体調の記録'") &&
+    html.includes("addInsight('服薬に関する記録'") &&
+    html.includes("recPrevEvents = prevList") &&
+    html.includes("Promise.all([currentReq,previousReq])") &&
+    html.includes("r[1]+'件・'+Object.keys(r[2]||{}).length+'日'") &&
+    html.includes("addList('記録の詳細を見る'") &&
+    html.includes("className='sum-item'") &&
+    html.includes("className='sum-detail-row'") &&
+    html.includes("['本人の挨拶',detailCounts.aisatsuH") &&
+    html.includes("['家族からの服薬声かけ',detailCounts.kusuriAskK") &&
+    html.includes("detailEvents.aisatsuK") &&
+    html.includes("addGraph('挨拶の朝・昼・夜'") &&
+    html.includes("['本人・朝の挨拶',aisatsuSlotCounts.honnin.asa") &&
+    html.includes("['家族・夜の挨拶',aisatsuSlotCounts.kazoku.yoru") &&
+    html.includes("addEvent({type:'aisatsu-back', text:tx, slot:key") &&
+    html.includes("className='g-line'") &&
+    !html.includes("addGraph('今月の記録一覧'") &&
+    !html.includes("addGraph('今月の詳しい記録'") &&
+    !html.includes("addGraph('本人と家族のやり取り'") &&
+    html.includes("addGraph('体調の内訳'") &&
+    html.includes("addGraph('服薬の時間帯'") &&
+    html.includes("d.periodDays+'日中 '+sum+'件・記録あり'+activeDays+'日");
+  record(
+    '月まとめと期間グラフを「何日中・何件・記録日数」で統一する',
+    unifiedSummary,
+    unifiedSummary ? '' : '日数と件数を統一して表示する処理が不足しています'
+  );
+}
+
+/* ---------- 3. manifest.json が正しい JSON ---------- */
+
+let manifest = null;
+const manifestText = read('manifest.json');
+if (manifestText === null) {
+  record('manifest.json が正しい JSON として読める', false, 'manifest.json が見つかりません');
+} else {
+  try {
+    manifest = JSON.parse(manifestText);
+    const isObject = manifest !== null && typeof manifest === 'object' && !Array.isArray(manifest);
+    record('manifest.json が正しい JSON として読める', isObject, isObject ? '' : '中身が「{ }」の形になっていません');
+    if (!isObject) manifest = null;
+  } catch (e) {
+    record('manifest.json が正しい JSON として読める', false, e.message);
+  }
+}
+
+/* ---------- 4. sw.js の構文 ---------- */
+
+const sw = read('sw.js');
+if (sw === null) {
+  record('sw.js に構文エラーがない', false, 'sw.js が見つかりません');
+} else {
+  const err = syntaxError(sw, 'sw.js');
+  record('sw.js に構文エラーがない', err === null, err || '');
+}
+
+/* ---------- 5. tag.html の JavaScript 構文 ---------- */
+
+/* おまもりタグの読み取りページ。アプリ本体とは別のページですが、
+   タグ機能の入口なので、ここでも「明らかな壊れ方」を確かめます。 */
+const tagHtml = read('tag.html');
+if (tagHtml === null) {
+  record('tag.html がある', false, 'tag.html が見つかりません');
+} else {
+  checkHtmlSyntax(tagHtml, 'tag.html');
+}
+
+/* ---------- 6. 公開に必要なファイルが存在する ---------- */
+
+const needed = new Map(); // ファイル名 -> どこから参照されているか
+
+function need(ref, from) {
+  if (ref === undefined || ref === null) return;
+  const raw = String(ref).trim();
+  if (raw.startsWith('#') || raw.startsWith('?')) return; // ページ内リンクは対象外
+  let clean = raw.split(/[?#]/)[0];
+  // 外部URL(https: data: mailto: など)は対象外
+  if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(clean)) return;
+  // 「/」から始まる指定はサーバーの置き場所しだいなので対象外
+  if (clean.startsWith('/')) return;
+  clean = clean.replace(/^(?:\.\/)+/, '');
+  if (clean === '.') clean = '';
+  /* 「./」「」「sub/」のようにフォルダを指す書き方は、
+     そのフォルダの入口ファイル index.html を確かめます。
+     start_url: "./" は公開の入口 index.html を指すため、ここで拾われます。 */
+  if (clean === '' || clean.endsWith('/')) clean += 'index.html';
+  needed.set(clean, [...(needed.get(clean) || []), from]);
+}
+
+if (manifest) {
+  // start_url の記載がないときは、公開の入口(index.html)が既定の入口になります
+  need(manifest.start_url === undefined ? './' : manifest.start_url, 'manifest.json の start_url');
+  for (const icon of manifest.icons || []) need(icon.src, 'manifest.json のアイコン');
+}
+/** HTML から、同じ場所に置いたファイルへの参照(href / src)を拾う */
+function collectRefs(html, from) {
+  // スクリプト部分を除いた HTML から、href / src の参照を拾う
+  const markup = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+  for (const m of markup.matchAll(/\b(?:href|src)\s*=\s*"([^"]+)"/g)) need(m[1], from);
+}
+
+if (html !== null) {
+  collectRefs(html, 'index.html');
+  for (const m of html.matchAll(/<script\b[^>]*\bsrc\s*=\s*"([^"]+)"[^>]*><\/script>/gi)) {
+    need(m[1], 'index.html の外部スクリプト');
+  }
+  for (const m of html.matchAll(/serviceWorker\.register\(\s*'([^']+)'/g)) need(m[1], 'index.html の Service Worker 登録');
+}
+/* tag.html が読み込むファイルも、同じように存在を確かめます */
+if (tagHtml !== null) collectRefs(tagHtml, 'tag.html');
+
+const missingFiles = [...needed.entries()].filter(([f]) => !fs.existsSync(path.join(ROOT, f)));
+record(
+  `公開に必要なファイルが存在する (${needed.size}件を確認)`,
+  missingFiles.length === 0,
+  missingFiles.length
+    ? missingFiles.map(([f, froms]) => `${f} が見つかりません(${[...new Set(froms)].join(' / ')})`).join('\n')
+    : [...needed.keys()].sort().join(', ')
+);
+
+/* ---------- ルール・送信役・アプリの食い違い(2026-10-01) ---------- */
+{
+  const rd = (f) => { try { return fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch (e) { return ''; } };
+  const rules = rd('firestore.rules'), worker = rd('worker.js'), consentJs = rd('consent.js');
+  const ver = (t, re) => { const m = re.exec(t); return m ? m[1] : ''; };
+  const wv = ver(worker, /CONSENT_VERSION\s*=\s*'([^']+)'/), cv = ver(consentJs, /'(\d{4}-\d{2}-\d{2}\.\d+)'/);
+  const rv = [...rules.matchAll(/version == '([^']+)'/g)].map((m) => m[1]);
+  record('同意の版がルール・送信役・アプリでそろっている',
+    !!wv && !!cv && rv.length > 0 && rv.every((v) => v === wv) && wv === cv,
+    `ルール:${[...new Set(rv)].join(',')} 送信役:${wv} アプリ:${cv}`);
+  const listMatch = /validEventType[\s\S]*?in \[([\s\S]*?)\]/.exec(rules);
+  const allowed = new Set(listMatch ? [...listMatch[1].matchAll(/'([a-z0-9-]+)'/g)].map((m) => m[1]) : []);
+  const used = new Set();
+  for (const f of fs.readdirSync(ROOT).filter((f) => /\.(js|html)$/.test(f) && f !== 'worker.js' && f !== 'tag.html')) {
+    for (const m of rd(f).matchAll(/type\s*:\s*'([a-z0-9-]+)'/g)) if (m[1] !== 'text') used.add(m[1]);
+  }
+  for (const m of rd('index.html').matchAll(/'(disaster-[a-z]+)'\s*:/g)) used.add(m[1]);
+  const missing = [...used].filter((t) => !allowed.has(t));
+  record('アプリが書く記録の種類が、すべてルールで許されている', allowed.size > 0 && missing.length === 0,
+    missing.length ? 'ルールに無い種類: ' + missing.join(', ') : `${used.size}種類を確認`);
+  const tagRule = /situation in \[([^\]]*)\]/.exec(rules);
+  const ruleSituations = tagRule ? [...tagRule[1].matchAll(/'([a-z]+)'/g)].map((m) => m[1]).sort() : [];
+  const wSit = /TAG_SITUATIONS = \{([^}]*)\}/.exec(worker);
+  const workerSituations = wSit ? [...wSit[1].matchAll(/([a-z]+):/g)].map((m) => m[1]).sort() : [];
+  record('おまもりタグの状況の種類が、ルールと送信役でそろっている',
+    ruleSituations.length > 0 && ruleSituations.join() === workerSituations.join(),
+    `ルール:${ruleSituations.join(',')} 送信役:${workerSituations.join(',')}`);
+}
+
+/* ---------- まとめ ---------- */
+
+const failed = results.filter((r) => !r.ok);
+console.log('\n' + '-'.repeat(50));
+console.log(`${results.length}件中 ${results.length - failed.length}件が成功`);
+console.log(failed.length === 0
+  ? '基本検査はすべて通りました。'
+  : '基本検査で問題が見つかりました。上の ❌ の内容を確認してください。');
+console.log('※ この検査は、実機での画面確認や Firestore を使った通し確認の代わりにはなりません。');
+
+if (process.env.GITHUB_STEP_SUMMARY) {
+  const rows = results.map((r) =>
+    `| ${r.ok ? '✅ 成功' : '❌ 失敗'} | ${r.title} | ${r.detail ? r.detail.replace(/\n/g, '<br>').replace(/\|/g, '\\|') : ''} |`
+  );
+  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+    ['## 基本検査の結果', '', '| 結果 | 検査した内容 | 内訳 |', '| --- | --- | --- |', ...rows, '',
+     failed.length === 0 ? '**すべて通りました。**' : `**${failed.length}件が失敗しました。**`, '',
+     '※ この検査は、実機での画面確認や Firestore を使った通し確認の代わりにはなりません。', ''].join('\n'));
+}
+
+process.exit(failed.length === 0 ? 0 : 1);

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="medicine-notebook.css?v=20260919">
-<title>まいにこ</title>
+<link rel="stylesheet" href="medicine-notebook.css?v=20261001">
+<title>まいにこ ― 家族のつながり</title>
 <meta name="description" content="押すだけで「今日も元気」が家族に届く、高齢のご本人と家族のためのアプリです。">
 <meta property="og:title" content="まいにこ">
 <meta property="og:description" content="押すだけで「今日も元気」が家族に届く、高齢のご本人と家族のためのアプリです。">
@@ -45,6 +45,10 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 #entry .appicon{width:80px;height:80px;border-radius:20px;box-shadow:0 3px 10px rgba(29,78,158,.15);background:#FAF7F0;}
 #entry h1{font-size:2.1rem;font-weight:900;letter-spacing:.18em;color:#1D4E9E;margin-top:14px;}
 #entry .entry-catch{color:#1D4E9E;font-size:1.02rem;font-weight:900;margin-top:4px;}
+#entry .entry-sub{color:#5A6573;font-size:1rem;font-weight:800;margin-top:-2px;letter-spacing:.08em;}
+#entry .entry-promise{list-style:none;margin:12px auto 4px;padding:10px 14px;max-width:420px;text-align:left;background:#F4F7FB;border-radius:12px;font-size:.9rem;line-height:1.6;color:#33404E;}
+#entry .entry-promise li{position:relative;padding-left:1.3em;margin:4px 0;}
+#entry .entry-promise li::before{content:'✓';position:absolute;left:0;color:#1D4E9E;font-weight:900;}
 #entry .entry-catch em{font-style:normal;color:#E8731A;}
 #entry .q{color:var(--cha);margin:14px 0 20px;font-size:1.25rem;font-weight:900;}
 .entry-btn{display:block;width:100%;max-width:320px;margin:0 auto 14px;background:var(--hi);border:none;border-radius:20px;padding:18px;font-family:inherit;font-size:1.2rem;font-weight:900;color:#fff;box-shadow:0 5px 0 var(--hi-koi);cursor:pointer;line-height:1.4;}
@@ -127,6 +131,24 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .h-links{display:flex;justify-content:center;gap:14px;}
 .h-links button{background:none;border:none;font-family:inherit;color:var(--usucha);font-size:1rem;text-decoration:underline;cursor:pointer;padding:12px 6px;min-height:48px;}
 .h-cancel-btn{border-color:#C9B8A0;color:#6B5436;font-size:1.05rem;}
+.card.notice-card,.notice-card{background:#FFF8EC;border:2px solid #E8B45A;}
+.notice-card p{margin:0 0 8px;line-height:1.7;}
+.warn-text{color:#9A4B00;font-weight:800;}
+.card.hitokoe-card{background:#FFFBEF;border:2px solid #E9C46A;}
+.hitokoe-card h3{margin:0 0 6px;}
+.hitokoe-lead{font-size:1.08rem;font-weight:800;line-height:1.7;margin:0 0 6px;}
+.card.hitokoe-card.done{background:#F3F8F1;border-color:#A9CFA0;}
+.hitokoe-done{margin:0;font-weight:800;}
+.hitokoe-small{font-size:.82rem;}
+.hitokoe-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.hitokoe-week{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0;}
+.hitokoe-week label{display:flex;align-items:center;gap:4px;min-height:44px;}
+.hitokoe-pauses{padding-left:18px;}
+#settings-hitokoe label:not(.consent-item){display:block;margin:10px 0;font-weight:800;}
+#settings-hitokoe .hitokoe-week label{display:flex;margin:0;}
+#settings-hitokoe select,#settings-hitokoe input[type=date]{display:block;width:100%;min-height:46px;font-size:1rem;margin-top:4px;border:1.5px solid #C9D6E6;border-radius:10px;padding:6px 8px;background:#fff;font-family:inherit;}
+#settings-hitokoe details{margin:10px 0;border:1.5px dashed #C9D6E6;border-radius:12px;padding:0 10px;}
+#settings-hitokoe details>summary{min-height:46px;display:flex;align-items:center;font-weight:900;cursor:pointer;}
 .person-family-procs{margin-top:16px;border:2px dashed #D8CDBA;border-radius:14px;padding:0 12px;}
 .person-family-procs>summary{min-height:56px;display:flex;align-items:center;font-weight:900;cursor:pointer;color:#6B5436;}
 .person-family-procs[open]{padding-bottom:12px;}
@@ -265,6 +287,8 @@ table.cal-rec td.pad{background:none;}
 #cal-day-detail .cdd-date{font-size:1rem;font-weight:900;color:var(--hi-koi);}
 #cal-day-detail .cdd-item{font-size:1.45rem;font-weight:900;color:var(--cha);line-height:1.6;margin-top:4px;}
 #cal-day-detail .cdd-item small{font-size:1.05rem;color:var(--hi-koi);}
+#cal-day-detail .cdd-note,#f-cal-day-detail .cdd-note{font-size:1rem;color:#4A5563;margin-top:4px;line-height:1.6;}
+#cal-day-detail small,#f-cal-day-detail small{display:block;}
 .hy-q{font-size:1.15rem;font-weight:900;margin:16px 0 8px;color:var(--cha);}
 .hy-days{display:flex;gap:8px;}
 .hy-days button{flex:1;min-height:58px;border:2px solid var(--hi);border-radius:12px;background:#fff;color:var(--hi-koi);font-family:inherit;font-size:1.05rem;font-weight:900;cursor:pointer;}
@@ -791,7 +815,13 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 <div class="page" id="entry">
   <img class="appicon" src="icon-192.png" alt="まいにこ">
   <h1>まいにこ</h1>
+  <div class="entry-sub">― 家族のつながり ―</div>
   <div class="entry-catch">不安を軽く、安心を深く、<br>上田でつなぐ。</div>
+  <ul class="entry-promise">
+    <li>カメラも位置情報も使いません。ボタンで残した記録を、家族で見せ合うしくみです</li>
+    <li>市民は無料です。勤務先の企業や市が、記録を見ることはありません</li>
+    <li>安否確認や119番の代わりではありません。毎日の連絡を軽くする道具です</li>
+  </ul>
   <div class="open-place-note" id="open-place-note" hidden></div>
   <div class="q">どなたのスマホで使いますか？</div>
   <div id="entry-state" class="save-state" role="status" aria-live="polite"></div>
@@ -1133,6 +1163,16 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
     <button class="set-btn" type="button" onclick="openMedicineNotebook()">お薬手帳を開く・保存する</button>
     <a class="set-btn" href="help.html#medicine" target="_blank" rel="noopener">保存・別のスマホへの移し方</a>
   </div>
+  <div class="set-sec" id="person-hitokoe-sec" hidden><h4>ひと声のきっかけ</h4>
+    <p class="note" id="person-hitokoe-state"></p>
+    <button class="set-btn" type="button" id="person-hitokoe-btn" onclick="togglePersonHitokoe()"></button>
+  </div>
+  <div class="set-sec"><h4>機種変更・スマホをなくしたとき</h4>
+    <p class="note" data-recovery-status aria-live="polite"></p>
+    <div class="note">ご家族と一緒に設定しておくと、新しいスマホでも今までの記録に戻れます。ご本人のメールアドレスを使います。ご本人がパスワードを覚えておく必要はありません（ご家族が控えておいてください）。</div>
+    <button class="set-btn" onclick="openRecovery()">復旧を設定する</button>
+    <a class="set-btn" href="help.html#recovery" target="_blank" rel="noopener">機種変更・復旧の手順を見る</a>
+  </div>
   <details class="person-family-procs" id="person-family-procs" ontoggle="guardPersonFamilyProcs(this)">
     <summary>ご家族と一緒に行う手続き（機種変更・利用の終了など）</summary>
     <p class="note">ここにある操作は、元に戻せないものがあります。ご家族と一緒に、画面をよく確かめてから操作してください。</p>
@@ -1153,10 +1193,8 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
   </div>
   <div class="set-sec"><h4>アカウントと家庭の管理</h4>
     <p class="note" data-household-role></p>
-    <button class="set-btn warn" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
-    <button class="set-btn" onclick="openRecovery()">端末をなくす前に復旧を設定する</button>
     <button class="set-btn" onclick="openRecovery(true)">復旧設定済みのアカウントでログインする</button>
-    <div class="note">ご自身のメールアドレスを使います。本人にパスワードを覚えてもらう必要はありません。家族は自分のアカウントで設定してください。</div>
+    <button class="set-btn warn" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
     <button class="set-btn warn" data-owner-only hidden onclick="deleteAllData()">共有データをすべて削除する</button>
   </div>
   </details>
@@ -1369,6 +1407,10 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       <button type="button" class="set-back" onclick="closeSettings()">← 戻る</button>
       <div class="ttl">設定</div>
     </div>
+    <div class="card notice-card" id="settings-recovery-top" hidden>
+      <p data-recovery-status></p>
+      <button class="set-btn" type="button" onclick="openRecoveryMenu()">復旧を設定する</button>
+    </div>
 
     <details class="set-menu" id="menu-family">
       <summary>家族の管理</summary>
@@ -1389,13 +1431,19 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       </div>
     </details>
 
-    <details class="set-menu" id="menu-line" ontoggle="if(this.open&&window.MainicoLine){MainicoLine.render('settings-line-area');if(MainicoLine.renderLog)MainicoLine.renderLog('settings-line-log');}">
+    <details class="set-menu" id="menu-line" ontoggle="if(this.open&&window.MainicoLine){MainicoLine.render('settings-line-area');if(MainicoLine.renderLog)MainicoLine.renderLog('settings-line-log');if(MainicoLine.renderQuota)MainicoLine.renderQuota('settings-line-quota');}">
       <summary>LINEで予定のお知らせ</summary>
       <div class="set-menu-body">
         <div id="settings-line-area"></div>
+        <div class="note" id="settings-line-quota" aria-live="polite"></div>
         <a class="set-btn" href="help.html#line" target="_blank" rel="noopener">LINEの使い方（連携・お知らせの付け方・解除）</a>
         <div class="line-log-box"><h4>家族のLINE連携の記録</h4><div id="settings-line-log"></div></div>
       </div>
+    </details>
+
+    <details class="set-menu" id="menu-hitokoe" ontoggle="if(this.open&&hitokoeCtl)hitokoeCtl.renderSettings()">
+      <summary>ひと声のきっかけ<span class="set-menu-sub">押されなかった日に</span></summary>
+      <div class="set-menu-body"><div id="settings-hitokoe"></div></div>
     </details>
 
     <details class="set-menu" id="menu-person-ui" ontoggle="if(this.open)renderPersonUiConfig()">
@@ -1421,9 +1469,10 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       </div>
     </details>
 
-    <details class="set-menu">
+    <details class="set-menu" id="menu-recovery">
       <summary>機種変更・アカウントの復旧</summary>
       <div class="set-menu-body">
+        <p class="note" data-recovery-status aria-live="polite"></p>
         <button class="set-btn" onclick="openRecovery()">端末をなくす前に復旧を設定する</button>
     <button class="set-btn" onclick="openRecovery(true)">復旧設定済みのアカウントでログインする</button>
         <a class="set-btn" href="help.html#recovery" target="_blank" rel="noopener">機種変更・復旧の手順を見る</a>
@@ -1504,6 +1553,9 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
     <!-- ホーム -->
     <div class="ftab" id="t-home">
       <div id="card-pending"></div>
+      <!-- 家族へのお知らせ(2026-10-01): ひと声のきっかけ・ご本人のスマホの復旧・LINEの残り通数 -->
+      <div id="hitokoe-card"></div>
+      <div id="family-notices"></div>
       <div class="card dom-record" id="card-actions" data-communication-gate="person">
         <h3>本人とのやりとり</h3>
         <p class="today-glance" id="today-glance" hidden></p>
@@ -1966,18 +2018,19 @@ setTimeout(function(){
 <script async data-optional="true" src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script src="ueda-centers.js?v=20260918"></script>
 <script src="consent.js?v=20260919"></script>
-<script src="consent-ui.js?v=20260921-scroll"></script>
+<script src="consent-ui.js?v=20261001"></script>
 <script src="account-recovery.js?v=20260927-account-switch"></script>
 <script src="account-deletion.js?v=20260918-consent"></script>
 <script src="household-deletion.js"></script>
-<script src="household-ui.js?v=20260927-account-switch"></script>
-<script src="medicine-notebook.js?v=20260930"></script>
+<script src="household-ui.js?v=20261001"></script>
+<script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
-<script src="line-notify.js?v=20260930"></script>
+<script src="line-notify.js?v=20261001"></script>
+<script src="hitokoe.js?v=20261001"></script>
 <script>
 const previewStorage={
   getItem:k=>localStorage.getItem(k),
@@ -2013,13 +2066,6 @@ function rokuyoOf(d){
   const i=Math.floor((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-ROKUYO_EPOCH)/86400000);
   if(i<0||i>=ROKUYO_TABLE.length) return '';
   return ROKUYO_NAMES[Number(ROKUYO_TABLE[i])];
-}
-function goHome(){
-  closePersonTasks();
-  document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show'));
-  try{ if(typeof openAnshin==='function' && document.getElementById('anshin-home')) openAnshin('home'); }catch(e){}
-  try{ var kz=document.getElementById('kazoku'); if(kz && getComputedStyle(kz).display!=='none' && typeof showTab==='function') showTab('t-home'); }catch(e){}
-  window.scrollTo({top:0,behavior:'smooth'});
 }
 const auth = previewApp.auth();
 
@@ -2263,7 +2309,7 @@ async function hyDelete(){
   const v=yoteiCache.find(x=>x._id===id);
   if(!id || !v || v.uid!==uid()){ alert('この予定は削除できません。'); return; }
   speak('この予定を 削除しますか');
-  if(!await appConfirm('この予定を削除しますか？','削除する')) return;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('この予定を削除しますか？','削除する')) return;
   const n=document.getElementById('hy-note');
   const btn=document.getElementById('hy-delete-btn');
   const current=communicationSession(),view=hYoteiView;
@@ -2340,21 +2386,23 @@ function appDialogReady(){
   const m=document.getElementById('app-dialog');
   return m&&m.classList&&typeof m.classList.add==='function';
 }
-function appConfirm(text,okLabel){
+function appConfirm(text,okLabel,cancelLabel,calm){
   if(!appDialogReady())return Promise.resolve(typeof confirm==='function'?confirm(text):true);
-  return new Promise(res=>{
+  return appDialogOpen(res=>{
     appDialogResolve=res;
     document.getElementById('app-dialog-title').textContent='確認';
     document.getElementById('app-dialog-text').textContent=text;
     const ok=document.getElementById('app-dialog-ok');
     ok.textContent=okLabel||'実行する';ok.style.display='';
-    document.getElementById('app-dialog-cancel').textContent='やめる';
+    /* 危ない操作ではない確認(ご本人への了解の確認など)は、赤いボタンにしない */
+    if(ok.classList&&typeof ok.classList.toggle==='function')ok.classList.toggle('warn',calm!==true);
+    document.getElementById('app-dialog-cancel').textContent=cancelLabel||'やめる';
     document.getElementById('app-dialog').classList.add('show');
   });
 }
 function appNotice(text){
   if(!appDialogReady()){if(typeof alert==='function')alert(text);return Promise.resolve(true);}
-  return new Promise(res=>{
+  return appDialogOpen(res=>{
     appDialogResolve=res;
     document.getElementById('app-dialog-title').textContent='お知らせ';
     document.getElementById('app-dialog-text').textContent=text;
@@ -2376,15 +2424,42 @@ function appNotice(text){
     nativeAlert(text);
   };
 })();
+/* 確認やお知らせが重なったときは、前の答えを待ってから順番に出す(2026-10-01)。
+   上書きすると、前の画面の答えが永久に返らなくなるため */
+const appDialogWaiting=[];
+function appDialogOpen(show){
+  return new Promise(res=>{
+    if(appDialogResolve){
+      const m=document.getElementById('app-dialog');
+      const open=!!(m&&m.classList&&typeof m.classList.contains==='function'&&m.classList.contains('show'));
+      /* 別の画面に切り替わって確認が閉じられていたら、前の確認は「答えなし(null)」で終わらせる(固まらないように) */
+      if(!open){const r=appDialogResolve;appDialogResolve=null;try{r(null);}catch(e){}}
+    }
+    if(appDialogResolve)appDialogWaiting.push({show:()=>show(res),res});
+    else show(res);
+  });
+}
+/* 画面を切り替えるときに、開いている確認と待っている確認を「答えなし(null)」で閉じる */
+function appDialogCancelAll(){
+  const m=document.getElementById('app-dialog');
+  if(m&&m.classList)m.classList.remove('show');
+  const r=appDialogResolve;appDialogResolve=null;
+  const waiting=appDialogWaiting.splice(0);
+  if(r)try{r(null);}catch(e){}
+  waiting.forEach(w=>{try{w.res(null);}catch(e){}});
+}
 function appDialogDone(v){
   const m=document.getElementById('app-dialog');
   if(m&&m.classList)m.classList.remove('show');
   const r=appDialogResolve;appDialogResolve=null;
   if(r)r(v);
+  const next=appDialogWaiting.shift();
+  if(next)next.show();
 }
 function addEvent(data){
   return col('events').add(Object.assign({
-    date:todayStr(), at:firebase.firestore.FieldValue.serverTimestamp(), uid:uid()
+    /* 夜中0〜4時の記録は「前の日の夜」の分(2026-10-01: 本人も家族も同じ日付にそろえる) */
+    date:(typeof personDay==='function'?personDay():todayStr()), at:firebase.firestore.FieldValue.serverTimestamp(), uid:uid()
   },data));
 }
 let familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};
@@ -3019,16 +3094,19 @@ function returnFromEndedPending(context,text){
     if(pendingIsCurrent(context))pendingState('ended','申請の終了は確認できています。','端末の接続情報の整理を完了できませんでした。保存情報を消さず、「入口に戻る」でもう一度お試しください。');
   }
 }
+let cancelJoinAsking=false;
 async function cancelJoinRequest(){
-  if(cancelling)return;
+  if(cancelling||cancelJoinAsking)return;
   const context=pendingContext;
   if(!pendingIsCurrent(context)||!['pending','ended'].includes(pendingStatus)){
     if(pendingIsCurrent(context))pendingState('unknown','先に参加状況を確認してください。');
     return;
   }
   const ended=pendingStatus==='ended';
-  if(!confirm(ended?'この申請が終了したことを再確認して、入口に戻りますか？\n参加する場合は、新しい招待コードが必要です。':
-    '参加の申請を取り下げますか？\n招待した人にまだ連絡できなくても、取り下げる必要はありません。取り下げると、参加し直すときに新しい招待コードが必要です。'))return;
+  cancelJoinAsking=true;let joinAnswer=false;
+  try{joinAnswer=await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(ended?'この申請が終了したことを再確認して、入口に戻りますか？\n参加する場合は、新しい招待コードが必要です。':
+    '参加の申請を取り下げますか？\n招待した人にまだ連絡できなくても、取り下げる必要はありません。取り下げると、参加し直すときに新しい招待コードが必要です。',ended?'入口に戻る':'取り下げる');}finally{cancelJoinAsking=false;}
+  if(!joinAnswer)return;
   if(!pendingIsCurrent(context))return;
   cancelling=true;
   pendingState('checking',ended?'申請が終了しているか再確認しています。':'申請を取り下げています。完了するまでお待ちください。');
@@ -3097,7 +3175,7 @@ function openBackConfirm(){
   if(back) requestAnimationFrame(function(){ back.classList.add('show'); speak('利用方法を 変更しますか'); });
 }
 function closeBackConfirm(){ speak('変更を やめました'); document.getElementById('back-modal').classList.remove('show'); }
-function openPersonSettings(){ applyHouseholdPermissions(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); if(window.MainicoLine) MainicoLine.render('person-line-area'); }
+function openPersonSettings(){ applyHouseholdPermissions(); if(typeof renderRecoveryBadges==='function')renderRecoveryBadges(); if(typeof renderPersonHitokoe==='function')renderPersonHitokoe(); if(typeof reportDeviceRecovery==='function')reportDeviceRecovery(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); if(window.MainicoLine) MainicoLine.render('person-line-area'); }
 function closePersonSettings(){ speak('とじました'); const f=document.getElementById('person-family-procs');if(f)f.open=false; document.getElementById('person-settings-modal').classList.remove('show'); }
 /* 「ご家族と一緒に行う手続き」は、開く前に確認する(本人が迷い込まないように) */
 let personProcsConfirmed=false;
@@ -3106,7 +3184,7 @@ async function guardPersonFamilyProcs(el){
   if(personProcsConfirmed)return;
   el.open=false;
   speak('ここは ご家族と いっしょに 操作する 手続きです');
-  if(await appConfirm('ここは、機種変更や利用をやめるときの手続きです。元に戻せない操作もあるため、ご家族と一緒に操作してください。開きますか？','開く')){
+  if(await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('ここは、機種変更や利用をやめるときの手続きです。元に戻せない操作もあるため、ご家族と一緒に操作してください。開きますか？','開く')){
     personProcsConfirmed=true;el.open=true;
   }
 }
@@ -3214,7 +3292,7 @@ function refreshSlotUI(){
   if(previewStorage.getItem('aisatsu-'+personDay()+'-'+s.key)) markAisatsuDone();
 }
 function renderPersonConversation(items,metadata={},announce=true){
-  personConversationDay=todayStr();
+  personConversationDay=(typeof personDay==='function'?personDay():todayStr());
   personConversationItems=items;
   personConversationStatus=metadata.fromCache||metadata.hasPendingWrites?'cached':'ready';
   const msgs=[];
@@ -3230,7 +3308,7 @@ function renderPersonConversation(items,metadata={},announce=true){
     if(['aisatsu-back','onegai-back','family-message'].includes(v.type))text=(v.name||'家族')+'さんから「'+(v.text||'こんにちは')+'」が届きました';
     if(v.type==='ask-kusuri'){
       const askedSlot=validKusuriSlot(v.slot)?v.slot:slot().key;
-      if(v.date===todayStr()&&!previewStorage.getItem('kusuri-'+todayStr()+'-'+askedSlot))text=(v.name||'家族')+'さんから「'+kusuriSlotName(askedSlot)+'の薬は飲みましたか？」';
+      if(v.date===(typeof personDay==='function'?personDay():todayStr())&&!previewStorage.getItem('kusuri-'+(typeof personDay==='function'?personDay():todayStr())+'-'+askedSlot))text=(v.name||'家族')+'さんから「'+kusuriSlotName(askedSlot)+'の薬は飲みましたか？」';
     }
     // Participation notices belong in settings, not above a reply to a different message.
     if(text)msgs.push({...v,text});
@@ -3265,7 +3343,7 @@ function renderPersonConversation(items,metadata={},announce=true){
   updateCommunicationAvailability();
 }
 function refreshPersonConversationDay(){
-  if(personConversationDay===todayStr())return;
+  if(personConversationDay===(typeof personDay==='function'?personDay():todayStr()))return;
   const status=personConversationStatus;
   renderPersonConversation(personConversationItems,{fromCache:status!=='ready'},false);
   // A clock change is not a successful server read.
@@ -3333,6 +3411,10 @@ function initHonnin(){
   }, err=>console.warn('members', err));
   subscribePersonConversation();
   initPersonUiConfig();
+  initMemberInfo();
+  initYoteiNotes();
+  initHitokoePrompt();
+  reportDeviceRecovery();
 
   if(yoteiUnsub) yoteiUnsub();
   yoteiUnsub=subscribeYotei(()=>{
@@ -3491,7 +3573,7 @@ function sendOnegaiFree(){
 }
 function sendOnegai(text, inputId){
   if(!requireFamilyFeature('family'))return;
-  const date=todayStr();if(!beginSend())return;
+  const date=(typeof personDay==='function'?personDay():todayStr());if(!beginSend())return;
   const current=communicationSession();
   const freeState=document.getElementById('onegai-free-state'),freeBtn=document.getElementById('onegai-free-btn');
   if(inputId&&freeState){freeState.classList.remove('err');freeState.textContent='記録を保存しています…';if(freeBtn)freeBtn.disabled=true;}
@@ -3587,6 +3669,10 @@ function renderSelectedScheduleDay(mode){
     const item=document.createElement('div');item.className='yt-item';
     const label=document.createElement('b');label.textContent=(v.kind||'📌')+' '+(v.label||'予定');item.appendChild(label);
     const detail=document.createElement('div');detail.textContent=[v.time,v.place].filter(Boolean).join('　');item.appendChild(detail);
+    /* 日の詳しい表示にだけ、分類と予定ごとのメモを出す(2026-10-01。ホームの本人画面は増やさない) */
+    if(v.category){const cat=document.createElement('small');cat.textContent='🏷 '+v.category;item.appendChild(cat);}
+    const notes=(typeof yoteiNotes!=='undefined'?yoteiNotes:[]).filter(n=>n.yoteiId===v._id).slice(-3);
+    notes.forEach(n=>{const memo=document.createElement('div');memo.className='cdd-note';memo.textContent='📝 '+(n.text||'')+(n.name?'（'+n.name+'）':'');item.appendChild(memo);});
     if(typeof MainicoLine!=='undefined'){
       const status=document.createElement('small');status.textContent=MainicoLine.describe(v);item.appendChild(status);
     }
@@ -3629,13 +3715,30 @@ function renderFamilyCal(){
   renderSelectedScheduleDay('family');
 }
 
+/* とりけした後、ボタンの「記録しました」表示と記録一覧だけを直す */
+function afterPersonCancel(){
+  try{
+    refreshSlotUI();
+    const box=document.getElementById('kibun-box');
+    if(box){
+      const d=personDay();
+      const show=['asa','hiru','yoru'].some(k=>previewStorage.getItem('aisatsu-'+d+'-'+k))&&!previewStorage.getItem('kibun-'+d)&&(typeof personUiShown!=='function'||personUiShown('kibun'));
+      box.style.display=show?'block':'none';
+    }
+  }catch(e){}
+  const modal=document.getElementById('cancel-modal');
+  if(modal&&modal.classList.contains('show')){
+    openCancel(true).then(()=>{const st=document.getElementById('cancel-state');if(st)st.textContent='とりけしました';});
+  }
+  speak('とりけしました');
+}
 /* 今日の記録のとりけし(本人) */
 function cancelRecordLabel(v){
   const nm={'aisatsu':v=>'挨拶「'+(v.text||'')+'」','kibun':v=>'今日の調子「'+(v.text||'')+'」','kusuri':v=>'服薬の記録'+recSlot(v.slot),'onegai':v=>'お願い「'+(v.text||'')+'」','kibun-kazoku':v=>'体調の記録「'+(v.text||'')+'」','kusuri-kakunin':v=>'服薬の確認'+recSlot(v.slot),'care-log':v=>'様子の記録「'+(v.text||'今日の様子')+'」','memo':v=>'様子メモ「'+(v.text||'')+'」','aisatsu-back':v=>'挨拶の返事「'+(v.text||'')+'」','ask-kusuri':v=>'「'+kusuriQuestion(v.slot)+'」','family-message':v=>'本人へのメッセージ「'+(v.text||'')+'」','family-message-back':v=>'家族への返事「'+(v.text||'')+'」','onegai-back':v=>'お願いへの返事「'+(v.text||'')+'」','member-joined':()=>'参加のお知らせ','tag-alert':v=>'おまもりタグ「'+(v.text||'読み取り')+'」','family-task':v=>'やること「'+(v.text||'')+'」','family-task-done':()=>'やることの「できた」','family-task-help':()=>'やることの引き受け','family-note':v=>'伝言「'+(v.text||'')+'」','yotei-note':v=>'予定のメモ「'+(v.text||'')+'」'};
   return nm[v.type]?nm[v.type](v):'記録';
 }
 /* 取り消し一覧に出さない種類(設定や、家族が見る連携の記録) */
-const CANCEL_HIDDEN_TYPES={'line-link-log':1,'care-config':1,'kibun-config':1,'yotei-cat-config':1,'person-ui-config':1,'medicine-info':1,'family-contact':1};
+const CANCEL_HIDDEN_TYPES={'hitokoe-config':1,'hitokoe-consent':1,'device-recovery':1,'line-link-log':1,'care-config':1,'kibun-config':1,'yotei-cat-config':1,'person-ui-config':1,'medicine-info':1,'family-contact':1};
 function cancelDialogKeydown(event){
   if(event.key==='Escape'){event.preventDefault();closeCancel();return;}
   if(event.key!=='Tab')return;
@@ -3646,15 +3749,15 @@ function cancelDialogKeydown(event){
   if(event.shiftKey&&(active===first||!targets.includes(active))){event.preventDefault();last.focus();}
   else if(!event.shiftKey&&(active===last||!targets.includes(active))){event.preventDefault();first.focus();}
 }
-async function openCancel(){
+async function openCancel(quiet){
   const request=++cancelViewRequest,current=communicationSession(),owner=uid(),group=gid(),date=personDay();
   const cst=document.getElementById('cancel-state');if(cst)cst.textContent='';
-  cancelReturnFocus=document.activeElement;
+  if(quiet!==true)cancelReturnFocus=document.activeElement;
   const modal=document.getElementById('cancel-modal'),box=document.getElementById('cancel-list');
   modal.classList.add('show');box.textContent='今日の自分の記録を確認しています…';
   if(!cancelDialogBound){modal.addEventListener('keydown',cancelDialogKeydown);cancelDialogBound=true;}
   const title=document.getElementById('cancel-title');if(title){title.setAttribute('tabindex','-1');title.focus();}
-  speak('今日の記録を確認する画面をひらきました。とりけしたい記録を選べます');
+  if(quiet!==true)speak('今日の記録を確認する画面をひらきました。とりけしたい記録を選べます');
   const active=()=>request===cancelViewRequest&&current()&&owner===uid()&&group===gid()&&date===personDay();
   try{
     const snap=await col('events').where('date','==',date).get({source:'server'});
@@ -3683,7 +3786,7 @@ async function cancelEvent(id,type,slot){
     const row=snap.exists?snap.data():null;
     if(!row||row.uid!==owner||row.date!==date||personDay()!==date||snap.metadata?.fromCache===true||snap.metadata?.hasPendingWrites===true){const st=document.getElementById('cancel-state');const msg='今日の自分の記録を確認できません。記録一覧を開き直してください。';if(st)st.textContent=msg;speak(msg,true);return;}
     const cancelQ='「'+cancelRecordLabel(row)+'」の記録をとりけしますか？';
-    if(!(typeof appConfirm==='function'?await appConfirm(cancelQ,'とりけす'):confirm(cancelQ)))return;
+    if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(cancelQ,'とりけす'))return;
     if(!current()||personDay()!==date)return;
     await ref.delete();if(!current())return;
     try{
@@ -3691,7 +3794,8 @@ async function cancelEvent(id,type,slot){
       if(row.type==='kibun')previewStorage.removeItem('kibun-'+date);
       if(row.type==='kusuri')previewStorage.removeItem('kusuri-'+date+'-'+row.slot);
     }catch(e){console.warn('cancel display cache',e);}
-    location.reload();
+    /* 画面全体を読み直さず、その場で表示だけ直す(2026-10-01) */
+    if(previewStorage.getItem('mainicoMode')==='honnin')afterPersonCancel();
   }catch(e){if(current()){const st=document.getElementById('cancel-state');const msg='とりけせませんでした。通信を確認して、もう一度お試しください。';if(st)st.textContent=msg;try{speak(msg,true);}catch(err){}}}
   finally{personCancelBusy.delete(key);}
 }
@@ -3728,7 +3832,7 @@ async function honninRemove(mid, isMe){
   const msg=isMe
     ?'家庭への参加をやめますか？\n\n・同じアカウントの他の端末も共有に接続できなくなります\n・これまでの共有記録は残ります\n・この端末の対象のお薬手帳の控えは削除します。残したい資料は先に原本を書き出してください'
     :'この家族を解除しますか？\n\n・解除後、この家族は共有サーバーの記録を新たに取得できなくなります\n・相手の端末に保存済みの写真・コピーは各端末で削除が必要です';
-  if(!await appConfirm(msg,isMe?'共有をやめる':'解除する')) return;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(msg,isMe?'共有をやめる':'解除する')) return;
   try{
     if(isMe){if(!await leaveHouseholdAccount())return;}
     else await col('members').doc(mid).delete();
@@ -3739,7 +3843,7 @@ async function honninRemove(mid, isMe){
       return;
     }
     openMembers();
-  }catch(e){ await appNotice('解除できませんでした: '+e.message); }
+  }catch(e){ console.warn(e);await appNotice('解除できませんでした。通信を確認して、もう一度お試しください。'); }
 }
 function closeMembers(){ speak('とじました'); document.getElementById('members-modal').classList.remove('show'); }
 
@@ -3922,7 +4026,7 @@ function renderFamilyConversation(){
       const write=soto||answered.length?'':'<button class="reply-btn" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="openOnegaiBackFree(\''+jsArg(v._id)+'\')">自由に返事を書く</button>';
       return '<div class="ev onegai-ev '+eventWhoClass(v)+'">'+head+'<b>'+esc(title)+'</b>'+(presets||write?'<div class="reply-row">'+presets+write+'</div>':'')+'</div>';
     }
-    const own=v.type==='family-message'&&v.uid===uid()&&v.date===todayStr()?' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\'family-message\',\'\')">とりけす</button>':'';
+    const own=v.type==='family-message'&&v.uid===uid()&&v.date===(typeof personDay==='function'?personDay():todayStr())?' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\'family-message\',\'\')">とりけす</button>':'';
     return '<div class="ev '+eventWhoClass(v)+'">'+head+esc(label[v.type]?label[v.type](v):'')+own+'</div>';
   });
   const earlierOpen=box.querySelector?.('#family-earlier-conversation')?.open;
@@ -3978,12 +4082,12 @@ function renderFamilySchedule(){
 }
 function subscribeFamilyConversation(){
   if(evUnsub) evUnsub();
-  const session=communicationSession(),day=todayStr(),request=++familyConversationRequest;
+  const session=communicationSession(),day=(typeof personDay==='function'?personDay():todayStr()),request=++familyConversationRequest;
   familyConversationDay=day;familyHomeEventStatus='loading';renderFamilyConversation();
   if(!aisatsuBackSending){const note=document.getElementById('note-aisatsu-back');note.textContent='';note.style.display='none';}
   if(!askKusuriSending){const note=document.getElementById('note-ask');note.textContent='';note.style.display='none';}
   if(isKOnly())document.getElementById('care-today').textContent='今日の記録を読み込んでいます…';
-  const conversationCurrent=()=>session()&&request===familyConversationRequest&&day===todayStr();
+  const conversationCurrent=()=>session()&&request===familyConversationRequest&&day===(typeof personDay==='function'?personDay():todayStr());
   evUnsub=col('events').orderBy('at','desc').limit(100)
     .onSnapshot({includeMetadataChanges:true},snap=>{
       if(!conversationCurrent())return;
@@ -4029,7 +4133,7 @@ function initKazoku(){
   const d=new Date();
   const kOnly=isKOnly();
   document.getElementById('f-lg').textContent='まいにこ ─ ホーム';
-  document.getElementById('f-title').textContent=dateJp(d);
+  document.getElementById('f-title').textContent=dateJp(new Date((typeof personDay==='function'?personDay():todayStr())+'T00:00:00'));
   document.getElementById('home-date-h3').textContent='最近のやりとり';
   document.querySelectorAll('.ab-btn').forEach(b=>b.classList.remove('suggested'));
   const curAb=document.getElementById('btn-ab-'+slot().key);
@@ -4058,6 +4162,7 @@ function initKazoku(){
   initYoteiNotes();
   initPersonUiConfig();
   initMemberInfo();
+  initHitokoe();
   initYoteiCategories();
   initDisaster();
   loadWatchTag();
@@ -4068,8 +4173,8 @@ function initKazoku(){
   subscribeFamilyConversation();
   const daySession=communicationSession();
   const refreshDay=()=>{
-    if(!daySession()||familyConversationDay===todayStr())return;
-    document.getElementById('f-title').textContent=dateJp(new Date());
+    if(!daySession()||familyConversationDay===(typeof personDay==='function'?personDay():todayStr()))return;
+    document.getElementById('f-title').textContent=dateJp(new Date((typeof personDay==='function'?personDay():todayStr())+'T00:00:00'));
     subscribeFamilyConversation();renderFamilySchedule();renderFamilyTasks();
     document.querySelectorAll('.ab-btn').forEach(b=>b.classList.remove('suggested'));
     const suggested=document.getElementById('btn-ab-'+slot().key);if(suggested)suggested.classList.add('suggested');
@@ -4752,7 +4857,7 @@ function recRow(v, kind, cls, text, isReply){
   body.appendChild(k);
   body.appendChild(document.createTextNode(text));
   /* ホームの全件一覧を省いた後も、当日・自分の記録だけを取り消せるようにする。 */
-  if(v.uid===uid() && v.date===todayStr() &&
+  if(v.uid===uid() && v.date===(typeof personDay==='function'?personDay():todayStr()) &&
      ['kibun-kazoku','kusuri-kakunin','care-log','memo','family-message'].includes(v.type)){
     var cancel=document.createElement('button');
     cancel.type='button';cancel.className='yt-del';cancel.textContent='自分の記録をとりけす';
@@ -5902,7 +6007,7 @@ async function changeFamilyTaskHelp(id,cancel){
   if(!owner||!group||familyTaskHelping.has(key))return;
   const mine=familyOnlyData.taskHelpers.filter(v=>v.replyTo===id&&v.uid===owner);
   if(!cancel&&mine.length)return;
-  if(cancel&&!confirm('自分の引受けを取り消しますか？ 他の家族の引受けは残ります。'))return;
+  if(cancel&&!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('自分の引受けを取り消しますか？ 他の家族の引受けは残ります。','取り消す'))return;
   const events=col('events');
   familyTaskHelping.add(key);renderFamilyTasks();
   try{
@@ -5920,9 +6025,9 @@ function openFamilyRequest(){
   const date=document.getElementById('family-task-date');if(!date.value)date.value=todayStr();
   document.getElementById('family-task-input').focus();
 }
-function setFamilyRequestTemplate(text){
+async function setFamilyRequestTemplate(text){
   const input=document.getElementById('family-task-input');
-  if(input.value.trim()&&input.value.trim()!==text&&!confirm('入力中のお願いを「'+text+'」に置き換えますか？'))return;
+  if(input.value.trim()&&input.value.trim()!==text&&!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('入力中のお願いを「'+text+'」に置き換えますか？','置き換える'))return;
   input.value=text;input.focus();
 }
 function openFamilyTasks(){
@@ -5982,7 +6087,7 @@ function renderFamilyContacts(){
   });
 }
 async function deleteFamilyEvent(id,label){
-  if(!confirm(label+'を削除しますか？'))return;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(label+'を削除しますか？','削除する'))return;
   try{await col('events').doc(id).delete();}
   catch(e){alert('削除できませんでした。通信状態を確認してください');}
 }
@@ -6006,7 +6111,7 @@ async function sendDisasterStatus(type){
   const text=names[type];
   if(!text) return;
   const warning=type==='disaster-help'?'\nこれは119番への通報ではありません。命にかかわるときは、先に119番へ電話してください。':'';
-  if(!confirm('家族の記録へ「'+text+'」を残しますか?'+warning)) return;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('家族の記録へ「'+text+'」を残しますか？'+warning,'残す')) return;
   const state=document.getElementById('disaster-state');
   state.classList.remove('err'); state.textContent='記録中…';
   try{
@@ -6088,7 +6193,7 @@ function setYoteiColor(color){
 }
 function chooseYoteiColor(button){ setYoteiColor(button.dataset.color); }
 async function delYotei(id){
-  if(!confirm('この予定を削除しますか?')) return false;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('この予定を削除しますか？','削除する')) return false;
   setYoteiSaveState('削除中…');
   try{
     await col('yotei').doc(id).delete();
@@ -6101,6 +6206,7 @@ async function delYotei(id){
 /* ===== 設定(家族) ===== */
 function openSettings(){
   applyHouseholdPermissions();
+  if(typeof renderRecoveryBadges==='function')renderRecoveryBadges();
   const pui=document.getElementById('menu-person-ui');if(pui)pui.hidden=isKOnly();
   document.getElementById('settings-modal').classList.add('show');
   renderSetMembers();
@@ -6125,13 +6231,13 @@ function openConversationConnection(){
 }
 async function leaveHouseholdFromSettings(){
   if(uid()===householdOwnerId){await appNotice('管理者は退出できません。家庭全体の利用を終える場合は「共有データをすべて削除する」を選んでください。');return;}
-  if(!await appConfirm('この家族から退出しますか？\n\n・あなたはこの家族の記録を見られなくなります（過去の記録も含む）\n・同じアカウントの他の端末も見られなくなります\n・共有済みの記録は家族側に残ります\n・この端末のお薬手帳の控えは削除されます。残したい資料は先に原本を書き出してください','退出する'))return;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('この家族から退出しますか？\n\n・あなたはこの家族の記録を見られなくなります（過去の記録も含む）\n・同じアカウントの他の端末も見られなくなります\n・共有済みの記録は家族側に残ります\n・この端末のお薬手帳の控えは削除されます。残したい資料は先に原本を書き出してください','退出する'))return;
   try{
     if(!await leaveHouseholdAccount())return;
     previewStorage.removeItem('mainicoGid');
     previewStorage.removeItem('mainicoMode');
     location.reload();
-  }catch(e){ await appNotice('退出できませんでした: '+e.message); }
+  }catch(e){ console.warn(e);await appNotice('退出できませんでした。通信を確認して、もう一度お試しください。'); }
 }
 async function renderSetMembers(){
   const box=document.getElementById('set-members');
@@ -6173,24 +6279,24 @@ async function approveMember(mid){
     await col('members').doc(mid).update({status:'approved'});
     addEvent({type:'member-joined', text:mname, name:myName()});
     refreshSetMembersIfOpen();
-  }catch(e){ await appNotice('承認できませんでした: '+e.message); }
+  }catch(e){ console.warn(e);await appNotice('承認できませんでした。通信を確認して、もう一度お試しください。'); }
 }
 async function denyMember(mid){
   if(!requireHouseholdOwner())return;
   mid=memberRef(mid);
-  if(!await appConfirm('この参加申請を認めませんか？\n\n・申請は削除され、相手は記録を見られないまま入口に戻ります','認めない')) return;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('この参加申請を認めませんか？\n\n・申請は削除され、相手は記録を見られないまま入口に戻ります','認めない')) return;
   try{
     await col('members').doc(mid).delete();
     refreshSetMembersIfOpen();
     await appNotice('参加を認めませんでした。\nこのとき使われた招待コードは、もう使えません。あらためて招待するときは、「家族の管理」の「家族を追加する」で新しい招待コードを発行してください。');
-  }catch(e){ await appNotice('操作できませんでした: '+e.message); }
+  }catch(e){ console.warn(e);await appNotice('操作できませんでした。通信を確認して、もう一度お試しください。'); }
 }
 async function removeMember(mid, isMe){
   mid=memberRef(mid);
   isMe=mid===uid();
   if(mid===householdOwnerId){await appNotice('管理者は参加解除できません。家庭全体の利用を終える場合は共有データの削除を選んでください。');return;}
   if(!isMe && !requireHouseholdOwner())return;
-  if(!await appConfirm(isMe?'この端末の接続を解除しますか？\n\n・解除すると、この家族の記録は見られなくなります':'この人の接続を解除しますか？\n\n・解除後、その人は共有サーバーの記録を新たに取得できなくなります\n・相手の端末に保存済みの写真・コピーは各端末で削除が必要です','解除する')) return;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(isMe?'この端末の接続を解除しますか？\n\n・解除すると、この家族の記録は見られなくなります':'この人の接続を解除しますか？\n\n・解除後、その人は共有サーバーの記録を新たに取得できなくなります\n・相手の端末に保存済みの写真・コピーは各端末で削除が必要です','解除する')) return;
   try{
     if(isMe){if(!await leaveHouseholdAccount())return;}
     else await col('members').doc(mid).delete();
@@ -6201,7 +6307,7 @@ async function removeMember(mid, isMe){
       return;
     }
     renderSetMembers();
-  }catch(e){ await appNotice('解除できませんでした: '+e.message); }
+  }catch(e){ console.warn(e);await appNotice('解除できませんでした。通信を確認して、もう一度お試しください。'); }
 }
 async function makeInvite(targetId){
   if(!requireHouseholdOwner())return;
@@ -6264,7 +6370,7 @@ function printWatchTag(){
     '<li>開いた画面で、いまの様子を選んで送ってください（ご家族に届きます）</li>'+
     '<li>あなたの個人情報が送られることはありません</li></ol>'+
     '<div class="warn">けが・急病は119番／事件・保護が必要なときは110番</div>'+
-    '<div class="note">このタグに氏名・住所・連絡先は入っていません。<br>まいにこ（家族の見守りアプリ）のおまもりタグです。</div>'+
+    '<div class="note">このタグに氏名・住所・連絡先は入っていません。<br>まいにこ（家族の連絡アプリ）のおまもりタグです。</div>'+
     '<div class="cut">はさみで切って、持ち物に付けられます'+
     '<div class="minis"><div class="mini">'+mini+'<br>見つけたらQRを読み取ってください（家族に知らせが届きます）</div>'+
     '<div class="mini">'+mini+'<br>見つけたらQRを読み取ってください（家族に知らせが届きます）</div></div></div>');
@@ -6547,7 +6653,7 @@ async function copyWatchTagLink(){
 }
 async function stopWatchTag(){
   if(!requireHouseholdOwner())return;
-  if(!currentWatchTagId || !confirm('このおまもりタグを停止しますか?\n停止後は、読み取っても家族へお知らせできなくなります。')) return;
+  if(!currentWatchTagId || !await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('このおまもりタグを停止しますか？\n停止後は、読み取っても家族へお知らせできなくなります。','停止する')) return;
   try{
     const batch=db.batch();
     batch.update(db.collection('watchTags').doc(currentWatchTagId),{active:false,stoppedAt:firebase.firestore.FieldValue.serverTimestamp()});
@@ -6803,6 +6909,7 @@ function initYoteiNotes(){
     const rows=[];snap.forEach(doc=>{const v=doc.data();v._id=doc.id;rows.push(v);});
     rows.sort((a,b)=>foMillis(a)-foMillis(b));
     yoteiNotes=rows; renderYoteiReview(); if(yoteiReviewId) renderYoteiReviewNotes();
+    try{const pd=document.getElementById('cal-day-detail');if(scheduleSelectedDay&&pd&&pd.style.display!=='none')renderSelectedScheduleDay('person');}catch(e){}
   },()=>{});
 }
 function renderYoteiReview(){
@@ -6874,7 +6981,7 @@ async function addYoteiNote(){
   finally{ btn.disabled=false; }
 }
 async function delYoteiNote(id){
-  if(!confirm('このメモを消しますか？')) return;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('このメモを消しますか？','消す')) return;
   try{ await col('events').doc(id).delete(); }
   catch(e){ const st=document.getElementById('yr-note-state'); st.textContent='消せませんでした。通信状態を確認してください'; st.classList.add('err'); }
 }
@@ -6977,7 +7084,7 @@ async function addYoteiCategory(){
 }
 async function removeYoteiCategory(i){
   const o=yoteiCats[i]; if(!o) return;
-  if(!confirm('分類「'+o.label+'」を一覧から消しますか？\n登録済みの予定の分類はそのまま残ります。')) return;
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('分類「'+o.label+'」を一覧から消しますか？\n登録済みの予定の分類はそのまま残ります。','消す')) return;
   await saveYoteiCategories(yoteiCats.filter((_,k)=>k!==i),'「'+o.label+'」を一覧から消しました');
 }
 function renderReviewCategoryChips(past){
@@ -7053,17 +7160,30 @@ function applyPersonUi(){
   const map={cal:'h-open-cal',tasks:'h-open-tasks',yotei:'h-open-yotei'};
   Object.keys(map).forEach(k=>{const el=document.getElementById(map[k]);if(el)el.style.display=personUiShown(k)?'':'none';});
   const kb=document.getElementById('kibun-box');
-  if(kb&&!(typeof personUiShown!=='function'||personUiShown('kibun')))kb.style.display='none';
+  if(kb){
+    /* 体調欄: 隠す設定なら隠す。表示に戻したときは、今日あいさつ済みで体調が未記録なら出し直す(2026-10-01) */
+    const d=typeof personDay==='function'?personDay():todayStr();
+    const due=['asa','hiru','yoru'].some(k=>previewStorage.getItem('aisatsu-'+d+'-'+k))&&!previewStorage.getItem('kibun-'+d);
+    kb.style.display=personUiShown('kibun')&&due?'block':'none';
+  }
 }
+/* 開いた直後のちらつきを防ぐため、前回の設定をこのスマホに控えて、読み込み前から当てておく */
+function personUiCacheKey(){ return 'mainicoPersonUi-'+(typeof gid==='function'?gid():''); }
 function initPersonUiConfig(){
   if(personUiUnsub){try{personUiUnsub();}catch(e){}}
   personUiLoaded=false;
+  try{
+    const cached=JSON.parse(previewStorage.getItem(personUiCacheKey())||'null');
+    personUiHidden=Array.isArray(cached)?cached.filter(k=>PERSON_UI_KEYS.indexOf(k)>=0):[];
+  }catch(e){personUiHidden=[];}
+  applyPersonUi();
   personUiUnsub=col('events').where('type','==','person-ui-config').onSnapshot(snap=>{
     const rows=[];snap.forEach(doc=>rows.push(doc.data()));
     rows.sort(foByNewest);
     const latest=rows[0];
     personUiHidden=latest&&Array.isArray(latest.hide)?latest.hide.filter(k=>PERSON_UI_KEYS.indexOf(k)>=0):[];
     personUiLoaded=!(snap.metadata&&snap.metadata.fromCache);
+    if(personUiLoaded){try{previewStorage.setItem(personUiCacheKey(),JSON.stringify(personUiHidden));}catch(e){}}
     applyPersonUi();
     const box=document.getElementById('pui-checks');
     if(box&&!box.contains(document.activeElement))renderPersonUiConfig();
@@ -7093,6 +7213,7 @@ function initMemberInfo(){
   if(memberInfoUnsub){try{memberInfoUnsub();}catch(e){}}
   memberInfoUnsub=col('members').onSnapshot(snap=>{
     const m={};snap.forEach(doc=>{m[doc.id]=doc.data();});memberInfoByUid=m;
+    try{if(hitokoeCtl)hitokoeCtl.renderCard();renderFamilyNotices();}catch(e){}
   },()=>{});
 }
 function memberIsHonnin(u){ const i=memberInfoByUid[u]; return !!i&&(i.mode==='honnin'||i.role==='honnin'); }
@@ -7104,6 +7225,118 @@ function whoRegistered(u){
   if(i&&i.name) return i.name+'さん';
   return '家族';
 }
+
+/* ===== ひと声のきっかけ(2026-10-01)・詳しくは hitokoe.js ===== */
+let hitokoeCtl=null,hitokoePrompt=null;
+function initHitokoe(){
+  if(hitokoeCtl){hitokoeCtl.stop();hitokoeCtl=null;}
+  if(typeof MainicoHitokoe==='undefined')return;
+  hitokoeCtl=MainicoHitokoe.create({document:document,col:col,addEvent:addEvent,uid:uid,myName:myName,
+    members:()=>memberInfoByUid,day:()=>(typeof personDay==='function'?personDay():todayStr()),
+    confirm:(t,l)=>(typeof appConfirm==='function'?appConfirm(t,l,'やめる',true):Promise.resolve(confirm(t))),
+    cardId:'hitokoe-card',settingsId:'settings-hitokoe'});
+  hitokoeCtl.start();
+  initFamilyNotices();
+}
+function initHitokoePrompt(){
+  if(hitokoePrompt){hitokoePrompt.stop();hitokoePrompt=null;}
+  if(typeof MainicoHitokoe==='undefined')return;
+  hitokoePrompt=MainicoHitokoe.createPersonPrompt({col:col,addEvent:addEvent,uid:uid,members:()=>memberInfoByUid,
+    day:()=>(typeof personDay==='function'?personDay():todayStr()),storage:previewStorage,speak:t=>speak(t),
+    ask:(t,yes,no)=>(typeof appConfirm==='function'?appConfirm(t,yes,no,true):Promise.resolve(confirm(t)))});
+  hitokoePrompt.start();
+}
+
+/* ご本人の「その他の設定」: ひと声のきっかけを、あとからやめる・始める */
+function renderPersonHitokoe(){
+  const sec=document.getElementById('person-hitokoe-sec');if(!sec)return;
+  const st=hitokoePrompt&&hitokoePrompt.status?hitokoePrompt.status():{enabled:false};
+  sec.hidden=!st.enabled||!st.answer;
+  if(sec.hidden)return;
+  document.getElementById('person-hitokoe-state').textContent=st.answer==='yes'
+    ?'使っています。挨拶やお薬などの記録が'+st.hour+'時までに1つもない日は、ご家族に「声をかけるきっかけ」のお知らせが届きます。'
+    :'使っていません（「やめておく」を選んでいます）。';
+  document.getElementById('person-hitokoe-btn').textContent=st.answer==='yes'?'やめる（お知らせを止める）':'使う（お知らせを始める）';
+}
+async function togglePersonHitokoe(){
+  const st=hitokoePrompt&&hitokoePrompt.status?hitokoePrompt.status():{enabled:false};
+  if(!st.enabled)return;
+  const yes=st.answer!=='yes';
+  const ok=await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(yes?'ひと声のきっかけを使いますか？':'ひと声のきっかけをやめますか？\nご家族の画面にお知らせが出なくなります。',yes?'使う':'やめる','もどる',true);
+  if(!ok)return;
+  try{await hitokoePrompt.answer(yes);speak(yes?'使う、に しました':'やめる、に しました');}
+  catch(e){await appNotice('保存できませんでした。通信を確認してください。');}
+  setTimeout(renderPersonHitokoe,800);
+}
+
+/* ===== 機種変更・復旧の見つけやすさ(2026-10-01) =====
+   このスマホの復旧設定: 'ready'(設定済み) / 'unverified'(確認メール待ち) / 'none'(未設定) / 'unknown' */
+function recoveryLevel(){
+  const u=typeof auth!=='undefined'&&auth&&auth.currentUser;
+  if(!u)return 'unknown';
+  const pw=Array.isArray(u.providerData)&&u.providerData.some(p=>p&&p.providerId==='password');
+  if(!pw)return 'none';
+  return u.emailVerified?'ready':'unverified';
+}
+function recoveryLevelText(level){
+  return level==='ready'?'✅ このスマホの復旧は設定済みです'
+    :level==='unverified'?'⚠ 復旧の確認メールがまだ確認されていません（メールのリンクを開いてから「確認できたか調べる」を押してください）'
+    :level==='none'?'⚠ 復旧が未設定です。機種変更やスマホをなくしたときに、記録に戻れなくなります'
+    :'';
+}
+function renderRecoveryBadges(){
+  const level=recoveryLevel(),text=recoveryLevelText(level);
+  document.querySelectorAll('[data-recovery-status]').forEach(el=>{el.textContent=text;el.classList.toggle('warn-text',level==='none'||level==='unverified');});
+  const top=document.getElementById('settings-recovery-top');
+  if(top)top.hidden=!(level==='none'||level==='unverified');
+}
+/* ご本人のスマホは、復旧の設定状態を家族に知らせる(状態が変わったときだけ記録する) */
+async function reportDeviceRecovery(retry){
+  const level=recoveryLevel();
+  /* ログインの確認が終わる前は分からないので、少し待ってもう一度だけ調べる */
+  if(level==='unknown'){if(!retry)setTimeout(()=>reportDeviceRecovery(true),5000);return;}
+  const key='mainicoRecoveryReported-'+gid()+'-'+uid();
+  try{if(previewStorage.getItem(key)===level)return;}catch(e){}
+  try{await addEvent({type:'device-recovery',state:level,name:myName(),clientAt:Date.now()});previewStorage.setItem(key,level);}catch(e){}
+}
+let familyNoticeUnsub=null,familyNoticeRows=[];
+function initFamilyNotices(){
+  if(familyNoticeUnsub){try{familyNoticeUnsub();}catch(e){}}
+  familyNoticeRows=[];
+  familyNoticeUnsub=col('events').where('type','==','device-recovery').onSnapshot(snap=>{
+    const rows=[];snap.forEach(doc=>rows.push(doc.data()));familyNoticeRows=rows;renderFamilyNotices();
+  },()=>{});
+  if(window.MainicoLine&&MainicoLine.readQuota)MainicoLine.readQuota().then(q=>{familyQuota=q;renderFamilyNotices();});
+  renderFamilyNotices();
+}
+let familyQuota=null;
+function renderFamilyNotices(){
+  const box=document.getElementById('family-notices');if(!box)return;
+  const parts=[];
+  /* ご本人のスマホの復旧が未設定(1回だけ。「わかりました」で消える。状態が変わればまた出る) */
+  Object.keys(memberInfoByUid).forEach(u=>{
+    if(!memberIsHonnin(u))return;
+    const mine=familyNoticeRows.filter(v=>v.uid===u).sort(foByNewest)[0];
+    if(!mine||mine.state==='ready')return;
+    const key='mainicoRecoveryNoticeSeen-'+gid()+'-'+u+'-'+mine.state;
+    try{if(previewStorage.getItem(key))return;}catch(e){}
+    const name=(memberInfoByUid[u]&&memberInfoByUid[u].name)||'ご本人';
+    parts.push('<div class="card notice-card" role="status"><p><b>'+esc(name)+'さんのスマホの復旧が未設定です。</b><br>機種変更やスマホをなくしたときに、記録に戻れなくなります。次に会ったときに、ご本人のスマホの「その他の設定」→「機種変更・スマホをなくしたとき」で一緒に設定してください。</p>'+
+      '<button class="set-btn" type="button" onclick="dismissFamilyNotice(\''+jsArg(key)+'\')">わかりました</button></div>');
+  });
+  /* LINEの残りが少ないとき(まいにこ全体で共通) */
+  const q=familyQuota;
+  if(q&&q.limit!==null&&q.limit!==undefined){
+    const rest=Math.max(0,Number(q.remaining)||0);
+    if(rest<=(Number(q.reserve)||50))parts.push('<div class="card notice-card" role="status"><p>今月のLINEのお知らせの残りが少なくなっています（残り'+rest+'通）。予定のLINEのお知らせは来月1日まで止めて、おまもりタグの分を残しています。アプリの中のお知らせは今まで通り届きます。</p></div>');
+  }
+  box.innerHTML=parts.join('');
+}
+function openRecoveryMenu(){
+  const m=document.getElementById('menu-recovery');if(!m)return;
+  m.open=true;if(typeof m.scrollIntoView==='function')m.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function dismissFamilyNotice(key){try{previewStorage.setItem(key,'1');}catch(e){}renderFamilyNotices();}
 
 function resetDisasterConsent(){
   ['disaster-consent','disaster-contact-consent'].forEach(id=>document.getElementById(id).checked=false);
@@ -7160,8 +7393,8 @@ function makeDisasterQr(){
     disasterQrState('この端末に保存しました。更新した場合は、手元の旧QRを廃棄してください。');
   }catch(e){disasterQrState('QRを作成・保存できませんでした。入力は残っています。通信と端末の保存設定を確認して、もう一度お試しください。',true);}
 }
-function deleteDisasterQr(){
-  if(!confirm('この端末に保存した災害用QRを削除しますか？\n印刷済み・撮影済みのQRは消えません。'))return;
+async function deleteDisasterQr(){
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('この端末に保存した災害用QRを削除しますか？\n印刷済み・撮影済みのQRは消えません。','削除する'))return;
   try{localStorage.removeItem(DISASTER_QR_KEY);}
   catch(e){disasterQrState('削除できませんでした。保存内容は消去できていません。',true);return;}
   ['name','phone','free','relation','help'].forEach(key=>document.getElementById('disaster-'+key).value='');
