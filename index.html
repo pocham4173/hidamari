@@ -50,6 +50,11 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 #entry .entry-promise li{position:relative;padding-left:1.3em;margin:4px 0;}
 #entry .entry-promise li::before{content:'✓';position:absolute;left:0;color:#1D4E9E;font-weight:900;}
 #entry .entry-catch em{font-style:normal;color:#E8731A;}
+.invite-note{max-width:420px;margin:12px auto 0;padding:12px 14px;border:2px solid #1D4E9E;border-radius:14px;background:#EEF4FC;text-align:left;font-size:.95rem;line-height:1.7;color:#243040;}
+.invite-note .code{font-size:1.25rem;letter-spacing:.12em;color:#1D4E9E;}
+.invite-note button{margin-top:8px;}
+.invite-qr{text-align:center;margin:10px 0;}
+.invite-qr img{max-width:220px;width:70%;height:auto;image-rendering:pixelated;background:#fff;padding:8px;border-radius:10px;}
 #entry .q{color:var(--cha);margin:14px 0 20px;font-size:1.25rem;font-weight:900;}
 .entry-btn{display:block;width:100%;max-width:320px;margin:0 auto 14px;background:var(--hi);border:none;border-radius:20px;padding:18px;font-family:inherit;font-size:1.2rem;font-weight:900;color:#fff;box-shadow:0 5px 0 var(--hi-koi);cursor:pointer;line-height:1.4;}
 .entry-btn small{display:block;font-size:.85rem;font-weight:400;color:#FFE9CF;margin-top:3px;}
@@ -737,7 +742,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 /* Received words and the reply action stay in one visible place. */
 .person-conversation-panel{padding:18px 14px;border:2px solid #CADBF4;border-radius:22px;background:#F5F9FF;}
 .person-conversation-panel h2{font-size:1.2rem;color:#315FAE;line-height:1.5;margin:0 0 12px;}
-.person-conversation-panel .pop{margin:0 0 12px;background:#fff;border-color:#8AAFEA;font-size:1.25rem;}
+.person-conversation-panel .pop,#h-incoming-message{margin:0 0 12px;background:#fff;border-color:#8AAFEA;font-size:1.25rem;}
 .person-conversation-panel .kibun{margin:0;padding:14px 10px;border-color:#CADBF4;}
 .person-conversation-panel .kibun .q{font-size:1.12rem;}
 .person-conversation-panel .cal-open{margin:12px 0 0;font-size:1.02rem;min-height:52px;}
@@ -788,10 +793,12 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       var inLine=/ Line\//i.test(ua);
       var standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
       var known=false;try{known=!!localStorage.getItem('mainicoGid');}catch(e){}
+      /* 招待QRから開いたときは、招待の案内を優先する(LINEの中で開いたときだけは、外のブラウザーへ案内する) */
+      var invite='';try{var iv=JSON.parse(localStorage.getItem('mainicoInviteCode')||'null');if(iv&&iv.code)invite=iv.code;}catch(e){}
       var box=document.getElementById('open-place-note');
-      if(!box||known||(standalone&&!inLine))return;
+      if(!box||known||(standalone&&!inLine)||(invite&&!inLine))return;
       var url=location.href.split('#')[0];
-      url+=(url.indexOf('?')<0?'?':'&')+'openExternalBrowser=1';
+      url+=(url.indexOf('?')<0?'?':'&')+'openExternalBrowser=1'+(invite?'&invite='+encodeURIComponent(invite):'');
       box.innerHTML=inLine
         ?'<b>LINEの中で開いています</b>すでにまいにこを使っている方は、ここで新しく始めず、ホーム画面の「まいにこ」アイコンから開いてください。<br>はじめて使う方は、下のボタンでいつものブラウザーに移ってから始めてください（LINEの中では、次に開いたとき続きから使えないことがあります）。<br><a href="'+url.replace(/"/g,'&quot;')+'">いつものブラウザーで開く</a>'
         :'<b>すでに使っている方へ</b>ホーム画面に「まいにこ」を追加している方は、ここで新しく始めず、ホーム画面のアイコンから開いてください。';
@@ -819,10 +826,11 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
   <div class="entry-catch">不安を軽く、安心を深く、<br>上田でつなぐ。</div>
   <ul class="entry-promise">
     <li>カメラも位置情報も使いません。ボタンで残した記録を、家族で見せ合うしくみです</li>
-    <li>市民は無料です。勤務先の企業や市が、記録を見ることはありません</li>
+    <li>いまは試験運用中です。勤務先の企業や市が、記録を見ることはありません</li>
     <li>安否確認や119番の代わりではありません。毎日の連絡を軽くする道具です</li>
   </ul>
   <div class="open-place-note" id="open-place-note" hidden></div>
+  <div class="invite-note" id="invite-note" role="status" hidden></div>
   <div class="q">どなたのスマホで使いますか？</div>
   <div id="entry-state" class="save-state" role="status" aria-live="polite"></div>
   <div id="select-box">
@@ -1086,9 +1094,19 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       <div class="note" style="text-align:center;">お薬を飲んだら、朝・昼・夜から選んで押してください。服薬の証明ではありません。</div>
     </div>
     <button class="onegai-btn" data-share-gate="family" data-person-voice="おねがいの がめんを ひらきました" hidden onclick="openOnegai()">ちょっとお願い</button>
+    <!-- 家族からの新しい連絡は、やりとりの欄が下にあっても見落とさないよう、ここ(上)に出す -->
+    <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
+    <div class="yotei-card person-press-target" role="button" tabindex="0" aria-label="これからの予定を音声で聞く" onclick="speakNextYotei()" style="cursor:pointer;">
+      <div class="lb">予定</div>
+      <div class="days" id="y-days">-</div>
+      <div class="pl" id="y-label">これからの予定はありません</div>
+    </div>
+    <button class="cal-open" id="h-open-cal" data-person-voice="カレンダーを ひらきました" onclick="openCal()">カレンダーを見る</button>
+    <button class="cal-open" id="h-open-tasks" type="button" data-person-voice="自分のやることをひらきました。やることを追加し、終わったら、できたを押します。" onclick="openPersonTasks()">自分のやること</button>
+    <button class="cal-open" id="h-open-yotei" data-person-voice="予定の 入力を ひらきました" onclick="openHYotei()">予定を入れる</button>
+    <!-- 家族とのやりとり(2026-10-01: 予定を入れるの下へ) -->
     <section class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" aria-labelledby="person-conversation-heading">
       <h2 id="person-conversation-heading">家族とのやりとり</h2>
-    <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
     <p class="communication-status" id="h-contact-state" aria-live="polite"></p>
     <button class="set-btn" id="person-conversation-retry" type="button" hidden onclick="checkPersonConversation()">もう一度読み込む</button>
     <div class="kibun" id="h-message-reply" data-communication-gate="family" hidden style="display:none;">
@@ -1105,14 +1123,6 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
     </div>
       <button class="cal-open" id="person-history-open" type="button" data-person-voice="前の連絡をひらきます" onclick="openPersonHistory()">前の連絡を見る</button>
     </section>
-    <div class="yotei-card person-press-target" role="button" tabindex="0" aria-label="これからの予定を音声で聞く" onclick="speakNextYotei()" style="cursor:pointer;">
-      <div class="lb">予定</div>
-      <div class="days" id="y-days">-</div>
-      <div class="pl" id="y-label">これからの予定はありません</div>
-    </div>
-    <button class="cal-open" id="h-open-cal" data-person-voice="カレンダーを ひらきました" onclick="openCal()">カレンダーを見る</button>
-    <button class="cal-open" id="h-open-tasks" type="button" data-person-voice="自分のやることをひらきました。やることを追加し、終わったら、できたを押します。" onclick="openPersonTasks()">自分のやること</button>
-    <button class="cal-open" id="h-open-yotei" data-person-voice="予定の 入力を ひらきました" onclick="openHYotei()">予定を入れる</button>
     <button class="cal-open h-cancel-btn" type="button" data-person-voice="今日の記録を ひらきます" onclick="openCancel()">今日の記録を確認・とりけす</button>
     <div class="h-links">
       <button data-share-gate="shared" hidden onclick="openMembers()">つながっている家族</button>
@@ -1174,7 +1184,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
     <a class="set-btn" href="help.html#recovery" target="_blank" rel="noopener">機種変更・復旧の手順を見る</a>
   </div>
   <details class="person-family-procs" id="person-family-procs" ontoggle="guardPersonFamilyProcs(this)">
-    <summary>ご家族と一緒に行う手続き（機種変更・利用の終了など）</summary>
+    <summary>ご家族と一緒に行う手続き（利用方法の変更・利用の終了など）</summary>
     <p class="note">ここにある操作は、元に戻せないものがあります。ご家族と一緒に、画面をよく確かめてから操作してください。</p>
   <div class="set-sec"><h4>利用方法の変更</h4>
     <div class="note">利用する人を最初から選び直すときだけ使います。普段は変更する必要はありません。記録は消えません。</div>
@@ -2017,7 +2027,7 @@ setTimeout(function(){
 <script src="mainico-config.js"></script>
 <script async data-optional="true" src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script src="ueda-centers.js?v=20260918"></script>
-<script src="consent.js?v=20260919"></script>
+<script src="consent.js?v=20261001b"></script>
 <script src="consent-ui.js?v=20261001"></script>
 <script src="account-recovery.js?v=20260927-account-switch"></script>
 <script src="account-deletion.js?v=20260918-consent"></script>
@@ -2131,6 +2141,16 @@ function announcePersonPress(button){
   else if(button.closest('#person-task-list'))speak('できたことを記録します');
   else if(button.matches('.onegai-item,#onegai-free-btn'))speak('お願いを送ります');
 }
+/* 自分のやること: 入力欄を押したときの声の案内(2026-10-01)。同じ欄は20秒に1回まで */
+const PERSON_INPUT_VOICE={'person-task-input':'やることを書いてください。書いたら、やることを保存するを押します','person-task-date':'期限があるときだけ、日付を選んでください。なければ、そのままで大丈夫です'};
+const personInputVoiceAt={};
+document.addEventListener('focusin',function(e){
+  const t=e.target,msg=t&&t.id&&PERSON_INPUT_VOICE[t.id];
+  if(!msg)return;
+  const now=Date.now();if(now-(personInputVoiceAt[t.id]||0)<20000)return;
+  personInputVoiceAt[t.id]=now;
+  try{speak(msg);}catch(err){}
+});
 function speakPopMessage(){
   const p=document.getElementById('pop-msg');
   const t=p&&p.textContent?p.textContent.trim():'';
@@ -2723,6 +2743,7 @@ function showPage(id){
   if(id==='kazoku') resetFamilyScroll();
   else {try{window.scrollTo({top:0,left:0,behavior:'auto'});}catch(e){window.scrollTo(0,0);}}
   if(id==='honnin'&&typeof maybeShowSpeechNotice==='function')maybeShowSpeechNotice();
+  if(id==='entry'&&typeof renderInviteNote==='function')renderInviteNote();
 }
 
 /* ===== モード選択→同意→名前→接続 ===== */
@@ -2781,6 +2802,8 @@ function afterConsent(mode=pendingMode){
   showPage('connect-page');
 }
 function setupConnectPage(){
+  /* QRで受け取った招待コードがあれば、入れておく(2026-10-01) */
+  try{const inv=readInvite();const box=document.getElementById('in-code');if(inv&&box&&!box.value)box.value=inv.code;}catch(e){}
   const lead=document.getElementById('connect-lead');
   const btn=document.getElementById('btn-newgroup');
   const tb=document.getElementById('together-box');
@@ -2954,6 +2977,7 @@ async function joinByCode(){
     assertSameAccount();
     previewStorage.setItem('mainicoGid',v.groupId);
     try{previewStorage.removeItem(key);}catch(ignore){}
+    if(typeof clearInvite==='function')clearInvite();
     showPending();
   }catch(error){console.warn('join household',error);alert('参加の完了を確認できませんでした。通信を確認して、同じ端末からもう一度お試しください。'+(/[ぁ-んァ-ヶ一-龥]/.test(error&&error.message||'')?'\n'+error.message:''));}
   finally{joiningGroup=false;}
@@ -2967,16 +2991,20 @@ async function finishSetup(){
     const assertCurrent=()=>{if(uid()!==accountUid || gid()!==groupId || generation!==householdBootGeneration)throw new Error('setup-session-changed');};
     const m=pendingMode||previewStorage.getItem('mainicoPendingMode');
     if(!accountUid || !groupId || !['honnin','kazoku','konly'].includes(m))throw new Error('setup-incomplete');
-    if(!await ensureConsentForMode(m,finishSetup))return;
+    /* いま同意したばかりなら、もう一度サーバーに読みに行かない(2026-10-01) */
+    if(!(typeof hasSessionConsent==='function'&&hasSessionConsent(m)) && !await ensureConsentForMode(m,finishSetup))return;
     showPage('household-status-page');
-    document.getElementById('household-status-text').textContent='利用方法と家族との接続を確認しています…';
+    let setupStep='家族の確認';
+    const stepText=(n,t,msg)=>{setupStep=t;document.getElementById('household-status-text').textContent=msg+'（'+n+'/2）';};
+    stepText(1,'家族の確認','利用方法と家族との接続を確認しています…');
     slowTimer=setTimeout(()=>{
-      if(modeSetupBusy)document.getElementById('household-status-text').textContent='接続の確認に時間がかかっています。通信状態を確認してください。保存情報は消さず、そのままお待ちいただくか、アプリを読み込み直してください。';
+      if(modeSetupBusy)document.getElementById('household-status-text').textContent='（いま：'+setupStep+'）接続の確認に時間がかかっています。通信状態を確認してください。保存情報は消さず、そのままお待ちいただくか、アプリを読み込み直してください。';
     },10000);
     await refreshHousehold();assertCurrent();
     if(householdDeleting){openHouseholdDeletion();return;}
-    await col('members').doc(accountUid).update({mode:m});assertCurrent();
-    await saveRecoveryPointer();assertCurrent();
+    stepText(2,'利用方法の保存','利用方法を保存しています…');
+    /* 利用方法と復旧先は、別々の記録なので同時に保存する(待ち時間を短く) */
+    await Promise.all([col('members').doc(accountUid).update({mode:m}),saveRecoveryPointer()]);assertCurrent();
     // 接続と保存が確認できるまで、この端末の確定した利用方法を変更しない。
     previewStorage.setItem('kazokuOnly', m==='konly'?'1':'');
     previewStorage.setItem('mainicoMode', m==='honnin'?'honnin':'kazoku');
@@ -6309,6 +6337,66 @@ async function removeMember(mid, isMe){
     renderSetMembers();
   }catch(e){ console.warn(e);await appNotice('解除できませんでした。通信を確認して、もう一度お試しください。'); }
 }
+/* ===== 招待QR(2026-10-01) =====
+   QRには「まいにこのアドレス＋招待コード」だけを入れる。相手のスマホの普通のカメラで読むと、コードが入った状態で開く。
+   iPhoneは、Safariで開いたまいにこと、ホーム画面に追加したまいにこで記録が分かれるため、
+   コードはこの端末の保存場所と、両方から見える控え(Cache)の両方に24時間だけ置く。 */
+const MAINICO_APP_URL='https://pocham4173.github.io/hidamari/';
+const INVITE_KEY='mainicoInviteCode',INVITE_TTL=24*60*60*1000;
+function inviteUrl(code){return MAINICO_APP_URL+'?invite='+encodeURIComponent(code);}
+function inviteQrHtml(code){
+  if(typeof qrcode!=='function')return '<div class="note">QRを表示できませんでした。上のコードを入力してもらうか、LINE・メールで送ってください。</div>';
+  try{const qr=qrcode(0,'M');qr.addData(inviteUrl(code));qr.make();
+    return '<div class="invite-qr">'+qr.createImgTag(5,8,'まいにこ 招待QR')+'<div class="note">もう1台のスマホの「カメラ」でこのQRを読むと、招待コードが入った状態でまいにこが開きます。</div></div>';
+  }catch(e){return '';}
+}
+function isIosDevice(){const ua=navigator.userAgent||'';return /iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
+function captureInviteFromUrl(){
+  try{
+    const u=new URL(location.href),code=String(u.searchParams.get('invite')||'').trim().toUpperCase();
+    if(!u.searchParams.has('invite'))return;
+    u.searchParams.delete('invite');history.replaceState(null,'',u.pathname+(u.search||'')+u.hash);
+    if(!/^[A-HJ-NP-Z2-9]{8}$/.test(code))return;
+    const v=JSON.stringify({code,at:Date.now()});
+    try{previewStorage.setItem(INVITE_KEY,v);}catch(e){}
+    if(window.caches)caches.open('mainico-invite').then(c=>c.put('invite-code',new Response(v))).catch(()=>{});
+  }catch(e){}
+}
+let inviteFromCache=null;
+function readInvite(){
+  let v=null;
+  try{v=JSON.parse(previewStorage.getItem(INVITE_KEY)||'null');}catch(e){}
+  if(!v&&inviteFromCache)v=inviteFromCache;
+  if(!v||!/^[A-HJ-NP-Z2-9]{8}$/.test(v.code)||!(Date.now()-v.at<INVITE_TTL))return null;
+  return v;
+}
+/* ホーム画面のまいにこ(iPhone)は、Safariで受け取ったコードを控え(Cache)から読む */
+function loadInviteFromCache(){
+  if(!window.caches)return Promise.resolve(null);
+  return caches.open('mainico-invite').then(c=>c.match('invite-code')).then(r=>r?r.json():null)
+    .then(v=>{if(v&&v.code){inviteFromCache=v;try{if(!previewStorage.getItem(INVITE_KEY))previewStorage.setItem(INVITE_KEY,JSON.stringify(v));}catch(e){}}return v;})
+    .catch(()=>null);
+}
+function clearInvite(){
+  inviteFromCache=null;
+  try{previewStorage.removeItem(INVITE_KEY);}catch(e){}
+  if(window.caches)caches.open('mainico-invite').then(c=>c.delete('invite-code')).catch(()=>{});
+}
+function renderInviteNote(){
+  const box=document.getElementById('invite-note');if(!box)return;
+  const inv=gid()?null:readInvite();
+  if(!inv){box.hidden=true;box.textContent='';return;}
+  box.hidden=false;
+  if(isIosDevice()&&!isStandalone()){
+    box.innerHTML='<b>招待コード <span class="code">'+esc(inv.code)+'</span> を受け取りました。</b><br>iPhoneの方は、<b>先にこの画面を「ホーム画面に追加」して、追加した「まいにこ」から開いてください。</b>招待コードは自動で入ります（入っていないときは、上のコードを入れてください）。'+
+      '<button class="set-btn" type="button" onclick="installApp()">ホーム画面に追加する方法</button>';
+  }else{
+    box.innerHTML='<b>招待コード <span class="code">'+esc(inv.code)+'</span> を受け取りました。</b><br>このスマホを使う人を選んでください。ご本人のスマホなら「本人が使う」、ご家族なら「招待された方」です。コードは自動で入ります。';
+  }
+}
+captureInviteFromUrl();
+loadInviteFromCache().then(()=>{try{renderInviteNote();}catch(e){}});
+
 async function makeInvite(targetId){
   if(!requireHouseholdOwner())return;
   targetId = targetId || 'home-invite-area';
@@ -6323,10 +6411,11 @@ async function makeInvite(targetId){
       used: false
     });
     if(area){
-      const msg='まいにこの招待コードです：'+code+'（24時間・1回有効）\nアプリ：https://pocham4173.github.io/hidamari/\n開いて入口の「招待された方」を押し、案内に沿って進んでこのコードを入れてください。';
+      const msg='まいにこの招待コードです：'+code+'（24時間・1回有効）\nアプリ（開くとコードが入ります）：'+inviteUrl(code)+'\n開いて入口の「招待された方」を押し、案内に沿って進んでこのコードを入れてください。';
       area.innerHTML=
         '<div class="code-show">'+code+'</div>'+
         '<div class="code-exp">有効期限24時間・一度だけ使えます。</div>'+
+        inviteQrHtml(code)+
         '<div class="inv-share">'+
         '<a class="inv-btn inv-line" href="https://line.me/R/share?text='+encodeURIComponent(msg)+'" target="_blank" rel="noopener noreferrer">LINEで送る</a>'+
         '<a class="inv-btn" href="mailto:?subject='+encodeURIComponent('まいにこの招待コード')+'&body='+encodeURIComponent(msg)+'">メールで送る</a>'+

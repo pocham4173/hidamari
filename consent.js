@@ -21,10 +21,12 @@
       if(!modes.includes(mode) || !checks || !['privacy','sensitive','sharing','disclaimer','subject'].every(k=>checks[k]===true))throw new Error('consent/incomplete');
       const id=identity();
       const ref=db.collection('consents').doc(id);
-      await read(mode);current(id);
+      const data={version:VERSION,mode,privacyAccepted:true,sensitiveAccepted:true,sharingAccepted:true,subjectBasis:mode==='honnin'?'self':'explained-and-agreed'};
       // オフラインの保留書込を残さず、接続とアカウントを確認して確定する。
-      await db.runTransaction(async tx=>{await tx.get(ref);current(id);tx.set(ref,{version:VERSION,mode,privacyAccepted:true,sensitiveAccepted:true,sharingAccepted:true,subjectBasis:mode==='honnin'?'self':'explained-and-agreed',acceptedAt:serverTimestamp()});});
-      current(id);const result=await read(mode);if(!result.valid)throw new Error('consent/unconfirmed');return result;
+      // トランザクションはサーバーで確定したときだけ成功するため、前後の読み直しはしない(2026-10-01: 開くまでの時間を短くする)。
+      await db.runTransaction(async tx=>{await tx.get(ref);current(id);tx.set(ref,{...data,acceptedAt:serverTimestamp()});});
+      current(id);
+      return {uid:id,valid:true,value:{...data,acceptedAt:new Date()}};
     }
     async function revoke(){const id=identity(),ref=db.collection('consents').doc(id);await ref.get({source:'server'});current(id);await db.runTransaction(async tx=>{await tx.get(ref);current(id);tx.delete(ref);});current(id);}
     return {read,accept,revoke};
