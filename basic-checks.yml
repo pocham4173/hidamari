@@ -40,6 +40,7 @@ jobs:
         run: |
           node tests/hitokoe.test.mjs
           node tests/app-dialog.test.mjs
+          node tests/invite-qr.test.mjs
 
       - name: 家族ホーム・通信・伝言の回帰検査
         run: node tests/home-reliability.test.mjs
