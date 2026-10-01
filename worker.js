@@ -326,8 +326,9 @@ async function runNotifications(env) {
       const link = cleanupLinks[Math.floor(now.getTime()/900000)%cleanupLinks.length];
       if (!await approvedMember(fs, link.fields.groupId, link.id)) await fs.delete(link.path);
     }
-    // LINEでログインのつながりのうち、削除済み・終了手続き中のアカウントの分を1回に1件だけ片付ける
-    await cleanupLoginLink(fs, now);
+    // LINEでログインのつながりのうち、削除済み・終了手続き中のアカウントの分を1時間に1件だけ片付ける
+    // (読み取り回数を抑えるため毎回は見ない。つなぎ直しのときは callback でもその場で片付ける)
+    if (Math.floor(now.getTime() / 900000) % 4 === 0) await cleanupLoginLink(fs, now);
     // Bounded maintenance. Never infer a deleted household from a partial list.
     for (const collectionId of ['lineLinkCodes','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage','lineAuthTx']) {
       const expired = await fs.query('', {from:[{collectionId}],
@@ -654,14 +655,25 @@ async function lineCallback(env, url) {
   if (f.status !== 'started') {
     return authPage(409, 'LINEでの確認', ['この手続きは、すでに使われたか、取り消されています。まいにこを開き直して、もう一度お試しください。'], appLink);
   }
-  // state は一度だけ使える(同じ戻り先を2回開いても、2回目は使えない)
-  if (!await fs.patch(path, { status: 'exchanging' }, ['status'], t.updateTime)) {
+  // state は一度だけ使える(同じ戻り先を2回開いても、2回目は使えない)。以後の書き込みはこの版を条件にする
+  let cur = await fs.patchDoc(path, { status: 'exchanging' }, ['status'], t.updateTime);
+  if (!cur) {
     return authPage(409, 'LINEでの確認', ['この手続きは、すでに使われています。まいにこを開き直して、もう一度お試しください。'], appLink);
   }
+  // 途中で取り消された・消された手続きを、あとから書き戻さない(条件が合わなければ何もしない)
   const finish = async (status, http, lines) => {
-    await fs.patch(path, { status, finishedAt: new Date() }, ['status', 'finishedAt']).catch(() => {});
+    if (cur) await fs.patch(path, { status, finishedAt: new Date() }, ['status', 'finishedAt'], cur.updateTime).catch(() => {});
     return authPage(http, 'LINEでの確認', lines, appLink);
   };
+  try {
+    return await lineCallbackVerified(env, fs, url, tx, path, f, appLink, finish, (doc) => { cur = doc; }, () => cur);
+  } catch (e) {
+    console.error('line callback failed', e && e.name);
+    return finish('error', 503, ['確認の途中で通信がうまくいきませんでした。まいにこの記録や設定は変わっていません。時間をおいて、もう一度お試しください。']);
+  }
+}
+
+async function lineCallbackVerified(env, fs, url, tx, path, f, appLink, finish, setCur, getCur) {
   if (!(f.expiresAt instanceof Date) || f.expiresAt.getTime() < Date.now()) {
     return finish('expired', 410, ['時間切れになりました（10分）。まいにこの記録や設定は変わっていません。まいにこを開き直して、もう一度お試しください。']);
   }
@@ -680,14 +692,25 @@ async function lineCallback(env, url) {
     const token = await res.json();
     claims = await verifyLineIdToken(env, fs, token && token.id_token, f.nonce);
   } catch (e) {
+    if (e && e.message === 'request-budget') throw e;
     return finish('error', 502, ['LINEでの本人確認を確かめられませんでした。まいにこの記録や設定は変わっていません。もう一度お試しください。']);
   }
   const lineKey = await sha256Hex('line-user|' + claims.sub);
   const confirmCode = randomDigits(6);
   const ready = { lineKey, codeHash: await sha256Hex(tx + '|' + confirmCode), attempts: 0,
     authenticatedAt: new Date(), expiresAt: new Date(Date.now() + LINE_CODE_TTL_MS) };
+  const markReady = async (extra) => {
+    const doc = await fs.patchDoc(path, { ...ready, ...extra, status: 'authenticated' }, [...Object.keys(ready), ...Object.keys(extra), 'status'], getCur().updateTime);
+    if (!doc) return false;
+    setCur(doc);
+    return true;
+  };
+  const usedPage = () => authPage(409, 'LINEでの確認', ['この手続きは、途中で取り消されたか、時間切れになりました。まいにこの記録や設定は変わっていません。'], appLink);
   if (f.purpose === 'link') {
-    const [byLine, byUid] = [await fs.get('lineLoginLinks/' + lineKey), await fs.get('lineLoginAccounts/' + f.uid)];
+    let byLine = await fs.get('lineLoginLinks/' + lineKey);
+    const byUid = await fs.get('lineLoginAccounts/' + f.uid);
+    // 削除済み・終了手続き中のアカウントに残ったつながりは、生きている相手の上書きではないので片付けてよい
+    if (byLine && byLine.fields.uid !== f.uid && await staleLoginLink(fs, byLine)) byLine = null;
     if (byLine && byLine.fields.uid !== f.uid) {
       return finish('conflict', 409, ['このLINEは、別のまいにこアカウントとつながっています。自動で付け替えたり、記録をまとめたりはしません。',
         'いつも使っているまいにこの設定で、どのLINEとつながっているかを確認してください。まいにこの記録や設定は変わっていません。']);
@@ -696,11 +719,11 @@ async function lineCallback(env, url) {
       return finish('conflict', 409, ['このまいにこアカウントは、別のLINEとつながっています。つなぎ直すときは、先にまいにこの設定で「LINEでログイン」を解除してください。まいにこの記録や設定は変わっていません。']);
     }
     const lineName = typeof claims.name === 'string' ? claims.name.slice(0, 40) : '';
-    await fs.patch(path, { ...ready, lineName, status: 'authenticated' }, [...Object.keys(ready), 'lineName', 'status']);
+    if (!await markReady({ lineName })) return usedPage();
     return authPage(200, 'LINEの確認ができました', [
-      (lineName ? '確認したLINE：' + lineName + '\n' : '') + 'まいにこの「LINEとつなぐ」を押した画面に戻り、次の番号を入れて「つなぐ」を押すと完了します（5分以内）。'],
+      (lineName ? '確認したLINE：' + lineName + '\n' : '') + 'まいにこの「LINEとつなぐ」を押した画面に戻り、次の番号を入れて「このLINEとつなぐ」を押すと完了します（5分以内）。'],
       appLink + '&c=' + confirmCode, { code: confirmCode, tx, cancel: true,
-        note: 'この番号は、ご自身のまいにこの画面にだけ入れてください。電話やメッセージで人に教えないでください。心当たりがない場合は、下の「取り消す」を押してください。',
+        note: 'この番号を入れた画面のまいにこに、このLINEがつながります。ご自身で「LINEとつなぐ」を押していない場合や、人から頼まれた場合は、番号を誰にも伝えず、下の「取り消す」を押してください。',
         appLabel: 'この画面でまいにこを開く' });
   }
   const link = await fs.get('lineLoginLinks/' + lineKey);
@@ -712,14 +735,27 @@ async function lineCallback(env, url) {
   if (!await accountUsable(fs, link.fields.uid)) {
     return finish('unavailable', 403, ['このLINEにつながっているまいにこアカウントは、いまはログインできません（削除・停止・終了手続き中など）。新しい登録はしていません。']);
   }
-  await fs.patch(path, { ...ready, uid: link.fields.uid, status: 'authenticated' }, [...Object.keys(ready), 'uid', 'status']);
-  return authPage(200, 'LINEの確認ができました', ['まいにこを開いています…'], appLink + '&c=' + confirmCode, {
-    code: confirmCode, redirect: true,
-    note: 'まいにこが開かないときは、下のボタンを押してください。別の画面（ホーム画面のまいにこなど）で「LINEで続ける」を押した場合は、その画面に戻って上の番号を入れてください（5分以内）。この番号は人に教えないでください。',
-    appLabel: 'まいにこを開く' });
+  if (!await markReady({ uid: link.fields.uid })) return usedPage();
+  // 自動では移動しない: 番号を入れた人があなたのまいにこに入れるため、必ず本人が見て進む
+  return authPage(200, 'LINEの確認ができました', [
+    'この画面でまいにこを使うときは、下の「この画面でまいにこを開く」を押してください。',
+    '別の画面（ホーム画面のまいにこなど）で「LINEで続ける」を押した場合は、その画面に戻って次の番号を入れてください（5分以内）。'],
+    appLink + '&c=' + confirmCode, { code: confirmCode, tx, cancel: true,
+      note: 'この番号を入れた人は、あなたのまいにこに入れます。ご自身で「LINEで続ける」を押していない場合や、電話・メッセージで番号を聞かれた場合は、誰にも伝えず、下の「取り消す」を押してください。',
+      appLabel: 'この画面でまいにこを開く', cancelLabel: '取り消す（ログインしない）' });
 }
 
-/* 連携の確認ページの「取り消す」(番号を表示した画面からだけ取り消せる) */
+/* 削除済み・終了手続き中のアカウントのつながりなら、条件つきで両方消して true */
+async function staleLoginLink(fs, link) {
+  const uid = link.fields.uid;
+  if (typeof uid === 'string' && uid && await lookupAuthUser(fs, uid) && !await fs.get('accountClosures/' + uid)) return false;
+  const writes = [{ delete: fs.root + '/' + link.path, currentDocument: { updateTime: link.updateTime } }];
+  const acc = typeof uid === 'string' && uid ? await fs.get('lineLoginAccounts/' + uid) : null;
+  if (acc && acc.fields.lineKey === link.id) writes.push({ delete: fs.root + '/' + acc.path, currentDocument: { updateTime: acc.updateTime } });
+  return fs.commit(writes);
+}
+
+/* LINEから戻ったページの「取り消す」(番号を表示した画面からだけ取り消せる。つなぐ・ログインのどちらも) */
 async function lineCallbackCancel(request, env) {
   if (!lineLoginConfigured(env)) throw new AuthProblem('not-configured', 503);
   const form = await request.formData();
@@ -728,11 +764,13 @@ async function lineCallbackCancel(request, env) {
   const fs = new Firestore(env);
   const t0 = await fs.get('lineAuthTx/' + tx);
   const gone = () => authPage(409, 'LINEでの確認', ['この手続きは、すでに終わっているか取り消されています。まいにこの記録や設定は変わっていません。']);
-  if (!t0 || t0.fields.purpose !== 'link' || txState(t0) !== 'ready') return gone();
+  if (!t0 || txState(t0) !== 'ready') return gone();
   let t;
   try { t = await checkConfirmCode(fs, t0, code); } catch (e) { if (e instanceof AuthProblem) return gone(); throw e; }
   await fs.patch(t.path, { status: 'cancelled', finishedAt: new Date() }, ['status', 'finishedAt'], t.updateTime);
-  return authPage(200, 'LINEでの確認', ['取り消しました。このLINEは、まいにこにつながっていません。まいにこの記録や設定は変わっていません。']);
+  return authPage(200, 'LINEでの確認', [t.fields.purpose === 'link'
+    ? '取り消しました。このLINEは、まいにこにつながっていません。まいにこの記録や設定は変わっていません。'
+    : '取り消しました。この番号では、まいにこに入れません。まいにこの記録や設定は変わっていません。']);
 }
 
 /* ---- 手続きの状態(始めた画面が合言葉で確かめる) ---- */
@@ -863,7 +901,7 @@ async function cleanupLoginLink(fs, now) {
   try {
     const accounts = await fs.list('lineLoginAccounts', ['lineKey']);
     if (!accounts.length) return;
-    const acc = accounts[Math.floor(now.getTime() / 900000) % accounts.length];
+    const acc = accounts[Math.floor(now.getTime() / 3600000) % accounts.length];
     const user = await lookupAuthUser(fs, acc.id);
     if (user && !await fs.get('accountClosures/' + acc.id)) return;
     const writes = [{ delete: fs.root + '/' + acc.path, currentDocument: { updateTime: acc.updateTime } }];
@@ -940,17 +978,17 @@ async function verifyLineIdToken(env, fs, idToken, nonce) {
 }
 
 /* JWTの署名確認(RS256・ES256は公開鍵の一覧から、HS256はチャネルシークレットで) */
-const jwksCache = new Map();   // url -> { keys, exp }
+const jwksCache = new Map();   // url -> { keys, exp, fetchedAt }
 async function fetchJwks(fs, url, force) {
   const hit = jwksCache.get(url);
-  if (!force && hit && hit.exp > Date.now()) return hit.keys;
+  if (hit && hit.exp > Date.now() && (!force || Date.now() - hit.fetchedAt < 60000)) return hit.keys;   // 知らない鍵でも1分は取り直さない
   fs.reserve();
   const res = await fetch(url);
   if (!res.ok) throw new Error('jwks ' + res.status);
   const data = await res.json();
   const keys = Array.isArray(data.keys) ? data.keys : [];
   const age = /max-age=(\d+)/.exec(res.headers.get('cache-control') || '');
-  jwksCache.set(url, { keys, exp: Date.now() + Math.min(age ? Number(age[1]) : 3600, 6 * 3600) * 1000 });
+  jwksCache.set(url, { keys, fetchedAt: Date.now(), exp: Date.now() + Math.min(age ? Number(age[1]) : 3600, 6 * 3600) * 1000 });
   return keys;
 }
 async function verifyJwt(fs, token, opt) {
@@ -1025,10 +1063,9 @@ function authPage(status, title, lines, appLink, extra) {
     (x.note ? '<p class="note">' + escHtml(x.note) + '</p>' : '') +
     (appLink ? '<a class="btn" href="' + escHtml(appLink) + '">' + escHtml(x.appLabel || 'まいにこを開く') + '</a>' : '') +
     (x.cancel ? '<form method="post" action="callback-cancel"><input type="hidden" name="tx" value="' + escHtml(x.tx) +
-      '"><input type="hidden" name="c" value="' + escHtml(x.code) + '"><button class="sub" type="submit">取り消す（つながない）</button></form>' : '');
+      '"><input type="hidden" name="c" value="' + escHtml(x.code) + '"><button class="sub" type="submit">' + escHtml(x.cancelLabel || '取り消す（つながない）') + '</button></form>' : '');
   const html = '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<meta name="referrer" content="no-referrer">' +
-    (x.redirect && appLink ? '<meta http-equiv="refresh" content="0;url=' + escHtml(appLink) + '">' : '') +
     '<title>まいにこ｜' + escHtml(title) + '</title><style>body{font-family:system-ui,sans-serif;background:#FFF8EE;color:#243747;margin:0;line-height:1.8;font-size:18px}' +
     'main{max-width:560px;margin:auto;padding:28px 20px}h1{font-size:1.4rem}.label{margin-bottom:0;font-weight:700}.code{font-size:2.6rem;font-weight:900;letter-spacing:.12em;margin:4px 0 12px;color:#1D4E9E}' +
     '.note{font-size:.95rem;color:#516170}.btn,button{display:block;width:100%;box-sizing:border-box;text-align:center;margin:14px 0;padding:16px;border-radius:14px;font-size:1.1rem;font-weight:900;text-decoration:none}' +

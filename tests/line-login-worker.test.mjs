@@ -276,7 +276,10 @@ assert.equal((await begin('login', acH({ exp: now() - 1 }))).res.status, 401);
   const { data, secret } = await begin('login', acH());
   const cb = await lineLogin(data.authorizeUrl, LINE_A);
   assert.equal(cb.res.status, 200);
-  assert.match(cb.html, /http-equiv="refresh" content="0;url=https:\/\/pocham4173\.github\.io\/hidamari\/#line-auth=[0-9a-f]{32}&amp;c=\d{6}"/);
+  assert.ok(!/http-equiv="refresh"/.test(cb.html), '自動では移動しない(番号を見た本人が進む)');
+  assert.match(cb.html, /href="https:\/\/pocham4173\.github\.io\/hidamari\/#line-auth=[0-9a-f]{32}&amp;c=\d{6}"/);
+  assert.match(cb.html, /番号を入れた人は、あなたのまいにこに入れます/);
+  assert.match(cb.html, /取り消す（ログインしない）/);
   assert.ok(!/eyJ/.test(cb.html), 'トークンを戻り先ページやURLに載せない');
   const st = await (await api('status', { tx: data.tx, secret }, acH())).json();
   assert.equal(st.status, 'ready');
@@ -410,14 +413,64 @@ lineAlg = 'HS256';
   assert.ok(db.has('lineLoginAccounts/anon'), '他の人のつながりはそのまま');
 }
 
-/* 14. 見回りで、削除済みアカウントのつながりを片付ける */
+/* 13b. ログインの戻り先ページの「取り消す」で、その番号は使えなくなる */
+{
+  const { data, secret } = await begin('login', acH());
+  const cb = await lineLogin(data.authorizeUrl, LINE_A);
+  const form = new FormData(); form.set('tx', data.tx); form.set('c', cb.code);
+  const res = await worker.fetch(new Request('https://w.example/auth/line/callback-cancel', { method: 'POST', body: form }), env, {});
+  assert.match(await res.text(), /この番号では、まいにこに入れません/);
+  assert.equal((await api('exchange', { tx: data.tx, secret, code: cb.code }, acH())).status, 410);
+}
+/* 13c. 戻り先の処理中に取り消された手続きを、あとから書き戻さない */
+{
+  const { data, secret } = await begin('login', acH());
+  const q = new URL(data.authorizeUrl).searchParams;
+  lineCodes.set('race', { sub: LINE_A, name: 'n', nonce: q.get('nonce'), challenge: q.get('code_challenge') });
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opt) => {
+    if (String(url) === 'https://api.line.me/oauth2/v2.1/token') await api('cancel', { tx: data.tx, secret });
+    return origFetch(url, opt);
+  };
+  const res = await worker.fetch(new Request('https://w.example/auth/line/callback?code=race&state=' + q.get('state')), env, {});
+  globalThis.fetch = origFetch;
+  assert.equal(res.status, 409);
+  assert.equal(db.get('lineAuthTx/' + data.tx).fields.status.stringValue, 'cancelled');
+  assert.ok(!/class="code"/.test(await res.text()), '取り消した手続きの番号は出さない');
+}
+/* 13d. 途中で照会に失敗しても「待っています」のまま残さない */
+{
+  const { data, secret } = await begin('login', acH());
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opt) => String(url).includes('accounts:lookup') ? new Response('{}', { status: 403 }) : origFetch(url, opt);
+  const cb = await lineLogin(data.authorizeUrl, LINE_A);
+  globalThis.fetch = origFetch;
+  assert.equal(cb.res.status, 503);
+  assert.equal((await (await api('status', { tx: data.tx, secret }, acH())).json()).status, 'error');
+}
+
+/* 14. 見回りで、削除済みアカウントのつながりを片付ける(1時間に1回) */
 {
   authUsers.delete('anon');
-  for (let i = 0; i < 3; i++) await worker.scheduled({}, env, { waitUntil: (p) => p });
-  await new Promise((r) => setTimeout(r, 50));
+  const RealDate = Date, fixed = Math.floor(Date.now() / 3600000) * 3600000 + 3600000;
+  globalThis.Date = class extends RealDate { constructor(...a) { if (a.length) super(...a); else super(fixed); } static now() { return fixed; } };
+  try { await worker.scheduled({}, env, { waitUntil: (p) => p }); await new Promise((r) => setTimeout(r, 50)); }
+  finally { globalThis.Date = RealDate; }
   assert.equal(db.has('lineLoginAccounts/anon'), false);
   assert.equal(db.has('lineLoginLinks/' + await sha('line-user|' + LINE_A)), false);
   authUsers.set('anon', {});
+}
+/* 14b. 削除済みアカウントに残ったつながりは、つなぎ直しのときにその場で片付ける(生きている相手は上書きしない) */
+{
+  const key = await sha('line-user|' + LINE_A);
+  put('lineLoginLinks/' + key, { uid: S('gone'), linkedAt: T(new Date()) });
+  put('lineLoginAccounts/gone', { lineKey: S(key), linkedAt: T(new Date()) });
+  const { data, secret } = await begin('link', authH('anon'));
+  const cb = await lineLogin(data.authorizeUrl, LINE_A);
+  assert.equal(cb.res.status, 200);
+  assert.equal(db.has('lineLoginAccounts/gone'), false);
+  assert.equal((await api('confirm', { tx: data.tx, secret, code: cb.code }, authH('anon'))).status, 200);
+  assert.equal(db.get('lineLoginLinks/' + key).fields.uid.stringValue, 'anon');
 }
 
 /* 15. 記録・応答に秘密の値を出さない */

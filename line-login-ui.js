@@ -253,14 +253,14 @@ async function submitLineAuthCode(flow){
     }
   }finally{lineAuthBusy=false;if(!flow.done||flow.purpose!=='link')btn.disabled=false;}
 }
-/* 別の画面で始めた手続きの番号が、この画面に戻ってきたとき */
+/* 別の画面で始めた手続きの番号が、この画面に戻ってきたとき。番号はもう一度は表示しない
+   (LINEの戻り先ページに表示済み。人に聞かれて伝えると、他人があなたのまいにこに入れるため) */
 function showLineCodeElsewhere(code){
   if(!code)return;
   const box=document.getElementById('line-auth-body');box.replaceChildren();
-  document.getElementById('line-auth-title').textContent='LINEでの確認ができました';
-  box.appendChild(lineEl('p','note','この画面は、手続きを始めた画面とは別のようです。「LINEとつなぐ」または「LINEで続ける」を押した画面（ホーム画面のまいにこなど）に戻り、次の番号を入れてください（5分以内）。'));
-  box.appendChild(lineEl('p','line-auth-code',code.slice(0,3)+' '+code.slice(3)));
-  box.appendChild(lineEl('p','note','この番号は、ご自身のまいにこの画面にだけ入れてください。人に教えないでください。心当たりがなければ、何もしなくてかまいません（5分で使えなくなります）。'));
+  document.getElementById('line-auth-title').textContent='LINEでの確認';
+  box.appendChild(lineEl('p','note','この画面は、手続きを始めた画面とは別のようです。ご自身で別の画面（ホーム画面のまいにこなど）の「LINEで続ける」や「LINEとつなぐ」を押した場合は、その画面に戻り、LINEの確認のあとに表示された番号を入れてください。'));
+  box.appendChild(lineEl('p','note','ご自身で始めていない場合や、電話・メッセージで番号を聞かれた場合は、番号を誰にも伝えないでください。何もしなければ5分で使えなくなり、記録や設定は変わりません。'));
   lineAuthFlow=null;
   document.getElementById('line-auth-modal').classList.add('show');
 }

@@ -187,8 +187,8 @@ const pendingLogin = (extra = {}) => JSON.stringify({ tx: TX, secret: SECRET, pu
   assert.equal(a.state.server.calls.length, 0, '合言葉のない画面は交換しない');
   assert.ok(a.doc.getElementById('welcome').classList.contains('active'));
   assert.ok(a.doc.getElementById('line-auth-modal').classList.contains('show'));
-  assert.match(a.doc.getElementById('line-auth-body').textContent, /111 222/);
-  assert.match(a.doc.getElementById('line-auth-body').textContent, /人に教えないでください/);
+  assert.ok(!/111/.test(a.doc.getElementById('line-auth-body').textContent), '番号はもう一度表示しない');
+  assert.match(a.doc.getElementById('line-auth-body').textContent, /誰にも伝えないでください/);
   a.dom.window.close();
 }
 // 2-5. 記録のある画面(別アカウント)は、LINEのアカウントに切り替えない
