@@ -68,6 +68,11 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 #entry .entry-btn{min-height:64px;}
 #entry .entry-tools{width:100%;max-width:320px;margin-top:8px;border-top:1px solid #E7EBEF;padding-top:8px;}
 #entry .entry-tools .consent-back{min-height:44px;margin:0 auto;}
+/* LINEでログイン(2026-10-01): 未ログインの入口と、番号を入れる画面 */
+#welcome .welcome-sec{width:100%;max-width:320px;margin:14px auto 4px;text-align:left;}
+#welcome .welcome-sec h2{font-size:1.1rem;margin:0 0 8px;}
+#welcome .entry-btn{min-height:64px;}
+.line-auth-code{font-size:2.2rem;font-weight:900;letter-spacing:.12em;text-align:center;color:#1D4E9E;margin:8px 0;}
 .communication-status:empty{display:none;}
 .install-guide{display:grid;gap:10px;margin-top:12px;text-align:left;}
 .install-step{display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;min-height:62px;padding:10px 12px;background:#F7F9FC;border:1px solid #DCE4EF;border-radius:14px;}
@@ -815,8 +820,31 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
   });
 })();
 </script>
-<div id="loading" role="status" aria-live="polite">読み込み中…</div>
+<div id="loading" role="status" aria-live="polite">まいにこを開いています…</div>
 <div class="phone">
+
+<!-- ===== 未ログインの入口(LINEでログインが使えるとき) ===== -->
+<div class="page" id="welcome">
+  <img class="appicon" src="icon-192.png" alt="まいにこ">
+  <h1>まいにこ</h1>
+  <div class="entry-sub">― 家族のつながり ―</div>
+  <div id="welcome-state" class="save-state" role="status" aria-live="polite"></div>
+  <div class="welcome-sec">
+    <h2>すでに使っている方</h2>
+    <button class="entry-btn" type="button" onclick="lineLoginStart()">LINEで続ける<small>LINEとつないだアカウントの、いつもの画面に入ります</small></button>
+    <div id="welcome-code" hidden><button class="entry-btn sub" type="button" onclick="welcomeEnterCode()">LINEで表示された番号を入れる<small>LINEでの確認のあと、6けたの番号が出た方</small></button></div>
+    <button class="entry-btn sub" type="button" onclick="openRecovery()">メールとパスワードで戻る<small>復旧を設定した方</small></button>
+    <p class="note">LINEとまだつないでいない方は、いつも使っているまいにこ（ホーム画面のアイコンなど）を開き、設定の「LINEでログイン」からつないでください。ここで新しく登録すると、今までの記録とは別のアカウントになります。</p>
+  </div>
+  <div class="welcome-sec">
+    <h2>はじめて使う方</h2>
+    <button class="entry-btn sub" type="button" onclick="startFirstUse()">はじめて使う<small>新しく登録します</small></button>
+  </div>
+  <div class="entry-tools">
+    <a class="consent-back" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
+    <a class="consent-back" href="help.html#line-login" target="_blank" rel="noopener">LINEでログインの使い方</a>
+  </div>
+</div>
 
 <!-- ===== 入口 ===== -->
 <div class="page" id="entry">
@@ -840,6 +868,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
     <button class="entry-btn" onclick="pickInvited()">招待された方<small>ご家族の方で、招待コードをお持ちの方</small></button>
   </div>
   <div class="entry-tools">
+    <button class="consent-back" id="entry-line-login" type="button" hidden onclick="lineLoginStart()">すでに使っている方：LINEで続ける</button>
     <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
     <button class="install-main" id="install-main" type="button" onclick="installApp()">ホーム画面に追加</button>
     <p class="note">本サービスは119番通報や安否確認、医療行為の代替ではありません。</p><a class="consent-back" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
@@ -980,6 +1009,11 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
   <a class="consent-back" href="help.html#recovery" target="_blank" rel="noopener">状況に合う復旧・機種変更の手順を見る</a>
   <div id="recovery-sync-warning" hidden><p class="note">復旧先の保存がまだ完了していません。</p><button type="button" class="set-btn" onclick="syncStartupRecoveryPointer()">保存をやり直す</button></div>
   <button class="modal-close" onclick="closeRecovery()">とじる</button>
+</div></div>
+<div class="modal" id="line-auth-modal" role="dialog" aria-modal="true" aria-labelledby="line-auth-title"><div class="modal-box adult-font">
+  <div class="ttl" id="line-auth-title">LINEとつなぐ</div>
+  <div id="line-auth-body"></div>
+  <button class="modal-close" type="button" onclick="closeLineAuth()">とじる</button>
 </div></div>
 <div class="modal" id="account-deletion-modal" role="dialog" aria-modal="true" aria-labelledby="account-deletion-title"><div class="modal-box adult-font">
   <div class="ttl" id="account-deletion-title">自分のアカウントを削除する</div>
@@ -1154,6 +1188,9 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
   </div>
   <div class="set-sec"><h4>LINEで予定のお知らせ</h4>
     <div id="person-line-area"></div>
+  </div>
+  <div class="set-sec"><h4>LINEでログイン（いつもの画面に戻る方法）</h4>
+    <div id="person-line-login-area"></div>
   </div>
   <div class="set-sec" style="border-top:none;"><h4>声のお返事（読み上げ）</h4>
     <div class="note">オンにすると、ボタンを押したあとに声でもお知らせします。</div>
@@ -1446,6 +1483,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       <div class="set-menu-body">
         <div id="settings-line-area"></div>
         <div class="note" id="settings-line-quota" aria-live="polite"></div>
+        <div class="note">ここは予定のお知らせの設定です。LINEからまいにこに入る設定は「LINEでログイン」にあり、ここで解除しても変わりません。</div>
         <a class="set-btn" href="help.html#line" target="_blank" rel="noopener">LINEの使い方（連携・お知らせの付け方・解除）</a>
         <div class="line-log-box"><h4>家族のLINE連携の記録</h4><div id="settings-line-log"></div></div>
       </div>
@@ -1476,6 +1514,14 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       <div class="set-menu-body">
         <div class="note">「本人が使う」「本人と家族が使う」などを選び直せます。記録は消えません。</div>
         <button class="set-btn" onclick="openBackConfirm()">利用方法を変更する</button>
+      </div>
+    </details>
+
+    <details class="set-menu" id="menu-line-login" ontoggle="if(this.open&&typeof renderLineLoginSettings==='function')renderLineLoginSettings('settings-line-login-area')">
+      <summary>LINEでログイン<span class="set-menu-sub">いつもの画面に戻る方法</span></summary>
+      <div class="set-menu-body">
+        <div id="settings-line-login-area"></div>
+        <a class="set-btn" href="help.html#line-login" target="_blank" rel="noopener">LINEでログインの使い方</a>
       </div>
     </details>
 
@@ -2039,7 +2085,9 @@ setTimeout(function(){
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
-<script src="line-notify.js?v=20261001"></script>
+<script src="line-notify.js?v=20261001b"></script>
+<script src="line-login.js?v=20261001"></script>
+<script src="line-login-ui.js?v=20261001"></script>
 <script src="hitokoe.js?v=20261001"></script>
 <script>
 const previewStorage={
@@ -2721,7 +2769,7 @@ function renderScheduleLink(ready,loading){
 }
 if(scheduleLink){
   const note=document.createElement('p');note.className='note';
-  note.textContent='LINEのお知らせから開いています。ふだんホーム画面の「まいにこ」アイコンから使っている方は、ここでは新しく登録せず、アイコンから開いて「予定」を確認してください。ログインが必要な場合は「以前のアカウントを復旧する」を選んでください。';
+  note.textContent='LINEのお知らせから開いています。ふだんホーム画面の「まいにこ」アイコンから使っている方は、ここでは新しく登録せず、LINEとつないでいれば「LINEで続ける」を、つないでいなければアイコンから開いて「予定」を確認してください。ログインが必要な場合は「以前のアカウントを復旧する」を選んでください。';
   const entry=document.getElementById('entry');entry.insertBefore(note,entry.firstChild);
 }
 window.addEventListener('hashchange',()=>{
@@ -2744,6 +2792,7 @@ function showPage(id){
   else {try{window.scrollTo({top:0,left:0,behavior:'auto'});}catch(e){window.scrollTo(0,0);}}
   if(id==='honnin'&&typeof maybeShowSpeechNotice==='function')maybeShowSpeechNotice();
   if(id==='entry'&&typeof renderInviteNote==='function')renderInviteNote();
+  if(id==='entry'){const lineBtn=document.getElementById('entry-line-login');if(lineBtn)lineBtn.hidden=!(typeof lineLoginEnabled==='function'&&lineLoginEnabled()&&!gid());}
 }
 
 /* ===== モード選択→同意→名前→接続 ===== */
@@ -3203,7 +3252,7 @@ function openBackConfirm(){
   if(back) requestAnimationFrame(function(){ back.classList.add('show'); speak('利用方法を 変更しますか'); });
 }
 function closeBackConfirm(){ speak('変更を やめました'); document.getElementById('back-modal').classList.remove('show'); }
-function openPersonSettings(){ applyHouseholdPermissions(); if(typeof renderRecoveryBadges==='function')renderRecoveryBadges(); if(typeof renderPersonHitokoe==='function')renderPersonHitokoe(); if(typeof reportDeviceRecovery==='function')reportDeviceRecovery(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); if(window.MainicoLine) MainicoLine.render('person-line-area'); }
+function openPersonSettings(){ applyHouseholdPermissions(); if(typeof renderRecoveryBadges==='function')renderRecoveryBadges(); if(typeof renderPersonHitokoe==='function')renderPersonHitokoe(); if(typeof reportDeviceRecovery==='function')reportDeviceRecovery(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); if(window.MainicoLine) MainicoLine.render('person-line-area'); if(typeof renderLineLoginSettings==='function') renderLineLoginSettings('person-line-login-area'); }
 function closePersonSettings(){ speak('とじました'); const f=document.getElementById('person-family-procs');if(f)f.open=false; document.getElementById('person-settings-modal').classList.remove('show'); }
 /* 「ご家族と一緒に行う手続き」は、開く前に確認する(本人が迷い込まないように) */
 let personProcsConfirmed=false;

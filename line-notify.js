@@ -181,7 +181,7 @@
     bind(area,areaId);
   }
   async function unlink(area,areaId,btn){
-    var q='LINE連携を解除しますか？\nこのLINEには、予定のお知らせが届かなくなります。予定そのものは消えません。';
+    var q='LINE連携を解除しますか？\nこのLINEには、予定のお知らせが届かなくなります。予定そのものは消えません。\n「LINEでログイン」の連携は、この操作では解除されません。';
     if(!(typeof global.appConfirm==='function'?await global.appConfirm(q,'解除する'):global.confirm(q))) return;
     btn.disabled=true;
     setState(area,'解除しています…');

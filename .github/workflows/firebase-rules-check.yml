@@ -26,6 +26,8 @@ on:
       - 'household-deletion.js'
       - 'account-recovery.js'
       - 'account-deletion.js'
+      - 'line-login.js'
+      - 'line-login-ui.js'
       - 'tests/account-closure-integration.test.mjs'
       - 'tests/home-conversation-emulator.test.mjs'
       - 'tests/helpers/home-conversation-fixture.mjs'

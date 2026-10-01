@@ -337,6 +337,19 @@ service cloud.firestore {
       allow delete: if signedIn() && request.auth.uid == uid;
     }
 
+    // LINEでログイン(2026-10-01)。つながりの記録・手続きは送信役(サーバー)だけが作成・変更・削除する。
+    // 本人は自分のアカウントがLINEでログインできるか(とその日時)だけを見られる。LINEの識別子は持たない。
+    match /lineLoginAccounts/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+    match /lineLoginLinks/{lineKey} {
+      allow read, write: if false;
+    }
+    match /lineAuthTx/{txId} {
+      allow read, write: if false;
+    }
+
     match /invites/{code} {
       // 招待コードを知っている参加者は、削除中でない有効世帯の申請に使える。
       allow get: if signedIn() && (isActive(resource.data.groupId) || deletingOwner(resource.data.groupId));
