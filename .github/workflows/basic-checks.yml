@@ -36,6 +36,11 @@ jobs:
       - name: LINE連携・送信失敗・同意取り消しの検査
         run: node tests/line-worker.test.mjs
 
+      - name: ひと声のきっかけの検査
+        run: |
+          node tests/hitokoe.test.mjs
+          node tests/app-dialog.test.mjs
+
       - name: 家族ホーム・通信・伝言の回帰検査
         run: node tests/home-reliability.test.mjs
 

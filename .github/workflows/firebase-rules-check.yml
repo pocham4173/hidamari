@@ -1,6 +1,16 @@
 name: Firebaseルール検査
 
 on:
+  # 理絵さんがGitHubに直接アップロードしたときも検査する(2026-10-01)。
+  # 結果が緑になってから、Firebaseのコンソールにルールを貼る。
+  push:
+    branches:
+      - main
+    paths:
+      - 'firestore.rules'
+      - 'worker.js'
+      - 'tests/**'
+      - '.github/workflows/firebase-rules-check.yml'
   pull_request:
     paths:
       - 'firestore.rules'
@@ -9,6 +19,8 @@ on:
       - 'tests/helpers/consent-fixture.mjs'
       - 'firebase.json'
       - 'tests/alerts.test.mjs'
+      - 'tests/line-rules.test.mjs'
+      - 'worker.js'
       - 'tests/lifecycle-rules.test.mjs'
       - 'tests/lifecycle-integration.test.mjs'
       - 'household-deletion.js'
@@ -50,4 +62,4 @@ jobs:
         run: npm install --no-save firebase@11.10.0 @firebase/rules-unit-testing@4.0.1 jsdom@26.1.0
 
       - name: Firestore Emulatorで通知・予定・権限・復旧・削除を検査
-        run: firebase emulators:exec --only firestore --project demo-mainico "node tests/alerts.test.mjs && node tests/lifecycle-rules.test.mjs && node tests/lifecycle-integration.test.mjs && node tests/account-closure-integration.test.mjs && node tests/home-conversation-emulator.test.mjs && node tests/consent-rules.test.mjs"
+        run: firebase emulators:exec --only firestore --project demo-mainico "node tests/alerts.test.mjs && node tests/lifecycle-rules.test.mjs && node tests/lifecycle-integration.test.mjs && node tests/account-closure-integration.test.mjs && node tests/home-conversation-emulator.test.mjs && node tests/consent-rules.test.mjs && node tests/line-rules.test.mjs"
