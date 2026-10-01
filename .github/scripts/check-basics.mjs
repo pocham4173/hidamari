@@ -278,6 +278,35 @@ record(
     : [...needed.keys()].sort().join(', ')
 );
 
+/* ---------- ルール・送信役・アプリの食い違い(2026-10-01) ---------- */
+{
+  const rd = (f) => { try { return fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch (e) { return ''; } };
+  const rules = rd('firestore.rules'), worker = rd('worker.js'), consentJs = rd('consent.js');
+  const ver = (t, re) => { const m = re.exec(t); return m ? m[1] : ''; };
+  const wv = ver(worker, /CONSENT_VERSION\s*=\s*'([^']+)'/), cv = ver(consentJs, /'(\d{4}-\d{2}-\d{2}\.\d+)'/);
+  const rv = [...rules.matchAll(/version == '([^']+)'/g)].map((m) => m[1]);
+  record('同意の版がルール・送信役・アプリでそろっている',
+    !!wv && !!cv && rv.length > 0 && rv.every((v) => v === wv) && wv === cv,
+    `ルール:${[...new Set(rv)].join(',')} 送信役:${wv} アプリ:${cv}`);
+  const listMatch = /validEventType[\s\S]*?in \[([\s\S]*?)\]/.exec(rules);
+  const allowed = new Set(listMatch ? [...listMatch[1].matchAll(/'([a-z0-9-]+)'/g)].map((m) => m[1]) : []);
+  const used = new Set();
+  for (const f of fs.readdirSync(ROOT).filter((f) => /\.(js|html)$/.test(f) && f !== 'worker.js' && f !== 'tag.html')) {
+    for (const m of rd(f).matchAll(/type\s*:\s*'([a-z0-9-]+)'/g)) if (m[1] !== 'text') used.add(m[1]);
+  }
+  for (const m of rd('index.html').matchAll(/'(disaster-[a-z]+)'\s*:/g)) used.add(m[1]);
+  const missing = [...used].filter((t) => !allowed.has(t));
+  record('アプリが書く記録の種類が、すべてルールで許されている', allowed.size > 0 && missing.length === 0,
+    missing.length ? 'ルールに無い種類: ' + missing.join(', ') : `${used.size}種類を確認`);
+  const tagRule = /situation in \[([^\]]*)\]/.exec(rules);
+  const ruleSituations = tagRule ? [...tagRule[1].matchAll(/'([a-z]+)'/g)].map((m) => m[1]).sort() : [];
+  const wSit = /TAG_SITUATIONS = \{([^}]*)\}/.exec(worker);
+  const workerSituations = wSit ? [...wSit[1].matchAll(/([a-z]+):/g)].map((m) => m[1]).sort() : [];
+  record('おまもりタグの状況の種類が、ルールと送信役でそろっている',
+    ruleSituations.length > 0 && ruleSituations.join() === workerSituations.join(),
+    `ルール:${ruleSituations.join(',')} 送信役:${workerSituations.join(',')}`);
+}
+
 /* ---------- まとめ ---------- */
 
 const failed = results.filter((r) => !r.ok);
