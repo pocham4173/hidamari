@@ -20,7 +20,7 @@ function fixture(){
   col:()=>({where:()=>({get:options=>{assert.equal(options.source,'server');return new Promise((resolve,reject)=>listReads.push({resolve,reject}));}}),doc:id=>({
    get:async options=>{assert.equal(options.source,'server');return {exists:rows.has(id),data:()=>rows.get(id),metadata:{fromCache:false}};},delete:async()=>{deleted.push(id);rows.delete(id);}})})};
  vm.createContext(c);
- vm.runInContext(section('function compareConversationEvents(a,b){','function personReplyDone(id){')+section('let honninSending=false;','function skipKibun(')+section('function sendKusuri(slotKey){','/* ちょっとお願い */')+section('function sendOnegai(text, inputId){','/* カレンダー */')+section('function cancelRecordLabel(v){','/* つながっている家族(本人側・閲覧) */'),c);
+ vm.runInContext(section('function compareConversationEvents(a,b){','function personReplyDone(id){')+section('let honninSending=false;','function skipKibun(')+section('/* とりけした後、ボタンの','/* 今日の記録のとりけし(本人) */')+section('function sendKusuri(slotKey){','/* ちょっとお願い */')+section('function sendOnegai(text, inputId){','/* カレンダー */')+section('function cancelRecordLabel(v){','/* つながっている家族(本人側・閲覧) */'),c);
  return {c,el,doc,timers,writes,listReads,deleted,rows,alerts,confirms,cache,busy:()=>vm.runInContext('honninSending',c),reloads:()=>reloads,confirm:v=>confirmed=v,day:v=>day=v,switchSession(){account='new-person';group='new-home';generation++;c.resetPersonRecordFeedback();}};
 }
 const cases=[
@@ -66,7 +66,7 @@ const snap=data=>({metadata:{fromCache:false},forEach:fn=>data.forEach(v=>fn({id
  const f=fixture();f.rows.set('own',{uid:'person',date:'2026-09-17',type:'kusuri',slot:'asa'});f.rows.set('other',{uid:'family',date:'2026-09-17',type:'kusuri',slot:'asa'});f.rows.set('old',{uid:'person',date:'2026-09-16',type:'kusuri',slot:'asa'});
  await f.c.cancelEvent('other','kusuri','asa');await f.c.cancelEvent('old','kusuri','asa');assert.equal(f.deleted.length,0);assert.equal(f.confirms.length,0,'自分以外・過去日の記録を取り消さない');
  f.confirm(false);await f.c.cancelEvent('own','kusuri','asa');assert.equal(f.deleted.length,0,'確認でやめた場合は削除しない');
- f.confirm(true);f.cache.set('kusuri-2026-09-17-asa','1');await f.c.cancelEvent('own','aisatsu','yoru');assert.deepEqual(f.deleted,['own']);assert.equal(f.cache.has('kusuri-2026-09-17-asa'),false,'引数でなく実際に削除した記録の表示印を消す');assert.equal(f.reloads(),1);
+ f.confirm(true);f.cache.set('kusuri-2026-09-17-asa','1');await f.c.cancelEvent('own','aisatsu','yoru');assert.deepEqual(f.deleted,['own']);assert.equal(f.cache.has('kusuri-2026-09-17-asa'),false,'引数でなく実際に削除した記録の表示印を消す');assert.equal(f.reloads(),0,'とりけした後に画面全体を読み直さない');
 }
 assert.match(html,/id="person-record-correct"[^>]*onclick="openCancel\(\)"/);
 assert.match(html,/<div[^>]*id="cancel-modal"[^>]*role="dialog"[^>]*aria-modal="true"/);

@@ -21,11 +21,13 @@ const S = (v) => ({ stringValue: v }), T = (d) => ({ timestampValue: d.toISOStri
 const docJson = (path) => ({ name: ROOT + '/' + path, fields: db.get(path).fields, updateTime: db.get(path).updateTime });
 const cmp = (a, b) => {
   if (a.timestampValue && b.timestampValue) return Date.parse(a.timestampValue) - Date.parse(b.timestampValue);
+  if ('booleanValue' in a && 'booleanValue' in b) return a.booleanValue === b.booleanValue ? 0 : 1;
   if ('stringValue' in a && 'stringValue' in b) return a.stringValue < b.stringValue ? -1 : a.stringValue > b.stringValue ? 1 : 0;
   return NaN;
 };
 const pushes = [], replies = [], keys = [];
 let pushFailure=false, lostResponse=false, requests=0;
+let quota={type:'limited',value:200}, usage=0;
 const acceptedKeys=new Set();
 globalThis.fetch = async (url, opt = {}) => {
   requests++;
@@ -33,11 +35,13 @@ globalThis.fetch = async (url, opt = {}) => {
   const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
   const body = opt.body ? (typeof opt.body === 'string' && opt.body.startsWith('{') ? JSON.parse(opt.body) : opt.body) : null;
   if (url === 'https://oauth2.googleapis.com/token') return json({ access_token: 'gtok', expires_in: 3600 });
+  if (url === 'https://api.line.me/v2/bot/message/quota') return json(quota);
+  if (url === 'https://api.line.me/v2/bot/message/quota/consumption') return json({ totalUsage: usage });
   if (url === 'https://api.line.me/v2/bot/message/push') {
     keys.push(opt.headers['x-line-retry-key']);
     if(pushFailure) return json({},500);
     if(acceptedKeys.has(keys.at(-1))) return new Response('{}',{status:409,headers:{'x-line-accepted-request-id':'accepted'}});
-    acceptedKeys.add(keys.at(-1)); pushes.push(body);
+    acceptedKeys.add(keys.at(-1)); pushes.push(body); usage++;
     if(lostResponse) {lostResponse=false;throw new Error('lost response');}
     return json({});
   }
@@ -73,7 +77,7 @@ globalThis.fetch = async (url, opt = {}) => {
       const c = cmp(v, f.value);
       if ((f.op === 'EQUAL' && c === 0) || (f.op === 'LESS_THAN_OR_EQUAL' && c <= 0)) out.push({ document: docJson(p) });
     }
-    if(q.orderBy)out.sort((a,b)=>cmp(a.document.fields[q.orderBy[0].field.fieldPath],b.document.fields[q.orderBy[0].field.fieldPath]));
+    if(q.orderBy){const o=q.orderBy[0],sg=o.direction==='DESCENDING'?-1:1;out.sort((a,b)=>sg*cmp(a.document.fields[o.field.fieldPath],b.document.fields[o.field.fieldPath]));}
     const limited=q.limit?out.slice(0,q.limit):out;
     return json(limited.length ? limited : [{readTime:'x'}]);
   }
@@ -90,6 +94,8 @@ globalThis.fetch = async (url, opt = {}) => {
     if (pre && (!db.has(rest) || db.get(rest).updateTime !== pre)) return json({ error: { status: 'FAILED_PRECONDITION' } }, 400);
     const mask = u.searchParams.getAll('updateMask.fieldPaths');
     const fields = mask.length ? { ...(db.get(rest)?.fields || {}), ...body.fields } : body.fields;
+    // 本物のFirestoreと同じく、更新対象に挙げたのに値のない項目は消す
+    for (const m of mask) if (!(m in (body.fields || {}))) delete fields[m];
     put(rest, fields);
     return json(docJson(rest));
   }
@@ -188,21 +194,32 @@ assert.ok(!pushes.some(p=>['Udel','Uno'].includes(p.to)),'削除された家庭�
 await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } });
 await waiter;
 assert.equal(pushes.length, 2);
-// 9b. おまもりタグが読み取られたら、LINE連携した承認済みの家族へ1回だけ知らせる
+// 9b. おまもりタグが読み取られたら、LINE連携した承認済みの「家族」へ1回だけ知らせる(ご本人には送らない)
+put('groups/g1/members/hon', { name: S('本人'), status: S('approved'), role: S('honnin'), mode: S('honnin') });
+put('consents/hon', { ...consent(), mode: S('honnin'), subjectBasis: S('self') });
+put('lineLinks/hon', { lineUserId: S('Uhon'), groupId: S('g1') });
 put('watchTags/tagA', { groupId: S('g1'), active: { booleanValue: true } });
-put('watchTags/tagA/alerts/reader1', { type: S('found'), situation: S('lost'), count: { integerValue: '1' }, senderUid: S('reader1'), createdAt: T(new Date(Date.now() - 60000)) });
+put('watchTags/tagA/alerts/reader1', { type: S('found'), situation: S('lost'), count: { integerValue: '1' }, senderUid: S('reader1'), createdAt: T(new Date(Date.now() - 60000)), lineNotifiedAt: T(new Date(Date.now() - 30000)) });
 put('watchTags/tagOld/alerts/reader2', { type: S('found'), situation: S('unwell'), count: { integerValue: '1' }, senderUid: S('reader2'), createdAt: T(new Date(Date.now() - 3 * 3600000)) });
 await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } });
 await waiter;
 const tagPushes = pushes.slice(2);
-assert.deepEqual(tagPushes.map((p) => p.to).sort(), ['Ufam', 'Uowner'], 'タグのお知らせは連携した家族へ');
+assert.deepEqual(tagPushes.map((p) => p.to).sort(), ['Ufam', 'Uowner'], 'タグのお知らせは連携した家族へ(ご本人には送らない)');
 assert.match(tagPushes[0].messages[0].text, /おまもりタグのお知らせ/);
 assert.match(tagPushes[0].messages[0].text, /道に迷っているようです/);
 assert.ok(!tagPushes[0].messages[0].text.includes('reader1'), '読み取った方の情報は送らない');
-assert.ok(db.get('watchTags/tagA/alerts/reader1').fields.lineNotifiedAt.timestampValue, '知らせた印が付く');
+assert.ok(!('lineNotifiedAt' in db.get('watchTags/tagA/alerts/reader1').fields), '読み取り者の文書には印を残さない(再送を妨げない)');
+assert.ok([...db.keys()].some((p) => p.startsWith('tagAlertReceipts/')), '送った印は別の置き場に残す');
 await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } });
 await waiter;
 assert.equal(pushes.length, 4, 'タグのお知らせを二重に送らない・古い読み取りは送らない');
+// 同じ読み取り者が10分後に状況を送り直したら、もう一度知らせる
+put('watchTags/tagA/alerts/reader1', { type: S('found'), situation: S('called'), count: { integerValue: '2' }, senderUid: S('reader1'), createdAt: T(new Date(Date.now() - 1000)) });
+await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } });
+await waiter;
+assert.equal(pushes.length, 6, '送り直した状況も届く');
+assert.match(pushes.at(-1).messages[0].text, /警察・救急へ連絡しました/);
+db.delete('lineLinks/hon');
 // 10. 「解除」と送ると連携解除
 await hook([{ type: 'message', replyToken: 'r6', source: user('Ufam'), message: { type: 'text', text: '解除' } }]);
 assert.match(replies.at(-1).messages[0].text, /解除しました/);
@@ -217,12 +234,12 @@ await hook([{ type: 'message', replyToken: 'r7', source: user('Ux'), message: { 
 assert.match(replies.at(-1).messages[0].text, /お返事や相談は届きません/);
 // 13. 動作確認ページ
 const res = await worker.fetch(new Request('https://w.example/'), env, {});
-assert.equal(await res.text(), 'まいにこ LINE送信役は動いています（版：2026-09-30 タグのお知らせつき）');
+assert.match(await res.text(), /^まいにこ LINE送信役は動いています（版：2026-10-01 /);
 
 console.log('line worker: 署名確認・友だち追加・連携(期限切れ/承認待ちは不可)・見回り送信(対象者/文面/二重送信なし/古い予定/削除中の家庭)・解除・ブロック 13項目 passed');
 
 // Failure, consent withdrawal, closure, retries and request budget regressions.
-async function tick(){requests=0;await worker.scheduled({},env,{waitUntil:p=>{waiter=p;}});await waiter;assert.ok(requests<=45,'strict request budget');}
+async function tick(){requests=0;await worker.scheduled({},env,{waitUntil:p=>{waiter=p;}});await waiter;assert.ok(requests<=49,'strict request budget (無料プランの50回より手前)');}
 function pending(id){put('groups/g1/yotei/'+id,{date:S(ds),label:S(id),uid:S('owner'),notifyAt:T(new Date(Date.now()-60000))});}
 put('lineLinks/owner',{lineUserId:S('Uowner'),groupId:S('g1')});
 put('consents/owner',consent());
@@ -247,5 +264,102 @@ await Promise.all(['Urace1','Urace2'].map(id=>hook([{type:'message',source:user(
 assert.equal(replies.slice(previousReplies).filter(r=>r.messages[0].text.includes('LINE連携しました')).length,1);
 // Several pending schedules exhaust the budget without losing the remainder.
 for(let i=0;i<10;i++)pending('budget'+i);
-await tick();assert.equal(requests,45);assert.ok([...db].some(([p,d])=>p.includes('/yotei/budget')&&d.fields.notifyAt.timestampValue));
+await tick();assert.ok(requests>=45&&requests<=49);assert.ok([...db].some(([p,d])=>p.includes('/yotei/budget')&&d.fields.notifyAt.timestampValue));
 console.log('atomic code consumption and budget exhaustion passed');
+
+/* ===== 月200通を守る上限ガード(2026-10-01) ===== */
+const ystat=(id)=>db.get('groups/g1/yotei/'+id).fields;
+const lastLog=(id)=>ystat(id).notifyLog.arrayValue.values.at(-1).mapValue.fields;
+// 残り通数が家族に見えるように書かれる
+await tick();
+assert.equal(db.get('lineStatus/quota').fields.limit.integerValue,'200');
+assert.equal(Number(db.get('lineStatus/quota').fields.remaining.integerValue),200-usage,'残り通数を記録する');
+// 月の残りがタグ用の確保分(50通)に近づいたら、予定のお知らせは送らずに理由を残す
+usage=151;const b1=pushes.length;pending('lowQuota');await tick();
+assert.equal(pushes.length,b1,'残りが少ないときは予定を送らない');
+assert.equal(ystat('lowQuota').notificationStatus.stringValue,'limited');
+assert.equal(lastLog('lowQuota').reason.stringValue,'monthly');
+// …でも、おまもりタグは届く
+put('watchTags/tagA/alerts/reader9',{type:S('found'),situation:S('unwell'),count:{integerValue:'1'},senderUid:S('reader9'),createdAt:T(new Date(Date.now()-2000))});
+await tick();
+assert.equal(pushes.length,b1+1,'タグは残りの確保分から届く');
+// 月の上限まで使い切ったら、タグも送らない(課金はされず、アプリの中には出る)
+db.delete('tagAlertCounters/tagA');
+usage=200;put('watchTags/tagA/alerts/reader10',{type:S('found'),situation:S('lost'),count:{integerValue:'1'},senderUid:S('reader10'),createdAt:T(new Date(Date.now()-2000))});
+const b2=pushes.length;await tick();assert.equal(pushes.length,b2,'使い切ったら送らない');
+assert.ok([...db].some(([p,d])=>p.startsWith('tagAlertReceipts/')&&d.fields.result?.stringValue==='monthly'),'使い切った理由を残す');
+usage=0;
+// 家庭ごとの1日の上限: 今日の分を使い切った家庭の予定は送らない
+put('lineUsage/g1',{day:S(new Date(Date.now()+9*3600000).toISOString().slice(0,10)),count:{integerValue:'20'}});
+pending('homeLimit');const b3=pushes.length;await tick();
+assert.equal(pushes.length,b3);assert.equal(lastLog('homeLimit').reason.stringValue,'household');
+db.delete('lineUsage/g1');
+// 送ったら家庭の今日の通数が増える
+pending('countMe');await tick();
+assert.equal(db.get('lineUsage/g1').fields.count.integerValue,'1','家庭の通数を数える');
+// タグごとの上限: 1時間に3回まで(いたずら対策)
+for(const id of Object.keys(Object.fromEntries(db)))if(id.startsWith('tagAlertCounters/'))db.delete(id);
+const b4=pushes.length;
+for(let i=0;i<5;i++){
+  put('watchTags/tagA/alerts/burst'+i,{type:S('found'),situation:S('lost'),count:{integerValue:'1'},senderUid:S('burst'+i),createdAt:T(new Date(Date.now()+i))});
+}
+await tick();
+assert.ok(pushes.length-b4>=1&&pushes.length-b4<=3,'1回の見回りで知らせるタグは3件まで');
+await tick();await tick();await tick();
+assert.equal(pushes.length-b4,3,'同じタグは1時間に3回まで');
+assert.equal(db.get('tagAlertCounters/tagA').fields.hourCount.integerValue,'3');
+// 古い読み取りが200件以上たまっても、新しい読み取りを拾える
+db.delete('tagAlertCounters/tagA');
+for(let i=0;i<600;i++)db.set('watchTags/tagA/alerts/old'+i,{fields:{type:S('found'),situation:S('safe'),count:{integerValue:'1'},senderUid:S('old'+i),createdAt:T(new Date(Date.now()-5*86400000-i*1000))},updateTime:new Date(Date.UTC(2026,0,1)).toISOString()});
+put('watchTags/tagA/alerts/fresh',{type:S('found'),situation:S('safe'),count:{integerValue:'1'},senderUid:S('fresh'),createdAt:T(new Date())});
+const b5=pushes.length;await tick();
+assert.equal(pushes.length-b5,1,'古い記録が多くても新しい読み取りが届く');
+assert.match(pushes.at(-1).messages[0].text,/安全な場所にいます/);
+// 停止したタグは送らない
+put('watchTags/tagA',{groupId:S('g1'),active:{booleanValue:false}});
+put('watchTags/tagA/alerts/afterStop',{type:S('found'),situation:S('lost'),count:{integerValue:'1'},senderUid:S('afterStop'),createdAt:T(new Date())});
+const b6=pushes.length;await tick();assert.equal(pushes.length,b6,'停止したタグは送らない');
+console.log('LINE上限ガード(残り通数・タグの確保・家庭の上限・タグの上限・1回3件・古い記録・停止タグ) passed');
+/* タグが多くても、2時間のうちに必ず順番が回ってくる・予定のお知らせも同じ回に送れる(2026-10-01 10人会議の指摘) */
+{
+  for (const k of [...db.keys()]) if (k.startsWith('watchTags/') || k.startsWith('tagAlertCounters/') || k.startsWith('lineUsage/')) db.delete(k);
+  for (let i = 0; i < 16; i++) put('watchTags/many' + String(i).padStart(2, '0'), { groupId: S('g1'), active: { booleanValue: true } });
+  put('watchTags/many15/alerts/lateReader', { type: S('found'), situation: S('lost'), count: { integerValue: '1' }, senderUid: S('lateReader'), createdAt: T(new Date()) });
+  const before = pushes.length;
+  const RealDate = Date;
+  let shift = 0;
+  class ShiftedDate extends RealDate { constructor(...a) { if (a.length) super(...a); else super(RealDate.now() + shift); } static now() { return RealDate.now() + shift; } }
+  globalThis.Date = ShiftedDate;
+  let reached = -1;
+  for (let run = 0; run < 3 && reached < 0; run++) {
+    shift = run * 900000;
+    await tick();
+    if (pushes.length > before) reached = run;
+  }
+  globalThis.Date = RealDate;
+  assert.ok(reached >= 0 && reached <= 1, '16件のタグでも30分以内に順番が回る (' + reached + ')');
+  // タグの読み取りがたまっていても、同じ回で予定のお知らせを送れる
+  for (let i = 0; i < 6; i++) put('watchTags/many0' + (i % 8) + '/alerts/r' + i, { type: S('found'), situation: S('lost'), count: { integerValue: '1' }, senderUid: S('r' + i), createdAt: T(new Date()) });
+  pending('withTags');
+  let runs = 0;
+  while (!db.get('groups/g1/yotei/withTags').fields.notifiedAt?.timestampValue && runs < 3) { await tick(); runs++; }
+  assert.ok(db.get('groups/g1/yotei/withTags').fields.notifiedAt?.timestampValue, 'タグの読み取りがたまっていても、予定のお知らせは次の回までに届く (' + runs + '回)');
+  console.log('タグの順番(16件)・タグがたまっていても予定が届く passed');
+}
+/* 家族が多い家庭(6人がLINE連携): 1回で送り切れなくても、次の回で残りの人へ届き、同じ人には二重に届かない */
+{
+  for (const k of [...db.keys()]) if (k.startsWith('watchTags/') || k.startsWith('tagAlertCounters/') || k.startsWith('lineUsage/')) db.delete(k);
+  put('groups/g3', { createdBy: S('b0') });
+  for (let i = 0; i < 6; i++) {
+    put('groups/g3/members/b' + i, { name: S('家族' + i), status: S('approved') });
+    put('consents/b' + i, consent());
+    put('lineLinks/b' + i, { lineUserId: S('Ub' + i), groupId: S('g3') });
+  }
+  put('watchTags/big', { groupId: S('g3'), active: { booleanValue: true } });
+  put('watchTags/big/alerts/finder', { type: S('found'), situation: S('unwell'), count: { integerValue: '1' }, senderUid: S('finder'), createdAt: T(new Date()) });
+  const start = pushes.length;
+  for (let run = 0; run < 4; run++) await tick();
+  const got = pushes.slice(start).filter((p) => /^Ub/.test(p.to)).map((p) => p.to).sort();
+  assert.deepEqual(got, ['Ub0', 'Ub1', 'Ub2', 'Ub3', 'Ub4', 'Ub5'], '6人全員に1回ずつ届く');
+  console.log('家族が多い家庭のタグのお知らせ(続きから・二重なし) passed');
+}

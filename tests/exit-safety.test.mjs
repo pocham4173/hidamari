@@ -100,7 +100,7 @@ for(const stage of ['pointer','group','member','delete','notebook']){
   for(const change of ['changeUid','changeGroup','changeGeneration']){
     const f=fixture(),waiting=deferred();f.state.hooks[stage]=()=>waiting.promise;
     const action=f.c.resetDisconnectedDevice();
-    for(let i=0;i<12;i++)await Promise.resolve();
+    for(let i=0;i<16;i++)await Promise.resolve(); // 確認が画面内の大きな確認(非同期)になったため、少し多めに待つ
     assert.ok(stage==='delete'||stage==='notebook'?f.state.effects.some(([kind])=>kind===(stage==='delete'?'pointer-delete':'notebook')):f.state.reads.some(([kind])=>kind===stage),stage+' was reached');
     const before=JSON.stringify(f.state.effects);f[change]();
     waiting.resolve(['pointer','group','member'].includes(stage)?f.state[stage]:true);await action;

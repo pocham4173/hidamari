@@ -1,0 +1,36 @@
+/* 画面内の大きな確認(appConfirm/appNotice)が重なっても、前の答えが失われないことの検査(2026-10-01) */
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const a = html.indexOf('let appDialogResolve=null;'), b = html.indexOf('function addEvent(data){', a);
+assert.ok(a > 0 && b > a);
+const els = new Map();
+const el = (id) => { if (!els.has(id)) els.set(id, { id, textContent: '', style: {}, shown: false, classList: { add(c) { if (c === 'show') this.o.shown = true; }, remove(c) { if (c === 'show') this.o.shown = false; }, contains(c) { return c === 'show' && this.o.shown; }, toggle() {}, o: null } }); const e = els.get(id); e.classList.o = e; return e; };
+const ctx = { document: { getElementById: el }, confirm: () => true, alert() {}, setTimeout, console };
+vm.createContext(ctx);
+vm.runInContext(html.slice(a, b), ctx);
+const first = ctx.appConfirm('とりけしますか？', 'とりけす');
+assert.equal(el('app-dialog-text').textContent, 'とりけしますか？');
+const second = ctx.appConfirm('ひと声のきっかけ、よろしいですか', 'はい', 'やめておく', true);
+assert.equal(el('app-dialog-text').textContent, 'とりけしますか？', '前の確認が出ている間は、次の確認を重ねない');
+ctx.appDialogDone(true);
+assert.equal(await first, true, '前の確認の答えが返る');
+assert.equal(el('app-dialog-text').textContent, 'ひと声のきっかけ、よろしいですか', '答えたあとに次の確認が出る');
+assert.equal(el('app-dialog-cancel').textContent, 'やめておく');
+ctx.appDialogDone(false);
+assert.equal(await second, false);
+// 別の画面が確認を閉じてしまっても、次の確認が出る(固まらない)
+const stale = ctx.appConfirm('古い確認', 'はい');
+el('app-dialog').shown = false;
+const fresh = ctx.appConfirm('新しい確認', '入口に戻る');
+assert.equal(await stale, null, '閉じられた確認は「答えなし」として終わる');
+assert.equal(el('app-dialog-text').textContent, '新しい確認');
+ctx.appDialogDone(true);
+assert.equal(await fresh, true);
+const q1 = ctx.appConfirm('A', 'はい'), q2 = ctx.appConfirm('B', 'はい');
+ctx.appDialogCancelAll();
+assert.equal(await q1, null); assert.equal(await q2, null, '待っている確認も答えなしで閉じる');
+const q3 = ctx.appConfirm('C', 'はい'); assert.equal(el('app-dialog-text').textContent, 'C', '閉じた後はすぐ次の確認が出る');
+ctx.appDialogDone(true); assert.equal(await q3, true);
+console.log('画面内の確認: 重なっても順番に出て、答えが失われない・閉じられても固まらない passed');

@@ -18,7 +18,7 @@ try{
  await env.clearFirestore();
  await seed({'groups/home':{createdBy:'owner'},'groups/home/members/owner':{status:'approved',role:'kazoku'},'groups/home/events/old':{uid:'owner',text:'test'}});
  assert.equal((await service.read('kazoku')).valid,false);
- await assertFails(record.set({uid:'owner',text:'without consent'}));
+ await assertFails(record.set({type:'memo',uid:'owner',text:'without consent'}));
  await assertFails(db.doc('groups/home/events/old').get({source:'server'}));
  await assertFails(consent.set({...consentFixture(stamp()),sensitiveAccepted:false}));
  await assertFails(consent.set({...consentFixture(stamp()),version:'2026-09-18.1'}));
@@ -30,7 +30,7 @@ try{
  await assert.rejects(service.accept('kazoku',{...checks,subject:false}),/incomplete/);
  assert.equal((await consent.get()).exists,false);
  assert.equal((await service.accept('kazoku',checks)).valid,true);
- await assertSucceeds(record.set({uid:'owner',text:'consented'}));
+ await assertSucceeds(record.set({type:'memo',uid:'owner',text:'consented'}));
  await assertSucceeds(db.collection('groups/home/events').get());
  await assertFails(other.doc('consents/owner').get());
  await assertFails(db.collection('consents').get());
@@ -50,11 +50,11 @@ try{
  await assertSucceeds(db.collection('watchTags/'+tag+'/alerts').get());
  console.log('OK QR: 発行時の個別同意、発見者には個人情報の読取権限なし、通知項目限定');
 
- const revokeAndWrite=db.batch();revokeAndWrite.delete(consent);revokeAndWrite.set(db.doc('groups/home/events/revoke-bypass'),{uid:'owner',text:'bypass'});
+ const revokeAndWrite=db.batch();revokeAndWrite.delete(consent);revokeAndWrite.set(db.doc('groups/home/events/revoke-bypass'),{type:'memo',uid:'owner',text:'bypass'});
  await assertFails(revokeAndWrite.commit());
  assert.equal((await service.read('kazoku')).valid,true,'失敗batchでは撤回自体も確定しない');
  await service.revoke();assert.equal((await service.read('kazoku')).valid,false);
- await assertFails(record.set({uid:'owner',text:'after revoke'}));
+ await assertFails(record.set({type:'memo',uid:'owner',text:'after revoke'}));
  await assertFails(db.collection('groups/home/events').get());
  await assertFails(db.collection('watchTags/'+tag+'/alerts').get());
  await assertSucceeds(db.doc('watchTags/'+tag).update({active:false,stoppedAt:stamp()}));

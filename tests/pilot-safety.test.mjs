@@ -27,7 +27,7 @@ el('disaster-contact-consent').checked=true;failQr=true;context.makeDisasterQr()
 failSave=true;context.makeDisasterQr();assert.equal(writes,0);assert.equal(el('disaster-name').value,'テスト');assert.match(el('disaster-qr-state').textContent,/保存できません/);failSave=false;
 context.makeDisasterQr();assert.equal(writes,1);const original=JSON.parse(saved);assert.equal(original.consentVersion,2);assert.equal(original.createdAt,clock);assert.equal(el('disaster-consent').checked,false);
 clock='2026年9月16日';el('disaster-consent').checked=true;el('disaster-contact-consent').checked=true;context.makeDisasterQr();assert.equal(JSON.parse(saved).createdAt,original.createdAt);assert.equal(JSON.parse(saved).updatedAt,clock);
-context.deleteDisasterQr();assert.ok(saved);assert.equal(el('disaster-name').value,'テスト');assert.match(el('disaster-qr-state').textContent,/削除できません/);
+await context.deleteDisasterQr();assert.ok(saved);assert.equal(el('disaster-name').value,'テスト');assert.match(el('disaster-qr-state').textContent,/削除できません/);
 saved=JSON.stringify({name:'旧QR',updatedAt:'2026年9月1日'});el('disaster-consent').checked=true;el('disaster-contact-consent').checked=true;context.makeDisasterQr();assert.equal(JSON.parse(saved).createdAt,'記録なし（旧QR）');
 console.log('✅ 災害QRは双方の同意・保存失敗・削除失敗・日付継承・旧形式を処理する');
 

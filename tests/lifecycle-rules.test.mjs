@@ -198,14 +198,14 @@ try {
   await denied('削除開始と通常書込を同batchに入れる抜け道は不可', () => {
     const batch = writeBatch(owner);
     batch.update(doc(owner, 'groups', 'home'), { deletionState: 'deleting', deletionStartedAt: serverTimestamp() });
-    batch.set(doc(owner, 'groups', 'home', 'events', 'race-write'), { uid: 'owner', text: 'late write' });
+    batch.set(doc(owner, 'groups', 'home', 'events', 'race-write'), { type: 'memo', uid: 'owner', text: 'late write' });
     return batch.commit();
   });
   await allowed('作成者が削除開始できる', () => mark(owner));
   await denied('削除マークを解除できない', () => updateDoc(doc(owner, 'groups', 'home'), { deletionState: 'active' }));
   await denied('削除中の一般家族は記録を読めない', () => getDoc(doc(family, 'groups', 'home', 'events', 'record')));
   await denied('削除中の一般家族はmember一覧を読めない', () => getDocs(collection(family, 'groups', 'home', 'members')));
-  await denied('削除中の作成者も通常の新規記録は不可', () => setDoc(doc(owner, 'groups', 'home', 'events', 'late'), { uid: 'owner', text: 'late' }));
+  await denied('削除中の作成者も通常の新規記録は不可', () => setDoc(doc(owner, 'groups', 'home', 'events', 'late'), { type: 'memo', uid: 'owner', text: 'late' }));
   await denied('削除中の本人も予定修正は不可', () => updateDoc(doc(family, 'groups', 'home', 'yotei', 'plan'), { label: 'late', updatedAt: serverTimestamp() }));
   await denied('削除中は招待を新規発行できない', () => setDoc(doc(owner, 'invites', 'LATE2222'), invite()));
   await denied('削除中もowner pointerだけを先に捨てられない', () => deleteDoc(doc(owner, 'accounts', 'owner')));

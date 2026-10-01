@@ -27,16 +27,19 @@ const code = (uid, groupId, minutes) => ({ uid, groupId, createdAt: serverTimest
 try {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
-    for (const id of ['m1', 'm2', 'p1']) await setDoc(doc(db, 'consents', id), consentFixture(Timestamp.now()));
+    for (const id of ['m1', 'm2', 'p1', 'h1']) await setDoc(doc(db, 'consents', id), consentFixture(Timestamp.now()));
     await setDoc(doc(db, 'groups', 'g1'), { createdBy: 'm1', createdAt: Timestamp.now() });
     await setDoc(doc(db, 'groups', 'g1', 'members', 'm1'), { status: 'approved' });
     await setDoc(doc(db, 'groups', 'g1', 'members', 'm2'), { status: 'approved' });
     await setDoc(doc(db, 'groups', 'g1', 'members', 'p1'), { status: 'pending' });
+    await setDoc(doc(db, 'groups', 'g1', 'members', 'h1'), { status: 'approved', role: 'honnin', mode: 'honnin' });
+    await setDoc(doc(db, 'lineStatus', 'quota'), { limit: 200, used: 12, remaining: 188, reserve: 50, checkedAt: Timestamp.now() });
     await setDoc(doc(db, 'lineLinks', 'm1'), { lineUserId: 'U1', groupId: 'g1', linkedAt: Timestamp.now() });
     await setDoc(doc(db, 'lineLinks', 'm2'), { lineUserId: 'U2', groupId: 'g1', linkedAt: Timestamp.now() });
   });
   const as = (uid) => env.authenticatedContext(uid).firestore();
-  const m1 = as('m1'), m2 = as('m2'), p1 = as('p1');
+  const m1 = as('m1'), m2 = as('m2'), p1 = as('p1'), h1 = as('h1');
+  const ev = (uid, extra) => ({ uid, date: '2026-10-01', at: serverTimestamp(), name: 'テスト', ...extra });
 
   await check('1. 場所とLINEで知らせる日時つきの予定を作成できる',
     setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y1'), yotei('m1', { place: '上田市サントミューゼ', notifyAt: inMin(60) })), true);
@@ -70,6 +73,30 @@ try {
     setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y5'), { category: 'デイサービス', updatedAt: serverTimestamp() }, { merge: true }), true);
   await check('16. 他人の予定の分類は変更できない',
     setDoc(doc(m2, 'groups', 'g1', 'yotei', 'y5'), { category: '買い物', updatedAt: serverTimestamp() }, { merge: true }), false);
+  /* 記録の種類の制限(2026-10-01) */
+  await check('17. アプリの記録(挨拶)は作れる',
+    setDoc(doc(h1, 'groups', 'g1', 'events', 'e1'), ev('h1', { type: 'aisatsu', text: 'おはよう', slot: 'asa' })), true);
+  await check('18. 決まっていない種類の記録は作れない',
+    setDoc(doc(m1, 'groups', 'g1', 'events', 'e2'), ev('m1', { type: 'anything', text: 'x' })), false);
+  await check('19. 種類のない記録は作れない',
+    setDoc(doc(m1, 'groups', 'g1', 'events', 'e3'), ev('m1', { text: 'x' })), false);
+  await check('20. 家族が「LINEで連携した」記録を偽って作れない',
+    setDoc(doc(m1, 'groups', 'g1', 'events', 'e4'), ev('m1', { type: 'line-link-log', action: 'linked', via: 'code' })), false);
+  await check('21. 家族が「LINEで解除した」記録を偽って作れない',
+    setDoc(doc(m1, 'groups', 'g1', 'events', 'e5'), ev('m1', { type: 'line-link-log', action: 'unlinked', via: 'line' })), false);
+  await check('22. アプリから解除した記録は作れる',
+    setDoc(doc(m1, 'groups', 'g1', 'events', 'e6'), ev('m1', { type: 'line-link-log', action: 'unlinked', via: 'app' })), true);
+  await check('23. 「ひと声のきっかけ」の了解は、ご本人なら書ける',
+    setDoc(doc(h1, 'groups', 'g1', 'events', 'e7'), ev('h1', { type: 'hitokoe-consent', answer: 'yes', requestId: 'r1' })), true);
+  await check('24. 「ひと声のきっかけ」の了解を家族が代わりに書くことはできない',
+    setDoc(doc(m1, 'groups', 'g1', 'events', 'e8'), ev('m1', { type: 'hitokoe-consent', answer: 'yes', requestId: 'r1' })), false);
+  await check('25. 家族は「ひと声のきっかけ」の設定と「連絡しました」を書ける',
+    setDoc(doc(m1, 'groups', 'g1', 'events', 'e9'), ev('m1', { type: 'hitokoe-config', enabled: true, hour: 11, requestId: 'r1' }))
+      .then(() => setDoc(doc(m2, 'groups', 'g1', 'events', 'e10'), ev('m2', { type: 'hitokoe-contacted', target: 'h1' }))), true);
+  await check('26. 今月のLINEの残り通数は、同意済みの利用者が見られる',
+    getDoc(doc(m1, 'lineStatus', 'quota')), true);
+  await check('27. 残り通数を画面から書き換えることはできない',
+    setDoc(doc(m1, 'lineStatus', 'quota'), { remaining: 9999 }), false);
 
   console.log('\n===== 検査結果 =====');
   for (const [mark, name] of results) console.log(mark, name);
