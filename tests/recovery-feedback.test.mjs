@@ -35,6 +35,10 @@ Object.assign(c,{auth:{currentUser:{uid:'user',isAnonymous:true}},recoverySwitch
 vm.runInContext(ui.slice(ui.indexOf('async function openRecovery('),ui.indexOf('function closeRecovery(')),c);
 await c.openRecovery(true);
 assert.equal(d.getElementById('recovery-login').hidden,false);
+// 復旧(ログイン)のときは、保存済みのパスワードを入れる欄・見出し
+assert.equal(password.getAttribute('autocomplete'),'current-password');assert.equal(password.value,'');
+assert.equal(d.getElementById('recovery-title').textContent,'以前のアカウントに戻す');
+assert.equal(d.getElementById('recovery-password-label').textContent,'登録したパスワード');
 assert.equal(d.getElementById('recovery-register').hidden,true);
 assert.equal(d.getElementById('recovery-switch-warning').hidden,false);
 const consent=d.getElementById('recovery-leave-confirm');
@@ -46,6 +50,16 @@ await c.runRecoveryAction('login');
 assert.equal(passed.leaveUnconfigured.uid,'user');assert.equal(passed.leaveUnconfigured.groupId,'group');
 assert.equal(passed.leaveUnconfigured.noRecordsToKeep,true);assert.equal(password.value,'existing-password');
 await c.openRecovery();assert.equal(d.getElementById('recovery-login').hidden,true);
+// 設定(登録)のときは、新しいパスワードの欄。前に入れた値は残さない
+assert.equal(password.getAttribute('autocomplete'),'new-password');assert.equal(password.value,'');
+assert.match(d.getElementById('recovery-title').textContent,/復旧の設定/);
+assert.match(d.getElementById('recovery-password-label').textContent,/新しいパスワード（12文字以上/);
+assert.equal(d.getElementById('recovery-register').hidden,false);
+// すでにパスワードで登録済みの人が設定を開いたときは、登録したパスワードを入れる欄
+c.auth.currentUser={uid:'user',isAnonymous:false,email:'a@example.com',providerData:[{providerId:'password'}]};
+await c.openRecovery();
+assert.equal(password.getAttribute('autocomplete'),'current-password');
+assert.equal(d.getElementById('recovery-password-label').textContent,'登録したパスワード');
 assert.equal(d.getElementById('recovery-switch-warning').hidden,true);
 dom.window.close();
-console.log('recovery feedback: visible progress/results, preserved retry input, success clearing and duplicate-submit guard passed');
+console.log('recovery feedback: register/login autocomplete and titles, visible progress/results, preserved retry input, success clearing and duplicate-submit guard passed');

@@ -68,4 +68,28 @@ for(const mode of modes){
  const saving=f.choose('konly');await ready;f.c.showConsentModeChoice();release();await saving;
  assert.equal(f.active(),'entry','同意変更後の古い初期設定応答で三択を上書きしない');assert.deepEqual(f.opened,[]);f.close();
 }
-console.log('consent routing: actual boot→choice→consent→setup→home, 9 switches, stale settings, restart, reset and cross-tab withdrawal passed');
+// 作り直し第2回: 同意は2段。第1段は3つのお約束（大きな字・本人は読み上げ）、第2段はこれまでの5つの確認。
+for(const mode of modes){
+ const f=fixture(null,mode);await f.boot();
+ const spoken=[];f.c.SpeechSynthesisUtterance=function(t){this.text=t;};f.c.speechSynthesis={cancel(){},speak:u=>spoken.push(u.text)};
+ f.c.pickMode(mode);const kind=mode==='konly'?'b':'a',d=f.c.document;
+ assert.equal(f.active(),'consent-'+kind);
+ assert.equal(d.getElementById('consent-stage1-'+kind).hidden,false,'はじめは第1段');
+ assert.equal(d.getElementById('consent-stage2-'+kind).hidden,true,'5つの確認は「進む」まで隠す');
+ assert.equal(d.querySelectorAll('#consent-promise-'+kind+' li').length,3);
+ assert.match(d.getElementById('consent-stage1-'+kind).textContent,/カメラも位置情報も使いません[\s\S]*参加を認めた家族だけ[\s\S]*119番の代わりではありません。いやになったら、いつでもやめられます/);
+ assert.equal(spoken.length,mode==='honnin'?1:0,'本人の画面だけ自動で読み上げ');
+ if(mode==='honnin')assert.match(spoken[0],/3つのお約束/);
+ assert.equal(d.getElementById('consent-paper-'+kind).hidden,mode==='honnin','家族が設定するときは紙の手順書の読み聞かせを案内');
+ f.c.consentGoStage2(kind);
+ assert.equal(d.getElementById('consent-stage1-'+kind).hidden,true);assert.equal(d.getElementById('consent-stage2-'+kind).hidden,false);
+ assert.equal(d.querySelectorAll('#consent-stage2-'+kind+' input[data-consent]').length,5,'第2段の5つの確認は変えない');
+ assert.ok(d.getElementById('consent-stage2-'+kind).contains(d.getElementById('consent-submit-'+kind)));
+ f.c.cancelConsent();assert.equal(f.active(),'entry');
+ f.c.pickMode(mode);assert.equal(d.getElementById('consent-stage1-'+kind).hidden,false,'選び直すと第1段から');
+ f.c.cancelConsent();assert.equal(f.active(),'entry','「やめて入口へ戻る」');
+ f.c.showConsentFlow(mode,async()=>{},'同意を確認できません。');
+ assert.equal(d.getElementById('consent-stage2-'+kind).hidden,false,'エラーで開き直すときは第2段から');
+ f.close();
+}
+console.log('consent routing: 2-stage consent, actual boot→choice→consent→setup→home, 9 switches, stale settings, restart, reset and cross-tab withdrawal passed');
