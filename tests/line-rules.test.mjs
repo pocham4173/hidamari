@@ -25,6 +25,8 @@ const yotei = (uid, extra) => ({
 const code = (uid, groupId, minutes) => ({ uid, groupId, createdAt: serverTimestamp(), expiresAt: inMin(minutes) });
 
 try {
+  // 同じエミュレーターで先に動く検査(alerts など)の残りに左右されないよう、最初に空にする(他の検査と同じ)
+  await env.clearFirestore();
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     for (const id of ['m1', 'm2', 'p1', 'h1']) await setDoc(doc(db, 'consents', id), consentFixture(Timestamp.now()));
