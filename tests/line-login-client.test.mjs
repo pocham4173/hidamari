@@ -85,6 +85,34 @@ function fakeServer() {
   const broken = { getItem: () => null, setItem: () => { throw new Error('quota'); }, removeItem: () => {} };
   const noStore = core.create({ baseUrl: BASE, fetch: server.fetch, storage: broken, crypto: webcrypto, getAppCheckToken: async () => '' });
   await assert.rejects(noStore.startLogin({ persist: true }), { code: 'storage' });
+  // 取り消しの結果を区別し、確定するまで手続きを残す
+  {
+    const st = memoryStorage(), srv = fakeServer();
+    const c = core.create({ baseUrl: BASE, fetch: srv.fetch, storage: st, crypto: webcrypto, getAppCheckToken: async () => '' });
+    srv.reply.start = () => ({ status: 200, data: { tx: TX, authorizeUrl: 'https://access.line.me/x', expiresAt: Date.now() + 600000 } });
+    await c.startLogin({ persist: true });
+    for (const [reply, result, kept] of [
+      [{ status: 200, data: { cancelled: false, status: 'retry' } }, 'retry', true],
+      [{ status: 503, data: { error: 'server' } }, 'retry', true],
+      [{ status: 200, data: { cancelled: false, status: 'done' } }, 'done', false],
+    ]) {
+      srv.reply.cancel = () => reply;
+      assert.equal((await c.cancel()).result, result);
+      assert.equal(!!c.pending(), kept, result);
+      if (!kept) await c.startLogin({ persist: true });
+    }
+    srv.reply.cancel = () => ({ status: 200, data: { cancelled: false, status: 'expired' } });
+    assert.equal((await c.cancel()).result, 'expired'); assert.equal(c.pending(), null);
+    await c.startLogin({ persist: true });
+    srv.reply.cancel = () => ({ status: 404, data: { error: 'not-found' } });
+    assert.equal((await c.cancel()).result, 'expired');
+    await c.startLogin({ persist: true });
+    const off = core.create({ baseUrl: BASE, fetch: async () => { throw new Error('x'); }, storage: st, crypto: webcrypto, getAppCheckToken: async () => '' });
+    assert.equal((await off.cancel()).result, 'unknown'); assert.ok(off.pending(), '通信できないときは手続きを残す');
+    srv.reply.cancel = () => ({ status: 200, data: { cancelled: true, status: 'cancelled' } });
+    assert.equal((await c.cancel()).result, 'cancelled'); assert.equal(c.pending(), null);
+    assert.equal((await c.cancel()).result, 'none');
+  }
   for (const code of ['wrong-code', 'not-linked', 'conflict', 'device-in-use', 'xxx']) assert.match(core.message({ code }), /[ぁ-ん]/);
   assert.match(core.message({ code: 'not-linked' }), /新しい登録はしていません/);
   console.log('line-login.js: 設定・戻り先・合言葉・App Check・一回限り・番号・期限・保存 passed');
@@ -224,15 +252,72 @@ for (const [label, start] of [['未認証から', null], ['一時匿名から', 
   assert.match(vm.runInContext('lineLoginNotice', a.c), /切り替えを中止しました/, label);
   a.dom.window.close();
 }
-// 2-5c. 取り消す前に完了していたら、取り消したとは表示しない
+// 2-5c. 取り消し: 確定までは閉じない・手続きを残す・結果ごとに表示を分ける・やり直せる
 {
-  const a = app({ user: { uid: 'anon', getIdToken: async () => 'x' }, storage: { [core.KEY]: pendingLogin() } });
-  a.state.server.reply.cancel = () => ({ status: 200, data: { cancelled: false, status: 'done' } });
-  vm.runInContext("lineAuthFlow={purpose:'login',done:false}", a.c);
-  await a.c.cancelLineAuth();
-  assert.ok(a.doc.getElementById('line-auth-modal').classList.contains('show'));
-  assert.match(a.doc.getElementById('line-auth-body').textContent, /完了していました/);
-  a.dom.window.close();
+  const open = (a) => { vm.runInContext("lineAuthFlow={purpose:'login',done:false}", a.c); a.doc.getElementById('line-auth-modal').classList.add('show'); };
+  const body = (a) => a.doc.getElementById('line-auth-body').textContent;
+  const shown = (a) => a.doc.getElementById('line-auth-modal').classList.contains('show');
+  const pending = (a) => a.w.localStorage.getItem(core.KEY);
+  // 競合(retry) → 閉じない・手続きを残す・「確認できませんでした」・やり直しで確定
+  {
+    const a = app({ user: { uid: 'anon', getIdToken: async () => 'x' }, storage: { [core.KEY]: pendingLogin() } });
+    let n = 0;
+    a.state.server.reply.cancel = () => (++n === 1 ? { status: 200, data: { cancelled: false, status: 'retry' } } : { status: 200, data: { cancelled: true, status: 'cancelled' } });
+    open(a);
+    await a.c.cancelLineAuth();
+    assert.ok(shown(a), 'retry: 画面を閉じない');
+    assert.ok(pending(a), 'retry: やり直しに必要な手続きを残す');
+    assert.match(body(a), /取り消しを確認できませんでした/);
+    assert.ok(!/取り消しました/.test(body(a)));
+    const again = [...a.doc.querySelectorAll('#line-auth-body button')].find((b) => /もう一度取り消す/.test(b.textContent));
+    assert.ok(again && [...a.doc.querySelectorAll('#line-auth-body button')].some((b) => /状態を確かめる/.test(b.textContent)));
+    await a.c.cancelLineAuth();
+    assert.equal(shown(a), false, '確定したら閉じる');
+    assert.equal(pending(a), null, '確定したら手続きを消す');
+    a.dom.window.close();
+  }
+  // 通信できず結果不明 → 閉じない・手続きを残す・状態を確かめられる
+  {
+    const a = app({ user: { uid: 'anon', getIdToken: async () => 'x' }, storage: { [core.KEY]: pendingLogin() } });
+    a.c.fetch = async () => { throw new Error('offline'); };
+    vm.runInContext('lineLoginSvc=null', a.c);
+    open(a);
+    await a.c.cancelLineAuth();
+    assert.ok(shown(a), 'unknown: 画面を閉じない');
+    assert.ok(pending(a), 'unknown: 手続きを残す');
+    assert.match(body(a), /取り消しを確認できませんでした/);
+    // 通信が戻ってから状態を確かめる → まだ有効なら、そう表示
+    a.c.fetch = a.state.server.fetch; vm.runInContext('lineLoginSvc=null', a.c);
+    a.state.server.reply.status = () => ({ status: 200, data: { purpose: 'login', status: 'ready' } });
+    await a.c.checkLineAuthState(vm.runInContext('lineAuthFlow', a.c));
+    assert.match(a.doc.getElementById('line-auth-state').textContent, /まだ有効です/);
+    a.state.server.reply.status = () => ({ status: 200, data: { purpose: 'login', status: 'cancelled' } });
+    await a.c.checkLineAuthState(vm.runInContext('lineAuthFlow', a.c));
+    assert.equal(shown(a), false, '取り消し済みと分かったら閉じる');
+    a.dom.window.close();
+  }
+  // 完了済み → 取り消せたように見せない
+  for (const purpose of ['login', 'link']) {
+    const a = app({ user: { uid: 'anon', getIdToken: async () => 'x' }, storage: { [core.KEY]: pendingLogin({ purpose, uid: 'anon' }) } });
+    a.state.server.reply.cancel = () => ({ status: 200, data: { cancelled: false, status: 'done' } });
+    vm.runInContext(`lineAuthFlow={purpose:'${purpose}',done:false}`, a.c);
+    await a.c.cancelLineAuth();
+    assert.ok(shown(a));
+    assert.match(body(a), /完了していました/);
+    assert.match(body(a), /取り消しはされていません/);
+    assert.equal(pending(a), null);
+    a.dom.window.close();
+  }
+  // 時間切れ・すでに終わっていた → その旨を表示
+  {
+    const a = app({ user: { uid: 'anon', getIdToken: async () => 'x' }, storage: { [core.KEY]: pendingLogin() } });
+    a.state.server.reply.cancel = () => ({ status: 200, data: { cancelled: false, status: 'expired' } });
+    open(a);
+    await a.c.cancelLineAuth();
+    assert.match(body(a), /時間切れなどで/);
+    assert.equal(pending(a), null);
+    a.dom.window.close();
+  }
 }
 // 2-6. 記録のない一時的な匿名アカウントの画面からは、つないだアカウントに入れる(そのUIDは使わない)
 {

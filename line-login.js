@@ -39,6 +39,7 @@
       'storage':'この画面では一時的な保存ができないため、LINEで続けられません。Safariの「プライベート」をやめるか、ホーム画面のまいにこから開いてください。',
       'device-in-use':'この画面は、すでに別のアカウントで使っています。記録が混ざらないよう、LINEのアカウントには切り替えていません。いつもの画面（ホーム画面のまいにこなど）から開いてください。',
       'setup-pending':'この画面で家庭の作成・参加が途中です。切り替えると途中の手続きがわからなくなるため、LINEのアカウントには切り替えていません。',
+      'cancel-unconfirmed':'取り消しを確認できませんでした。手続きはまだ有効かもしれません。「もう一度取り消す」を押すか、「状態を確かめる」で確認してください。',
       'session-changed':'手続きの途中で、この画面のログインや家庭が変わったため、切り替えを中止しました。いま開いているアカウントと記録はそのままです。必要なら、もう一度「LINEで続ける」を押してください。',
       'deletion-pending':'この画面で削除の確認が残っています。先に削除画面で確認してください。',
       'bad-response':'LINEでログインの応答を確認できませんでした。記録や設定は変わっていません。',
@@ -155,11 +156,22 @@
         if(!uid)throw problem('bad-response');
         return {customToken:r.customToken,uid,returnHash:p.returnHash||''};
       },
+      /* 取り消し。結果は次のどれか(手続きの情報は、取り消しが確定した・終わっていたと分かったときだけ消す)
+         cancelled: 取り消しが確定 / done: 取り消す前に完了していた / expired: 時間切れ・すでに終わっていた
+         retry: 競合で確認できなかった(やり直せる) / unknown: 通信できず結果が分からない(やり直せる) / none: 手続きがない */
       async cancel(){
-        const p=pending();if(!p)return;
+        const p=pending();if(!p)return {result:'none'};
+        let r;
+        try{r=await call('cancel',{tx:p.tx,secret:p.secret});}
+        catch(error){
+          if(error.code==='not-found'){clear(p.tx);return {result:'expired'};}
+          return {result:error.code==='network'?'unknown':'retry'};
+        }
+        if(r.cancelled===true){clear(p.tx);return {result:'cancelled'};}
+        if(r.status==='done'){clear(p.tx);return {result:'done',purpose:p.purpose};}
+        if(r.status==='retry')return {result:'retry'};
         clear(p.tx);
-        // 取り消しが確定したかどうか(すでに完了していた等)をサーバーの答えで返す。通信できなければ null(手続きは10分で無効になる)
-        try{return await call('cancel',{tx:p.tx,secret:p.secret});}catch(e){return null;}
+        return {result:'expired',status:typeof r.status==='string'?r.status:''};
       },
       unlink:()=>call('unlink',{},{idToken:true})
     };

@@ -167,14 +167,61 @@ function closeLineAuth(){
   document.getElementById('line-auth-modal').classList.remove('show');
   if(flow&&flow.purpose==='link'&&typeof renderLineLoginSettings==='function'){renderLineLoginSettings('settings-line-login-area');renderLineLoginSettings('person-line-login-area');}
 }
+/* 取り消しは結果が確定するまで画面を閉じない。確認できなければ、やり直し・状態の確認ができるようにする */
 async function cancelLineAuth(){
   const flow=lineAuthFlow;
-  closeLineAuth();
-  if(flow&&!flow.done){
-    let r=null;try{r=await lineLoginService().cancel();}catch(e){}
-    if(r&&!r.cancelled&&r.status==='done')showLineNotice(flow.purpose==='link'
-      ?'取り消す前に、LINEとつなぐ手続きが完了していました。つながないときは、設定の「LINEでログイン」から解除してください。'
-      :'取り消す前に、LINEでのログインが完了していました。心当たりがない場合は、設定の「LINEでログイン」を解除してください。');
+  if(!flow||flow.done){closeLineAuth();return;}
+  if(flow.cancelling)return;
+  flow.cancelling=true;stopLineAuthPoll();
+  document.querySelectorAll('#line-auth-body button').forEach(b=>b.disabled=true);
+  lineAuthState('取り消しています…');
+  let outcome={result:'unknown'};
+  try{outcome=await lineLoginService().cancel();}catch(e){outcome={result:'unknown'};}
+  flow.cancelling=false;
+  if(lineAuthFlow!==flow)return;
+  renderLineCancelOutcome(flow,outcome);
+}
+function renderLineCancelOutcome(flow,outcome){
+  const box=document.getElementById('line-auth-body');
+  const r=outcome&&outcome.result;
+  if(r==='cancelled'||r==='none'){
+    flow.done=true;closeLineAuth();
+    return;
+  }
+  box.replaceChildren();
+  const add=(text,cls)=>box.appendChild(lineEl('p',cls||'note',text));
+  const btn=(label,cls,fn)=>{const b=lineEl('button',cls,label);b.type='button';b.addEventListener('click',fn);box.appendChild(b);return b;};
+  if(r==='done'){
+    flow.done=true;
+    add(flow.purpose==='link'
+      ?'取り消す前に、LINEとつなぐ手続きが完了していました。取り消しはされていません。つながないときは、設定の「LINEでログイン」から解除してください。'
+      :'取り消す前に、LINEでのログインが完了していました。取り消しはされていません。心当たりがない場合は、設定の「LINEでログイン」を解除してください。','note err');
+  }else if(r==='expired'){
+    flow.done=true;
+    add('この手続きは、時間切れなどですでに使えなくなっています。記録や設定は変わっていません。');
+  }else{
+    // retry(競合)・unknown(通信できず結果不明): 手続きの情報は残してあるので、やり直せる
+    add(MainicoLineLogin.message({code:'cancel-unconfirmed'}),'note err');
+    btn('もう一度取り消す','set-btn warn',cancelLineAuth);
+    btn('状態を確かめる','set-btn',()=>checkLineAuthState(flow));
+  }
+  const state=lineEl('div','save-state');state.id='line-auth-state';state.setAttribute('aria-live','polite');box.appendChild(state);
+  document.getElementById('line-auth-modal').classList.add('show');
+}
+async function checkLineAuthState(flow){
+  if(lineAuthFlow!==flow)return;
+  lineAuthState('確かめています…');
+  try{
+    const s=await lineLoginService().status();
+    if(lineAuthFlow!==flow)return;
+    if(s.status==='cancelled')renderLineCancelOutcome(flow,{result:'cancelled'});
+    else if(s.status==='done')renderLineCancelOutcome(flow,{result:'done'});
+    else if(s.status==='waiting'||s.status==='ready')lineAuthState('手続きはまだ有効です。取り消すときは「もう一度取り消す」を押してください。',true);
+    else renderLineCancelOutcome(flow,{result:'expired'});
+  }catch(error){
+    if(lineAuthFlow!==flow)return;
+    if(!lineLoginService().pending())renderLineCancelOutcome(flow,{result:'expired'});
+    else lineAuthState(error.code==='network'?'通信できませんでした。電波の状態を確認して、もう一度お試しください。':MainicoLineLogin.message(error),true);
   }
 }
 function lineAuthState(text,error){

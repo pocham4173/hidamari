@@ -765,17 +765,32 @@ async function lineCallbackCancel(request, env) {
   if (!TX_RE.test(tx) || !CODE6_RE.test(code)) throw new AuthProblem('bad-request');
   const fs = new Firestore(env);
   const t0 = await fs.get('lineAuthTx/' + tx);
-  const gone = () => authPage(409, 'LINEでの確認', ['この手続きは、すでに終わっているか取り消されています。まいにこの記録や設定は変わっていません。']);
-  if (!t0 || txState(t0) !== 'ready') return gone();
-  let t;
-  try { t = await checkConfirmCode(fs, t0, code); } catch (e) { if (e instanceof AuthProblem) return gone(); throw e; }
-  const result = await cancelTx(fs, t);
-  if (result === 'done') {
-    return authPage(409, 'LINEでの確認', [t.fields.purpose === 'link'
-      ? '取り消す前に、つなぐ手続きが完了していました。ご自身でつないでいない場合は、まいにこの設定「LINEでログイン」から解除してください。'
-      : '取り消す前に、この番号でのログインが完了していました。心当たりがない場合は、まいにこの設定「LINEでログイン」の解除と、復旧用パスワードの変更をしてください。']);
+  // 状態ごとに実際のことを表示する(完了済みなのに「変わっていません」とは言わない)
+  const page = (state, purpose) => {
+    if (state === 'done') {
+      return authPage(409, 'LINEでの確認', [purpose === 'link'
+        ? '取り消す前に、つなぐ手続きが完了していました。取り消しはされていません。ご自身でつないでいない場合は、まいにこの設定「LINEでログイン」から解除してください。'
+        : '取り消す前に、この番号でのログインが完了していました。取り消しはされていません。心当たりがない場合は、まいにこの設定「LINEでログイン」の解除と、復旧用パスワードの変更をしてください。']);
+    }
+    if (state === 'cancelled') return authPage(200, 'LINEでの確認', ['この手続きは、すでに取り消されています。まいにこの記録や設定は変わっていません。']);
+    if (state === 'retry') return authPage(409, 'LINEでの確認', ['取り消しを確認できませんでした。少し待ってから、もう一度「取り消す」を押してください。']);
+    return authPage(410, 'LINEでの確認', ['この手続きは、時間切れなどですでに使えなくなっています。まいにこの記録や設定は変わっていません。']);
+  };
+  if (!t0) return page('expired');
+  if (txState(t0) !== 'ready') {
+    // 終わった手続きの状態は、番号が合うときだけ伝える(試行回数は使わない)
+    if (!safeEqual(t0.fields.codeHash, await sha256Hex(tx + '|' + code))) return page('expired');
+    return page(txState(t0), t0.fields.purpose);
   }
-  if (result !== 'cancelled') return gone();
+  let t;
+  try { t = await checkConfirmCode(fs, t0, code); }
+  catch (e) {
+    if (!(e instanceof AuthProblem)) throw e;
+    if (e.code === 'retry') return page('retry');
+    return page('expired');
+  }
+  const result = await cancelTx(fs, t);
+  if (result !== 'cancelled') return page(result === 'gone' ? 'expired' : result, t.fields.purpose);
   return authPage(200, 'LINEでの確認', [t.fields.purpose === 'link'
     ? '取り消しました。このLINEは、まいにこにつながっていません。まいにこの記録や設定は変わっていません。'
     : '取り消しました。この番号では、まいにこに入れません。まいにこの記録や設定は変わっていません。']);

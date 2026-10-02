@@ -601,6 +601,27 @@ const callbackCancel = async (tx, c) => {
   assert.equal((await api('exchange', { tx: r.tx, secret: r.secret, code: r.code }, acH())).status, 200);
   const html = await (await callbackCancel(r.tx, r.code)).text();
   assert.ok(!/取り消しました/.test(html), html);
+  assert.match(html, /完了していました/);
+  assert.match(html, /取り消しはされていません/);
+  assert.ok(!/記録や設定は変わっていません/.test(html), '完了済みなのに「変わっていません」とは表示しない');
+  // 番号が違えば、終わった手続きの状態は伝えない
+  assert.match(await (await callbackCancel(r.tx, r.code === '000000' ? '111111' : '000000')).text(), /すでに使えなくなっています/);
+}
+{
+  // つなぐ手続きの完了後に戻り先ページで取り消し
+  const { data, secret } = await begin('link', authH('owner'));
+  const cb = await lineLogin(data.authorizeUrl, LINE_F);
+  assert.equal((await api('confirm', { tx: data.tx, secret, code: cb.code }, authH('owner'))).status, 200);
+  const html = await (await callbackCancel(data.tx, cb.code)).text();
+  assert.match(html, /つなぐ手続きが完了していました/);
+  assert.ok(!/記録や設定は変わっていません/.test(html));
+  assert.equal((await api('unlink', {}, authH('owner'))).status, 200);
+}
+{
+  // すでに取り消した手続きをもう一度取り消す → 「すでに取り消されています」
+  const r = await loginReady();
+  assert.match(await (await callbackCancel(r.tx, r.code)).text(), /取り消しました/);
+  assert.match(await (await callbackCancel(r.tx, r.code)).text(), /すでに取り消されています/);
 }
 /* R3. 失効・停止の確認(auth_time で判定・解除でも省かない) */
 {
