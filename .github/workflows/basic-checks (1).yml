@@ -1,0 +1,92 @@
+# まいにこ 基本検査
+#
+# Pull Request ごとに、アプリが基本的なところで壊れていないかを自動で確かめます。
+# PR の画面で「緑 = 基本検査OK」「赤 = 修正が必要」として結果を確認できます。
+#
+# この検査は、実機での画面確認や Firestore を使った通し確認の代わりにはなりません。
+
+name: 基本検査
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+# 読み取りのみを許可します。書き込みや Firebase の操作は行いません。
+permissions:
+  contents: read
+
+jobs:
+  basic-checks:
+    name: 基本検査
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v5
+
+      - name: Node.js のバージョンを表示
+        run: node --version
+
+      - name: 基本検査を実行
+        run: node .github/scripts/check-basics.mjs
+
+      - name: LINE連携・送信失敗・同意取り消しの検査
+        run: node tests/line-worker.test.mjs
+
+      - name: ひと声のきっかけの検査
+        run: |
+          node tests/hitokoe.test.mjs
+          node tests/app-dialog.test.mjs
+          node tests/invite-qr.test.mjs
+          node tests/family-guide.test.mjs
+
+      - name: 家族ホーム・通信・伝言の回帰検査
+        run: node tests/home-reliability.test.mjs
+
+      - name: 実証準備の伝言履歴と災害QRの検査
+        run: node tests/pilot-safety.test.mjs
+
+      - name: 端末復旧・共有削除・画面接続の検査
+        run: |
+          node tests/account-recovery.test.mjs
+          node tests/household-deletion.test.mjs
+          node tests/household-ui.test.mjs
+          node tests/household-setup.test.mjs
+          node tests/pending-join.test.mjs
+          node tests/exit-safety.test.mjs
+          node tests/entry-mode.test.mjs
+          node tests/handoff-summary.test.mjs
+          node tests/person-button-feedback.test.mjs
+          node tests/family-connection.test.mjs
+          node tests/solo-integration.test.mjs
+          node tests/communication-flow.test.mjs
+          node tests/communication-availability.test.mjs
+          node tests/conversation-discovery.test.mjs
+          node tests/person-conversation-access.test.mjs
+          node tests/conversation-date.test.mjs
+          node tests/person-save-context.test.mjs
+          node tests/person-record-feedback.test.mjs
+          node tests/person-tasks.test.mjs
+          node tests/notebook-integration.test.mjs
+          node tests/account-deletion.test.mjs
+          node tests/legacy-data-cleanup.test.mjs
+
+      - name: 端末内お薬手帳の保存・隔離・容量を検査
+        run: |
+          npm install --no-save --package-lock=false fake-indexeddb@6.2.4 jsdom@26.1.0
+          node --test tests/medicine-notebook.test.mjs
+          node tests/home-conversation-dom.test.mjs
+          node tests/person-speech.test.mjs
+          node tests/simple-navigation.test.mjs
+          node tests/schedule-link.test.mjs
+          node tests/calendar-navigation.test.mjs
+          node tests/recovery-feedback.test.mjs
+          node tests/family-only-records.test.mjs
+          node tests/consent.test.mjs
+          node tests/consent-routing.test.mjs
+          node tests/person-ui.test.mjs
+          node tests/owner-transfer.test.mjs
+          node tests/ueda-centers.test.mjs
