@@ -23,7 +23,10 @@
       const ref=db.collection('consents').doc(id);
       const data={version:VERSION,mode,privacyAccepted:true,sensitiveAccepted:true,sharingAccepted:true,subjectBasis:mode==='honnin'?'self':'explained-and-agreed'};
       // オフラインの保留書込を残さず、接続とアカウントを確認して確定する。
-      // トランザクションはサーバーで確定したときだけ成功するため、前後の読み直しはしない(2026-10-01: 開くまでの時間を短くする)。
+      // 先にサーバーから1回読む。オフライン(SDKの通信停止・実際の通信遮断)ならここで失敗し、同意完了とは表示しない。
+      // トランザクションだけでは、SDKの通信停止中でも確定してしまうことがある(2026-10-02: 検査で確認)。
+      // 読み直しは前の1回だけにして、開くまでの時間は短いままにする。
+      await ref.get({source:'server'});current(id);
       await db.runTransaction(async tx=>{await tx.get(ref);current(id);tx.set(ref,{...data,acceptedAt:serverTimestamp()});});
       current(id);
       return {uid:id,valid:true,value:{...data,acceptedAt:new Date()}};
