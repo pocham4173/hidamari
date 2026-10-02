@@ -37,7 +37,7 @@ service cloud.firestore {
       allow delete: if signedIn() && request.auth.uid == uid;
     }
 
-    // 管理者は作成者アカウントだけ。画面の role や自己申告は権限に使わない。
+    // 管理者は groups.createdBy のアカウントだけ(作成者。管理者の交代で受け取った人に移る)。画面の role や自己申告は権限に使わない。
     function isOwner(groupId) {
       return signedIn()
         && exists(/databases/$(db)/documents/groups/$(groupId))
@@ -90,6 +90,64 @@ service cloud.firestore {
           .data.get('status', 'approved') == 'approved';
     }
 
+    /* ===== 管理者の交代 (2026-10-02) =====
+       今の管理者が依頼(pendingOwner/pendingOwnerAt)し、引継先が自分で受け取る2段階。
+       依頼は24時間有効。受け取るときは管理者の入れ替えと依頼の削除を1回で確定する。 */
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+    function startDeletion(groupId) {
+      return isOwner(groupId)
+        && changed().hasOnly(['deletionState', 'deletionStartedAt'])
+        && request.resource.data.deletionState == 'deleting'
+        && request.resource.data.deletionStartedAt == request.time;
+    }
+    // 引継先になれるのは、承認済みの「家族」(本人の画面で使う人は除く)
+    function transferTarget(groupId, target) {
+      return target is string && target != request.auth.uid
+        && exists(/databases/$(db)/documents/groups/$(groupId)/members/$(target))
+        && get(/databases/$(db)/documents/groups/$(groupId)/members/$(target)).data.get('status', 'approved') == 'approved'
+        && get(/databases/$(db)/documents/groups/$(groupId)/members/$(target)).data.get('role', '') == 'kazoku'
+        && get(/databases/$(db)/documents/groups/$(groupId)/members/$(target)).data.get('mode', 'kazoku') != 'honnin';
+    }
+    function requestTransfer(groupId) {
+      return isOwner(groupId) && hasConsent()
+        && changed().hasOnly(['pendingOwner', 'pendingOwnerAt'])
+        && request.resource.data.keys().hasAll(['pendingOwner', 'pendingOwnerAt'])
+        && request.resource.data.pendingOwnerAt == request.time
+        && transferTarget(groupId, request.resource.data.pendingOwner);
+    }
+    // 取り消し(今の管理者)・断る(引継先)。期限切れの依頼の片付けも同じ。
+    function clearTransfer(groupId) {
+      return 'pendingOwner' in resource.data
+        && (isOwner(groupId) || resource.data.pendingOwner == request.auth.uid)
+        && changed().hasOnly(['pendingOwner', 'pendingOwnerAt'])
+        && !('pendingOwner' in request.resource.data)
+        && !('pendingOwnerAt' in request.resource.data);
+    }
+    // 受け取り: 引継先本人が、復旧設定(メール確認済み)のパスワードで5分以内に入れ直してから。
+    function acceptTransfer(groupId) {
+      return 'pendingOwner' in resource.data
+        && resource.data.pendingOwner == request.auth.uid
+        && resource.data.pendingOwnerAt is timestamp
+        && request.time < resource.data.pendingOwnerAt + duration.value(24, 'h')
+        && changed().hasOnly(['createdBy', 'pendingOwner', 'pendingOwnerAt'])
+        && request.resource.data.createdBy == request.auth.uid
+        && !('pendingOwner' in request.resource.data)
+        && !('pendingOwnerAt' in request.resource.data)
+        && isApproved(groupId) && hasConsent()
+        && transferTargetSelf(groupId)
+        && exists(/databases/$(db)/documents/accounts/$(request.auth.uid))
+        && get(/databases/$(db)/documents/accounts/$(request.auth.uid)).data.groupId == groupId
+        && request.auth.token.get('email_verified', false) == true
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.time < timestamp.value(request.auth.token.auth_time * 1000) + duration.value(5, 'm');
+    }
+    function transferTargetSelf(groupId) {
+      return get(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.get('role', '') == 'kazoku'
+        && get(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.get('mode', 'kazoku') != 'honnin';
+    }
+
     match /groups/{groupId} {
       allow create: if usableAccount() && hasConsent()
         && request.resource.data.keys().hasOnly(['createdBy', 'createdAt'])
@@ -104,12 +162,13 @@ service cloud.firestore {
         !exists(/databases/$(db)/documents/groups/$(groupId))
         || isOwner(groupId) || isApproved(groupId));
       allow list: if signedIn() && resource.data.createdBy == request.auth.uid;
-      // 削除マークは不可逆。作成者の付け替えや通常の更新を許さない。
-      allow update: if isOwner(groupId) && isActive(groupId)
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['deletionState', 'deletionStartedAt'])
-        && request.resource.data.deletionState == 'deleting'
-        && request.resource.data.deletionStartedAt == request.time;
+      // 削除マークは不可逆。作成者の付け替えは、下の「管理者の交代」の受け取りだけ。
+      // (2026-10-02 作り直し第2回) 更新は次の4つだけ。操作ごとに変えてよい項目を限る。
+      //   ①削除を始める ②交代を依頼する ③依頼を取り消す・断る ④交代を受け取る
+      allow update: if isActive(groupId) && (
+        startDeletion(groupId)
+        || (usableAccount() && (requestTransfer(groupId)
+          || clearTransfer(groupId) || acceptTransfer(groupId))));
       allow delete: if deletingOwner(groupId);
 
       match /members/{uid} {

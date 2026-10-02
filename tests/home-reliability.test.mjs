@@ -26,11 +26,14 @@ class Element {
 
 assert.match(html, /id="card-family-notes"[\s\S]*?<details class="family-compose" id="family-note-compose"/);
 assert.match(html, /id="card-family-tasks"[\s\S]*?<details class="family-compose" id="family-task-compose"/);
-assert.match(html, /insertBefore\([\s\S]*?'card-care-quick'[\s\S]*?'card-krec'/);
+assert.ok(!/insertBefore\([\s\S]{0,80}'card-care-quick'/.test(html), '家族だけの記録カードはやりとりのすぐ下に固定');
+assert.ok(html.indexOf('id="card-actions"')<html.indexOf('id="card-care-quick"'));
+assert.ok(html.indexOf('id="card-care-quick"')<html.indexOf('id="card-next-yotei"'));
+assert.ok(html.indexOf('id="card-family-tasks-preview"')<html.indexOf('id="card-family-notes-preview"'));
+assert.match(html, /id="home-to-anshin"[^>]*onclick="showTab\('t-soudan'\)"/);
 assert.match(html, /id="card-family-notes-preview"[\s\S]*?onclick="openFamilyNotes\(\)"/);
 assert.match(html, /id="card-next-yotei"[\s\S]*?id="family-today-tomorrow"[\s\S]*?onclick="showTab\('t-yotei'\)"/);
 assert.match(html, /id="card-family-tasks-preview"[\s\S]*?onclick="openFamilyTasks\(\)"/);
-assert.ok(html.indexOf('id="card-family-notes-preview"')<html.indexOf('id="card-next-yotei"'));
 assert.ok(html.indexOf('id="card-next-yotei"')<html.indexOf('id="card-family-tasks-preview"'));
 assert.match(html, /id="card-today-records"[\s\S]*?本人からの連絡/);
 assert.match(section('id="card-actions"','id="card-family-notes-preview"'), /onclick="showTab\('t-kiroku'\)">前の日のやりとりを見る<\/button>/);

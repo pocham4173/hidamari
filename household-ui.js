@@ -10,7 +10,7 @@ let recoverySwitchScope=null;
 function isHouseholdOwner(){ return householdVerified && householdOwnerId===uid(); }
 function requireHouseholdOwner(){
   if(!isHouseholdOwner() || householdDeleting){
-    alert(householdDeleting?'共有データを削除中です。削除画面から再開してください。':'この操作は、この家庭を最初に作成した管理者が行えます。');
+    alert(householdDeleting?'共有データを削除中です。削除画面から再開してください。':'この操作は、この家庭の管理者が行えます。');
     return false;
   }
   return true;
@@ -19,13 +19,16 @@ function applyHouseholdPermissions(){
   document.querySelectorAll('[data-owner-only]').forEach(el=>el.hidden=!isHouseholdOwner() || householdDeleting);
   document.querySelectorAll('[data-household-role]').forEach(el=>el.textContent=isHouseholdOwner()
     ?'あなたは管理者です。参加承認・招待・共有データの削除を管理します。'
-    :'あなたは参加メンバーです。招待や参加承認は、最初に家庭を作成した管理者へ依頼してください。');
+    :'あなたは参加メンバーです。招待や参加承認は、管理者へ依頼してください。');
 }
 function stopHouseholdSubscriptions(){
   if(typeof stopFamilyConnection==='function')stopFamilyConnection();
   if(typeof closePersonTasks==='function')closePersonTasks();
   if(window.mainicoNotebookClose)window.mainicoNotebookClose();
   householdBootGeneration++;
+  if(typeof ownerTransferCtl!=='undefined'&&ownerTransferCtl)ownerTransferCtl.reset();
+  if(typeof ownerSeen!=='undefined')ownerSeen='';
+  if(typeof lastPendingSnap!=='undefined')lastPendingSnap=null;
   if(typeof resetRecordViews==='function')resetRecordViews();
   [householdUnsub,ownMemberUnsub,memWatchUnsub,honninUnsub,yoteiUnsub,evUnsub,ytListUnsub,watchTagUnsub,medicineInfoUnsub,personHistoryUnsub,pendingUnsub].forEach(fn=>{try{if(fn)fn();}catch(e){}});
   householdUnsub=ownMemberUnsub=null;
@@ -64,6 +67,7 @@ function watchHouseholdAccess(){
     householdOwnerId=doc.data().createdBy; householdVerified=true;
     householdDeleting=doc.data().deletionState==='deleting';
     applyHouseholdPermissions();
+    if(typeof ownerTransferChanged==='function')ownerTransferChanged(doc.data());
     if(householdDeleting){
       if(isHouseholdOwner()){stopHouseholdSubscriptions();openHouseholdDeletion();}
       else showHouseholdBlocked('管理者が共有データを削除しています。この家庭の利用を終了しました。');
@@ -144,12 +148,24 @@ async function openRecovery(switchAccount=false){
   document.getElementById('recovery-switch-warning').hidden=!(recoverySwitchScope && auth.currentUser?.isAnonymous);
   document.getElementById('recovery-leave-confirm').checked=false;
   document.getElementById('recovery-email').value=auth.currentUser?.email||'';
+  /* (2026-10-02) 新しく設定するときと、以前のアカウントに戻すときで、入力欄・見出し・ボタンをそろえる。
+     パスワード管理の自動入力も、設定=新しいパスワード／復旧=保存済みのパスワード に分ける。 */
+  const registering=!!gid() && !switchAccount;
+  /* すでにメールとパスワードで登録済みなら、設定の画面でも「登録したパスワード」を入れてもらう */
+  const hasPassword=!!(auth.currentUser&&(auth.currentUser.providerData||[]).some(p=>p&&p.providerId==='password'));
+  const newPassword=registering && !hasPassword;
+  const pw=document.getElementById('recovery-password');
+  pw.value='';pw.setAttribute('autocomplete',newPassword?'new-password':'current-password');
+  const pwLabel=document.getElementById('recovery-password-label');
+  if(pwLabel)pwLabel.textContent=newPassword?'新しいパスワード（12文字以上・ほかで使っていないもの）':'登録したパスワード';
+  document.getElementById('recovery-title').textContent=registering?'復旧の設定（機種変更・なくしたときのため）':'以前のアカウントに戻す';
   recoveryState(switchAccount?'復旧設定を済ませたメールアドレスとパスワードを入力してください。':gid()?'このアカウントに、復旧用のメールアドレスを登録します。確認メールのリンクを開いたあと「確認できたか調べる」を押してください。':'以前に登録・確認したメールアドレスで、家族との接続を復旧します。');
 }
 function closeRecovery(){
   if(recoveryBusy || accountClosureBusy)return;
   document.getElementById('recovery-password').value='';
   document.getElementById('recovery-modal').classList.remove('show');
+  if(typeof ownerTransferCtl!=='undefined'&&ownerTransferCtl)ownerTransferCtl.renderCard();
 }
 async function runRecoveryAction(action){
   if(recoveryBusy)return;
@@ -167,6 +183,7 @@ async function runRecoveryAction(action){
       recoveryState(result.ready?'復旧の準備ができています。登録したメールとパスワードを安全に保管してください。':'確認メールを送りました。メールのリンクを開き、戻って「確認できたか調べる」を押してください。');
     }else if(action==='check'){
       const result=await service.checkReady(gid());
+      if(typeof ownerTransferCtl!=='undefined'&&ownerTransferCtl)ownerTransferCtl.renderCard();
       recoveryState(result.ready?'復旧の準備ができました。このメールアドレスとパスワードを安全に保管してください。':result.status==='not-configured'?'復旧設定はまだ登録されていません。メールとパスワードを入力して登録してください。':'まだメール確認が完了していません。確認メールを開いてから、もう一度調べてください。');
     }else if(action==='resend'){
       const result=await service.resendVerification();recoveryState(result.status==='check-required'?'メールは確認済みです。「確認できたか調べる」で復旧先を確認してください。':'確認メールを再送しました。迷惑メールのフォルダも確認してください。');

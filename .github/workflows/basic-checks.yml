@@ -44,6 +44,7 @@ jobs:
           node tests/hitokoe.test.mjs
           node tests/app-dialog.test.mjs
           node tests/invite-qr.test.mjs
+          node tests/family-guide.test.mjs
 
       - name: 家族ホーム・通信・伝言の回帰検査
         run: node tests/home-reliability.test.mjs
@@ -89,5 +90,7 @@ jobs:
           node tests/family-only-records.test.mjs
           node tests/consent.test.mjs
           node tests/consent-routing.test.mjs
+          node tests/person-ui.test.mjs
+          node tests/owner-transfer.test.mjs
           node tests/ueda-centers.test.mjs
           node tests/line-login-client.test.mjs
