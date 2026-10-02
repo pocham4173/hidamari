@@ -37,6 +37,7 @@ jobs:
         run: |
           node tests/line-worker.test.mjs
           node tests/line-login-worker.test.mjs
+          node tests/line-login-cloud-harness.test.mjs
 
       - name: ひと声のきっかけの検査
         run: |

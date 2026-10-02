@@ -48,7 +48,8 @@ export async function runScenarios(target, log = console.log) {
   globalThis.fetch = async (url, opt = {}) => {
     url = String(url);
     const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
-    if (url === 'https://oauth2.googleapis.com/token' && emulator) return json({ access_token: 'owner', expires_in: 3600 });
+    // Worker 自身の Google 認証(Firestore.token())。エミュレーターでは偽の値、クラウドではこのURLだけ本物へ通す
+    if (url === 'https://oauth2.googleapis.com/token') return emulator ? json({ access_token: 'owner', expires_in: 3600 }) : realFetch(url, opt);
     if (url === 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com') return json({ keys: [jwk(fbKey, 'fb1')] });
     if (url === 'https://firebaseappcheck.googleapis.com/v1/jwks') return json({ keys: [jwk(acKey, 'ac1')] });
     if (url.endsWith('/accounts:lookup')) {
@@ -93,7 +94,7 @@ export async function runScenarios(target, log = console.log) {
     const res = await globalThis.fetch(docsBase + '/' + path, { headers: { authorization: 'Bearer ' + await adminToken() } });
     return res.status === 404 ? null : res.json();
   };
-  const remove = (path) => globalThis.fetch(docsBase + '/' + path, { method: 'DELETE', headers: { authorization: 'Bearer ' + (emulator ? 'owner' : cachedAdmin) } });
+  const remove = async (path) => globalThis.fetch(docsBase + '/' + path, { method: 'DELETE', headers: { authorization: 'Bearer ' + await adminToken() } });
   let cachedAdmin = '';
   async function adminToken() {
     if (emulator) return 'owner';
@@ -101,18 +102,15 @@ export async function runScenarios(target, log = console.log) {
     const u = b64u(JSON.stringify({ alg: 'RS256', typ: 'JWT' })) + '.' + b64u(JSON.stringify({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/datastore', aud: 'https://oauth2.googleapis.com/token', iat: nowS(), exp: nowS() + 3600 }));
     const assertion = u + '.' + createSign('RSA-SHA256').update(u).sign(sa.private_key).toString('base64url');
     const res = await realFetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + assertion });
-    cachedAdmin = (await res.json()).access_token;
+    const data = res.ok ? await res.json() : null;
+    if (!data || typeof data.access_token !== 'string') throw new Error('テスト用プロジェクトのGoogle認証に失敗しました: ' + res.status);
+    cachedAdmin = data.access_token;
     return cachedAdmin;
   }
   const S = (v) => ({ stringValue: v }), B = (v) => ({ booleanValue: v }), T = (d) => ({ timestampValue: d.toISOString() });
 
   /* 隔離したテストデータ: このときだけのUID・家庭 */
   const uid = run + '-user', group = run + '-home', sub = 'U' + hex(16);
-  authUsers.add(uid);
-  await write('consents/' + uid, { version: S('2026-09-19.1'), mode: S('kazoku'), privacyAccepted: B(true), sensitiveAccepted: B(true), sharingAccepted: B(true), subjectBasis: S('explained-and-agreed'), acceptedAt: T(new Date()) });
-  await write('groups/' + group, { createdBy: S(uid) });
-  await write('groups/' + group + '/members/' + uid, { name: S('テスト'), status: S('approved'), mode: S('kazoku') });
-  await write('accounts/' + uid, { groupId: S(group) });
   const lineKey = await sha('line-user|' + sub);
 
   async function begin(purpose) {
@@ -162,7 +160,16 @@ export async function runScenarios(target, log = console.log) {
     return { out, blocked };
   }
 
+  let scenarioError = null;
+  const cleanupFailures = [];
   try {
+    // テストデータの作成も try の中: 途中で失敗しても、作った分は下で片付ける
+    log('0. テストデータを作る（' + run + '）');
+    authUsers.add(uid);
+    await write('consents/' + uid, { version: S('2026-09-19.1'), mode: S('kazoku'), privacyAccepted: B(true), sensitiveAccepted: B(true), sharingAccepted: B(true), subjectBasis: S('explained-and-agreed'), acceptedAt: T(new Date()) });
+    await write('groups/' + group, { createdBy: S(uid) });
+    await write('groups/' + group + '/members/' + uid, { name: S('テスト'), status: S('approved'), mode: S('kazoku') });
+    await write('accounts/' + uid, { groupId: S(group) });
     log('1. 正常な交換');
     await link();
     const ok = await exchange(await begin('login'));
@@ -247,9 +254,27 @@ export async function runScenarios(target, log = console.log) {
       log('  5b: ロックなし');
     }
     log('すべて期待どおりでした（' + (emulator ? 'Firestore エミュレーター' : 'テスト用プロジェクト ' + projectId) + '）');
+  } catch (e) {
+    scenarioError = e;
   } finally {
     afterTxnRead = null;
-    for (const path of created) { try { await remove(path); } catch (e) { /* 片付けの失敗は表示だけ */ log('  片付けできませんでした: ' + path); } }
+    // 片付け: 応答を確かめる(fetch は 403・500 でも例外にならない)。消せなかった文書はすべて報告する
+    for (const path of created) {
+      let status = 0, reason = '';
+      try { status = (await remove(path)).status; } catch (e) { reason = e && e.message || String(e); }
+      if (!((status >= 200 && status < 300) || status === 404)) cleanupFailures.push({ path, status, reason });
+    }
     globalThis.fetch = realFetch;
+    if (cleanupFailures.length) {
+      log('片付けできなかった文書が ' + cleanupFailures.length + ' 件あります。手で削除してください:');
+      for (const f of cleanupFailures) log('  - ' + f.path + '（' + (f.status ? 'HTTP ' + f.status : f.reason) + '）');
+    } else if (created.size) {
+      log('作ったテスト用の文書 ' + created.size + ' 件は、すべて片付けました');
+    }
+  }
+  if (scenarioError || cleanupFailures.length) {
+    const error = scenarioError || new Error('テスト用の文書の片付けに失敗しました');
+    error.cleanupFailures = cleanupFailures;
+    throw error;
   }
 }
