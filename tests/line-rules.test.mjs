@@ -25,7 +25,8 @@ const yotei = (uid, extra) => ({
 const code = (uid, groupId, minutes) => ({ uid, groupId, createdAt: serverTimestamp(), expiresAt: inMin(minutes) });
 
 try {
-  // 同じエミュレーターで先に動く検査(alerts など)の残りに左右されないよう、最初に空にする(他の検査と同じ)
+  /* 同じ検査用プロジェクトを使う先の検査(alerts)の予定 y1 などが残っていると、
+     「作成」が「上書き」扱いになって正しく判定できないため、最初に空にする(2026-10-02) */
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
