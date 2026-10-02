@@ -658,13 +658,13 @@ async function lineCallback(env, url) {
     return authPage(409, 'LINEでの確認', ['この手続きは、すでに使われたか、取り消されています。まいにこを開き直して、もう一度お試しください。'], appLink);
   }
   // state は一度だけ使える(同じ戻り先を2回開いても、2回目は使えない)。以後の書き込みはこの版を条件にする
-  let cur = await fs.patchDoc(path, { status: 'exchanging' }, ['status'], t.updateTime);
+  let cur = await fs.patchDoc(path, { status: 'exchanging' }, ['status'], t.updateTime, t.fields);
   if (!cur) {
     return authPage(409, 'LINEでの確認', ['この手続きは、すでに使われています。まいにこを開き直して、もう一度お試しください。'], appLink);
   }
   // 途中で取り消された・消された手続きを、あとから書き戻さない(条件が合わなければ何もしない)
   const finish = async (status, http, lines) => {
-    if (cur) await fs.patch(path, { status, finishedAt: new Date() }, ['status', 'finishedAt'], cur.updateTime).catch(() => {});
+    if (cur) await fs.patchDoc(path, { status, finishedAt: new Date() }, ['status', 'finishedAt'], cur.updateTime, cur.fields).catch(() => {});
     return authPage(http, 'LINEでの確認', lines, appLink);
   };
   try {
@@ -702,7 +702,7 @@ async function lineCallbackVerified(env, fs, url, tx, path, f, appLink, finish, 
   const ready = { lineKey, codeHash: await sha256Hex(tx + '|' + confirmCode), attempts: 0,
     authenticatedAt: new Date(), expiresAt: new Date(Date.now() + LINE_CODE_TTL_MS) };
   const markReady = async (extra) => {
-    const doc = await fs.patchDoc(path, { ...ready, ...extra, status: 'authenticated' }, [...Object.keys(ready), ...Object.keys(extra), 'status'], getCur().updateTime);
+    const doc = await fs.patchDoc(path, { ...ready, ...extra, status: 'authenticated' }, [...Object.keys(ready), ...Object.keys(extra), 'status'], getCur().updateTime, getCur().fields);
     if (!doc) return false;
     setCur(doc);
     return true;
@@ -832,13 +832,13 @@ async function checkConfirmCode(fs, t, code) {
   const attempts = Number.isFinite(t.fields.attempts) ? t.fields.attempts : 0;
   if (attempts >= LINE_CODE_ATTEMPTS) throw new AuthProblem('locked', 429);
   const n = attempts + 1;
-  const counted = await fs.patchDoc(t.path, { attempts: n }, ['attempts'], t.updateTime);
+  const counted = await fs.patchDoc(t.path, { attempts: n }, ['attempts'], t.updateTime, t.fields);
   if (!counted) throw new AuthProblem('retry', 409);
   const ok = typeof code === 'string' && CODE6_RE.test(code)
     && safeEqual(t.fields.codeHash, await sha256Hex(t.id + '|' + code));
   if (ok) return counted;
   if (n >= LINE_CODE_ATTEMPTS) {
-    await fs.patch(counted.path, { status: 'locked' }, ['status'], counted.updateTime);
+    await fs.patchDoc(counted.path, { status: 'locked' }, ['status'], counted.updateTime, counted.fields);
     throw new AuthProblem('locked', 429);
   }
   throw new AuthProblem('wrong-code', 400);
@@ -927,7 +927,7 @@ async function cancelTx(fs, t) {
   for (let i = 0; i < 3 && t; i++) {
     if (t.fields.status === 'cancelled') return 'cancelled';
     if (!['started', 'exchanging', 'authenticated'].includes(t.fields.status)) return t.fields.status || 'unknown';
-    if (await fs.patchDoc(t.path, { status: 'cancelled', finishedAt: new Date() }, ['status', 'finishedAt'], t.updateTime)) return 'cancelled';
+    if (await fs.patchDoc(t.path, { status: 'cancelled', finishedAt: new Date() }, ['status', 'finishedAt'], t.updateTime, t.fields)) return 'cancelled';
     t = await fs.get(t.path);
   }
   return t ? 'retry' : 'gone';
@@ -1260,7 +1260,16 @@ class Firestore {
     return res;
   }
   async get(path, transaction) {
-    const res = await this.call('GET', this.base + '/' + path + (transaction ? '?transaction=' + encodeURIComponent(transaction) : ''));
+    if (transaction) {
+      // トランザクションの中の読み取りは batchGet(本文に transaction を書く)。GET の問い合わせ文字列の形はエミュレーターで止まるため
+      const res = await this.call('POST', this.base + ':batchGet', { documents: [this.root + '/' + path], transaction });
+      if (!res.ok) throw new Error('batchGet ' + path + ' ' + res.status);
+      const rows = await res.json();
+      const row = (Array.isArray(rows) ? rows : []).find((r) => r && (r.found || r.missing));
+      if (!row) throw new Error('batchGet ' + path + ' empty');
+      return row.found ? parseDoc(row.found, this.root) : null;
+    }
+    const res = await this.call('GET', this.base + '/' + path);
     if (res.status === 404) return null;
     if (!res.ok) throw new Error('get ' + path + ' ' + res.status + ' ' + await res.text());
     return parseDoc(await res.json(), this.root);
@@ -1278,14 +1287,21 @@ class Firestore {
     if (res.status === 400 || res.status === 409 || res.status === 412 || res.status === 404) return false;
     throw new Error('patch ' + path + ' ' + res.status + ' ' + await res.text());
   }
-  /* patch と同じ。成功したら更新後の文書(新しい updateTime つき)を返し、条件が合わなければ null */
-  async patchDoc(path, obj, fieldPaths, updateTime) {
-    let url = this.base + '/' + path + '?' + fieldPaths.map((f) => 'updateMask.fieldPaths=' + encodeURIComponent(f)).join('&');
-    if (updateTime) url += '&currentDocument.updateTime=' + encodeURIComponent(updateTime);
-    const res = await this.call('PATCH', url, { fields: toFields(obj) });
-    if (res.ok) return parseDoc(await res.json(), this.root);
-    if (res.status === 400 || res.status === 409 || res.status === 412 || res.status === 404) return null;
-    throw new Error('patch ' + path + ' ' + res.status);
+  /* 条件つき更新(LINEでログイン用)。条件は commit の本文に書く(PATCH の問い合わせ文字列の条件は、エミュレーターが無視するため)。
+     base は読み取った時点の項目。成功したら更新後の文書(新しい updateTime つき)を返し、条件が合わなければ null */
+  async patchDoc(path, obj, fieldPaths, updateTime, base) {
+    const fields = { ...(base || {}), ...obj };
+    const res = await this.call('POST', this.base + ':commit', { writes: [{
+      update: { name: this.root + '/' + path, fields: toFields(fields) },
+      updateMask: { fieldPaths }, currentDocument: { updateTime } }] });
+    if (res.ok) {
+      const data = await res.json();
+      const ut = data && data.writeResults && data.writeResults[0] && data.writeResults[0].updateTime;
+      if (typeof ut !== 'string') throw new Error('commit without updateTime');
+      return { path, id: path.split('/').pop(), updateTime: ut, fields };
+    }
+    if ([400, 404, 409, 412].includes(res.status)) return null;
+    throw new Error('commit failed ' + res.status);
   }
   async delete(path) {
     const res = await this.call('DELETE', this.base + '/' + path);

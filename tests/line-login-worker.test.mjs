@@ -81,6 +81,16 @@ globalThis.fetch = async (url, opt = {}) => {
   let rest = decodeURIComponent(u.pathname).slice(('/v1/' + ROOT).length).replace(/^\//, '');
   if (rest === ':beginTransaction') { const id = 'txn' + (++txnSeq); txns.set(id, new Map()); return json({ transaction: id }); }
   if (rest === ':rollback') { txns.delete(body.transaction); return json({}); }
+  if (rest === ':batchGet') {
+    const out = [];
+    for (const name of body.documents) {
+      const path = name.slice(ROOT.length + 1);
+      if (body.transaction && txns.has(body.transaction)) txns.get(body.transaction).set(path, db.get(path)?.updateTime ?? null);
+      out.push(db.has(path) ? { found: docJson(path) } : { missing: name });
+      if (body.transaction && hooks.onTxnRead) await hooks.onTxnRead(path);
+    }
+    return json(out);
+  }
   if (rest === ':commit') {
     if (body.transaction) {
       // 本物と同じく、トランザクションで読んだ文書が確定までに変わっていたら失敗(ABORTED)
@@ -93,8 +103,16 @@ globalThis.fetch = async (url, opt = {}) => {
       const path = (w.delete || w.update.name).slice(ROOT.length + 1), pre = w.currentDocument;
       if (pre && ((pre.updateTime && db.get(path)?.updateTime !== pre.updateTime) || (pre.exists === false && db.has(path)))) return json({}, 409);
     }
-    for (const w of body.writes) { const path = (w.delete || w.update.name).slice(ROOT.length + 1); if (w.delete) db.delete(path); else put(path, w.update.fields); }
-    return json({});
+    const writeResults = [];
+    for (const w of body.writes) {
+      const path = (w.delete || w.update.name).slice(ROOT.length + 1);
+      if (w.delete) { db.delete(path); writeResults.push({}); continue; }
+      // updateMask があれば本物と同じく、その項目だけを書き換える
+      const fields = w.updateMask ? { ...(db.get(path)?.fields || {}) } : {};
+      for (const k of w.updateMask ? w.updateMask.fieldPaths : Object.keys(w.update.fields)) { if (k in w.update.fields) fields[k] = w.update.fields[k]; else delete fields[k]; }
+      put(path, fields); writeResults.push({ updateTime: db.get(path).updateTime });
+    }
+    return json({ writeResults });
   }
   if (rest.endsWith(':runQuery')) {
     const q = body.structuredQuery, f = q.where && q.where.fieldFilter;
@@ -569,7 +587,7 @@ const relinkAnon = async () => {
   const real = globalThis.fetch;
   let bumped = false;
   globalThis.fetch = async (url, opt) => {
-    if (!bumped && opt && opt.method === 'PATCH' && String(url).includes('/lineAuthTx/' + r.tx) && String(url).includes('fieldPaths=status')) {
+    if (!bumped && opt && String(url).endsWith(':commit') && /"stringValue":"cancelled"/.test(opt.body) && opt.body.includes('/lineAuthTx/' + r.tx)) {
       bumped = true; const d = db.get('lineAuthTx/' + r.tx); put('lineAuthTx/' + r.tx, d.fields);   // 別処理が先に更新
     }
     return real(url, opt);
