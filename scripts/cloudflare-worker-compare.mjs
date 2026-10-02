@@ -80,23 +80,32 @@ try {
   }
 } catch (e) { failed = true; out('コードの取得に失敗：' + e.message); }
 out('');
+// Cron・設定・デプロイ情報も、取れなければ「確認済み」にしない(レポートは残して失敗で終わる)
+const missing = [];
 try {
   const s = await get('/schedules');
-  out('Cron：' + ((s && s.schedules) || []).map((x) => '`' + x.cron + '`').join('、') || 'なし');
-} catch (e) { out('Cron の取得に失敗：' + e.message); }
+  if (!s || !Array.isArray(s.schedules)) throw new Error('応答に schedules がありません');
+  out('Cron：' + (s.schedules.length ? s.schedules.map((x) => '`' + x.cron + '`').join('、') : 'なし（Cronは設定されていません）'));
+} catch (e) { missing.push('Cron'); out('Cron の取得に失敗：' + e.message); }
 try {
   const st = await get('/settings');
-  const b = (st && st.bindings) || [];
+  if (!st || !Array.isArray(st.bindings)) throw new Error('応答に bindings がありません');
+  const b = st.bindings;
   out('設定（名前と種類だけ。値は表示しません）：');
   for (const x of b) out('- ' + x.name + '（' + x.type + '）');
   if (!b.length) out('- なし');
   out('互換日付：' + (st && st.compatibility_date || '不明'));
-} catch (e) { out('設定の取得に失敗：' + e.message); }
+} catch (e) { missing.push('設定'); out('設定の取得に失敗：' + e.message); }
 try {
   const d = await get('/deployments');
   const dep = d && Array.isArray(d.deployments) ? d.deployments[0] : null;
-  if (dep) out('有効なデプロイ：' + (dep.created_on || '') + '／バージョン ' + (dep.versions || []).map((v) => String(v.version_id).slice(0, 8) + '（' + v.percentage + '%）').join('、'));
-} catch (e) { out('デプロイ情報の取得に失敗：' + e.message); }
+  const versions = dep && Array.isArray(dep.versions) ? dep.versions.filter((v) => v && v.version_id) : [];
+  if (!versions.length) throw new Error('有効なデプロイ（バージョン）が見つかりません');
+  out('有効なデプロイ：' + (dep.created_on || '') + '／バージョン ' + versions.map((v) => String(v.version_id).slice(0, 8) + '（' + v.percentage + '%）').join('、'));
+} catch (e) { missing.push('デプロイ情報'); out('デプロイ情報の取得に失敗：' + e.message); }
+if (failed) missing.unshift('コード');
+out('');
+out(missing.length ? '**結果：取得できなかった情報があります（' + missing.join('・') + '）。照合は完了していません。**' : '結果：コード・Cron・設定・デプロイ情報をすべて取得しました（一致したかは上の表を見てください）。');
 fs.writeFileSync(path.join(outDir, 'report.md'), lines.join('\n') + '\n');
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
-process.exit(failed ? 1 : 0);
+process.exit(missing.length ? 1 : 0);

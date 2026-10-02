@@ -90,8 +90,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: 本番の Worker 名でないことを確かめる
-        run: grep -qx 'name = "mainiko-line-staging"' staging/wrangler.toml
+      # ここまでは外部を何も変えていない。以下の確認がすべて通ったときだけ、配信・ルール変更・秘密の値の登録に進む
+      - name: 配る前の確認（プロジェクトの一致・本番でないこと・Worker名）
+        env:
+          TEST_PROJECT: ${{ vars.MAINICO_TEST_PROJECT_ID }}
+          STAGING_FIREBASE_CONFIG: ${{ vars.MAINICO_STAGING_FIREBASE_CONFIG }}
+          SA_JSON: ${{ secrets.MAINICO_TEST_SERVICE_ACCOUNT }}
+        run: |
+          node scripts/staging-preflight.mjs
+          grep -qx 'name = "mainiko-line-staging"' staging/wrangler.toml
       - name: アプリのファイルを作る（試験用の設定）
         env:
           STAGING_FIREBASE_CONFIG: ${{ vars.MAINICO_STAGING_FIREBASE_CONFIG }}

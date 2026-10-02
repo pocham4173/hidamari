@@ -35,6 +35,27 @@ for (const [file, mode, exact, normalized] of [['same.js', 'raw', '✅', '✅'],
   assert.match(r.stdout, /Workers Scripts: Read/);
 }
 assert.equal(run('scripts/cloudflare-worker-compare.mjs', { CF_API_TOKEN: '', CF_ACCOUNT_ID: '' }).status, 2);
+// 1b. 一部の API だけが失敗(403・500)・有効なデプロイが空 → レポートは残して失敗で終わる(確認済みにしない)
+for (const [label, env] of [
+  ['Cron 403', { MOCK_FAIL: 'schedules:403' }], ['Cron 500', { MOCK_FAIL: 'schedules:500' }],
+  ['設定 403', { MOCK_FAIL: 'settings:403' }], ['設定 500', { MOCK_FAIL: 'settings:500' }],
+  ['デプロイ 403', { MOCK_FAIL: 'deployments:403' }], ['デプロイ 500', { MOCK_FAIL: 'deployments:500' }],
+  ['デプロイが空', { MOCK_EMPTY_DEPLOYMENTS: '1' }], ['コード 500', { MOCK_FAIL: 'content/v2:500' }],
+]) {
+  const out = path.join(tmp, 'part-' + label.replace(/\s/g, '-'));
+  const r = run('scripts/cloudflare-worker-compare.mjs', { CF_API_TOKEN: 'read-only-token', CF_ACCOUNT_ID: 'acc123', MOCK_LIVE_FILE: path.join(tmp, 'same.js'), OUT_DIR: out, COMPARE_FILES: 'repo=worker.js', ...env }, ['--import', mock]);
+  assert.equal(r.status, 1, label + ': 失敗で終わる');
+  const report = fs.readFileSync(path.join(out, 'report.md'), 'utf8');
+  assert.match(report, /照合は完了していません/, label + ': レポートを残す');
+  assert.ok(!/すべて取得しました/.test(report), label);
+}
+{
+  // すべて取れたときだけ成功
+  const out = path.join(tmp, 'all-ok');
+  const r = run('scripts/cloudflare-worker-compare.mjs', { CF_API_TOKEN: 'read-only-token', CF_ACCOUNT_ID: 'acc123', MOCK_LIVE_FILE: path.join(tmp, 'same.js'), OUT_DIR: out }, ['--import', mock]);
+  assert.equal(r.status, 0);
+  assert.match(fs.readFileSync(path.join(out, 'report.md'), 'utf8'), /すべて取得しました/);
+}
 
 // 2. 試験環境のファイル
 {
@@ -53,6 +74,40 @@ assert.equal(run('scripts/cloudflare-worker-compare.mjs', { CF_API_TOKEN: '', CF
   assert.ok(!fs.readFileSync('index.html', 'utf8').includes('試験環境（本番ではありません）'), '本番の index.html は変えない');
   assert.ok(!fs.readFileSync('mainico-config.js', 'utf8').match(/^window\.MAINICO_STAGING/m), '本番の設定は変えない');
   fs.rmSync('dist-staging', { recursive: true, force: true });
+}
+
+// 2b. 配る前の確認: プロジェクトID・ウェブ設定・鍵の3つが同じテスト用プロジェクトでなければ止める
+{
+  const key = (project, email = 'firebase-adminsdk-x@' + project + '.iam.gserviceaccount.com') => JSON.stringify({ project_id: project, client_email: email, private_key: '-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----\n' });
+  const web = (project) => JSON.stringify({ apiKey: 'k', projectId: project });
+  const pre = (TEST_PROJECT, cfg, sa) => run('scripts/staging-preflight.mjs', { TEST_PROJECT, STAGING_FIREBASE_CONFIG: cfg, SA_JSON: sa });
+  const ok = pre('mainico-test', web('mainico-test'), key('mainico-test'));
+  assert.equal(ok.status, 0, ok.stderr);
+  for (const [label, args, why] of [
+    ['鍵だけ本番', ['mainico-test', web('mainico-test'), key('hidamari-5f8de')], /鍵の project_id が本番|一致しません/],
+    ['鍵だけ別のプロジェクト', ['mainico-test', web('mainico-test'), key('other-test')], /一致しません/],
+    ['鍵のメールだけ本番', ['mainico-test', web('mainico-test'), key('mainico-test', 'firebase-adminsdk-x@hidamari-5f8de.iam.gserviceaccount.com')], /本番/],
+    ['ウェブ設定だけ別', ['mainico-test', web('other-test'), key('mainico-test')], /一致しません/],
+    ['プロジェクトIDが本番', ['hidamari-5f8de', web('hidamari-5f8de'), key('hidamari-5f8de')], /本番/],
+    ['プロジェクトIDが空', ['', web('mainico-test'), key('mainico-test')], /空です/],
+    ['鍵が空', ['mainico-test', web('mainico-test'), ''], /JSON として読めません/],
+    ['鍵に project_id がない', ['mainico-test', web('mainico-test'), JSON.stringify({ private_key: '-----BEGIN PRIVATE KEY-----' })], /project_id がありません/],
+    ['ウェブ設定が空', ['mainico-test', '', key('mainico-test')], /JSON として読めません/],
+  ]) {
+    const r = pre(...args);
+    assert.equal(r.status, 2, label + ': 止める');
+    assert.match(r.stderr, why, label);
+    assert.ok(!r.stderr.includes('PRIVATE KEY') && !r.stdout.includes('PRIVATE KEY'), label + ': 鍵の中身を表示しない');
+  }
+  // ワークフローでは、この確認が配信・ルール変更・秘密の値の登録より前にある
+  const wf = fs.readFileSync('.github/workflows/line-login-ops.yml', 'utf8');
+  const job = wf.slice(wf.indexOf('  staging-deploy:'));
+  const at = (t) => { const i = job.indexOf(t); assert.ok(i > 0, t); return i; };
+  const preflight = at('node scripts/staging-preflight.mjs');
+  for (const later of ['firebase-tools@13 deploy', 'wrangler@4 deploy', 'wrangler@4 secret put']) assert.ok(preflight < at(later), '確認は「' + later + '」より前');
+  // 前の手順で外部を変えていない(checkout と setup-node だけ)
+  const before = job.slice(0, preflight);
+  assert.ok(!/wrangler|firebase-tools|curl/.test(before), '確認より前に外部へ書く手順がない');
 }
 
 // 3. 試験環境の Worker 設定
