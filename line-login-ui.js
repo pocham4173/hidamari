@@ -41,8 +41,25 @@ function lineNavigate(url){location.assign(url);}
 function lineProblem(code){const e=new Error(code);e.code=code;return e;}
 
 /* ログインの仕上げ: 1回だけのカスタムトークンで、つないだアカウント(同じUID)に入る */
+/* いまのアカウント・家庭・起動の回。通信を待つ間に別のタブなどで変わっていないかを確かめるために使う */
+function lineSessionSnapshot(){
+  return {uid:auth.currentUser?auth.currentUser.uid:'',gid:gid(),gen:typeof householdBootGeneration==='number'?householdBootGeneration:0};
+}
+function lineSessionUnchanged(before){
+  const now=lineSessionSnapshot();
+  return now.uid===before.uid&&now.gid===before.gid&&now.gen===before.gen;
+}
+function lineSwitchBlocked(current){
+  for(const key of ['mainico_group_setup_v1','mainico_join_pending_v1']){
+    let pending=null;try{pending=JSON.parse(localStorage.getItem(key)||'null');}catch(e){}
+    if(current&&pending&&pending.uid===current.uid)return 'setup-pending';
+  }
+  if(typeof getDeletionService==='function'&&getDeletionService().getPending())return 'deletion-pending';
+  return '';
+}
 async function lineLoginFinish(code){
   const svc=lineLoginService();
+  const before=lineSessionSnapshot();
   const current=auth.currentUser;
   // 記録のある画面を、別のアカウントに切り替えない
   let inUse=!!(current&&gid());
@@ -50,15 +67,17 @@ async function lineLoginFinish(code){
     try{inUse=(await db.collection('accounts').doc(current.uid).get({source:'server'})).exists;}
     catch(e){throw lineProblem('network');}
   }
-  for(const key of ['mainico_group_setup_v1','mainico_join_pending_v1']){
-    let pending=null;try{pending=JSON.parse(localStorage.getItem(key)||'null');}catch(e){}
-    if(current&&pending&&pending.uid===current.uid)throw lineProblem('setup-pending');
-  }
-  if(typeof getDeletionService==='function'&&getDeletionService().getPending())throw lineProblem('deletion-pending');
+  const blocked=lineSwitchBlocked(current);
+  if(blocked)throw lineProblem(blocked);
+  if(!lineSessionUnchanged(before))throw lineProblem('session-changed');
   const result=await svc.exchange(code);
+  // 交換を待つ間に、ログイン・家庭・起動が変わっていたら中止し、その時点のアカウントと保存情報を残す
+  if(!lineSessionUnchanged(before))throw lineProblem('session-changed');
   if(current&&current.uid===result.uid){lineRestoreReturnHash(result.returnHash);return false;}
   if(inUse)throw lineProblem('device-in-use');
-  // 記録のない一時的な状態だけを片付けてから入る(元のアカウントの記録はサーバーにそのまま)
+  const blockedNow=lineSwitchBlocked(auth.currentUser);
+  if(blockedNow)throw lineProblem(blockedNow);
+  // ここから切り替えまでは待ち時間を挟まない(確認した状態のまま片付けて入る)
   if(current&&typeof clearMainicoDeviceData==='function')clearMainicoDeviceData();
   lineRestoreReturnHash(result.returnHash);
   await auth.signInWithCustomToken(result.customToken);
@@ -151,7 +170,12 @@ function closeLineAuth(){
 async function cancelLineAuth(){
   const flow=lineAuthFlow;
   closeLineAuth();
-  if(flow&&!flow.done){try{await lineLoginService().cancel();}catch(e){}}
+  if(flow&&!flow.done){
+    let r=null;try{r=await lineLoginService().cancel();}catch(e){}
+    if(r&&!r.cancelled&&r.status==='done')showLineNotice(flow.purpose==='link'
+      ?'取り消す前に、LINEとつなぐ手続きが完了していました。つながないときは、設定の「LINEでログイン」から解除してください。'
+      :'取り消す前に、LINEでのログインが完了していました。心当たりがない場合は、設定の「LINEでログイン」を解除してください。');
+  }
 }
 function lineAuthState(text,error){
   const s=document.getElementById('line-auth-state');

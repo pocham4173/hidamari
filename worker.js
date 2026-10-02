@@ -237,6 +237,8 @@ async function runNotifications(env) {
   let sent = 0;
   const book = new UsageBook(fs, now);
   try {
+    // 期限切れの手続きの片付けは、通知より先に、決まった通信回数だけで行う(忙しい回でも後回しにならない)
+    await cleanupAuthTx(fs, now);
     book.quota = await lineQuota(env, fs);
     // おまもりタグのお知らせを先に送る(予定のお知らせより急ぐため)。失敗しても予定の送信は続ける。
     fs.softLimit = TAG_REQUEST_BUDGET;
@@ -330,7 +332,7 @@ async function runNotifications(env) {
     // (読み取り回数を抑えるため毎回は見ない。つなぎ直しのときは callback でもその場で片付ける)
     if (Math.floor(now.getTime() / 900000) % 4 === 0) await cleanupLoginLink(fs, now);
     // Bounded maintenance. Never infer a deleted household from a partial list.
-    for (const collectionId of ['lineLinkCodes','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage','lineAuthTx']) {
+    for (const collectionId of ['lineLinkCodes','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
       const expired = await fs.query('', {from:[{collectionId}],
         where:{fieldFilter:{field:{fieldPath:'expiresAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},limit:3});
       for (const d of expired) await fs.delete(d.path);
@@ -767,7 +769,13 @@ async function lineCallbackCancel(request, env) {
   if (!t0 || txState(t0) !== 'ready') return gone();
   let t;
   try { t = await checkConfirmCode(fs, t0, code); } catch (e) { if (e instanceof AuthProblem) return gone(); throw e; }
-  await fs.patch(t.path, { status: 'cancelled', finishedAt: new Date() }, ['status', 'finishedAt'], t.updateTime);
+  const result = await cancelTx(fs, t);
+  if (result === 'done') {
+    return authPage(409, 'LINEでの確認', [t.fields.purpose === 'link'
+      ? '取り消す前に、つなぐ手続きが完了していました。ご自身でつないでいない場合は、まいにこの設定「LINEでログイン」から解除してください。'
+      : '取り消す前に、この番号でのログインが完了していました。心当たりがない場合は、まいにこの設定「LINEでログイン」の解除と、復旧用パスワードの変更をしてください。']);
+  }
+  if (result !== 'cancelled') return gone();
   return authPage(200, 'LINEでの確認', [t.fields.purpose === 'link'
     ? '取り消しました。このLINEは、まいにこにつながっていません。まいにこの記録や設定は変わっていません。'
     : '取り消しました。この番号では、まいにこに入れません。まいにこの記録や設定は変わっていません。']);
@@ -867,26 +875,52 @@ async function lineExchange(env, fs, request, body) {
   const t0 = await loadTx(fs, body, 'login');
   requireReady(t0);
   const t = await checkConfirmCode(fs, t0, body.code);
-  const uid = t.fields.uid;
-  // 交換の直前にもう一度確かめる(解除・削除・停止のあとは入れない)
-  const link = typeof t.fields.lineKey === 'string' ? await fs.get('lineLoginLinks/' + t.fields.lineKey) : null;
-  if (!link || link.fields.uid !== uid) throw new AuthProblem('not-linked', 403);
-  if (!await accountUsable(fs, uid)) throw new AuthProblem('account-unavailable', 403);
-  if (!await fs.commit([txDone(fs, t, 'done')])) throw new AuthProblem('used', 410);
+  const uid = t.fields.uid, lineKey = t.fields.lineKey;
+  if (typeof lineKey !== 'string' || !/^[0-9a-f]{64}$/.test(lineKey)) throw new AuthProblem('used', 410);
+  if (!await authUserState(fs, uid)) throw new AuthProblem('account-unavailable', 403);
+  // つながり・終了手続き・手続きの状態の確認と、交換の確定を1つのトランザクションで行う。
+  // 確認のあとに解除・終了手続き・取り消しが先に確定したら、この確定は失敗し、トークンは発行しない。
+  const txn = await fs.beginTransaction();
+  let committed = false;
+  try {
+    const cur = await fs.get(t.path, txn);
+    const link = await fs.get('lineLoginLinks/' + lineKey, txn);
+    const closure = await fs.get('accountClosures/' + uid, txn);
+    if (!cur || cur.updateTime !== t.updateTime || cur.fields.status !== 'authenticated') throw new AuthProblem('used', 410);
+    if (!link || link.fields.uid !== uid) throw new AuthProblem('not-linked', 403);
+    if (closure) throw new AuthProblem('account-unavailable', 403);
+    committed = await fs.commit([txDone(fs, t, 'done')], txn);
+  } finally {
+    if (!committed) await fs.rollback(txn);
+  }
+  if (!committed) {
+    const link = await fs.get('lineLoginLinks/' + lineKey);
+    if (!link || link.fields.uid !== uid) throw new AuthProblem('not-linked', 403);
+    throw new AuthProblem('used', 410);
+  }
   return { customToken: await mintCustomToken(fs, uid) };
 }
 
 /* ---- 取り消し(データは何も変えない) ---- */
 async function lineCancel(env, fs, request, body) {
-  const t = await loadTx(fs, body);
-  if (!['started', 'exchanging', 'authenticated'].includes(t.fields.status)) return { cancelled: true };
-  await fs.patch(t.path, { status: 'cancelled', finishedAt: new Date() }, ['status', 'finishedAt'], t.updateTime);
-  return { cancelled: true };
+  const result = await cancelTx(fs, await loadTx(fs, body));
+  return { cancelled: result === 'cancelled', status: result };
+}
+/* 取り消しを条件つきで書く。書けなければ読み直して、まだ有効ならやり直す。
+   'cancelled' は取り消しが確定したときだけ。ほかは実際の状態(done など)を返す */
+async function cancelTx(fs, t) {
+  for (let i = 0; i < 3 && t; i++) {
+    if (t.fields.status === 'cancelled') return 'cancelled';
+    if (!['started', 'exchanging', 'authenticated'].includes(t.fields.status)) return t.fields.status || 'unknown';
+    if (await fs.patchDoc(t.path, { status: 'cancelled', finishedAt: new Date() }, ['status', 'finishedAt'], t.updateTime)) return 'cancelled';
+    t = await fs.get(t.path);
+  }
+  return t ? 'retry' : 'gone';
 }
 
 /* ---- LINEでログインの解除(予定のお知らせの連携とは別) ---- */
 async function lineUnlink(env, fs, request) {
-  const user = await verifyFirebaseUser(env, fs, request, { allowUnusable: true });
+  const user = await verifyFirebaseUser(env, fs, request, { allowClosing: true });
   const acc = await fs.get('lineLoginAccounts/' + user.uid);
   if (!acc) return { unlinked: true, already: true };
   const writes = [{ delete: fs.root + '/' + acc.path, currentDocument: { updateTime: acc.updateTime } }];
@@ -894,6 +928,29 @@ async function lineUnlink(env, fs, request) {
   if (link && link.fields.uid === user.uid) writes.push({ delete: fs.root + '/' + link.path, currentDocument: { updateTime: link.updateTime } });
   if (!await fs.commit(writes)) throw new AuthProblem('retry', 409);
   return { unlinked: true };
+}
+
+/* 期限切れのLINEでログインの手続きを片付ける(TTLは使わない: 無料プランでは使えないため)。
+   1回の見回りで「検索1回 + まとめて削除1回」= 通信2回・最大 AUTH_TX_CLEANUP_LIMIT 件。
+   古いものから消すので、途中で止まっても次の回にそのまま続く。期限切れの拒否は文書が残っていても txState で行う */
+const AUTH_TX_CLEANUP_LIMIT = 20;
+async function cleanupAuthTx(fs, now) {
+  try {
+    const expired = await fs.query('', { from: [{ collectionId: 'lineAuthTx' }],
+      where: { fieldFilter: { field: { fieldPath: 'expiresAt' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: now.toISOString() } } },
+      orderBy: [{ field: { fieldPath: 'expiresAt' }, direction: 'ASCENDING' }], limit: AUTH_TX_CLEANUP_LIMIT });
+    if (!expired.length) return 0;
+    // 調べたあとに更新された文書は消さない(条件つき)。1件でも条件が合わなければ全体が失敗するので、そのときは1件ずつ
+    const writes = expired.map((d) => ({ delete: fs.root + '/' + d.path, currentDocument: { updateTime: d.updateTime } }));
+    if (await fs.commit(writes)) return expired.length;
+    let n = 0;
+    for (const w of writes.slice(0, 3)) if (await fs.commit([w])) n++;
+    return n;
+  } catch (e) {
+    if (e.message === 'request-budget') throw e;
+    console.error('auth tx cleanup', e && e.name);
+    return 0;
+  }
 }
 
 /* 削除済み・終了手続き中のアカウントのつながりを片付ける(見回りで1回1件) */
@@ -928,13 +985,19 @@ async function lookupAuthUser(fs, uid) {
   const u = data && Array.isArray(data.users) ? data.users.find((x) => x && x.localId === uid) : null;
   return u || null;
 }
-/* 削除済み・停止中・終了手続き中・(claimsがあれば)失効済みのトークンはだめ */
-async function accountUsable(fs, uid, claims) {
+/* 認証自体が有効か: 存在する・停止されていない・(claimsがあれば)失効していない。
+   失効の判定は Firebase Admin SDK と同じく auth_time と validSince(tokensValidAfterTime)で比べる */
+async function authUserState(fs, uid, claims) {
   if (typeof uid !== 'string' || !uid || uid.length > 128) return null;
   const user = await lookupAuthUser(fs, uid);
   if (!user || user.disabled === true) return null;
-  if (claims && user.validSince && Number(claims.iat) < Number(user.validSince)) return null;
-  if (await fs.get('accountClosures/' + uid)) return null;
+  if (claims && user.validSince !== undefined && !(Number(claims.auth_time) >= Number(user.validSince))) return null;
+  return user;
+}
+/* 認証が有効で、終了手続き中(accountClosures)でもない */
+async function accountUsable(fs, uid, claims) {
+  const user = await authUserState(fs, uid, claims);
+  if (!user || await fs.get('accountClosures/' + uid)) return null;
   return user;
 }
 async function verifyFirebaseUser(env, fs, request, opts) {
@@ -949,8 +1012,10 @@ async function verifyFirebaseUser(env, fs, request, opts) {
     || !(claims.exp > now) || !(claims.iat <= now + 60) || !(claims.auth_time <= now + 60)) {
     throw new AuthProblem('auth-required', 401);
   }
-  if (opts && opts.allowUnusable) return { uid: claims.sub, claims };
-  if (!await accountUsable(fs, claims.sub, claims)) throw new AuthProblem('account-unavailable', 403);
+  // 認証自体の有効性(存在・停止・失効)は、どの操作でも必ず確かめる
+  if (!await authUserState(fs, claims.sub, claims)) throw new AuthProblem('account-unavailable', 403);
+  // 終了手続き中でも許すのは、つながりを減らす操作(解除)だけ
+  if (!(opts && opts.allowClosing) && await fs.get('accountClosures/' + claims.sub)) throw new AuthProblem('account-unavailable', 403);
   return { uid: claims.sub, claims };
 }
 async function verifyAppCheck(env, fs, request) {
@@ -1130,8 +1195,18 @@ class Firestore {
     if (this.count >= (limit || this.softLimit || SUBREQUEST_BUDGET)) throw new Error('request-budget');
     this.count++;
   }
-  async commit(writes) {
-    const res = await this.call('POST',this.base+':commit',{writes});
+  async beginTransaction() {
+    const res = await this.call('POST', this.base + ':beginTransaction', { options: { readWrite: {} } });
+    if (!res.ok) throw new Error('begin transaction ' + res.status);
+    const data = await res.json();
+    if (!data || typeof data.transaction !== 'string') throw new Error('begin transaction');
+    return data.transaction;
+  }
+  async rollback(transaction) {
+    try { await this.call('POST', this.base + ':rollback', { transaction }, true); } catch (e) { /* 期限で自然に終わる */ }
+  }
+  async commit(writes, transaction) {
+    const res = await this.call('POST',this.base+':commit',transaction ? {writes, transaction} : {writes});
     if (res.ok) return true;
     if ([400,404,409,412].includes(res.status)) return false;
     throw new Error('commit failed '+res.status);
@@ -1169,8 +1244,8 @@ class Firestore {
     });
     return res;
   }
-  async get(path) {
-    const res = await this.call('GET', this.base + '/' + path);
+  async get(path, transaction) {
+    const res = await this.call('GET', this.base + '/' + path + (transaction ? '?transaction=' + encodeURIComponent(transaction) : ''));
     if (res.status === 404) return null;
     if (!res.ok) throw new Error('get ' + path + ' ' + res.status + ' ' + await res.text());
     return parseDoc(await res.json(), this.root);

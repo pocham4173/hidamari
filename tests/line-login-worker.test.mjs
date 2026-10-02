@@ -49,7 +49,8 @@ const docJson = (path) => ({ name: ROOT + '/' + path, fields: db.get(path).field
 const authUsers = new Map([['owner', {}], ['fam', {}], ['anon', {}], ['solo', {}]]);
 /* ---- 偽LINE: 認可コード → 利用者 ---- */
 const lineCodes = new Map();   // code -> { sub, name, verifier challenge check, nonce override }
-const calls = [];
+const calls = [], queries = [], txns = new Map(), hooks = {};
+let txnSeq = 0;
 globalThis.fetch = async (url, opt = {}) => {
   url = String(url);
   calls.push(url);
@@ -78,7 +79,16 @@ globalThis.fetch = async (url, opt = {}) => {
   assert.ok(url.startsWith(fsBase), url);
   const u = new URL(url);
   let rest = decodeURIComponent(u.pathname).slice(('/v1/' + ROOT).length).replace(/^\//, '');
+  if (rest === ':beginTransaction') { const id = 'txn' + (++txnSeq); txns.set(id, new Map()); return json({ transaction: id }); }
+  if (rest === ':rollback') { txns.delete(body.transaction); return json({}); }
   if (rest === ':commit') {
+    if (body.transaction) {
+      // 本物と同じく、トランザクションで読んだ文書が確定までに変わっていたら失敗(ABORTED)
+      const reads = txns.get(body.transaction);
+      txns.delete(body.transaction);
+      if (!reads) return json({}, 400);
+      for (const [path, ut] of reads) if ((db.get(path)?.updateTime ?? null) !== ut) return json({}, 409);
+    }
     for (const w of body.writes) {
       const path = (w.delete || w.update.name).slice(ROOT.length + 1), pre = w.currentDocument;
       if (pre && ((pre.updateTime && db.get(path)?.updateTime !== pre.updateTime) || (pre.exists === false && db.has(path)))) return json({}, 409);
@@ -86,12 +96,28 @@ globalThis.fetch = async (url, opt = {}) => {
     for (const w of body.writes) { const path = (w.delete || w.update.name).slice(ROOT.length + 1); if (w.delete) db.delete(path); else put(path, w.update.fields); }
     return json({});
   }
-  if (rest.endsWith(':runQuery')) return json([{ readTime: 'x' }]);
+  if (rest.endsWith(':runQuery')) {
+    const q = body.structuredQuery, f = q.where && q.where.fieldFilter;
+    let out = [...db.keys()].filter((p) => p.split('/').length === 2 && p.split('/')[0] === q.from[0].collectionId).filter((p) => {
+      if (!f) return true;
+      const v = db.get(p).fields[f.field.fieldPath];
+      return v && v.timestampValue && f.op === 'LESS_THAN_OR_EQUAL' && Date.parse(v.timestampValue) <= Date.parse(f.value.timestampValue);
+    });
+    out.sort((a, b) => Date.parse(db.get(a).fields.expiresAt?.timestampValue || 0) - Date.parse(db.get(b).fields.expiresAt?.timestampValue || 0));
+    if (q.limit) out = out.slice(0, q.limit);
+    queries.push(q.from[0].collectionId);
+    return json(out.length ? out.map((p) => ({ document: docJson(p) })) : [{ readTime: 'x' }]);
+  }
   const method = opt.method || 'GET';
   if (method === 'GET' && rest.split('/').length % 2 === 1) {
     return json({ documents: [...db.keys()].filter((p) => p.split('/').slice(0, -1).join('/') === rest).map(docJson) });
   }
-  if (method === 'GET') return db.has(rest) ? json(docJson(rest)) : json({ error: {} }, 404);
+  if (method === 'GET') {
+    const txn = u.searchParams.get('transaction');
+    if (txn && txns.has(txn)) txns.get(txn).set(rest, db.get(rest)?.updateTime ?? null);
+    if (txn && hooks.onTxnRead) await hooks.onTxnRead(rest);
+    return db.has(rest) ? json(docJson(rest)) : json({ error: {} }, 404);
+  }
   if (method === 'DELETE') { db.delete(rest); return json({}); }
   if (method === 'PATCH') {
     const pre = u.searchParams.get('currentDocument.updateTime');
@@ -367,7 +393,7 @@ lineAlg = 'HS256';
 {
   const before = loginLinks().length;
   const a = await begin('link', authH('owner'));
-  assert.deepEqual(await (await api('cancel', { tx: a.data.tx, secret: a.secret })).json(), { cancelled: true });
+  assert.deepEqual(await (await api('cancel', { tx: a.data.tx, secret: a.secret })).json(), { cancelled: true, status: 'cancelled' });
   const cb = await lineLogin(a.data.authorizeUrl, LINE_B);
   assert.equal(cb.res.status, 409, '取り消したあとはLINEから戻っても進まない');
   const b = await begin('link', authH('owner'));
@@ -471,6 +497,151 @@ lineAlg = 'HS256';
   assert.equal(db.has('lineLoginAccounts/gone'), false);
   assert.equal((await api('confirm', { tx: data.tx, secret, code: cb.code }, authH('anon'))).status, 200);
   assert.equal(db.get('lineLoginLinks/' + key).fields.uid.stringValue, 'anon');
+}
+
+/* ===== 再審査(2026-10-02)の指摘への再発防止 ===== */
+const loginReady = async () => {
+  const { data, secret } = await begin('login', acH());
+  const cb = await lineLogin(data.authorizeUrl, LINE_A);
+  assert.equal(cb.res.status, 200);
+  return { tx: data.tx, secret, code: cb.code };
+};
+const relinkAnon = async () => {
+  const { data, secret } = await begin('link', authH('anon'));
+  const cb = await lineLogin(data.authorizeUrl, LINE_A);
+  assert.equal((await api('confirm', { tx: data.tx, secret, code: cb.code }, authH('anon'))).status, 200);
+};
+/* R1. 交換の確認のあとに解除が先に確定したら、交換は確定せずトークンも出さない */
+{
+  const r = await loginReady();
+  let unlinked = false;
+  hooks.onTxnRead = async (path) => {
+    if (!unlinked && path.startsWith('lineLoginLinks/')) { unlinked = true; assert.equal((await api('unlink', {}, authH('anon'))).status, 200); }
+  };
+  const res = await api('exchange', { tx: r.tx, secret: r.secret, code: r.code }, acH());
+  hooks.onTxnRead = null;
+  assert.ok(unlinked, '解除が交換の途中に入った');
+  assert.equal(res.status, 403);
+  const out = await res.json();
+  assert.equal(out.customToken, undefined, 'トークンを出さない');
+  assert.equal(out.error, 'not-linked');
+  assert.equal(db.has('lineLoginAccounts/anon'), false);
+  assert.equal(txns.size, 0, 'トランザクションを残さない');
+  await relinkAnon();
+}
+/* R1b. 交換の確認のあとに終了手続きが始まったら、交換しない */
+{
+  const r = await loginReady();
+  let closed = false;
+  hooks.onTxnRead = async (path) => {
+    if (!closed && path.startsWith('lineLoginLinks/')) { closed = true; put('accountClosures/anon', { requestedAt: T(new Date()) }); }
+  };
+  const res = await api('exchange', { tx: r.tx, secret: r.secret, code: r.code }, acH());
+  hooks.onTxnRead = null;
+  db.delete('accountClosures/anon');
+  assert.notEqual(res.status, 200);
+  assert.equal((await res.json()).customToken, undefined);
+}
+/* R2. 取り消しと番号入力の競合: 取り消しが確定したときだけ成功と表示し、交換はできない */
+{
+  // 交換の途中(確認のあと)に、アプリから取り消し
+  const r = await loginReady();
+  let cancel;
+  hooks.onTxnRead = async (path) => {
+    if (!cancel && path.startsWith('lineAuthTx/')) cancel = await (await api('cancel', { tx: r.tx, secret: r.secret })).json();
+  };
+  const res = await api('exchange', { tx: r.tx, secret: r.secret, code: r.code }, acH());
+  hooks.onTxnRead = null;
+  assert.deepEqual(cancel, { cancelled: true, status: 'cancelled' });
+  assert.equal(res.status, 410);
+  assert.equal((await res.json()).customToken, undefined, '取り消しが確定したあとはトークンを出さない');
+  assert.equal(db.get('lineAuthTx/' + r.tx).fields.status.stringValue, 'cancelled');
+}
+{
+  // 交換が先に完了していたら、取り消しは「完了済み」と実際の状態を返す
+  const r = await loginReady();
+  assert.equal((await api('exchange', { tx: r.tx, secret: r.secret, code: r.code }, acH())).status, 200);
+  assert.deepEqual(await (await api('cancel', { tx: r.tx, secret: r.secret })).json(), { cancelled: false, status: 'done' });
+}
+{
+  // 取り消しの書き込みが競合しても、読み直してやり直す(成功と表示したのに有効なまま、にならない)
+  const r = await loginReady();
+  const real = globalThis.fetch;
+  let bumped = false;
+  globalThis.fetch = async (url, opt) => {
+    if (!bumped && opt && opt.method === 'PATCH' && String(url).includes('/lineAuthTx/' + r.tx) && String(url).includes('fieldPaths=status')) {
+      bumped = true; const d = db.get('lineAuthTx/' + r.tx); put('lineAuthTx/' + r.tx, d.fields);   // 別処理が先に更新
+    }
+    return real(url, opt);
+  };
+  const out = await (await api('cancel', { tx: r.tx, secret: r.secret })).json();
+  globalThis.fetch = real;
+  assert.ok(bumped);
+  assert.deepEqual(out, { cancelled: true, status: 'cancelled' });
+  assert.equal(db.get('lineAuthTx/' + r.tx).fields.status.stringValue, 'cancelled');
+  assert.equal((await api('exchange', { tx: r.tx, secret: r.secret, code: r.code }, acH())).status, 410);
+}
+const callbackCancel = async (tx, c) => {
+  const form = new FormData(); form.set('tx', tx); form.set('c', c);
+  return worker.fetch(new Request('https://w.example/auth/line/callback-cancel', { method: 'POST', body: form }), env, {});
+};
+{
+  // LINEの戻り先ページの「取り消す」: 交換の途中なら取り消しが勝ち、交換はできない
+  const r = await loginReady();
+  let page;
+  hooks.onTxnRead = async (path) => { if (!page && path.startsWith('lineAuthTx/')) page = await (await callbackCancel(r.tx, r.code)).text(); };
+  const res = await api('exchange', { tx: r.tx, secret: r.secret, code: r.code }, acH());
+  hooks.onTxnRead = null;
+  assert.match(page, /取り消しました/);
+  assert.equal(res.status, 410);
+}
+{
+  // 交換が先に完了していたら、戻り先ページは「完了していました」と表示する(取り消したとは表示しない)
+  const r = await loginReady();
+  assert.equal((await api('exchange', { tx: r.tx, secret: r.secret, code: r.code }, acH())).status, 200);
+  const html = await (await callbackCancel(r.tx, r.code)).text();
+  assert.ok(!/取り消しました/.test(html), html);
+}
+/* R3. 失効・停止の確認(auth_time で判定・解除でも省かない) */
+{
+  authUsers.set('anon', { validSince: String(now() - 500) });
+  const revoked = authH('anon', { auth_time: now() - 1000, iat: now() - 10 });   // auth_time < validSince < iat
+  assert.equal((await begin('link', revoked)).res.status, 403, 'iat が新しくても auth_time が古ければ失効');
+  assert.equal((await api('unlink', {}, revoked)).status, 403, '失効済みのトークンでは解除できない');
+  assert.ok(db.has('lineLoginAccounts/anon'));
+  assert.equal((await begin('link', authH('anon', { auth_time: now() - 100 }))).res.status !== 403, true, '失効後に入り直したトークンは使える');
+  authUsers.set('anon', { disabled: true });
+  assert.equal((await api('unlink', {}, authH('anon'))).status, 403, '停止中のユーザーは解除できない');
+  assert.ok(db.has('lineLoginAccounts/anon'));
+  authUsers.delete('anon');
+  assert.equal((await api('unlink', {}, authH('anon'))).status, 403, '削除済みのユーザーのトークンでは解除できない');
+  authUsers.set('anon', {});
+  // 終了手続き中でも、有効な認証なら解除(つながりを減らす操作)はできる
+  put('accountClosures/anon', { requestedAt: T(new Date()) });
+  assert.equal((await api('unlink', {}, authH('anon'))).status, 200);
+  db.delete('accountClosures/anon');
+  await relinkAnon();
+}
+/* R5. 期限切れの手続きは、TTLなしで、見回りの最初に決まった回数だけ消す(続きは次の回) */
+{
+  for (const k of [...db.keys()]) if (k.startsWith('lineAuthTx/')) db.delete(k);
+  for (let i = 0; i < 25; i++) put('lineAuthTx/' + String(i).padStart(32, '0'), { status: S('done'), expiresAt: T(new Date(Date.now() - 60000 - i)) });
+  const live = await loginReady();
+  const count = () => [...db.keys()].filter((k) => k.startsWith('lineAuthTx/')).length;
+  queries.length = 0;
+  const before = calls.length;
+  await worker.scheduled({}, env, { waitUntil: (p) => p });
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(queries[0], 'lineAuthTx', '通知より先に片付ける');
+  assert.equal(count(), 6, '1回で20件まで(残り5件と有効な1件)');
+  assert.ok(calls.slice(before).filter((u) => u.endsWith(':commit')).length >= 1);
+  await worker.scheduled({}, env, { waitUntil: (p) => p });
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(count(), 1, '次の回で残りを消す');
+  assert.ok(db.has('lineAuthTx/' + live.tx), '有効な手続きは消さない');
+  // 文書が残っていても、期限切れは拒否する
+  db.get('lineAuthTx/' + live.tx).fields.expiresAt = T(new Date(Date.now() - 1000));
+  assert.equal((await api('exchange', { tx: live.tx, secret: live.secret, code: live.code }, acH())).status, 410);
 }
 
 /* 15. 記録・応答に秘密の値を出さない */

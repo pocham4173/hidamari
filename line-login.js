@@ -39,6 +39,7 @@
       'storage':'この画面では一時的な保存ができないため、LINEで続けられません。Safariの「プライベート」をやめるか、ホーム画面のまいにこから開いてください。',
       'device-in-use':'この画面は、すでに別のアカウントで使っています。記録が混ざらないよう、LINEのアカウントには切り替えていません。いつもの画面（ホーム画面のまいにこなど）から開いてください。',
       'setup-pending':'この画面で家庭の作成・参加が途中です。切り替えると途中の手続きがわからなくなるため、LINEのアカウントには切り替えていません。',
+      'session-changed':'手続きの途中で、この画面のログインや家庭が変わったため、切り替えを中止しました。いま開いているアカウントと記録はそのままです。必要なら、もう一度「LINEで続ける」を押してください。',
       'deletion-pending':'この画面で削除の確認が残っています。先に削除画面で確認してください。',
       'bad-response':'LINEでログインの応答を確認できませんでした。記録や設定は変わっていません。',
       'retry':'混み合っています。少し待ってから、もう一度お試しください。'
@@ -157,7 +158,8 @@
       async cancel(){
         const p=pending();if(!p)return;
         clear(p.tx);
-        try{await call('cancel',{tx:p.tx,secret:p.secret});}catch(e){/* 手続きは10分で自然に無効になる */}
+        // 取り消しが確定したかどうか(すでに完了していた等)をサーバーの答えで返す。通信できなければ null(手続きは10分で無効になる)
+        try{return await call('cancel',{tx:p.tx,secret:p.secret});}catch(e){return null;}
       },
       unlink:()=>call('unlink',{},{idToken:true})
     };

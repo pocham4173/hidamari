@@ -205,6 +205,35 @@ const pendingLogin = (extra = {}) => JSON.stringify({ tx: TX, secret: SECRET, pu
   assert.match(a.doc.getElementById('line-auth-body').textContent, /別のアカウント/);
   a.dom.window.close();
 }
+// 2-5b. 交換を待つ間にログインが変わったら(別タブで既存アカウントに戻った等)、切り替えも保存情報の削除もしない
+for (const [label, start] of [['未認証から', null], ['一時匿名から', { uid: 'tmp', getIdToken: async () => 'x' }]]) {
+  const a = app({ hash: '#line-auth=' + TX + '&c=654321', user: start, storage: { [core.KEY]: pendingLogin(), mainicoSpeechOn: '0' } });
+  a.state.server.reply.exchange = () => {
+    // 交換の応答が届く前に、別タブで既存アカウント(家庭あり)に戻った
+    a.auth.currentUser = { uid: 'owner', getIdToken: async () => 'y' };
+    a.w.localStorage.setItem('mainicoGid', 'g-owner');
+    vm.runInContext('householdBootGeneration++', a.c);
+    return { status: 200, data: { customToken: fakeToken('anon') } };
+  };
+  const took = await vm.runInContext('lineAuthBeforeBoot', a.c)(start);
+  assert.equal(took, false, label);
+  assert.equal(a.state.customTokens.length, 0, label + ': LINE側アカウントに切り替えない');
+  assert.equal(a.auth.currentUser.uid, 'owner', label);
+  assert.equal(a.w.localStorage.getItem('mainicoGid'), 'g-owner', label + ': その時点の保存情報を残す');
+  assert.equal(a.w.localStorage.getItem('mainicoSpeechOn'), '0', label + ': 保存情報を消さない');
+  assert.match(vm.runInContext('lineLoginNotice', a.c), /切り替えを中止しました/, label);
+  a.dom.window.close();
+}
+// 2-5c. 取り消す前に完了していたら、取り消したとは表示しない
+{
+  const a = app({ user: { uid: 'anon', getIdToken: async () => 'x' }, storage: { [core.KEY]: pendingLogin() } });
+  a.state.server.reply.cancel = () => ({ status: 200, data: { cancelled: false, status: 'done' } });
+  vm.runInContext("lineAuthFlow={purpose:'login',done:false}", a.c);
+  await a.c.cancelLineAuth();
+  assert.ok(a.doc.getElementById('line-auth-modal').classList.contains('show'));
+  assert.match(a.doc.getElementById('line-auth-body').textContent, /完了していました/);
+  a.dom.window.close();
+}
 // 2-6. 記録のない一時的な匿名アカウントの画面からは、つないだアカウントに入れる(そのUIDは使わない)
 {
   const a = app({ hash: '#line-auth=' + TX + '&c=654321', user: { uid: 'tmp', getIdToken: async () => 'x' }, storage: { [core.KEY]: pendingLogin() } });
