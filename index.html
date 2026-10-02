@@ -2155,7 +2155,8 @@ const previewStorage={
   setItem:(k,v)=>localStorage.setItem(k,v),
   removeItem:k=>localStorage.removeItem(k)
 };
-const previewApp=firebase.initializeApp({
+/* 試験環境(mainiko-line-staging)では mainico-config.js の MAINICO_FIREBASE_CONFIG(テスト用プロジェクト)を使う。本番は未設定=下の値 */
+const previewApp=firebase.initializeApp(window.MAINICO_FIREBASE_CONFIG||{
   apiKey: "AIzaSyA3bGGlSk_btdBP5i0XWg0VidskwviHR3A",
   authDomain: "hidamari-5f8de.firebaseapp.com",
   projectId: "hidamari-5f8de",
@@ -7124,12 +7125,20 @@ function renderLineHistory(){
     .sort((a,b)=>(sentMs(b)||(b.updatedAt&&b.updatedAt.toMillis?b.updatedAt.toMillis():0))-(sentMs(a)||(a.updatedAt&&a.updatedAt.toMillis?a.updatedAt.toMillis():0))).slice(0,30);
   const logOf=v=>{const l=(typeof MainicoLine!=='undefined'&&MainicoLine.sendLog)?MainicoLine.sendLog(v):[];return l.length>1?'<ul class="lnh-log">'+l.map(e=>'<li>'+esc(e.text)+'</li>').join('')+'</ul>':'';};
   const row=(v,when,cls)=>'<div class="lnh-row"><b>'+esc(v.kind||'📌')+' '+esc(v.label||'予定')+'</b><small>予定日：'+esc(yoteiDateJp(v))+'</small><small class="lnh-when'+(cls?' '+cls:'')+'">'+esc(when)+'</small>'+logOf(v)+
-    (v.uid===uid()?'<span class="yt-links" style="margin-top:6px;"><button type="button" class="ln" onclick="openLineNotifyEdit(\''+jsArg(v._id)+'\')">🔔 お知らせを変更</button></span>':'')+'</div>';
+    (v.uid===uid()?'<span class="yt-links" style="margin-top:6px;"><button type="button" class="ln" onclick="openLineNotifyEdit(\''+jsArg(v._id)+'\')">🔔 お知らせを変更</button></span>':'')+
+    (window.MAINICO_STAGING?'<span class="yt-links" style="margin-top:6px;"><button type="button" class="ln" onclick="copyStagingNotifyLink(\''+jsArg(v._id)+'\')">（試験用）LINE通知と同じリンクをコピー</button></span>':'')+'</div>';
   let html='<div class="lnh-sec">これから送る予定</div>';
   html+=planned.length?planned.map(v=>row(v,'🔔 '+lnTime(v.notifyAt)+' に送ります')).join(''):'<div class="empty">送る予定のお知らせはありません</div>';
   html+='<div class="lnh-sec">送ったお知らせ</div>';
   html+=done.length?done.map(v=>sentMs(v)?row(v,'✅ '+lnTime(v.notifiedAt)+' に送信済み'):row(v,'⚠ 送れないまま期限が過ぎました','exp')).join(''):'<div class="empty">まだ送ったお知らせはありません</div>';
   box.innerHTML=html;
+}
+/* 試験環境だけ: LINEの予定のお知らせと同じ形のリンクを作る(本番では出さない)。自分あてのLINEに貼って、通知からの表示を試す */
+async function copyStagingNotifyLink(id){
+  if(!window.MAINICO_STAGING)return;
+  const link=location.origin+location.pathname+'?openExternalBrowser=1#schedule='+encodeURIComponent(id)+'&group='+encodeURIComponent(gid());
+  try{await navigator.clipboard.writeText(link);alert('コピーしました。自分あてのLINE（Keepメモなど）に貼って、そこから開いてください。\n'+link);}
+  catch(e){prompt('このリンクをコピーしてください',link);}
 }
 let lnEditId=null;
 function openLineNotifyEdit(id){

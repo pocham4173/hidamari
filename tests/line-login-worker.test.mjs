@@ -688,4 +688,33 @@ const callbackCancel = async (tx, c) => {
   const dump = JSON.stringify([...db.entries()]);
   assert.ok(!dump.includes('login-secret') && !dump.includes('PRIVATE KEY'), '秘密の値は保存しない');
 }
+/* 試験環境(mainiko-line-staging)だけの上書き。本番の設定(上書きなし)では今までどおり */
+{
+  const STG = 'https://mainiko-line-staging.okm-co.workers.dev';
+  const served = [];
+  const stg = { ...env, MAINICO_APP_URL: STG + '/', LINE_LOGIN_APP_CHECK: 'off', ASSETS: { fetch: async (req) => { served.push(new URL(req.url).pathname); return new Response('asset'); } } };
+  // 画面は同じWorkerの ASSETS から
+  assert.equal(await (await worker.fetch(new Request(STG + '/'), stg, {})).text(), 'asset');
+  assert.equal(await (await worker.fetch(new Request(STG + '/index.html'), stg, {})).text(), 'asset');
+  assert.match(await (await worker.fetch(new Request(STG + '/__status'), stg, {})).text(), /LINEでログイン：設定済み/);
+  assert.deepEqual(served, ['/', '/index.html']);
+  // 呼び出し元は試験環境の画面だけ。本番の画面からは呼べない
+  const call = (origin) => worker.fetch(new Request(STG + '/auth/line/start', { method: 'POST', body: JSON.stringify({ purpose: 'login', secretHash: 'a'.repeat(64) }), headers: { 'content-type': 'application/json', origin } }), stg, {});
+  assert.equal((await call(APP)).status, 403);
+  const ok = await call(STG);
+  assert.equal(ok.status, 200);
+  assert.equal(ok.headers.get('access-control-allow-origin'), STG);
+  // LINEから戻ったページのリンクも試験環境の画面へ
+  const { authorizeUrl } = await ok.json();
+  const q = new URL(authorizeUrl).searchParams;
+  lineCodes.set('stg', { sub: LINE_A, name: 'n', nonce: q.get('nonce'), challenge: q.get('code_challenge') });
+  const page = await (await worker.fetch(new Request(STG + '/auth/line/callback?code=stg&state=' + q.get('state')), stg, {})).text();
+  assert.match(page, new RegExp('href="' + STG + '/#line-auth='));
+  assert.ok(!page.includes('pocham4173.github.io'));
+  // 形の正しくない上書きは使わない(本番の値に戻る)
+  const bad = { ...env, MAINICO_APP_URL: 'http://evil.example/' };
+  assert.equal((await worker.fetch(new Request('https://w.example/auth/line/start', { method: 'OPTIONS', headers: { origin: APP } }), bad, {})).headers.get('access-control-allow-origin'), APP);
+  // 本番(ASSETS なし)の '/' は今までどおり状態の表示
+  assert.match(await (await worker.fetch(new Request('https://w.example/'), env, {})).text(), /LINE送信役/);
+}
 console.log('LINEでログイン: 設定・送り元・つなぐ・番号・上書き防止・ログイン・未連携・停止/削除・LINE確認の不正・取り消し・期限・同時送信・解除・片付け passed');

@@ -60,7 +60,11 @@ export default {
     if (url.pathname.startsWith('/auth/line/')) {
       return handleLineAuth(request, env, url);
     }
-    if (url.pathname === '/' || url.pathname === '/line') {
+    // 試験環境だけ: 同じWorkerでアプリの画面も配る(本番には ASSETS がないので、ここは通らない)
+    if (env.ASSETS && url.pathname !== '/line' && url.pathname !== '/__status') {
+      return env.ASSETS.fetch(request);
+    }
+    if (url.pathname === '/' || url.pathname === '/line' || url.pathname === '/__status') {
       const missing = ['LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN', 'FIREBASE_SERVICE_ACCOUNT']
         .filter((k) => !env[k]);
       const loginMissing = LINE_LOGIN_SETTINGS.filter((k) => !env[k]);
@@ -560,6 +564,15 @@ const LINE_LOGIN_SETTINGS = ['LINE_LOGIN_CHANNEL_ID', 'LINE_LOGIN_CHANNEL_SECRET
 const APP_ORIGIN = 'https://pocham4173.github.io';
 const FIREBASE_PROJECT_NUMBER = '565713968884';
 const FIREBASE_WEB_APP_ID = '1:565713968884:web:0a9665d1fe5e0fa161c8a1';
+/* 試験環境(mainiko-line-staging)だけで上書きする値。本番は未設定のまま=上の定数を使う */
+function appUrl(env) {
+  const v = env && env.MAINICO_APP_URL;
+  return typeof v === 'string' && /^https:\/\/[A-Za-z0-9.-]+(:\d+)?\/([^\s#?]*\/)?$/.test(v) ? v : APP_URL;
+}
+function appOrigin(env) { return env && env.MAINICO_APP_URL ? new URL(appUrl(env)).origin : APP_ORIGIN; }
+function appCheckProject(env) {
+  return { number: (env && env.FIREBASE_PROJECT_NUMBER) || FIREBASE_PROJECT_NUMBER, appId: (env && env.FIREBASE_WEB_APP_ID) || FIREBASE_WEB_APP_ID };
+}
 const LINE_AUTH_TTL_MS = 10 * 60 * 1000;    // LINEで確認するまでの時間
 const LINE_CODE_TTL_MS = 5 * 60 * 1000;     // 確認番号を入れるまでの時間
 const LINE_CODE_ATTEMPTS = 5;               // 確認番号の入力は5回まで(超えたら手続きごと無効)
@@ -571,15 +584,15 @@ class AuthProblem extends Error {
 }
 
 function lineLoginConfigured(env) { return LINE_LOGIN_SETTINGS.every((k) => typeof env[k] === 'string' && env[k]); }
-function corsHeaders() {
-  return { 'access-control-allow-origin': APP_ORIGIN, 'vary': 'Origin',
+function corsHeaders(env) {
+  return { 'access-control-allow-origin': appOrigin(env), 'vary': 'Origin',
     'access-control-allow-methods': 'POST, OPTIONS',
     'access-control-allow-headers': 'content-type, authorization, x-firebase-appcheck',
     'access-control-max-age': '600' };
 }
-function apiJson(obj, status) {
+function apiJson(obj, status, env) {
   return new Response(JSON.stringify(obj), { status: status || 200,
-    headers: { ...corsHeaders(), 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+    headers: { ...corsHeaders(env), 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 }
 
 async function handleLineAuth(request, env, url) {
@@ -588,32 +601,32 @@ async function handleLineAuth(request, env, url) {
     if (route === 'callback' && request.method === 'GET') return await lineCallback(env, url);
     if (route === 'callback-cancel' && request.method === 'POST') return await lineCallbackCancel(request, env);
     // ここから下はまいにこの画面からの呼び出しだけ(他サイトからの呼び出しは受けない)
-    if ((request.headers.get('origin') || '') !== APP_ORIGIN) return new Response('forbidden', { status: 403 });
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders() });
-    if (request.method !== 'POST') return apiJson({ error: 'method' }, 405);
-    if (!lineLoginConfigured(env)) return apiJson({ error: 'not-configured' }, 503);
+    if ((request.headers.get('origin') || '') !== appOrigin(env)) return new Response('forbidden', { status: 403 });
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(env) });
+    if (request.method !== 'POST') return apiJson({ error: 'method' }, 405, env);
+    if (!lineLoginConfigured(env)) return apiJson({ error: 'not-configured' }, 503, env);
     let body;
     try { body = await request.json(); } catch (e) { body = null; }
-    if (!body || typeof body !== 'object' || Array.isArray(body)) return apiJson({ error: 'bad-request' }, 400);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return apiJson({ error: 'bad-request' }, 400, env);
     const fs = new Firestore(env);
-    if (route === 'start') return apiJson(await lineStart(env, fs, request, body));
-    if (route === 'status') return apiJson(await lineTxStatus(env, fs, request, body));
-    if (route === 'confirm') return apiJson(await lineConfirmLink(env, fs, request, body));
-    if (route === 'exchange') return apiJson(await lineExchange(env, fs, request, body));
-    if (route === 'cancel') return apiJson(await lineCancel(env, fs, request, body));
-    if (route === 'unlink') return apiJson(await lineUnlink(env, fs, request));
-    return apiJson({ error: 'not-found' }, 404);
+    if (route === 'start') return apiJson(await lineStart(env, fs, request, body), 200, env);
+    if (route === 'status') return apiJson(await lineTxStatus(env, fs, request, body), 200, env);
+    if (route === 'confirm') return apiJson(await lineConfirmLink(env, fs, request, body), 200, env);
+    if (route === 'exchange') return apiJson(await lineExchange(env, fs, request, body), 200, env);
+    if (route === 'cancel') return apiJson(await lineCancel(env, fs, request, body), 200, env);
+    if (route === 'unlink') return apiJson(await lineUnlink(env, fs, request), 200, env);
+    return apiJson({ error: 'not-found' }, 404, env);
   } catch (e) {
     if (e instanceof AuthProblem) {
       return route === 'callback' || route === 'callback-cancel'
         ? authPage(e.status, 'LINEでの確認', ['手続きを続けられませんでした。まいにこを開き直して、もう一度お試しください。'])
-        : apiJson({ error: e.code }, e.status);
+        : apiJson({ error: e.code }, e.status, env);
     }
     // 秘密の値やトークンは記録に出さない(種類だけ)
     console.error('line auth failed', route, e && e.name);
     return route === 'callback' || route === 'callback-cancel'
       ? authPage(503, 'LINEでの確認', ['通信の確認ができませんでした。まいにこの記録や設定は変わっていません。時間をおいて、もう一度お試しください。'])
-      : apiJson({ error: 'server' }, 503);
+      : apiJson({ error: 'server' }, 503, env);
   }
 }
 
@@ -653,7 +666,7 @@ async function lineCallback(env, url) {
   const t = await fs.get(path);
   if (!t || !safeEqual(t.fields.stateHash, await sha256Hex(state))) throw new AuthProblem('bad-state');
   const f = t.fields;
-  const appLink = APP_URL + '#line-auth=' + tx;
+  const appLink = appUrl(env) + '#line-auth=' + tx;
   if (f.status !== 'started') {
     return authPage(409, 'LINEでの確認', ['この手続きは、すでに使われたか、取り消されています。まいにこを開き直して、もう一度お試しください。'], appLink);
   }
@@ -1039,8 +1052,9 @@ async function verifyAppCheck(env, fs, request) {
   const claims = token ? await verifyJwt(fs, token, { alg: 'RS256', jwks: 'https://firebaseappcheck.googleapis.com/v1/jwks' }).catch(() => null) : null;
   const now = Math.floor(Date.now() / 1000);
   const aud = claims && (Array.isArray(claims.aud) ? claims.aud : [claims.aud]);
-  if (!claims || claims.iss !== 'https://firebaseappcheck.googleapis.com/' + FIREBASE_PROJECT_NUMBER
-    || !aud.includes('projects/' + FIREBASE_PROJECT_NUMBER) || claims.sub !== FIREBASE_WEB_APP_ID || !(claims.exp > now)) {
+  const project = appCheckProject(env);
+  if (!claims || claims.iss !== 'https://firebaseappcheck.googleapis.com/' + project.number
+    || !aud.includes('projects/' + project.number) || claims.sub !== project.appId || !(claims.exp > now)) {
     throw new AuthProblem('app-check', 401);
   }
 }
