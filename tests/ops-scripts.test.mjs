@@ -78,7 +78,9 @@ for (const [label, env] of [
 
 // 2b. 配る前の確認: プロジェクトID・ウェブ設定・鍵の3つが同じテスト用プロジェクトでなければ止める
 {
-  const key = (project, email = 'firebase-adminsdk-x@' + project + '.iam.gserviceaccount.com') => JSON.stringify({ project_id: project, client_email: email, private_key: '-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----\n' });
+  const keyObj = (project, email = 'firebase-adminsdk-x@' + project + '.iam.gserviceaccount.com') => ({ type: 'service_account', project_id: project, client_email: email, private_key: '-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----\n' });
+  const key = (project, email) => JSON.stringify(keyObj(project, email));
+  const without = (field) => { const k = keyObj('mainico-test'); delete k[field]; return JSON.stringify(k); };
   const web = (project) => JSON.stringify({ apiKey: 'k', projectId: project });
   const pre = (TEST_PROJECT, cfg, sa) => run('scripts/staging-preflight.mjs', { TEST_PROJECT, STAGING_FIREBASE_CONFIG: cfg, SA_JSON: sa });
   const ok = pre('mainico-test', web('mainico-test'), key('mainico-test'));
@@ -89,10 +91,30 @@ for (const [label, env] of [
     ['鍵のメールだけ本番', ['mainico-test', web('mainico-test'), key('mainico-test', 'firebase-adminsdk-x@hidamari-5f8de.iam.gserviceaccount.com')], /本番/],
     ['ウェブ設定だけ別', ['mainico-test', web('other-test'), key('mainico-test')], /一致しません/],
     ['プロジェクトIDが本番', ['hidamari-5f8de', web('hidamari-5f8de'), key('hidamari-5f8de')], /本番/],
-    ['プロジェクトIDが空', ['', web('mainico-test'), key('mainico-test')], /空です/],
+    ['プロジェクトIDが空', ['', web('mainico-test'), key('mainico-test')], /MAINICO_TEST_PROJECT_ID がありません/],
     ['鍵が空', ['mainico-test', web('mainico-test'), ''], /JSON として読めません/],
-    ['鍵に project_id がない', ['mainico-test', web('mainico-test'), JSON.stringify({ private_key: '-----BEGIN PRIVATE KEY-----' })], /project_id がありません/],
+    ['鍵に project_id がない', ['mainico-test', web('mainico-test'), without('project_id')], /project_id がありません/],
     ['ウェブ設定が空', ['mainico-test', '', key('mainico-test')], /JSON として読めません/],
+    // JSON としては読めるが、オブジェクトでない(再審査 2026-10-02 の再現: SA_JSON=null で通ってしまっていた)
+    ['鍵が null', ['mainico-test', web('mainico-test'), 'null'], /オブジェクトではありません（null）/],
+    ['鍵が false', ['mainico-test', web('mainico-test'), 'false'], /オブジェクトではありません（boolean）/],
+    ['鍵が配列', ['mainico-test', web('mainico-test'), JSON.stringify([keyObj('mainico-test')])], /オブジェクトではありません（配列）/],
+    ['鍵が文字列', ['mainico-test', web('mainico-test'), JSON.stringify('mainico-test')], /オブジェクトではありません（string）/],
+    ['鍵が数値', ['mainico-test', web('mainico-test'), '0'], /オブジェクトではありません（number）/],
+    ['ウェブ設定が null', ['mainico-test', 'null', key('mainico-test')], /オブジェクトではありません（null）/],
+    ['ウェブ設定が false', ['mainico-test', 'false', key('mainico-test')], /オブジェクトではありません（boolean）/],
+    ['ウェブ設定が配列', ['mainico-test', JSON.stringify([{ projectId: 'mainico-test' }]), key('mainico-test')], /オブジェクトではありません（配列）/],
+    ['ウェブ設定に projectId がない', ['mainico-test', JSON.stringify({ apiKey: 'k' }), key('mainico-test')], /ウェブ設定の projectId がありません/],
+    ['ウェブ設定の projectId が空', ['mainico-test', web(''), key('mainico-test')], /ウェブ設定の projectId がありません/],
+    // client_email
+    ['鍵のメールがない', ['mainico-test', web('mainico-test'), without('client_email')], /client_email がありません/],
+    ['鍵のメールが空', ['mainico-test', web('mainico-test'), key('mainico-test', '')], /client_email がありません/],
+    ['鍵のメールが別の形', ['mainico-test', web('mainico-test'), key('mainico-test', 'someone@example.com')], /サービスアカウントの形/],
+    ['鍵のメールの後ろが違う', ['mainico-test', web('mainico-test'), key('mainico-test', 'firebase-adminsdk-x@mainico-test.iam.gserviceaccount.com.evil.example')], /サービスアカウントの形/],
+    ['鍵のメールが別プロジェクト', ['mainico-test', web('mainico-test'), key('mainico-test', 'firebase-adminsdk-x@other-test.iam.gserviceaccount.com')], /一致しません/],
+    ['鍵が service_account でない', ['mainico-test', web('mainico-test'), JSON.stringify({ ...keyObj('mainico-test'), type: 'authorized_user' })], /type が service_account/],
+    ['鍵に private_key がない', ['mainico-test', web('mainico-test'), without('private_key')], /private_key がありません/],
+    ['プロジェクトIDが形でない', ['Mainico Test', web('mainico-test'), key('mainico-test')], /プロジェクトIDの形ではありません/],
   ]) {
     const r = pre(...args);
     assert.equal(r.status, 2, label + ': 止める');
