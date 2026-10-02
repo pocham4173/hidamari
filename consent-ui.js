@@ -27,9 +27,33 @@ function showConsentFlow(mode,resume,message=''){
   const subject=document.getElementById('consent-subject-'+kind);
   subject.textContent=mode==='honnin'?'自分の情報について、説明を理解して同意します。':'記録される本人に、取得する情報と家族への共有を分かる方法で説明し、本人の同意を確認しました。家族自身の同意とは別の確認です。';
   document.getElementById('consent-state-'+kind).textContent=message;
+  /* 第1段：3つのお約束（大きな字・本人の画面では読み上げ）。第2段：これまでどおり5つの確認。
+     エラーや取り消しのやり直しで開き直すときは、第2段から。 */
+  const direct=!!message;
+  document.getElementById('consent-stage1-'+kind).hidden=direct;
+  document.getElementById('consent-stage2-'+kind).hidden=!direct;
+  document.getElementById('consent-paper-'+kind).hidden=mode==='honnin';
   document.getElementById('loading').style.display='none';
   showPage('consent-'+kind);
   document.getElementById('consent-title-'+kind).focus();
+  if(!direct&&mode==='honnin')consentReadAloud(kind);
+}
+function consentGoStage2(kind){
+  if(!consentFlow)return;
+  try{if(window.speechSynthesis)speechSynthesis.cancel();}catch(e){}
+  document.getElementById('consent-stage1-'+kind).hidden=true;
+  document.getElementById('consent-stage2-'+kind).hidden=false;
+  document.getElementById('consent-title-'+kind).focus();
+  const wrap=document.querySelector('#consent-'+kind+' .consent-wrap');if(wrap)wrap.scrollTop=0;
+}
+function consentReadAloud(kind){
+  try{
+    const synth=window.speechSynthesis;if(!synth||!window.SpeechSynthesisUtterance)return false;
+    const items=[...document.querySelectorAll('#consent-promise-'+kind+' li')].map(li=>li.textContent);
+    synth.cancel();
+    const u=new SpeechSynthesisUtterance('まず、3つのお約束です。'+items.join('。'));u.lang='ja-JP';u.rate=0.9;
+    synth.speak(u);return true;
+  }catch(e){return false;}
 }
 function watchConsent(result,mode){
   clearConsentSession();consentSession=result;
@@ -69,7 +93,7 @@ async function submitConsent(kind){
   }catch(error){if(consentFlow===flow)state.textContent='同意の保存を確認できませんでした。記録の利用は始まっていません。通信を確認して再試行してください。';}
   finally{consentSaving=false;document.getElementById('consent-submit-'+kind).disabled=false;}
 }
-function cancelConsent(){if(consentSaving)return;showConsentModeChoice();}
+function cancelConsent(){if(consentSaving)return;try{if(window.speechSynthesis)speechSynthesis.cancel();}catch(e){}showConsentModeChoice();}
 async function openConsentExit(){
   if(consentSaving)return;
   try{

@@ -92,7 +92,7 @@
       }
       function assertOwner(snapshot) {
         if (!snapshot.exists) throw failure('group-not-found', '家族グループが見つかりません。過去の削除で残ったデータがないか、この画面では確認できません。');
-        if (snapshot.data().createdBy !== ownerUid) throw failure('not-owner', '共有データ全体を削除できるのは、この家族グループを作成した管理者だけです。');
+        if (snapshot.data().createdBy !== ownerUid) throw failure('not-owner', '共有データ全体を削除できるのは、この家族グループの管理者だけです。');
       }
       async function deleteRefs(refs) {
         if (!refs.length) return;
