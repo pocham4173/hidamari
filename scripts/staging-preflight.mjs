@@ -6,7 +6,7 @@
      - SA_JSON                 Worker に登録するサービスアカウント鍵(JSONのオブジェクト)の project_id
      - 同じ鍵の client_email   「〜@<プロジェクト>.iam.gserviceaccount.com」の形から取り出したプロジェクト
    null・false・配列・文字列など、オブジェクトでない JSON は受け付けない。どれか1つでも欠ける・形が違う・
-   一致しない・本番のときは、何も変えずに止まる(終了コード 2)。鍵の中身は表示しない。 */
+   一致しない・本番のとき、ウェブ設定の apiKey がAPIキーの形でないときは、何も変えずに止まる(終了コード 2)。鍵の中身は表示しない。 */
 const PROD = 'hidamari-5f8de';
 const PROJECT_RE = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;                                  // Firebase/Google Cloud のプロジェクトIDの形
 const SA_EMAIL_RE = /^[a-z][a-z0-9-]{4,28}[a-z0-9]@([a-z][a-z0-9-]{4,28}[a-z0-9])\.iam\.gserviceaccount\.com$/;
@@ -34,6 +34,8 @@ const project = projectId(process.env.TEST_PROJECT, 'MAINICO_TEST_PROJECT_ID');
 const web = plainObject(process.env.STAGING_FIREBASE_CONFIG, '画面用のウェブ設定(MAINICO_STAGING_FIREBASE_CONFIG)');
 const sa = plainObject(process.env.SA_JSON, 'サービスアカウント鍵(MAINICO_TEST_SERVICE_ACCOUNT)');
 const webProject = web ? projectId(web.projectId, 'ウェブ設定の projectId') : '';
+// ウェブ設定の apiKey は「AIza」で始まる39文字。コピーの途中で伏せ字(•)などに置き換わったものは、画面で auth/api-key-not-valid になる
+if (web && (typeof web.apiKey !== 'string' || !/^AIza[0-9A-Za-z_-]{35}$/.test(web.apiKey))) problems.push('ウェブ設定の apiKey がFirebaseのAPIキーの形ではありません（伏せ字や途中切れの可能性）');
 const keyProject = sa ? projectId(sa.project_id, 'サービスアカウント鍵の project_id') : '';
 let emailProject = '';
 if (sa) {

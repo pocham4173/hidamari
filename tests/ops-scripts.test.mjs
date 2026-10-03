@@ -81,7 +81,8 @@ for (const [label, env] of [
   const keyObj = (project, email = 'firebase-adminsdk-x@' + project + '.iam.gserviceaccount.com') => ({ type: 'service_account', project_id: project, client_email: email, private_key: '-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----\n' });
   const key = (project, email) => JSON.stringify(keyObj(project, email));
   const without = (field) => { const k = keyObj('mainico-test'); delete k[field]; return JSON.stringify(k); };
-  const web = (project) => JSON.stringify({ apiKey: 'k', projectId: project });
+  const API_KEY = 'AIza' + 'x'.repeat(35);
+  const web = (project, apiKey = API_KEY) => JSON.stringify({ apiKey, projectId: project });
   const pre = (TEST_PROJECT, cfg, sa) => run('scripts/staging-preflight.mjs', { TEST_PROJECT, STAGING_FIREBASE_CONFIG: cfg, SA_JSON: sa });
   const ok = pre('mainico-test', web('mainico-test'), key('mainico-test'));
   assert.equal(ok.status, 0, ok.stderr);
@@ -105,6 +106,9 @@ for (const [label, env] of [
     ['ウェブ設定が false', ['mainico-test', 'false', key('mainico-test')], /オブジェクトではありません（boolean）/],
     ['ウェブ設定が配列', ['mainico-test', JSON.stringify([{ projectId: 'mainico-test' }]), key('mainico-test')], /オブジェクトではありません（配列）/],
     ['ウェブ設定に projectId がない', ['mainico-test', JSON.stringify({ apiKey: 'k' }), key('mainico-test')], /ウェブ設定の projectId がありません/],
+    ['ウェブ設定の apiKey が伏せ字', ['mainico-test', web('mainico-test', 'AIzaSyAc' + '•'.repeat(31)), key('mainico-test')], /apiKey がFirebaseのAPIキーの形ではありません/],
+    ['ウェブ設定の apiKey がない', ['mainico-test', JSON.stringify({ projectId: 'mainico-test' }), key('mainico-test')], /apiKey がFirebaseのAPIキーの形ではありません/],
+    ['ウェブ設定の apiKey が短い', ['mainico-test', web('mainico-test', 'AIzaSyAc'), key('mainico-test')], /apiKey がFirebaseのAPIキーの形ではありません/],
     ['ウェブ設定の projectId が空', ['mainico-test', web(''), key('mainico-test')], /ウェブ設定の projectId がありません/],
     // client_email
     ['鍵のメールがない', ['mainico-test', web('mainico-test'), without('client_email')], /client_email がありません/],
