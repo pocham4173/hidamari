@@ -232,22 +232,31 @@ export async function runScenarios(target, log = console.log) {
     }
     {
       // 5b. 確定(commit)そのものが失敗する(読んだあとに終了手続きが作られた) → トークンなし
+      // 本物のFirestoreでは、終了手続きの作成が交換のロック待ちになり、交換の確定より後に確定することがある。
+      // そのため「文書があるか」ではなく「どちらが先に確定したか」で判定する(race と同じ考え方)
       const r = await begin('login');
+      let closure = null, closureAt = 0, blocked = false;
       afterTxnRead = async (path) => {
         if (!path.startsWith('accountClosures/')) return;
         afterTxnRead = null;
-        await Promise.race([closureWrite(), sleep(3000)]);
+        closure = closureWrite().then((status) => { closureAt = Date.now(); return status; });
+        blocked = !(await Promise.race([closure.then(() => true), sleep(3000).then(() => false)]));
       };
       const commits = trace.txnCommits.length;
       const res = await exchange(r);
       afterTxnRead = null;
       const out = await res.json();
-      if (await read('accountClosures/' + uid)) {
-        assert.equal(out.customToken, undefined, '5b: 終了手続きが先に確定したのにトークンが出た');
-        assert.ok(trace.txnCommits.length > commits, '確定を試みて失敗した');
-        log(`  5b: 確定が失敗 → ${res.status} ${out.error}・トークンなし`);
+      const closureStatus = closure ? await closure : 0;
+      const closed = closureStatus === 200;   // 終了手続きが本当に確定したか
+      const commitAt = trace.txnCommits.at(-1) || 0;
+      assert.ok(closure, '5b: 終了手続きの割り込みが行われた');
+      assert.ok(trace.txnCommits.length > commits, '5b: 確定(commit)を試みた');
+      if (out.customToken) {
+        assert.ok(!closed || (blocked && closureAt >= commitAt), '5b: 終了手続きが先に確定したのにトークンが出た (終了手続き ' + closureStatus + ', 待ち ' + blocked + ')');
+        log(`  5b: ${closed ? '終了手続きの作成はロック待ちになり、交換が先に確定（その後に終了手続きが確定）' : '終了手続きの作成は ' + closureStatus + ' で拒否され、交換が確定'}`);
       } else {
-        log('  5b: 終了手続きの作成は拒否またはロック待ちになり、交換が先に確定（トークンが出たのは、終了手続きが確定していない場合だけ）');
+        assert.notEqual(res.status, 200, '5b');
+        log(`  5b: 終了手続きが先に確定し、交換の確定が失敗 → ${res.status} ${out.error}・トークンなし`);
       }
       await remove('accountClosures/' + uid);
       await noLock('5b');
