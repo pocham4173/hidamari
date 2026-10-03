@@ -91,15 +91,30 @@
     return '';
   }
 
-  /* ===== 設定画面の連携欄 ===== */
-  var renderSeq=0;
+  /* ===== 設定画面の連携欄（2026-10-03 作り直し：ヒビルカと同じカード形式） =====
+     カード1「自分のLINE」  ：状態と、ボタンを押すだけのつなぎ方(LINEのトークにコードを入れた状態で開く)
+     カード2「家族のLINE」  ：家族のだれがLINEで受け取っているか(連携の記録から)
+     カード3「家族に頼む」  ：まだの家族へ、つなぎ方をLINEで送る
+     つなげるのは、この家族に参加が承認された本人だけ(今までと同じ。照合は送信役が行う) */
+  var renderSeq=0, linkWatch=null;
+  function stopWatch(){ if(linkWatch){ try{ linkWatch(); }catch(e){} linkWatch=null; } }
+  /* LINEのトーク画面を、コードを入れた状態で開くURL(送信を押すだけで連携できる) */
+  function sendCodeUrl(code){ return 'https://line.me/R/oaMessage/'+encodeURIComponent(LINE_ID)+'/?'+encodeURIComponent(code); }
+  function appUrl(){
+    if(global.MAINICO_APP_URL) return String(global.MAINICO_APP_URL);
+    var l=global.location; return l?l.origin+l.pathname.replace(/[^/]*$/,''):'';
+  }
+  function card(title,sub,body){
+    return '<section class="ln-card"><h4>'+h(title)+'</h4>'+(sub?'<p class="ln-sub">'+h(sub)+'</p>':'')+body+'</section>';
+  }
   async function render(areaId){
     var area=document.getElementById(areaId);
     if(!area) return;
     var seq=++renderSeq;
+    stopWatch();
     var myUid=typeof global.uid==='function'?global.uid():'';
     if(!myUid){ area.innerHTML='<p class="note">ログインを確認できません。アプリを開き直してください。</p>'; return; }
-    area.innerHTML='<p class="note">LINE連携の状態を確認しています…</p>';
+    area.innerHTML='<p class="note">LINEの状態を確認しています…</p>';
     var link=null, failed=false;
     try{
       var snap=await global.db.collection('lineLinks').doc(myUid).get({source:'server'});
@@ -107,26 +122,75 @@
     }catch(e){ failed=true; }
     if(seq!==renderSeq) return;
     if(failed){
-      area.innerHTML='<p class="note">LINE連携の状態を確認できませんでした。通信を確認してください。</p>'+
+      area.innerHTML='<p class="note">LINEの状態を確認できませんでした。通信を確認してください。</p>'+
         '<button class="set-btn" type="button" data-line-act="reload">もう一度確認する</button>';
-    }else if(link && link.groupId===(typeof global.gid==='function'?global.gid():'')){
-      var at=toDate(link.linkedAt);
-      area.innerHTML='<p class="note"><b>✅ このアカウントはLINEと連携しています</b>'+(at?'（'+h(jpDateTime(at))+'から）':'')+'</p>'+
-        '<p class="note">「LINEで知らせる日時」を入れた予定が、決めた日時にLINEで届きます。15分ほど遅れることがあります。</p>'+
-        '<a class="set-btn" href="'+ADD_FRIEND_URL+'" target="_blank" rel="noopener noreferrer">まいにこ公式LINEを開く</a>'+
-        '<button class="set-btn warn" type="button" data-line-act="unlink">LINE連携を解除する</button>'+
-        '<div class="save-state" data-line-state aria-live="polite"></div>';
-    }else{
-      area.innerHTML=intro()+
-        '<button class="set-btn" type="button" data-line-act="code">LINE連携コードを作る</button>'+
-        '<div data-line-code></div>'+
-        '<div class="save-state" data-line-state aria-live="polite"></div>';
+      bind(area,areaId); return;
     }
+    var linked=!!(link && link.groupId===(typeof global.gid==='function'?global.gid():''));
+    var self;
+    if(linked){
+      var at=toDate(link.linkedAt);
+      self='<p class="ln-status ok">✓ 自分のLINEを登録済み'+(at?'（'+h(jpDateTime(at))+'から）':'')+'</p>'+
+        '<p class="ln-sub">「LINEで知らせる日時」を入れた予定が、このLINEに届きます。</p>'+
+        '<a class="set-btn ln-soft" href="'+ADD_FRIEND_URL+'" target="_blank" rel="noopener noreferrer">まいにこ公式LINEを開く</a>'+
+        '<button class="set-btn ln-ghost" type="button" data-line-act="unlink">つなぐのをやめる</button>';
+    }else{
+      self='<p class="ln-status">まだつながっていません。</p>'+
+        '<ol class="ln-steps"><li>まいにこ公式LINEを友だち追加します（追加済みなら飛ばしてOK）</li><li>「LINEとつなぐ」を押し、開いたLINEで<b>送信</b>を押せば完了です</li></ol>'+
+        '<a class="set-btn ln-soft" href="'+ADD_FRIEND_URL+'" target="_blank" rel="noopener noreferrer">まいにこを友だち追加</a>'+
+        '<button class="set-btn ln-line" type="button" data-line-act="code">LINEとつなぐ</button>'+
+        '<div data-line-code></div>';
+    }
+    self+='<div class="save-state" data-line-state aria-live="polite"></div>'+
+      '<details class="ln-more"><summary>LINEに届く内容</summary><p class="note">予定の日付・時刻・場所・予定名・登録した人の名前です。LINEヤフー株式会社のLINEを通じて届き、ロック画面に表示されることがあります。つないでいない人には届きません。</p></details>';
+    var share='https://line.me/R/share?text='+encodeURIComponent('まいにこの予定のお知らせを、LINEで受け取れるようにしてね。\nまいにこを開いて「設定」→「LINEで予定のお知らせ」→「LINEとつなぐ」を押すだけです。\n'+appUrl());
+    area.innerHTML=
+      card('自分のLINE','予定のお知らせを、自分のLINEで受け取る',self)+
+      card('家族のLINE','予定に「LINEで知らせる日時」を入れると、✓の人全員に届きます','<div data-line-family><p class="note">読み込んでいます…</p></div>')+
+      card('家族に頼む','まだの家族に、つなぎ方をLINEで送る',
+        '<p class="ln-sub">LINEのお知らせは、一人ずつ自分のスマホでつなぎます。下のボタンで、つなぎ方を家族に送れます。</p>'+
+        '<a class="set-btn ln-line" href="'+h(share)+'" target="_blank" rel="noopener noreferrer">LINEで家族に頼む</a>');
     bind(area,areaId);
+    renderFamily(area,myUid,linked,seq);
+    if(!linked) watchLink(areaId,myUid,seq);
   }
-  function intro(){
-    return '<p class="note">まいにこ公式LINEを友だち追加して連携すると、「LINEで知らせる日時」を入れた予定が、その日時にLINEで届きます。連携は一人ずつ行います。</p>'+
-      '<p class="note">届く内容：予定の日付・時刻・場所・予定名・登録した人の名前。LINEヤフー株式会社のLINEを通じて届き、ロック画面に表示されることがあります。連携しない人には届きません。</p>';
+  /* 家族の一覧と、だれがLINEで受け取っているか(自分は実際の連携、家族は連携の記録から) */
+  async function renderFamily(area,myUid,selfLinked,seq){
+    var box=area.querySelector('[data-line-family]');
+    if(!box||typeof global.col!=='function') return;
+    var members=[], latest={};
+    try{
+      var ms_=await global.col('members').where('status','==','approved').get();
+      ms_.forEach(function(d){ members.push({id:d.id,name:(d.data()||{}).name||''}); });
+      var logs=await global.col('events').where('type','==','line-link-log').get();
+      var rows=[]; logs.forEach(function(d){ rows.push(d.data()); });
+      rows.sort(function(a,b){ return ms(b)-ms(a); });
+      rows.forEach(function(v){ if(v.uid&&!latest[v.uid]) latest[v.uid]=v; });
+    }catch(e){
+      if(seq===renderSeq) box.innerHTML='<p class="note">家族の状態を読み込めませんでした。通信を確認してください。</p>';
+      return;
+    }
+    if(seq!==renderSeq) return;
+    members.sort(function(a,b){ return (a.id===myUid?-1:0)-(b.id===myUid?-1:0); });
+    if(!members.length){ box.innerHTML='<p class="note">まだ家族がいません。</p>'; return; }
+    var on=0;
+    box.innerHTML='<ul class="ln-family">'+members.map(function(m){
+      var ok=m.id===myUid?selfLinked:!!(latest[m.id]&&latest[m.id].action==='linked');
+      if(ok) on++;
+      return '<li><span class="ln-name">'+h(m.name||'家族')+(m.id===myUid?'<small>（自分）</small>':'')+'</span>'+
+        '<span class="ln-badge'+(ok?' ok':'')+'">'+(ok?'✓ 受け取る':'まだ')+'</span></li>';
+    }).join('')+'</ul>'+
+    '<p class="ln-sub">'+(on?'今は '+on+'人 に届きます。':'まだだれにも届きません。')+'2026年9月29日より前につないだ家族は「まだ」と出ることがあります。</p>';
+  }
+  /* つなぐ途中: LINEで送信したら、この画面が自動で「登録済み」に変わる */
+  function watchLink(areaId,myUid,seq){
+    try{
+      linkWatch=global.db.collection('lineLinks').doc(myUid).onSnapshot(function(snap){
+        if(seq!==renderSeq||!snap.exists) return;
+        var g=typeof global.gid==='function'?global.gid():'';
+        if((snap.data()||{}).groupId===g){ stopWatch(); render(areaId); if(typeof renderLog==='function') renderLog('settings-line-log'); }
+      },function(){});
+    }catch(e){ linkWatch=null; }
   }
   function bind(area,areaId){
     area.querySelectorAll('[data-line-act]').forEach(function(btn){
@@ -145,9 +209,9 @@
   }
   async function makeCode(area,areaId,btn){
     var myUid=global.uid(), g=global.gid();
-    if(!myUid||!g){ setState(area,'家族とつながってから連携してください',true); return; }
+    if(!myUid||!g){ setState(area,'家族とつながってから、LINEとつないでください',true); return; }
     btn.disabled=true;
-    setState(area,'コードを作っています…');
+    setState(area,'準備しています…');
     var code='', ok=false, lastErr=null;
     for(var i=0;i<3&&!ok;i++){
       code=newCode();
@@ -162,26 +226,21 @@
     }
     btn.disabled=false;
     if(!ok){
-      setState(area,(lastErr&&lastErr.code==='permission-denied')?'コードを作れませんでした。家族への参加が承認されているか確認してください':'コードを作れませんでした。通信を確認して、もう一度押してください',true);
+      setState(area,(lastErr&&lastErr.code==='permission-denied')?'準備できませんでした。家族への参加が承認されているか確認してください':'準備できませんでした。通信を確認して、もう一度押してください',true);
       return;
     }
     setState(area,'');
+    btn.hidden=true;
     var box=area.querySelector('[data-line-code]');
     var until=new Date(Date.now()+CODE_MINUTES*60*1000);
-    box.innerHTML='<div class="code-show">'+h(code)+'</div>'+
-      '<div class="code-exp">'+h(two(until.getHours())+':'+two(until.getMinutes()))+'まで（10分間）・一度だけ使えます</div>'+
-      '<ol class="note line-steps">'+
-        '<li>下の「友だち追加する」を押して、まいにこ公式LINEを友だち追加します（追加済みなら開くだけ）</li>'+
-        '<li>トーク画面に、上の8文字のコードを送ります</li>'+
-        '<li>「連携しました」と返事が届いたら完了です</li>'+
-      '</ol>'+
-      '<a class="set-btn line-add" href="'+ADD_FRIEND_URL+'" target="_blank" rel="noopener noreferrer">友だち追加する（まいにこ公式LINE）</a>'+
-      '<button class="set-btn" type="button" data-line-act="check">連携できたか確認する</button>'+
-      '<p class="note">このコードは、他の人に見せたり送ったりしないでください。</p>';
+    box.innerHTML='<a class="set-btn ln-line" href="'+h(sendCodeUrl(code))+'" target="_blank" rel="noopener noreferrer">LINEを開いて送る</a>'+
+      '<p class="ln-sub">開いたLINEのトークに、つなぐためのコードが入っています。そのまま<b>送信</b>を押してください。送ると、この画面が自動で「登録済み」に変わります（'+h(two(until.getHours())+':'+two(until.getMinutes()))+'まで有効）。</p>'+
+      '<details class="ln-more"><summary>うまく開かないとき</summary><p class="note">まいにこ公式LINEのトークに、次のコードを送ってください。他の人には見せないでください。</p><div class="code-show">'+h(code)+'</div>'+
+      '<button class="set-btn" type="button" data-line-act="check">つながったか確かめる</button></details>';
     bind(area,areaId);
   }
   async function unlink(area,areaId,btn){
-    var q='LINE連携を解除しますか？\nこのLINEには、予定のお知らせが届かなくなります。予定そのものは消えません。';
+    var q='LINEとつなぐのをやめますか？\nこのLINEには、予定のお知らせが届かなくなります。予定そのものは消えません。';
     if(!(typeof global.appConfirm==='function'?await global.appConfirm(q,'解除する'):global.confirm(q))) return;
     btn.disabled=true;
     setState(area,'解除しています…');

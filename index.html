@@ -575,6 +575,26 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .lnh-row{padding:10px 2px;border-bottom:1px solid #F0EAE0;line-height:1.55;}
 .lnh-row:last-child{border-bottom:none;}
 .lnh-log{margin:4px 0 0;padding-left:1.1em;font-size:.82rem;color:var(--usucha);}
+/* LINEの設定(2026-10-03 カード形式) */
+.ln-card{background:#fff;border:1px solid #EFE6D8;border-radius:16px;padding:16px 14px;margin:0 0 12px;text-align:left;}
+a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
+.ln-card h4{margin:0;font-size:1.12rem;color:var(--cha);}
+.ln-sub{margin:4px 0 8px;font-size:.88rem;color:var(--usucha);line-height:1.6;}
+.ln-status{margin:10px 0 4px;font-size:.98rem;color:var(--usucha);}
+.ln-status.ok{color:#197D46;font-weight:700;}
+.ln-steps{margin:6px 0 4px;padding-left:1.3em;font-size:.9rem;line-height:1.6;color:var(--cha);}
+.set-btn.ln-line{background:#06C755;border-color:#06C755;color:#fff;min-height:52px;}
+.set-btn.ln-soft{background:#E8F8EE;border-color:#BFE8CC;color:#197D46;min-height:52px;}
+.set-btn.ln-ghost{background:transparent;border-color:#D8CDBA;color:var(--usucha);font-weight:600;}
+.ln-more{margin-top:10px;font-size:.9rem;}
+.ln-more summary{cursor:pointer;color:var(--usucha);padding:6px 0;}
+.ln-family{list-style:none;padding:0;margin:6px 0 0;}
+.ln-family li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid #F0EAE0;}
+.ln-family li:first-child{border-top:none;}
+.ln-name{font-weight:700;font-size:1rem;}
+.ln-name small{font-weight:400;color:var(--usucha);margin-left:4px;}
+.ln-badge{flex:none;font-size:.85rem;padding:3px 10px;border-radius:999px;background:#F3EEE6;color:var(--usucha);}
+.ln-badge.ok{background:#E8F8EE;color:#197D46;font-weight:700;}
 .line-log-box{margin-top:14px;padding-top:10px;border-top:1px dashed #D8CDBA;}
 .line-log-box h4{margin:0 0 4px;}
 .line-log-now{background:#F0FAF3;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:.9rem;}
@@ -1495,8 +1515,8 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
       <div class="set-menu-body">
         <div id="settings-line-area"></div>
         <div class="note" id="settings-line-quota" aria-live="polite"></div>
-        <a class="set-btn" href="help.html#line" target="_blank" rel="noopener">LINEの使い方（連携・お知らせの付け方・解除）</a>
-        <div class="line-log-box"><h4>家族のLINE連携の記録</h4><div id="settings-line-log"></div></div>
+        <a class="set-btn" href="help.html#line" target="_blank" rel="noopener">LINEの使い方（つなぎ方・お知らせの付け方・やめ方）</a>
+        <details class="ln-more line-log-box"><summary>家族のLINEの記録（だれが、いつつないだか）</summary><div id="settings-line-log"></div></details>
       </div>
     </details>
 
@@ -2097,7 +2117,7 @@ setTimeout(function(){
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
-<script src="line-notify.js?v=20261001"></script>
+<script src="line-notify.js?v=20261003"></script>
 <script src="hitokoe.js?v=20261001"></script>
 <script src="family-guide.js?v=20261002"></script>
 <script src="owner-transfer.js?v=20261002"></script>

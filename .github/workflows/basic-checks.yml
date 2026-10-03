@@ -83,6 +83,7 @@ jobs:
           node tests/simple-navigation.test.mjs
           node tests/schedule-link.test.mjs
           node tests/calendar-navigation.test.mjs
+          node tests/line-settings.test.mjs
           node tests/recovery-feedback.test.mjs
           node tests/family-only-records.test.mjs
           node tests/consent.test.mjs
