@@ -46,6 +46,7 @@ globalThis.fetch = async (url, opt = {}) => {
     return json({});
   }
   if (url === 'https://api.line.me/v2/bot/message/reply') { replies.push(body); return json({}); }
+  if (url.startsWith('https://api.line.me/v2/bot/profile/')) return url.endsWith('/Unf') ? json({}, 404) : json({ displayName: 'おばあ' });
   const base = 'https://firestore.googleapis.com/v1/' + ROOT;
   assert.ok(url.startsWith(base), url);
   assert.equal(opt.headers.authorization, 'Bearer gtok');
@@ -58,7 +59,9 @@ globalThis.fetch = async (url, opt = {}) => {
         (pre.exists===false && db.has(path)))) return json({},409);
     }
     for(const w of body.writes){const path=(w.delete||w.update.name).slice(ROOT.length+1);
-      if(w.delete)db.delete(path);else put(path,w.update.fields);}
+      if(w.delete)db.delete(path);
+      else if(w.updateMask)put(path,{...(db.get(path)?.fields||{}),...w.update.fields});
+      else put(path,w.update.fields);}
     return json({});
   }
   if (rest.endsWith(':runQuery') || u.pathname.endsWith(':runQuery')) {
@@ -125,7 +128,7 @@ assert.equal((await hook([], true)).status, 401);
 assert.equal((await hook([])).status, 200);
 // 3. 友だち追加 → 案内を返事
 await hook([{ type: 'follow', replyToken: 'r1', source: user('Uowner') }]);
-assert.match(replies.at(-1).messages[0].text, /8文字のコード/);
+assert.match(replies.at(-1).messages[0].text, /LINEとつなぐ/);
 // 4. 正しいコードで連携(全角・小文字・空白でも受け付ける)
 put('lineLinkCodes/ABCD2345', { uid: S('owner'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
 await hook([{ type: 'message', replyToken: 'r2', source: user('Uowner'), message: { type: 'text', text: 'ａｂｃｄ ２３４５' } }]);
@@ -232,11 +235,77 @@ assert.ok(linkLogs('unlinked').some((f) => f.uid.stringValue === 'owner' && f.vi
 // 12. 関係ない文は案内だけ返す
 await hook([{ type: 'message', replyToken: 'r7', source: user('Ux'), message: { type: 'text', text: 'こんにちは' } }]);
 assert.match(replies.at(-1).messages[0].text, /お返事や相談は届きません/);
+// 14. 家族が招待した送信先(2026-10-04): LINEで招待コードを送ると登録され、選ばれた予定だけが届く
+{
+  const inv = (code, rid, minutes) => put('lineInvites/' + code, { groupId: S('g1'), recipientId: S(rid), createdBy: S('owner'), expiresAt: T(new Date(Date.now() + minutes * 60000)) });
+  put('lineRecipients/r1', { groupId: S('g1'), name: S('おばあちゃん'), status: S('pending'), createdBy: S('owner') });
+  put('lineRecipients/r2', { groupId: S('g1'), name: S('おじさん'), status: S('pending'), createdBy: S('owner') });
+  inv('KNVT234567', 'r1', 60);
+  await hook([{ type: 'message', replyToken: 'i1', source: user('Ugrand'), message: { type: 'text', text: 'まいにこ招待 knvt234567' } }]);
+  assert.match(replies.at(-1).messages[0].text, /理絵さんのまいにこの予定のお知らせを受け取る登録をしました/);
+  assert.ok(!/友だち追加が必要/.test(replies.at(-1).messages[0].text));
+  assert.equal(db.get('lineRecipients/r1').fields.status.stringValue, 'joined');
+  assert.equal(db.get('lineRecipients/r1').fields.lineName.stringValue, 'おばあ');
+  assert.equal(db.get('lineRecipients/r1').fields.name.stringValue, 'おばあちゃん', '名前はそのまま');
+  assert.ok(!('lineUserId' in db.get('lineRecipients/r1').fields), '家族が読む文書にLINEの利用者識別子を置かない');
+  assert.equal(db.get('lineRecipientIds/r1').fields.lineUserId.stringValue, 'Ugrand');
+  assert.equal(db.has('lineInvites/KNVT234567'), false, '使った招待は消える');
+  // 使った招待・期限切れ・登録済みの送信先への招待は受け付けない
+  await hook([{ type: 'message', replyToken: 'i2', source: user('Uother'), message: { type: 'text', text: '招待KNVT234567' } }]);
+  assert.match(replies.at(-1).messages[0].text, /見つからないか/);
+  inv('XPRD234567', 'r2', -1);
+  await hook([{ type: 'message', replyToken: 'i3', source: user('Uother'), message: { type: 'text', text: '招待XPRD234567' } }]);
+  assert.match(replies.at(-1).messages[0].text, /有効期限/);
+  assert.equal(db.get('lineRecipients/r2').fields.status.stringValue, 'pending');
+  inv('AGNN234567', 'r1', 60);
+  await hook([{ type: 'message', replyToken: 'i4', source: user('Uother'), message: { type: 'text', text: '招待AGNN234567' } }]);
+  assert.match(replies.at(-1).messages[0].text, /もう登録が済んでいます/);
+  assert.equal(db.get('lineRecipientIds/r1').fields.lineUserId.stringValue, 'Ugrand', '別の人に乗っ取られない');
+  // 友だち追加していない人には、追加の案内を付ける
+  inv('FRND234567', 'r2', 60);
+  await hook([{ type: 'message', replyToken: 'i5', source: user('Unf'), message: { type: 'text', text: '招待FRND234567' } }]);
+  assert.match(replies.at(-1).messages[0].text, /友だち追加が必要/);
+  db.delete('lineRecipients/r2'); db.delete('lineRecipientIds/r2');
+
+  // 送る相手: notifyTo なし=つないだ家族全員(送信先へは送らない)、'r:'=選んだ送信先、'u:'=選んだ家族
+  put('lineLinks/fam', { lineUserId: S('Ufam'), groupId: S('g1') });
+  const before = pushes.length;
+  const past = T(new Date(Date.now() - 60000));
+  const arr = (...v) => ({ arrayValue: { values: v.map(S) } });
+  put('groups/g1/yotei/yAll', { kind: S('📌'), date: S(ds), label: S('家族みんな'), uid: S('owner'), notifyAt: past });
+  put('groups/g1/yotei/yR', { kind: S('📌'), date: S(ds), label: S('おばあちゃんだけ'), uid: S('owner'), notifyAt: past, notifyTo: arr('r:r1') });
+  put('groups/g1/yotei/yUR', { kind: S('📌'), date: S(ds), label: S('ふたり'), uid: S('owner'), notifyAt: past, notifyTo: arr('u:fam', 'r:r1', 'r:gone') });
+  // 1回の見回りの通信には上限があるので、残りは次の回に送る
+  for (let i = 0; i < 3; i++) { await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } }); await waiter; }
+  const got = pushes.slice(before).map((p) => p.to + ':' + p.messages[0].text.split('\n').find((l) => /家族みんな|おばあちゃんだけ|ふたり/.test(l)));
+  assert.deepEqual(got.sort(), ['Ufam:📌 ふたり', 'Ufam:📌 家族みんな', 'Ugrand:📌 おばあちゃんだけ', 'Ugrand:📌 ふたり']);
+  // 家族が送信先を削除したら、その後は送らない(控えが残っていても)
+  db.delete('lineRecipients/r1');
+  const before2 = pushes.length;
+  put('groups/g1/yotei/yR2', { kind: S('📌'), date: S(ds), label: S('削除後'), uid: S('owner'), notifyAt: past, notifyTo: arr('r:r1') });
+  await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } });
+  await waiter;
+  assert.deepEqual(pushes.slice(before2).map((p) => p.to + ' ' + p.messages[0].text.split('\n')[2]), [], '削除した送信先には送らない');
+  // 送信先が「解除」と送ると、控えを消して「LINEで停止」にする
+  put('lineRecipients/r3', { groupId: S('g1'), name: S('いとこ'), status: S('joined'), createdBy: S('owner') });
+  put('lineRecipientIds/r3', { lineUserId: S('Ucousin'), groupId: S('g1') });
+  await hook([{ type: 'message', replyToken: 'i6', source: user('Ucousin'), message: { type: 'text', text: '解除' } }]);
+  assert.match(replies.at(-1).messages[0].text, /解除しました/);
+  assert.equal(db.has('lineRecipientIds/r3'), false);
+  assert.equal(db.get('lineRecipients/r3').fields.status.stringValue, 'stopped');
+  // ブロックでも同じ
+  put('lineRecipients/r4', { groupId: S('g1'), name: S('姉'), status: S('joined'), createdBy: S('owner') });
+  put('lineRecipientIds/r4', { lineUserId: S('Usis'), groupId: S('g1') });
+  await hook([{ type: 'unfollow', source: user('Usis') }]);
+  assert.equal(db.has('lineRecipientIds/r4'), false);
+  assert.equal(db.get('lineRecipients/r4').fields.status.stringValue, 'stopped');
+  db.delete('lineLinks/fam'); db.delete('groups/g1/yotei/yR2');
+}
 // 13. 動作確認ページ
 const res = await worker.fetch(new Request('https://w.example/'), env, {});
-assert.match(await res.text(), /^まいにこ LINE送信役は動いています（版：2026-10-01 /);
+assert.match(await res.text(), /^まいにこ LINE送信役は動いています（版：2026-10-04 /);
 
-console.log('line worker: 署名確認・友だち追加・連携(期限切れ/承認待ちは不可)・見回り送信(対象者/文面/二重送信なし/古い予定/削除中の家庭)・解除・ブロック 13項目 passed');
+console.log('line worker: 署名確認・友だち追加・連携(期限切れ/承認待ちは不可)・見回り送信(対象者/文面/二重送信なし/古い予定/削除中の家庭)・解除・ブロック・送信先の招待と予定ごとの相手 14項目 passed');
 
 // Failure, consent withdrawal, closure, retries and request budget regressions.
 async function tick(){requests=0;await worker.scheduled({},env,{waitUntil:p=>{waiter=p;}});await waiter;assert.ok(requests<=49,'strict request budget (無料プランの50回より手前)');}

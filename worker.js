@@ -4,11 +4,14 @@
  *  1. LINEからの受付（Webhook: https://〜.workers.dev/line）
  *     - 友だち追加 → 連携コードの送り方を返事
  *     - 8文字の連携コード → まいにこの家庭・アカウントとLINEを連携
- *     - 「解除」 → このLINEの連携を解除
- *     - ブロック → 自動で連携解除
+ *     - 「まいにこ招待」＋10文字の招待コード → 家族が招待した送信先として登録(2026-10-04)
+ *     - 「解除」 → このLINEの連携・送信先の登録を解除
+ *     - ブロック → 自動で連携・送信先の登録を解除
  *  2. 15分ごとの見回り（Cron）
  *     - 「LINEで知らせる日時」を過ぎた予定を探し、その家庭でLINE連携した
  *       承認済みの人へ「予定のお知らせ」を送る。送ったら予定に送信済みの印を付ける。
+ *       予定に notifyTo(知らせる相手)があれば、その人だけに送る。招待した送信先('r:〜')へは、
+ *       notifyTo で選ばれた予定だけを送る(選んでいない予定・おまもりタグは送らない)。
  *     - おまもりタグが読み取られたら、LINE連携した家族(ご本人以外)へ知らせる。
  *  3. 月200通(無料プラン)を守る上限ガード
  *     - 残りが TAG_RESERVE 通以下になったら予定のお知らせを止め、タグの分を残す
@@ -28,6 +31,8 @@
 
 const APP_URL = 'https://pocham4173.github.io/hidamari/';
 const CODE_RE = /^[A-HJ-NP-Z2-9]{8}$/;
+const INVITE_RE = /^(?:まいにこ)?招待([A-HJ-NP-Z2-9]{10})$/;
+const ADD_FRIEND_URL = 'https://line.me/R/ti/p/%40187mrwbk';
 const LATE_LIMIT_MS = 12 * 60 * 60 * 1000;   // 12時間以上遅れた通知は送らずに印だけ付ける
 const CONSENT_VERSION = '2026-09-19.1';
 const SUBREQUEST_BUDGET = 45;                // 無料プランの上限(50)より少し手前で止める
@@ -39,7 +44,7 @@ const TAGS_PER_RUN = 3;                      // 1回の見回りで知らせる�
 const TAG_SCAN_PER_RUN = 8;                  // 1回の見回りで調べる使用中のタグ(多いときは8件ずつ順番に)
 const TAG_REQUEST_BUDGET = 30;               // タグの処理に使う通信の上限。残りは予定のお知らせに回す
                                              // (途中で止まった読み取りは、次の回に同じ再送キーで続きから送る)
-const VERSION_TEXT = '版：2026-10-01 作り直し・上限ガードつき';
+const VERSION_TEXT = '版：2026-10-04 送信先の招待・予定ごとの相手';
 
 export default {
   async fetch(request, env, ctx) {
@@ -94,11 +99,11 @@ async function verifySignature(body, signature, secret) {
 
 const MSG_WELCOME =
   'まいにこ公式LINEです。友だち追加ありがとうございます。\n\n' +
-  '予定のお知らせを受け取るには、まいにこアプリの\n「設定」→「LINEで予定のお知らせ」→「LINE連携コードを作る」\nで表示される8文字のコードを、このトークに送ってください。';
+  '予定のお知らせを受け取るには、まいにこアプリの\n「設定」→「LINEで予定のお知らせ」→「LINEとつなぐ」\nを押してください。家族から招待が届いた方は、招待のリンクを開いて送信を押してください。';
 const MSG_HELP =
-  'このトークでは、連携コード（8文字）の受け付けと、予定のお知らせだけを行っています。\n' +
+  'このトークでは、つなぐためのコード・招待の受け付けと、予定のお知らせだけを行っています。\n' +
   'お返事や相談は届きません。急ぐときは電話などで連絡してください。\n\n' +
-  '連携をやめるときは「解除」と送ってください。';
+  '受け取るのをやめるときは「解除」と送ってください。';
 
 async function handleEvent(ev, env, fs) {
   const source = ev.source || {};
@@ -110,6 +115,7 @@ async function handleEvent(ev, env, fs) {
   }
   if (ev.type === 'unfollow') {
     await removeLinksFor(fs, lineUserId, 'block');
+    await removeRecipientsFor(fs, lineUserId);
     return;
   }
   if (ev.type !== 'message' || !ev.message || ev.message.type !== 'text') {
@@ -119,10 +125,14 @@ async function handleEvent(ev, env, fs) {
   const raw = String(ev.message.text || '');
   const text = raw.normalize('NFKC').toUpperCase().replace(/[\s\-ー－_]/g, '');
   if (text === '解除' || text === '連携解除') {
-    const n = await removeLinksFor(fs, lineUserId, 'line');
+    const n = await removeLinksFor(fs, lineUserId, 'line') + await removeRecipientsFor(fs, lineUserId);
     return reply(env, ev.replyToken, n
-      ? 'LINE連携を解除しました。このLINEには予定のお知らせが届かなくなります。\nまた受け取るときは、アプリで新しい連携コードを作ってください。'
+      ? '解除しました。このLINEには予定のお知らせが届かなくなります。\nまた受け取るときは、アプリの「LINEとつなぐ」か、家族からの新しい招待で登録してください。'
       : 'このLINEは、まいにこと連携していません。');
+  }
+  const invite = INVITE_RE.exec(text);
+  if (invite) {
+    return reply(env, ev.replyToken, await acceptInvite(env, fs, invite[1], lineUserId));
   }
   if (CODE_RE.test(text)) {
     return reply(env, ev.replyToken, await linkByCode(fs, text, lineUserId));
@@ -158,6 +168,70 @@ async function linkByCode(fs, code, lineUserId) {
   const name = typeof member.name === 'string' && member.name ? member.name + 'さん、' : '';
   return name + 'LINE連携しました。\n\nまいにこで「LINEで知らせる日時」を入れた予定が、このLINEに届きます。\n' +
     'やめるときは、アプリの設定で解除するか、「解除」と送ってください。';
+}
+
+/* 家族が招待した送信先の登録(2026-10-04)。
+   LINEの利用者識別子は、署名を確かめた Webhook の送り主から取る(画面からの申告は使わない)。
+   招待コードは7日間・一度だけ。登録できるのは「相手の承認待ち」の送信先だけ。 */
+async function acceptInvite(env, fs, code, lineUserId) {
+  const NG = 'この招待は見つからないか、有効期限（7日）が切れています。\n招待してくれた家族に、もう一度招待を送ってもらってください。';
+  const inv = await fs.get('lineInvites/' + code);
+  if (!inv) return NG;
+  const exp = inv.fields.expiresAt, rid = inv.fields.recipientId, groupId = inv.fields.groupId;
+  if (!(exp instanceof Date) || exp.getTime() < Date.now() || typeof rid !== 'string' || typeof groupId !== 'string') {
+    await fs.delete('lineInvites/' + code).catch(() => {});
+    return NG;
+  }
+  const rec = await fs.get('lineRecipients/' + rid);
+  const group = await fs.get('groups/' + groupId);
+  if (!rec || rec.fields.groupId !== groupId || !group || group.fields.deletionState === 'deleting') {
+    await fs.delete('lineInvites/' + code).catch(() => {});
+    return NG;
+  }
+  if (rec.fields.status !== 'pending') {
+    await fs.delete('lineInvites/' + code).catch(() => {});
+    return rec.fields.status === 'joined' ? 'この招待は、もう登録が済んでいます。' : NG;
+  }
+  // 表示名(家族の一覧に出す)と、友だち追加の有無。友だちでないと予定のお知らせは届かない
+  let lineName = '', friend = true;
+  try {
+    fs.reserve();
+    const res = await fetch('https://api.line.me/v2/bot/profile/' + encodeURIComponent(lineUserId),
+      { headers: { authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN } });
+    if (res.ok) lineName = String((await res.json()).displayName || '').slice(0, 40);
+    else if (res.status === 404) friend = false;
+  } catch (e) { if (e.message === 'request-budget') throw e; }
+  const now = new Date();
+  // 招待コードの使用・送信先の登録・送信役用の控えは、全部そろって確定する(どれか1つだけ残らない)
+  const ok = await fs.commit([
+    {delete: fs.root + '/lineInvites/' + code, currentDocument: {updateTime: inv.updateTime}},
+    {update: {name: fs.root + '/lineRecipients/' + rid, fields: toFields({status: 'joined', lineName, joinedAt: now})},
+      updateMask: {fieldPaths: ['status', 'lineName', 'joinedAt']}, currentDocument: {updateTime: rec.updateTime}},
+    {update: {name: fs.root + '/lineRecipientIds/' + rid, fields: toFields({lineUserId, groupId, joinedAt: now})}}
+  ]);
+  if (!ok) return NG;
+  const inviter = typeof rec.fields.createdBy === 'string' ? await fs.get('groups/' + groupId + '/members/' + rec.fields.createdBy) : null;
+  const from = inviter && typeof inviter.fields.name === 'string' && inviter.fields.name ? clip(inviter.fields.name, 40) + 'さんの' : '';
+  return from + 'まいにこの予定のお知らせを受け取る登録をしました。\n\n' +
+    '家族が「この人に知らせる」と選んだ予定だけが、このLINEに届きます。\n' +
+    'やめるときは「解除」と送ってください。' +
+    (friend ? '' : '\n\n※ お知らせを受け取るには、まいにこ公式LINEの友だち追加が必要です。\n' + ADD_FRIEND_URL);
+}
+
+async function removeRecipientsFor(fs, lineUserId) {
+  const docs = await fs.query('', {
+    from: [{ collectionId: 'lineRecipientIds' }],
+    where: fieldEq('lineUserId', { stringValue: lineUserId }),
+  });
+  for (const d of docs) {
+    const rec = await fs.get('lineRecipients/' + d.id);
+    // 家族の一覧に「LINEで停止」と残す。控えの削除と一緒に確定する
+    const writes = [{delete: fs.root + '/' + d.path, currentDocument: {updateTime: d.updateTime}}];
+    if (rec) writes.push({update: {name: fs.root + '/lineRecipients/' + d.id, fields: toFields({status: 'stopped', stoppedAt: new Date()})},
+      updateMask: {fieldPaths: ['status', 'stoppedAt']}, currentDocument: {updateTime: rec.updateTime}});
+    if (!await fs.commit(writes)) await fs.delete(d.path);
+  }
+  return docs.length;
 }
 
 async function removeLinksFor(fs, lineUserId, via) {
@@ -247,8 +321,19 @@ async function runNotifications(env) {
             ['notifyAt','notifiedAt','notificationStatus','notifyLog'], y.updateTime);
           continue;
         }
-        const links = await fs.query('', {from:[{collectionId:'lineLinks'}],
+        const allLinks = await fs.query('', {from:[{collectionId:'lineLinks'}],
           where:fieldEq('groupId',{stringValue:g.id})});
+        // 知らせる相手(notifyTo)。無い・null = つないだ家族全員(今までどおり)。
+        // 'u:<uid>' = 家族、'r:<送信先>' = 招待した送信先(選ばれた予定だけに送る)
+        const notifyTo = Array.isArray(y.fields.notifyTo) ? y.fields.notifyTo.filter(v => typeof v === 'string') : null;
+        const links = (notifyTo ? allLinks.filter(l => notifyTo.includes('u:' + l.id)) : allLinks)
+          .map(l => ({kind:'u', id:l.id, path:l.path, fields:l.fields}));
+        const wanted = notifyTo ? notifyTo.filter(v => v.startsWith('r:')).map(v => v.slice(2)) : [];
+        if (wanted.length) {
+          const ids = await fs.query('', {from:[{collectionId:'lineRecipientIds'}],
+            where:fieldEq('groupId',{stringValue:g.id})});
+          for (const d of ids) if (wanted.includes(d.id)) links.push({kind:'r', id:d.id, path:d.path, fields:d.fields});
+        }
         // 上限ガード: 月の残りが少ない・この家庭の今日の分を使い切ったときは送らず、理由を記録に残す
         const recipients = new Set(links.map(l => l.fields.lineUserId).filter(v => typeof v === 'string' && v)).size;
         const blocked = recipients ? await book.scheduleBlocked(g.id, recipients) : '';
@@ -275,9 +360,17 @@ async function runNotifications(env) {
             seen.add(to); accepted++; continue;
           }
           // Recheck server state immediately before each external transmission.
-          if (!await approvedMember(fs, g.id, link.id)) continue;
-          const currentLink = await fs.get(link.path);
-          if (!currentLink || currentLink.fields.groupId !== g.id || currentLink.fields.lineUserId !== to) continue;
+          if (link.kind === 'r') {
+            // 招待した送信先: 家族が削除・LINEで停止していないこと(登録済みの送信先の控えと同じ相手であること)
+            const rec = await fs.get('lineRecipients/' + link.id);
+            if (!rec || rec.fields.groupId !== g.id || rec.fields.status !== 'joined') continue;
+            const currentIds = await fs.get(link.path);
+            if (!currentIds || currentIds.fields.groupId !== g.id || currentIds.fields.lineUserId !== to) continue;
+          } else {
+            if (!await approvedMember(fs, g.id, link.id)) continue;
+            const currentLink = await fs.get(link.path);
+            if (!currentLink || currentLink.fields.groupId !== g.id || currentLink.fields.lineUserId !== to) continue;
+          }
           const currentSchedule = await fs.get(y.path);
           if (!currentSchedule || currentSchedule.updateTime !== y.updateTime) {complete=false;break;}
           // Persist one immutable payload before sending, including across midnight/restarts.
@@ -312,7 +405,16 @@ async function runNotifications(env) {
       if (!await approvedMember(fs, link.fields.groupId, link.id)) await fs.delete(link.path);
     }
     // Bounded maintenance. Never infer a deleted household from a partial list.
-    for (const collectionId of ['lineLinkCodes','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
+    // 招待した送信先の控えを1件ずつ見直す(家族が削除した・家庭がなくなったものは消す)
+    const recipientIds = await fs.list('lineRecipientIds', ['groupId']);
+    if (recipientIds.length) {
+      const d = recipientIds[Math.floor(now.getTime()/900000)%recipientIds.length];
+      const rec = await fs.get('lineRecipients/' + d.id);
+      const group = rec && typeof d.fields.groupId === 'string' ? await fs.get('groups/' + d.fields.groupId) : null;
+      if (!rec || rec.fields.groupId !== d.fields.groupId || rec.fields.status !== 'joined') await fs.delete(d.path);
+      else if (!group || group.fields.deletionState === 'deleting') { await fs.delete(d.path); await fs.delete('lineRecipients/' + d.id); }
+    }
+    for (const collectionId of ['lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
       const expired = await fs.query('', {from:[{collectionId}],
         where:{fieldFilter:{field:{fieldPath:'expiresAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},limit:3});
       for (const d of expired) await fs.delete(d.path);

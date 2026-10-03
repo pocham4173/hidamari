@@ -595,6 +595,27 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .ln-name small{font-weight:400;color:var(--usucha);margin-left:4px;}
 .ln-badge{flex:none;font-size:.85rem;padding:3px 10px;border-radius:999px;background:#F3EEE6;color:var(--usucha);}
 .ln-badge.ok{background:#E8F8EE;color:#197D46;font-weight:700;}
+.ln-head{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+.ln-head small{display:block;font-size:.85rem;color:var(--usucha);margin-top:2px;}
+.ln-ic{flex:none;width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;}
+.ln-ic svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.ln-ic.me,.ln-ic.add{background:#06C755;} .ln-ic.list{background:#3D6FB4;} .ln-ic.send{background:#22324A;}
+.ln-label{display:block;font-weight:700;margin:10px 0 4px;font-size:.95rem;}
+.ln-input{width:100%;box-sizing:border-box;font-size:1rem;padding:12px;border:1px solid #D8CDBA;border-radius:12px;font-family:inherit;}
+.ln-share{background:#F3FBF6;border-radius:12px;padding:10px 12px;margin-top:10px;}
+.ln-share p{margin:4px 0;}
+.ln-who-name{flex:1;min-width:0;}
+.ln-who-name small{display:block;font-size:.82rem;color:var(--usucha);}
+.ln-who-name small.ln-ok{color:#197D46;font-weight:700;} .ln-who-name small.ln-ng{color:#A8422E;}
+.ln-family li{flex-wrap:wrap;align-items:flex-start;}
+.ln-row-actions{display:flex;flex-wrap:wrap;gap:6px;width:100%;margin-top:6px;}
+.ln-mini{min-height:44px;padding:8px 14px;border-radius:12px;border:1px solid #D9CCF0;background:#F1ECFB;color:#5B3E96;font-weight:700;font-family:inherit;font-size:.9rem;}
+.ln-hist{margin-top:4px;} .ln-hist summary{cursor:pointer;font-size:.85rem;font-weight:700;}
+.ln-who{margin-top:8px;}
+.ln-chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;}
+.ln-chip{min-height:40px;padding:6px 12px;border-radius:999px;border:1px solid #D8CDBA;background:#fff;font-family:inherit;font-size:.92rem;color:var(--cha);}
+.ln-chip.on{background:#E8F8EE;border-color:#06C755;color:#197D46;font-weight:700;}
+.ln-chip.ext.on{background:#EEF3FB;border-color:#3D6FB4;color:#2B4F86;}
 .line-log-box{margin-top:14px;padding-top:10px;border-top:1px dashed #D8CDBA;}
 .line-log-box h4{margin:0 0 4px;}
 .line-log-now{background:#F0FAF3;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:.9rem;}
@@ -1302,7 +1323,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div class="ln-ttl">LINEで知らせる日時（入れたときだけ）</div>
     <input type="datetime-local" id="hy-notify" aria-label="LINEで知らせる日時">
     <div class="ln-quick"><button type="button" onclick="hyNotifyPreset('eve')">前日の夜7時</button><button type="button" onclick="hyNotifyPreset('morning')">当日の朝7時</button><button type="button" onclick="hyNotifyPreset('none')">知らせない</button></div>
-    <div class="note">LINE連携した家族とご本人に届きます。</div>
+    <div class="ln-who" id="hy-notify-who"></div>
   </div>
   <button class="hy-save" id="hy-save-btn" type="button" onclick="hySave()">この予定を保存する</button>
   <button class="set-btn warn" id="hy-delete-btn" type="button" onclick="hyDelete()" style="display:none;">この予定を削除する</button>
@@ -1333,7 +1354,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <label class="ln-ttl" for="ln-edit-at">LINEで知らせる日時</label>
     <input type="datetime-local" id="ln-edit-at">
     <div class="ln-quick"><button type="button" onclick="MainicoLine.preset('ln-edit-at','ln-edit-date','eve')">前日の夜7時</button><button type="button" onclick="MainicoLine.preset('ln-edit-at','ln-edit-date','morning')">当日の朝7時</button><button type="button" onclick="document.getElementById('ln-edit-at').value=''">知らせない</button></div>
-    <div class="note">LINE連携した家族とご本人へ届きます（15分ほど遅れることがあります）。</div>
+    <div class="ln-who" id="ln-edit-at-who"></div>
+    <div class="note">15分ほど遅れて届くことがあります。</div>
   </div>
   <button class="big-btn yotei" type="button" id="ln-edit-save" onclick="saveLineNotifyEdit()">この内容で保存する</button>
   <div class="save-state" id="ln-edit-state" aria-live="polite"></div>
@@ -1860,7 +1882,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
             <label class="ln-ttl" for="yt-notify">LINEで知らせる日時（任意）</label>
             <input type="datetime-local" id="yt-notify">
             <div class="ln-quick"><button type="button" onclick="MainicoLine.preset('yt-notify','yt-date','eve')">前日の夜7時</button><button type="button" onclick="MainicoLine.preset('yt-notify','yt-date','morning')">当日の朝7時</button><button type="button" onclick="document.getElementById('yt-notify').value=''">知らせない</button></div>
-            <div class="note">入れた日時に、LINE連携した家族とご本人へ届きます（15分ほど遅れることがあります）。連携は「設定 → LINEで予定のお知らせ」から。</div>
+            <div class="ln-who" id="yt-notify-who"></div>
+            <div class="note">入れた日時に、選んだ人へLINEで届きます（15分ほど遅れることがあります）。登録や招待は「設定 → LINEで予定のお知らせ」から。</div>
           </div>
           <div class="yt-form-row">
             <label>絵文字<input type="text" id="yt-kind" value="📌" maxlength="8" placeholder="絵文字"></label>
@@ -2117,7 +2140,7 @@ setTimeout(function(){
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
-<script src="line-notify.js?v=20261003"></script>
+<script src="line-notify.js?v=20261004"></script>
 <script src="hitokoe.js?v=20261001"></script>
 <script src="family-guide.js?v=20261002"></script>
 <script src="owner-transfer.js?v=20261002"></script>
@@ -2316,6 +2339,7 @@ function openHYotei(id){
     document.getElementById('hy-time').value=v.time||'';
     document.getElementById('hy-place').value=v.place||'';
     document.getElementById('hy-notify').value=typeof MainicoLine!=='undefined'?MainicoLine.toInputValue(v.notifyAt):'';
+    if(typeof MainicoLine!=='undefined'&&MainicoLine.renderWho) MainicoLine.renderWho('hy-notify-who',v.notifyTo);
     note.textContent='予定を変更します。参加を承認した家族にも反映されます。';
     document.getElementById('cal-modal').classList.remove('show');
     speak('予定の 変更を ひらきました');
@@ -2328,6 +2352,7 @@ function openHYotei(id){
     document.getElementById('hy-time').value='';
     document.getElementById('hy-place').value='';
     document.getElementById('hy-notify').value='';
+    if(typeof MainicoLine!=='undefined'&&MainicoLine.renderWho) MainicoLine.renderWho('hy-notify-who',null);
     note.textContent='予定を保存します。参加を承認した家族にも表示されます。';
     speak('予定の 入力を ひらきました');
   }
@@ -2343,7 +2368,12 @@ function closeHYotei(silent){
 function lineNotifyInput(inputId,origin){
   if(typeof MainicoLine==='undefined') return {ok:true,fields:{}};
   const r=MainicoLine.readNotify(inputId,origin&&origin.notifyAt);
-  return r.ok?{ok:true,fields:{notifyAt:r.value}}:r;
+  if(!r.ok) return r;
+  const fields={notifyAt:r.value};
+  /* 知らせる人(選ぶ欄を読み込めたときだけ保存する。読み込めないときは今の値を変えない) */
+  const who=MainicoLine.readWho?MainicoLine.readWho(inputId+'-who'):undefined;
+  if(who!==undefined) fields.notifyTo=r.value?who:null;
+  return {ok:true,fields};
 }
 function hyNotifyPreset(kind){
   feedback();
@@ -6300,6 +6330,7 @@ function setYoteiSaveState(text,isError){
 function clearYoteiForm(){
   editingYoteiId='';
   ['yt-date','yt-time','yt-label','yt-place','yt-notify'].forEach(id=>document.getElementById(id).value='');
+  if(typeof MainicoLine!=='undefined'&&MainicoLine.renderWho) MainicoLine.renderWho('yt-notify-who',null);
   setYoteiCategory('');
   document.getElementById('yt-kind').value='📌';
   setYoteiColor('#4F7FD3');
@@ -6318,6 +6349,7 @@ function editYotei(id){
   document.getElementById('yt-label').value=v.label||'';
   document.getElementById('yt-place').value=v.place||'';
   document.getElementById('yt-notify').value=typeof MainicoLine!=='undefined'?MainicoLine.toInputValue(v.notifyAt):'';
+  if(typeof MainicoLine!=='undefined'&&MainicoLine.renderWho) MainicoLine.renderWho('yt-notify-who',v.notifyTo);
   setYoteiCategory(v.category||'');
   setYoteiColor(yoteiColor(v));
   document.getElementById('yt-form-title').textContent='予定を修正する';
@@ -7113,6 +7145,7 @@ function openLineNotifyEdit(id){
     (v.notifiedAt?'<br><small>前回の送信：'+esc(lnTime(v.notifiedAt))+'</small>':'');
   document.getElementById('ln-edit-date').value=v.date||'';
   document.getElementById('ln-edit-at').value=MainicoLine.toInputValue(v.notifyAt);
+  if(MainicoLine.renderWho) MainicoLine.renderWho('ln-edit-at-who',v.notifyTo);
   document.getElementById('ln-edit-state').textContent='';
   document.getElementById('ln-edit-state').classList.remove('err');
   document.getElementById('ln-edit-modal').classList.add('show');
@@ -7122,13 +7155,13 @@ async function saveLineNotifyEdit(){
   const v=yoteiCache.find(x=>x._id===lnEditId);
   const st=document.getElementById('ln-edit-state');
   if(!v){ closeLineNotifyEdit(); return; }
-  const r=MainicoLine.readNotify('ln-edit-at',v.notifyAt);
+  const r=lineNotifyInput('ln-edit-at',v);
   if(!r.ok){ st.textContent=r.message; st.classList.add('err'); return; }
   const btn=document.getElementById('ln-edit-save'); btn.disabled=true;
   st.classList.remove('err'); st.textContent='保存しています…';
   try{
-    await col('yotei').doc(v._id).update({notifyAt:r.value,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-    st.textContent=r.value?'お知らせの日時を保存しました':'この予定はLINEで知らせない設定にしました';
+    await col('yotei').doc(v._id).update({...r.fields,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    st.textContent=r.fields.notifyAt?'お知らせの日時を保存しました':'この予定はLINEで知らせない設定にしました';
     setTimeout(()=>{ if(lnEditId===v._id) closeLineNotifyEdit(); },900);
   }catch(e){ st.textContent='保存できませんでした。通信状態を確認して、もう一度押してください'; st.classList.add('err'); }
   finally{ btn.disabled=false; }

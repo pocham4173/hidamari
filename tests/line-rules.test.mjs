@@ -1,7 +1,7 @@
 import {consentFixture} from './helpers/consent-fixture.mjs';
 /* LINEで予定のお知らせ（2026-09-26）のルール動作検査（12ケース）。Firestoreエミュレーターで実行 */
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, collection, query, where, serverTimestamp, Timestamp } from 'firebase/firestore';
 import fs from 'node:fs';
 
 const env = await initializeTestEnvironment({
@@ -100,6 +100,36 @@ try {
     getDoc(doc(m1, 'lineStatus', 'quota')), true);
   await check('27. 残り通数を画面から書き換えることはできない',
     setDoc(doc(m1, 'lineStatus', 'quota'), { remaining: 9999 }), false);
+
+  /* 送信先の招待と、予定ごとの相手(2026-10-04) */
+  const rec = (uid, extra) => ({ groupId: 'g1', name: 'おばあちゃん', status: 'pending', createdBy: uid, createdAt: serverTimestamp(), ...extra });
+  const invite = (uid, rid, hours, extra) => ({ groupId: 'g1', recipientId: rid, createdBy: uid, createdAt: serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + hours * 3600000), ...extra });
+  await check('28. 承認済みの家族は送信先(承認待ち)を作れる', setDoc(doc(m1, 'lineRecipients', 'r1'), rec('m1')), true);
+  await check('29. 送信先を最初から「登録済み」にはできない', setDoc(doc(m1, 'lineRecipients', 'r2'), rec('m1', { status: 'joined' })), false);
+  await check('30. 送信先にLINEの利用者識別子を書けない', setDoc(doc(m1, 'lineRecipients', 'r3'), rec('m1', { lineUserId: 'Uevil' })), false);
+  await check('31. 承認待ちの人は送信先を作れない', setDoc(doc(p1, 'lineRecipients', 'r4'), rec('p1')), false);
+  await check('32. 41文字以上の名前は拒否される', setDoc(doc(m1, 'lineRecipients', 'r5'), rec('m1', { name: 'あ'.repeat(41) })), false);
+  await check('33. 家族は送信先の一覧を見られる', getDocs(query(collection(m2, 'lineRecipients'), where('groupId', '==', 'g1'))), true);
+  await check('34. 承認待ちの人は送信先の一覧を見られない', getDocs(query(collection(p1, 'lineRecipients'), where('groupId', '==', 'g1'))), false);
+  await check('35. 家族は送信先の名前を変えられる', updateDoc(doc(m2, 'lineRecipients', 'r1'), { name: 'ばあば' }), true);
+  await check('36. 家族は送信先を「登録済み」に変えられない', updateDoc(doc(m2, 'lineRecipients', 'r1'), { status: 'joined' }), false);
+  await check('37. 家族は7日間の招待を作れる', setDoc(doc(m1, 'lineInvites', 'KNVT234567'), invite('m1', 'r1', 24 * 7)), true);
+  await check('38. 8日以上の招待は作れない', setDoc(doc(m1, 'lineInvites', 'KNVT234568'), invite('m1', 'r1', 24 * 8)), false);
+  await check('39. 他人名義の招待は作れない', setDoc(doc(m2, 'lineInvites', 'KNVT234569'), invite('m1', 'r1', 24)), false);
+  await check('40. 存在しない送信先への招待は作れない', setDoc(doc(m1, 'lineInvites', 'KNVT23456A'), invite('m1', 'nope', 24)), false);
+  await env.withSecurityRulesDisabled(async (c) => {
+    await setDoc(doc(c.firestore(), 'lineRecipients', 'rJ'), { groupId: 'g1', name: '登録済み', status: 'joined', createdBy: 'm1', lineName: 'X' });
+    await setDoc(doc(c.firestore(), 'lineRecipientIds', 'rJ'), { groupId: 'g1', lineUserId: 'Ux' });
+  });
+  await check('41. 登録済みの送信先への招待は作れない', setDoc(doc(m1, 'lineInvites', 'KNVT23456B'), invite('m1', 'rJ', 24)), false);
+  await check('42. 送信役用の控え(LINEの利用者識別子)は画面から読めない', getDoc(doc(m1, 'lineRecipientIds', 'rJ')), false);
+  await check('43. 家族は送信先を削除できる', deleteDoc(doc(m2, 'lineRecipients', 'rJ')), true);
+  await check('44. 知らせる相手(notifyTo)つきの予定を作れる',
+    setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y7'), yotei('m1', { notifyAt: inMin(60), notifyTo: ['u:m1', 'r:r1'] })), true);
+  await check('45. 自分の予定の知らせる相手を変えられる',
+    setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y7'), { notifyTo: null, updatedAt: serverTimestamp() }, { merge: true }), true);
+  await check('46. 21件以上の相手は拒否される',
+    setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y8'), yotei('m1', { notifyTo: Array.from({ length: 21 }, (_, i) => 'u:' + i) })), false);
 
   console.log('\n===== 検査結果 =====');
   for (const [mark, name] of results) console.log(mark, name);
