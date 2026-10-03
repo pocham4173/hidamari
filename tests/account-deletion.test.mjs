@@ -19,6 +19,10 @@ console.log('OK 閉鎖確認中の世帯新設・UID切替は拒否');
 {const {state,service,auth}=setup();await service.prepare('short-existing');assert.equal(state.reauth,true);await assert.rejects(service.finish('wrong'));assert.equal(state.deleted,false);auth.currentUser={uid:'other'};await assert.rejects(service.finish(CONFIRMATION));assert.equal(state.deleted,false);}
 {const {state,service}=setup();await service.prepare('existing');state.fail='delete';await assert.rejects(service.finish(CONFIRMATION));assert.equal(state.lock,true);assert.equal(state.stopping,false);state.fail='';assert.equal((await service.finish(CONFIRMATION)).deleted,true);assert.equal(state.lock,true);}
 {const {state,service,auth}=setup();auth.currentUser.isAnonymous=true;await service.prepare('');await service.finish(CONFIRMATION);assert.equal(state.deleted,true);assert.equal(state.reauth,false);}
-console.log('OK 最終確認・再認証は既存パスワードを受入、失敗後再開、匿名削除、旧token閉鎖記録を維持');
+// LINEでログインして開いた画面(2026-10-01): メール・パスワードのないアカウントは匿名と同じ。あるアカウントはパスワードの再確認を省かない
+{const {state,service,auth}=setup();Object.assign(auth.currentUser,{isAnonymous:false,email:null,providerData:[]});await service.prepare('');await service.finish(CONFIRMATION);assert.equal(state.deleted,true);assert.equal(state.reauth,false);}
+{const {state,service,auth}=setup();auth.currentUser.isAnonymous=false;await assert.rejects(service.prepare(''),{code:'closure/password'});assert.equal(state.reauth,false);assert.equal(state.deleted,false);}
+{const {state,service,auth}=setup();Object.assign(auth.currentUser,{isAnonymous:false,email:null,providerData:[{providerId:'phone'}]});await assert.rejects(service.prepare('x'),{code:'closure/provider'});assert.equal(state.deleted,false);}
+console.log('OK 最終確認・再認証は既存パスワードを受入、失敗後再開、匿名削除、LINEログインでも再認証を緩めない、旧token閉鎖記録を維持');
 
 {const {state,service}=setup();await service.prepare('existing');state.fail='consent-delete';await assert.rejects(service.finish(CONFIRMATION));assert.equal(state.deleted,false);state.fail='';await service.finish(CONFIRMATION);assert.equal(state.consentDeleted,true);}

@@ -33,7 +33,10 @@
         if(!isOnline())throw problem('closure/offline');
         const user=auth.currentUser,id=user?.uid;current(id);
         await released(id);
-        if(!user.isAnonymous){
+        // 復旧設定(メール・パスワード)のないアカウントは、LINEでログインして開いた画面でも匿名と同じ扱い。
+        // メール・パスワードのあるアカウントは、どの方法でログインしていてもパスワードの再確認が必要。
+        const noCredential=!user.email&&!(user.providerData||[]).length;
+        if(!user.isAnonymous&&!noCredential){
           if(!user.providerData?.some(p=>p.providerId==='password')||!user.email)throw problem('closure/provider');
           if(!password)throw problem('closure/password');
           await user.reauthenticateWithCredential(credential(user.email,password));current(id);

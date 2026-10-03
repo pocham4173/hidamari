@@ -39,6 +39,9 @@ try {
     await setDoc(doc(db, 'lineStatus', 'quota'), { limit: 200, used: 12, remaining: 188, reserve: 50, checkedAt: Timestamp.now() });
     await setDoc(doc(db, 'lineLinks', 'm1'), { lineUserId: 'U1', groupId: 'g1', linkedAt: Timestamp.now() });
     await setDoc(doc(db, 'lineLinks', 'm2'), { lineUserId: 'U2', groupId: 'g1', linkedAt: Timestamp.now() });
+    await setDoc(doc(db, 'lineLoginAccounts', 'm1'), { lineKey: 'k1', linkedAt: Timestamp.now() });
+    await setDoc(doc(db, 'lineLoginLinks', 'k1'), { uid: 'm1', linkedAt: Timestamp.now() });
+    await setDoc(doc(db, 'lineAuthTx', 't1'), { purpose: 'login', uid: 'm1', status: 'authenticated' });
   });
   const as = (uid) => env.authenticatedContext(uid).firestore();
   const m1 = as('m1'), m2 = as('m2'), p1 = as('p1'), h1 = as('h1');
@@ -100,6 +103,23 @@ try {
     getDoc(doc(m1, 'lineStatus', 'quota')), true);
   await check('27. 残り通数を画面から書き換えることはできない',
     setDoc(doc(m1, 'lineStatus', 'quota'), { remaining: 9999 }), false);
+  /* LINEでログイン(2026-10-01): つながりは送信役だけが作る。本人は見るだけ */
+  await check('28. 自分のLINEでログインの状態は見られる',
+    getDoc(doc(m1, 'lineLoginAccounts', 'm1')), true);
+  await check('29. 他人のLINEでログインの状態は見られない',
+    getDoc(doc(m2, 'lineLoginAccounts', 'm1')), false);
+  await check('30. 画面からLINEでログインのつながりを作れない(自分の分も)',
+    setDoc(doc(m2, 'lineLoginAccounts', 'm2'), { lineKey: 'k1', linkedAt: serverTimestamp() }), false);
+  await check('31. 画面からLINE→UIDの対応を作れない(乗っ取り防止)',
+    setDoc(doc(m2, 'lineLoginLinks', 'k2'), { uid: 'm2', linkedAt: serverTimestamp() }), false);
+  await check('32. LINE→UIDの対応は本人でも読めない',
+    getDoc(doc(m1, 'lineLoginLinks', 'k1')), false);
+  await check('33. 画面から自分のつながりを消せない(解除は送信役で両方まとめて行う)',
+    deleteDoc(doc(m1, 'lineLoginAccounts', 'm1')), false);
+  await check('34. ログインの手続きは画面から読めない',
+    getDoc(doc(m1, 'lineAuthTx', 't1')), false);
+  await check('35. ログインの手続きを画面から作れない',
+    setDoc(doc(m1, 'lineAuthTx', 't2'), { purpose: 'login', uid: 'm1', status: 'authenticated' }), false);
 
   console.log('\n===== 検査結果 =====');
   for (const [mark, name] of results) console.log(mark, name);

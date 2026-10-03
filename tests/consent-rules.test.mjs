@@ -69,4 +69,18 @@ try{
  await db.enableNetwork();
  assert.equal((await service.read('kazoku')).valid,false,'オフラインで同意の保留書込を残さない');
  console.log('OK 通信切断: オフライン同意を保存せず、再接続しても勝手に同意しない');
+
+ // 実際の通信遮断(SDKの通信停止ではなく、サーバーに届かない状態): 同意完了と表示せず、記録も残さない
+ const cut=firebase.initializeApp({projectId:'demo-mainico-consent',apiKey:'test'},'network-cut');
+ const cutDb=cut.firestore();cutDb.useEmulator('127.0.0.1',9);
+ const cutService=Consent.create({db:cutDb,auth:{currentUser:{uid:'owner'}},serverTimestamp:stamp});
+ const limit=ms=>new Promise((_,no)=>setTimeout(()=>no(new Error('timeout: 結果が返らない')),ms));
+ const cutStarted=Date.now();
+ await assert.rejects(Promise.race([cutService.accept('kazoku',checks),limit(60000)]),/offline|unavailable|transaction|backend/i);
+ assert.ok(Date.now()-cutStarted<60000,'通信遮断でも一定時間内に失敗を返す');
+ assert.equal((await service.read('kazoku')).valid,false,'通信遮断の同意はサーバーに保存されない');
+ try{await cutDb.terminate();await cut.delete();}catch(ignore){}
+ await new Promise(r=>setTimeout(r,500));
+ assert.equal((await service.read('kazoku')).valid,false,'あとから勝手に同意が保存されない');
+ console.log('OK 実際の通信遮断: 同意完了と表示せず、サーバーにも残さない');
 }finally{await env.cleanup();}

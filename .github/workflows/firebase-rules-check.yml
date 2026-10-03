@@ -20,6 +20,8 @@ on:
       - 'firebase.json'
       - 'tests/alerts.test.mjs'
       - 'tests/line-rules.test.mjs'
+      - 'tests/line-login-emulator.test.mjs'
+      - 'tests/helpers/line-login-firestore-scenarios.mjs'
       - 'tests/owner-transfer-rules.test.mjs'
       - 'worker.js'
       - 'tests/lifecycle-rules.test.mjs'
@@ -27,6 +29,8 @@ on:
       - 'household-deletion.js'
       - 'account-recovery.js'
       - 'account-deletion.js'
+      - 'line-login.js'
+      - 'line-login-ui.js'
       - 'tests/account-closure-integration.test.mjs'
       - 'tests/home-conversation-emulator.test.mjs'
       - 'tests/helpers/home-conversation-fixture.mjs'
@@ -63,4 +67,4 @@ jobs:
         run: npm install --no-save firebase@11.10.0 @firebase/rules-unit-testing@4.0.1 jsdom@26.1.0
 
       - name: Firestore Emulatorで通知・予定・権限・復旧・削除を検査
-        run: firebase emulators:exec --only firestore --project demo-mainico "node tests/alerts.test.mjs && node tests/lifecycle-rules.test.mjs && node tests/lifecycle-integration.test.mjs && node tests/account-closure-integration.test.mjs && node tests/home-conversation-emulator.test.mjs && node tests/consent-rules.test.mjs && node tests/line-rules.test.mjs && node tests/owner-transfer-rules.test.mjs"
+        run: firebase emulators:exec --only firestore --project demo-mainico "node tests/alerts.test.mjs && node tests/lifecycle-rules.test.mjs && node tests/lifecycle-integration.test.mjs && node tests/account-closure-integration.test.mjs && node tests/home-conversation-emulator.test.mjs && node tests/consent-rules.test.mjs && node tests/line-rules.test.mjs && node tests/owner-transfer-rules.test.mjs && node tests/line-login-emulator.test.mjs"

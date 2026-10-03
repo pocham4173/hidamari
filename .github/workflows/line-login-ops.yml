@@ -1,0 +1,141 @@
+# LINEでログイン：本番照合・クラウド確認・試験環境
+#
+# PR #94 に次のラベルを付けると、そのジョブだけが動きます(付けられるのは書き込み権限のある人だけ)。
+#   ops:worker-compare        稼働中Worker(mainiko-line)のコード・Cron・設定名を読み取り専用で取得し、main と PR の worker.js と比べる
+#   ops:cloud-firestore-check テスト用Firebaseプロジェクトの本物のFirestoreで、LINEでログインの交換と競合を確かめる
+#   ops:staging-deploy        試験環境(mainiko-line-staging)にPRの内容を配る
+# main に入ったあとは「Run workflow」からも実行できます。
+# 本番の Worker(mainiko-line)・本番の Firebase(hidamari-5f8de)へ書き込むジョブはありません。
+# 秘密の値は GitHub の Secrets から渡し、表示しません。
+
+name: LINEでログイン 照合と試験
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 実行する作業
+        type: choice
+        options: [worker-compare, cloud-firestore-check, staging-deploy]
+
+permissions:
+  contents: read
+
+jobs:
+  worker-compare:
+    name: 稼働中Workerとの照合（読み取りのみ）
+    if: (github.event_name == 'pull_request' && github.event.label.name == 'ops:worker-compare') || (github.event_name == 'workflow_dispatch' && inputs.task == 'worker-compare')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: main の worker.js を取り出す
+        run: git show origin/main:worker.js > "$RUNNER_TEMP/main-worker.js"
+      - name: 稼働中Workerを取得して比べる
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_READ_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          SCRIPT_NAME: mainiko-line
+        run: COMPARE_FILES="main=$RUNNER_TEMP/main-worker.js,PR=worker.js" node scripts/cloudflare-worker-compare.mjs
+      - name: 差分（main と 稼働中）
+        if: always()
+        run: |
+          if [ -f worker-compare/live-main.js ]; then
+            diff -u "$RUNNER_TEMP/main-worker.js" worker-compare/live-main.js > worker-compare/diff-main-vs-live.txt && echo "main と 稼働中 は同じです" || { echo "差分の行数: $(wc -l < worker-compare/diff-main-vs-live.txt)"; head -300 worker-compare/diff-main-vs-live.txt; }
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: worker-compare
+          path: worker-compare/
+          retention-days: 7
+
+  cloud-firestore-check:
+    name: クラウドFirestoreでの結合確認（テスト用プロジェクト）
+    if: (github.event_name == 'pull_request' && github.event.label.name == 'ops:cloud-firestore-check') || (github.event_name == 'workflow_dispatch' && inputs.task == 'cloud-firestore-check')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: テスト用プロジェクトで実行（本番では動かない）
+        env:
+          SA_JSON: ${{ secrets.MAINICO_TEST_SERVICE_ACCOUNT }}
+          TEST_PROJECT: ${{ vars.MAINICO_TEST_PROJECT_ID }}
+        run: |
+          umask 077
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+          MAINICO_TEST_SERVICE_ACCOUNT="$RUNNER_TEMP/sa.json" node scripts/line-login-firestore-check.mjs --project "$TEST_PROJECT"
+      - name: 鍵ファイルを消す
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
+
+  staging-deploy:
+    name: 試験環境に配る（mainiko-line-staging）
+    if: (github.event_name == 'pull_request' && github.event.label.name == 'ops:staging-deploy') || (github.event_name == 'workflow_dispatch' && inputs.task == 'staging-deploy')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      STAGING_ORIGIN: ${{ vars.MAINICO_STAGING_ORIGIN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # ここまでは外部を何も変えていない。以下の確認がすべて通ったときだけ、配信・ルール変更・秘密の値の登録に進む
+      - name: 配る前の確認（プロジェクトの一致・本番でないこと・Worker名）
+        env:
+          TEST_PROJECT: ${{ vars.MAINICO_TEST_PROJECT_ID }}
+          SA_JSON: ${{ secrets.MAINICO_TEST_SERVICE_ACCOUNT }}
+        run: |
+          # 画面用のウェブ設定(公開してよい値)はリポジトリの staging/firebase-web-config.json に置く
+          export STAGING_FIREBASE_CONFIG="$(cat staging/firebase-web-config.json)"
+          node scripts/staging-preflight.mjs
+          grep -qx 'name = "mainiko-line-staging"' staging/wrangler.toml
+      - name: アプリのファイルを作る（試験用の設定）
+        run: STAGING_FIREBASE_CONFIG="$(cat staging/firebase-web-config.json)" node scripts/build-staging.mjs
+      - name: テスト用プロジェクトにFirestoreルールを入れる
+        env:
+          SA_JSON: ${{ secrets.MAINICO_TEST_SERVICE_ACCOUNT }}
+          TEST_PROJECT: ${{ vars.MAINICO_TEST_PROJECT_ID }}
+        run: |
+          test "$TEST_PROJECT" != "hidamari-5f8de"
+          umask 077
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" npx --yes firebase-tools@13 deploy --only firestore:rules --project "$TEST_PROJECT" --non-interactive
+      - name: Worker を配る（Cron なし）
+        env:
+          CHANNEL_ID: ${{ vars.LINE_LOGIN_STAGING_CHANNEL_ID }}
+        run: |
+          node scripts/staging-wrangler-config.mjs
+          grep -qx 'name = "mainiko-line-staging"' staging/wrangler.ci.toml
+          npx --yes wrangler@4 deploy --config staging/wrangler.ci.toml
+      - name: 秘密の値を入れる（表示しない）
+        env:
+          SA_JSON: ${{ secrets.MAINICO_TEST_SERVICE_ACCOUNT }}
+          LINE_SECRET: ${{ secrets.LINE_LOGIN_STAGING_CHANNEL_SECRET }}
+        run: |
+          printf '%s' "$SA_JSON" | npx --yes wrangler@4 secret put FIREBASE_SERVICE_ACCOUNT --config staging/wrangler.ci.toml
+          printf '%s' "$LINE_SECRET" | npx --yes wrangler@4 secret put LINE_LOGIN_CHANNEL_SECRET --config staging/wrangler.ci.toml
+      - name: 動いているか確かめる
+        run: |
+          # 初めて作った workers.dev のURLは、反映まで1〜2分ほど 404 になることがある。最大3分待つ
+          for i in $(seq 1 36); do
+            if curl -fsS "$STAGING_ORIGIN/__status" > "$RUNNER_TEMP/status.txt" 2>/dev/null; then break; fi
+            echo "まだ反映されていません（$i 回目）。5秒後にもう一度確かめます"; sleep 5
+          done
+          cat "$RUNNER_TEMP/status.txt"
+          grep -q 'LINEでログイン：設定済み' "$RUNNER_TEMP/status.txt"
+          curl -fsS "$STAGING_ORIGIN/" | grep -q '試験環境（本番ではありません）'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'origin: https://pocham4173.github.io' "$STAGING_ORIGIN/auth/line/start")" = 403
+      - name: 鍵ファイルを消す
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

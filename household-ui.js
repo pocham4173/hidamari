@@ -279,10 +279,17 @@ async function bootHouseholdUser(user){
   householdVerified=false;
   if(!user){
     window.mainicoStartupStage='ログイン確認中';
+    // LINEから戻ったところなら、つないだアカウントに入る(新しいアカウントは作らない)
+    if(typeof lineAuthBeforeBoot==='function' && await lineAuthBeforeBoot(null))return;
+    if(generation!==householdBootGeneration || auth.currentUser)return;
+    // LINEでログインが使えるときは「すでに使っている方」と「はじめて使う」を分け、勝手に新規登録しない
+    if(typeof lineLoginEnabled==='function' && lineLoginEnabled()){showWelcome();return;}
     try{await auth.signInAnonymously();}catch(error){window.showStartupProblem('ログインできませんでした');}
     return;
   }
-  let memberRead=null,memberGroup='';
+  if(typeof lineAuthBeforeBoot==='function' && await lineAuthBeforeBoot(user))return;
+  if(generation!==householdBootGeneration || uid()!==user.uid)return;
+  let memberRead=null,memberGroup='',restoredFromServer=false;
   try{
     applyRecoveryJournal();
     const pending=getDeletionService().getPending();
@@ -347,7 +354,7 @@ async function bootHouseholdUser(user){
       try{pointer=await db.collection('accounts').doc(pointerUid).get({source:'server'});}
       catch(error){if(generation!==householdBootGeneration || uid()!==pointerUid || gid())return;throw error;}
       if(generation!==householdBootGeneration || uid()!==pointerUid || gid())return;
-      if(pointer.exists)previewStorage.setItem('mainicoGid',pointer.data().groupId);
+      if(pointer.exists){previewStorage.setItem('mainicoGid',pointer.data().groupId);restoredFromServer=true;}
     }
   }catch(error){window.showStartupProblem('この端末の保存情報を確認できませんでした。保存情報を消さず、再確認してください');return;}
   if(gid()){
@@ -363,6 +370,9 @@ async function bootHouseholdUser(user){
       }
       if(!me.exists || (me.data().status && me.data().status!=='approved')){showHouseholdBlocked('このアカウントは家庭に参加していません。管理者に確認してください。');return;}
       const data=me.data();
+      // この端末(この保存領域)で初めて開いた既存アカウントは、サーバーに保存した利用方法で開く。
+      // 利用方法は同意のときに本人が選んだもの。同意はこのあとサーバーで確かめ、違えば選び直しになる。
+      if(restoredFromServer)restoreServerMode(user.uid,data);
       const savedMode=previewStorage.getItem('mainicoMode');
       const consentMode=savedMode==='honnin'?'honnin':savedMode==='kazoku'?(isKOnly()?'konly':'kazoku'):null;
       // 同意で確認した使い方と、開く画面を一致させる。旧設定の推測で画面を決めない。
@@ -389,6 +399,16 @@ async function bootHouseholdUser(user){
   if(generation!==householdBootGeneration)return;
   window.mainicoStartupStage='準備完了';document.getElementById('loading').style.display='none';
   try{startMode();if(gid()){watchHouseholdAccess();void syncStartupRecoveryPointer();}}catch(error){showHouseholdBlocked('画面を開けませんでした。保存情報は消さず、再確認してください。');}
+  if(typeof lineAuthAfterBoot==='function')lineAuthAfterBoot();
+}
+function restoreServerMode(userId,member){
+  const mode=member&&member.mode;
+  if(!['honnin','kazoku','konly'].includes(mode) || !gid())return false;
+  previewStorage.setItem('mainicoMode',mode==='honnin'?'honnin':'kazoku');
+  previewStorage.setItem('kazokuOnly',mode==='konly'?'1':'');
+  previewStorage.setItem('mainicoModeChoiceV1',JSON.stringify([userId,gid(),mode]));
+  if(!previewStorage.getItem('mainicoName') && typeof member.name==='string' && member.name)previewStorage.setItem('mainicoName',member.name);
+  return true;
 }
 async function retryHouseholdConnection(){
   if(typeof appDialogCancelAll==='function')appDialogCancelAll();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
