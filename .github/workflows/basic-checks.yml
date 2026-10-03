@@ -34,7 +34,9 @@ jobs:
         run: node .github/scripts/check-basics.mjs
 
       - name: LINE連携・送信失敗・同意取り消しの検査
-        run: node tests/line-worker.test.mjs
+        run: |
+          node tests/line-worker.test.mjs
+          node tests/line-settings.test.mjs
 
       - name: ひと声のきっかけの検査
         run: |
