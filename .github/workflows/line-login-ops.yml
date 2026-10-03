@@ -94,15 +94,14 @@ jobs:
       - name: 配る前の確認（プロジェクトの一致・本番でないこと・Worker名）
         env:
           TEST_PROJECT: ${{ vars.MAINICO_TEST_PROJECT_ID }}
-          STAGING_FIREBASE_CONFIG: ${{ vars.MAINICO_STAGING_FIREBASE_CONFIG }}
           SA_JSON: ${{ secrets.MAINICO_TEST_SERVICE_ACCOUNT }}
         run: |
+          # 画面用のウェブ設定(公開してよい値)はリポジトリの staging/firebase-web-config.json に置く
+          export STAGING_FIREBASE_CONFIG="$(cat staging/firebase-web-config.json)"
           node scripts/staging-preflight.mjs
           grep -qx 'name = "mainiko-line-staging"' staging/wrangler.toml
       - name: アプリのファイルを作る（試験用の設定）
-        env:
-          STAGING_FIREBASE_CONFIG: ${{ vars.MAINICO_STAGING_FIREBASE_CONFIG }}
-        run: node scripts/build-staging.mjs
+        run: STAGING_FIREBASE_CONFIG="$(cat staging/firebase-web-config.json)" node scripts/build-staging.mjs
       - name: テスト用プロジェクトにFirestoreルールを入れる
         env:
           SA_JSON: ${{ secrets.MAINICO_TEST_SERVICE_ACCOUNT }}

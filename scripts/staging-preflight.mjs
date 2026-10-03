@@ -2,7 +2,7 @@
 /* 試験環境に配る前の確認(外部への変更を始める前に必ず実行する)。
    次の4つがすべてそろい、同じテスト用プロジェクトで、本番(hidamari-5f8de)でないことを確かめる。
      - TEST_PROJECT            GitHub Variables の MAINICO_TEST_PROJECT_ID
-     - STAGING_FIREBASE_CONFIG 画面用のウェブ設定(JSONのオブジェクト)の projectId
+     - STAGING_FIREBASE_CONFIG 画面用のウェブ設定(staging/firebase-web-config.json。JSONのオブジェクト)の projectId
      - SA_JSON                 Worker に登録するサービスアカウント鍵(JSONのオブジェクト)の project_id
      - 同じ鍵の client_email   「〜@<プロジェクト>.iam.gserviceaccount.com」の形から取り出したプロジェクト
    null・false・配列・文字列など、オブジェクトでない JSON は受け付けない。どれか1つでも欠ける・形が違う・
@@ -31,7 +31,7 @@ function projectId(value, label) {
 }
 
 const project = projectId(process.env.TEST_PROJECT, 'MAINICO_TEST_PROJECT_ID');
-const web = plainObject(process.env.STAGING_FIREBASE_CONFIG, '画面用のウェブ設定(MAINICO_STAGING_FIREBASE_CONFIG)');
+const web = plainObject(process.env.STAGING_FIREBASE_CONFIG, '画面用のウェブ設定(staging/firebase-web-config.json)');
 const sa = plainObject(process.env.SA_JSON, 'サービスアカウント鍵(MAINICO_TEST_SERVICE_ACCOUNT)');
 const webProject = web ? projectId(web.projectId, 'ウェブ設定の projectId') : '';
 // ウェブ設定の apiKey は「AIza」で始まる39文字。コピーの途中で伏せ字(•)などに置き換わったものは、画面で auth/api-key-not-valid になる

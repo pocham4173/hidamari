@@ -191,7 +191,7 @@ AIが実行できるよう、GitHub Actions のジョブ（`.github/workflows/li
 | --- | --- | --- |
 | `ops:worker-compare` | 稼働中の `mainiko-line` のコード全体・Cron・設定の名前と種類・有効なバージョンを **読み取り専用** で取得し、main と PR の `worker.js` と比べる（結果は実行ログの Summary と成果物）。コード・Cron・設定・デプロイ情報のどれか1つでも取れない、または有効なバージョンが空のときは、レポートを残して **失敗** で終わる（確認済みにしない） | Secret `CLOUDFLARE_READ_TOKEN`（権限：アカウント → Workers Scripts → **Read** だけ）／Variable `CLOUDFLARE_ACCOUNT_ID` |
 | `ops:cloud-firestore-check` | テスト用プロジェクトの本物のFirestoreで、交換・解除／終了手続き／取り消しとの競合・rollback を確かめ、作った文書を片付ける | Secret `MAINICO_TEST_SERVICE_ACCOUNT`（テスト用プロジェクトのサービスアカウントJSON）／Variable `MAINICO_TEST_PROJECT_ID` |
-| `ops:staging-deploy` | 試験環境 `mainiko-line-staging` に、PRの画面とWorkerを配る（Cronなし）。テスト用プロジェクトにFirestoreルールも入れる。**最初に**、`MAINICO_TEST_PROJECT_ID`・ウェブ設定の `projectId`・サービスアカウント鍵の `project_id`（と `client_email`）の3つが空でなく、同じテスト用プロジェクトで、本番でないことを確かめ、1つでも合わなければ配信・ルール変更・秘密の値の登録の前に止まる（`scripts/staging-preflight.mjs`） | Secret `CLOUDFLARE_STAGING_TOKEN`（Workers Scripts → Edit）・`MAINICO_TEST_SERVICE_ACCOUNT`・`LINE_LOGIN_STAGING_CHANNEL_SECRET`／Variables `CLOUDFLARE_ACCOUNT_ID`・`MAINICO_TEST_PROJECT_ID`・`MAINICO_STAGING_FIREBASE_CONFIG`（テスト用プロジェクトのウェブ設定JSON。公開してよい値）・`MAINICO_STAGING_ORIGIN`（`https://mainiko-line-staging.okm-co.workers.dev`）・`LINE_LOGIN_STAGING_CHANNEL_ID` |
+| `ops:staging-deploy` | 試験環境 `mainiko-line-staging` に、PRの画面とWorkerを配る（Cronなし）。テスト用プロジェクトにFirestoreルールも入れる。**最初に**、`MAINICO_TEST_PROJECT_ID`・ウェブ設定の `projectId`・サービスアカウント鍵の `project_id`（と `client_email`）の3つが空でなく、同じテスト用プロジェクトで、本番でないことを確かめ、1つでも合わなければ配信・ルール変更・秘密の値の登録の前に止まる（`scripts/staging-preflight.mjs`） | Secret `CLOUDFLARE_STAGING_TOKEN`（Workers Scripts → Edit）・`MAINICO_TEST_SERVICE_ACCOUNT`・`LINE_LOGIN_STAGING_CHANNEL_SECRET`／Variables `CLOUDFLARE_ACCOUNT_ID`・`MAINICO_TEST_PROJECT_ID`（テスト用プロジェクトのウェブ設定は公開してよい値なので、リポジトリの `staging/firebase-web-config.json` に置く）・`MAINICO_STAGING_ORIGIN`（`https://mainiko-line-staging.okm-co.workers.dev`）・`LINE_LOGIN_STAGING_CHANNEL_ID` |
 
 ### 利用者にお願いする準備（パソコンで一度だけ・合計30分ほど）
 
@@ -207,7 +207,7 @@ AIが実行できるよう、GitHub Actions のジョブ（`.github/workflows/li
    - コールバックURLに `https://mainiko-line-staging.okm-co.workers.dev/auth/line/callback` を登録。チャネルIDとチャネルシークレットを控える。
 4. **GitHub に入れる**（リポジトリの Settings → Secrets and variables → Actions）
    - Secrets：`CLOUDFLARE_READ_TOKEN`・`CLOUDFLARE_STAGING_TOKEN`・`MAINICO_TEST_SERVICE_ACCOUNT`（JSONの中身をまるごと）・`LINE_LOGIN_STAGING_CHANNEL_SECRET`
-   - Variables：`CLOUDFLARE_ACCOUNT_ID`・`MAINICO_TEST_PROJECT_ID`・`MAINICO_STAGING_FIREBASE_CONFIG`・`MAINICO_STAGING_ORIGIN`・`LINE_LOGIN_STAGING_CHANNEL_ID`
+   - Variables：`CLOUDFLARE_ACCOUNT_ID`・`MAINICO_TEST_PROJECT_ID`・`MAINICO_STAGING_ORIGIN`・`LINE_LOGIN_STAGING_CHANNEL_ID`
 5. 終わったら「入れました」と伝える。以降の実行（ラベル付け・ログの確認・結果のまとめ）はAIが行う。
 
 ### AIが行うこと
