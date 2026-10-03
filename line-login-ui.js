@@ -156,7 +156,7 @@ async function startFirstUse(){
   if(!await (typeof appConfirm==='function'?appConfirm(text,'新しく登録する','もどる'):confirm(text)))return;
   document.getElementById('welcome-state').textContent='準備しています…';
   try{await auth.signInAnonymously();}
-  catch(error){document.getElementById('welcome-state').textContent='登録を始められませんでした。電波の状態を確認して、もう一度お試しください。';}
+  catch(error){console.warn('first use',error);document.getElementById('welcome-state').textContent='登録を始められませんでした。電波の状態を確認して、もう一度お試しください。'+(error&&error.code?'（'+error.code+'）':'');}
 }
 
 /* ===== LINEとつなぐ・LINEで続ける(番号を入れる画面) ===== */
