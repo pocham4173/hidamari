@@ -128,8 +128,13 @@ jobs:
           printf '%s' "$LINE_SECRET" | npx --yes wrangler@4 secret put LINE_LOGIN_CHANNEL_SECRET --config staging/wrangler.ci.toml
       - name: 動いているか確かめる
         run: |
-          sleep 5
-          curl -fsS "$STAGING_ORIGIN/__status" | tee /dev/stderr | grep -q 'LINEでログイン：設定済み'
+          # 初めて作った workers.dev のURLは、反映まで1〜2分ほど 404 になることがある。最大3分待つ
+          for i in $(seq 1 36); do
+            if curl -fsS "$STAGING_ORIGIN/__status" > "$RUNNER_TEMP/status.txt" 2>/dev/null; then break; fi
+            echo "まだ反映されていません（$i 回目）。5秒後にもう一度確かめます"; sleep 5
+          done
+          cat "$RUNNER_TEMP/status.txt"
+          grep -q 'LINEでログイン：設定済み' "$RUNNER_TEMP/status.txt"
           curl -fsS "$STAGING_ORIGIN/" | grep -q '試験環境（本番ではありません）'
           test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'origin: https://pocham4173.github.io' "$STAGING_ORIGIN/auth/line/start")" = 403
       - name: 鍵ファイルを消す
