@@ -79,6 +79,16 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .setup-ttl{font-size:1.35rem;font-weight:900;color:var(--hi-koi);margin-bottom:8px;}
 .setup-lead{font-size:.95rem;line-height:1.8;color:#5C4E3A;margin-bottom:16px;}
 .setup-or{color:var(--usucha);font-weight:700;margin:14px 0;font-size:.9rem;}
+/* アプリの中でQRを読み取る(2026-10-04・qr-scan.js) */
+.qr-scan{position:fixed;inset:0;z-index:3000;background:rgba(40,30,20,.82);display:flex;align-items:center;justify-content:center;padding:16px;}
+.qr-scan-box{background:#fff;border-radius:20px;padding:18px 16px;width:100%;max-width:380px;text-align:center;max-height:100%;overflow:auto;}
+.qr-scan-ttl{font-weight:800;font-size:1.15rem;color:var(--hi-koi);margin-bottom:10px;}
+.qr-scan-view{position:relative;width:100%;aspect-ratio:1/1;background:#222;border-radius:14px;overflow:hidden;}
+.qr-scan-view video{width:100%;height:100%;object-fit:cover;display:block;}
+.qr-scan-frame{position:absolute;inset:15%;border:4px solid #fff;border-radius:12px;box-shadow:0 0 0 2000px rgba(0,0,0,.25);}
+.qr-scan-msg{font-weight:700;margin:12px 0 4px;color:#4A3A28;}
+.qr-scan-note{font-size:.85rem;color:#7A6650;margin:0 0 12px;}
+.qr-scan-btn{margin-bottom:12px;}
 .consent-item{display:flex;gap:10px;align-items:flex-start;background:var(--asa);border:2px solid var(--hi-usui);border-radius:14px;padding:12px;margin-bottom:9px;font-size:.98rem;font-weight:700;line-height:1.6;cursor:pointer;text-align:left;}
 .consent-item .ck{width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:#E0711A;}
 .consent-page{background:#FFFFFF;}
@@ -1112,6 +1122,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     </div>
     <button class="entry-btn" id="btn-newgroup" onclick="createGroup()">新しくはじめる</button>
     <div class="setup-or">─ または ─</div>
+    <button class="entry-btn sub qr-scan-btn" type="button" onclick="scanInviteQr()">📷 招待QRを読み取る<small>ご家族の画面に出ている招待QRを、このスマホで読みます</small></button>
     <input type="text" id="in-code" class="setup-input" placeholder="招待コードを入力" autocapitalize="characters" autocomplete="off">
     <button class="entry-btn sub" onclick="joinByCode()">招待コードで参加</button>
     <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
@@ -1526,7 +1537,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         </div>
         <div class="set-sec" data-owner-only hidden>
           <h4>家族を追加する</h4>
-          <div class="note" style="margin-top:0;">① コードを作る → ② 家族に伝える（電話やメモ） → ③ 家族がまいにこを開き、入口の「招待された方」から案内に沿って進んでコードを入力 → ④ あなたが「参加を認める」で完了。<br><span style="color:#8A6F4D;">コードは24時間・1回だけ使えます。</span>コードを渡しただけでは共有は始まりません。</div>
+          <div class="note" style="margin-top:0;">① コードを作る → ② 家族に伝える（電話やメモ） → ③ 家族がまいにこを開き、入口の「招待された方」から案内に沿って進んで、QRを読み取るかコードを入力 → ④ あなたが「参加を認める」で完了。<br><span style="color:#8A6F4D;">コードは24時間・1回だけ使えます。</span>コードを渡しただけでは共有は始まりません。</div>
           <button data-owner-only hidden class="set-btn" onclick="makeInvite('settings-invite-area')">招待コードを作る</button>
           <div id="settings-invite-area"></div>
         </div>
@@ -2147,6 +2158,7 @@ setTimeout(function(){
 <script src="person-tasks.js?v=20260930"></script>
 <script src="line-notify.js?v=20261004"></script>
 <script src="hitokoe.js?v=20261001"></script>
+<script src="qr-scan.js?v=20261004"></script>
 <script src="family-guide.js?v=20261002"></script>
 <script src="owner-transfer.js?v=20261002"></script>
 <script>
@@ -2925,7 +2937,7 @@ function setupConnectPage(){
   let invited=false;
   try{invited=previewStorage.getItem('mainicoInvitedFlow')==='1';previewStorage.removeItem('mainicoInvitedFlow');}catch(e){}
   if(invited&&pendingMode==='kazoku'){
-    lead.textContent='招待された方：下の欄に招待コードを入れて「招待コードで参加」を押してください。';
+    lead.textContent='招待された方：「招待QRを読み取る」でご家族の画面のQRを読むか、下の欄に招待コードを入れて「招待コードで参加」を押してください。';
     btn.textContent='ご本人と一緒に初期設定する'; tb.style.display='block';
     setTimeout(()=>{const c=document.getElementById('in-code');if(c){try{c.focus();}catch(e){}}},300);
     return;
@@ -2940,6 +2952,16 @@ function setupConnectPage(){
     lead.textContent='はじめて使う場合は「新しくはじめる」を。すでにご家族が使っている場合は、招待コードを入力してください。';
     btn.textContent='新しくはじめる'; tb.style.display='none';
   }
+}
+/* 招待QRを、まいにこの中のカメラで読み取る(2026-10-04・qr-scan.js)。
+   読めたらコードを入れて、そのまま「招待コードで参加」と同じ手続きに進む(承認待ちになる) */
+function scanInviteQr(){
+  if(typeof MainicoQrScan==='undefined'){alert('読み取りの準備ができていません。通信を確認するか、コードの文字を入力してください。');return;}
+  MainicoQrScan.open({onCode:code=>{
+    const box=document.getElementById('in-code');
+    if(box)box.value=code;
+    joinByCode();
+  }});
 }
 function saveName(){
   const n=document.getElementById('in-name').value.trim();
@@ -6527,7 +6549,7 @@ function inviteUrl(code){return MAINICO_APP_URL+'?invite='+encodeURIComponent(co
 function inviteQrHtml(code){
   if(typeof qrcode!=='function')return '<div class="note">QRを表示できませんでした。上のコードを入力してもらうか、LINE・メールで送ってください。</div>';
   try{const qr=qrcode(0,'M');qr.addData(inviteUrl(code));qr.make();
-    return '<div class="invite-qr">'+qr.createImgTag(5,8,'まいにこ 招待QR')+'<div class="note">もう1台のスマホの「カメラ」でこのQRを読むと、招待コードが入った状態でまいにこが開きます。</div></div>';
+    return '<div class="invite-qr">'+qr.createImgTag(5,8,'まいにこ 招待QR')+'<div class="note">もう1台のスマホでまいにこを開き、入口の「招待された方」（ご本人は「本人が使う」）から進んで「招待QRを読み取る」を押し、このQRを映してください。スマホの「カメラ」アプリで読んでも、コードが入った状態でまいにこが開きます。</div></div>';
   }catch(e){return '';}
 }
 function isIosDevice(){const ua=navigator.userAgent||'';return /iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
