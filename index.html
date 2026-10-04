@@ -2157,7 +2157,7 @@ setTimeout(function(){
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
 <script src="line-notify.js?v=20261004"></script>
-<script src="hitokoe.js?v=20261001"></script>
+<script src="hitokoe.js?v=20261004"></script>
 <script src="qr-scan.js?v=20261004"></script>
 <script src="family-guide.js?v=20261002"></script>
 <script src="owner-transfer.js?v=20261002"></script>
@@ -7556,7 +7556,7 @@ function renderPersonHitokoe(){
   sec.hidden=!st.enabled||!st.answer;
   if(sec.hidden)return;
   document.getElementById('person-hitokoe-state').textContent=st.answer==='yes'
-    ?'使っています。挨拶やお薬などの記録が'+st.hour+'時までに1つもない日は、ご家族に「声をかけるきっかけ」のお知らせが届きます。'
+    ?'使っています。挨拶やお薬などの記録が'+st.hour+'時までに1つもない日は、ご家族に「声をかけるきっかけ」のお知らせが届きます。'+(st.line?'お知らせは、ご家族のまいにことLINEに届きます（LINEには名前や様子は書きません）。':'')
     :'使っていません（「やめておく」を選んでいます）。';
   document.getElementById('person-hitokoe-btn').textContent=st.answer==='yes'?'やめる（お知らせを止める）':'使う（お知らせを始める）';
 }

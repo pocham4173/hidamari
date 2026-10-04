@@ -70,7 +70,12 @@ assert.equal(H.latestConfig([{ type: 'hitokoe-config', enabled: true, hour: 3, o
 const set = H.settingsHtml(H.latestConfig([cfg()]), members, [run({ consentRows: [] })]);
 assert.match(set, /ご本人の了解待ちです/);
 assert.match(set, /安否確認・緊急通報ではありません/);
-assert.match(set, /LINEには送りません/);
+assert.match(set, /LINEにも送る/);
+assert.match(set, /月90通まで/);
+assert.match(set, /名前や様子は書きません/);
+assert.ok(!/data-hk="line" checked/.test(set), 'LINEにも送るは初め切ってある');
+assert.match(H.settingsHtml(H.latestConfig([cfg({ line: true })]), members, []), /data-hk="line" checked/);
+assert.equal(H.latestConfig([cfg({ line: 'yes' })]).line, false, 'true のときだけLINEにも送る');
 assert.ok(!set.includes('承認待ち</option>'), '承認待ちの人は担当に選べない');
 assert.ok(!set.includes('花子</option>'), 'ご本人は担当に選べない');
 
@@ -102,8 +107,13 @@ assert.ok(!set.includes('花子</option>'), 'ご本人は担当に選べない')
   assert.equal(asked.length, 1, '切っているときは聞かない');
   // ご本人は、あとから「その他の設定」でやめられる
   listener(snap([cfg(), { type: 'hitokoe-consent', uid: 'hon', requestId: 'r1', answer: 'yes', clientAt: 1 }]));
-  assert.deepEqual(p.status(), { enabled: true, hour: 11, answer: 'yes' });
+  assert.deepEqual(p.status(), { enabled: true, hour: 11, line: false, answer: 'yes' });
   await p.answer(false);
   assert.deepEqual(written.at(-1).answer, 'no');
+  // 「LINEにも送る」のお願いでは、LINEにも届くことを確認の文に書く
+  listener(snap([cfg({ line: true, requestId: 'r3' })]));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(asked.length, 2);
+  assert.match(asked[1][0], /まいにこの画面と、LINEにも届きます（LINEには名前や様子は書きません）。よろしいですか/);
 }
 console.log('ひと声のきっかけ: 了解・時刻・操作の判定・担当・お休み・連絡しました・文面・夜中・設定画面・ご本人への確認 19項目 passed');
