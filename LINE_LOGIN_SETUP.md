@@ -7,15 +7,15 @@
 ## 0. 現在の状況（2026-10-02）
 
 - PR #94 は下書き・未マージ・未公開。GitHub Actions（基本検査・Firebaseルール検査）は成功。指摘箇所の確認は済み、公開の最終承認は未了。
-- **稼働中のWorker（Cloudflareの画面で利用者が確認した内容）**
+- **稼働中のWorker（2026-10-04、`ops:worker-compare` で読み取り専用に取得）**
   - Worker名 `mainiko-line`、URL `https://mainiko-line.okm-co.workers.dev`
-  - 有効なバージョンID `8b690aa7`（CloudflareのIDで、GitHubのコミットIDではない）
-  - コード冒頭の表記「2026-10-01 作り直し版」
+  - 有効なデプロイ：バージョン `93dd8d74`（100%、CloudflareのIDで、GitHubのコミットIDではない）
+  - 版表示「版：2026-10-04 送信先の招待・予定ごとの相手」（#96）
+  - **コード全体が `main` の `worker.js` と同じ**（違いはファイル末尾の改行1つだけ）
   - Cron `*/15 * * * *`（15分おき）
-  - プロダクションのシークレット3件：`FIREBASE_SERVICE_A…`・`LINE_CHANNEL_ACCES…`・`LINE_CHANNEL_SECRET`（画面で末尾が省略。値は見ていない）
+  - シークレット3件：`FIREBASE_SERVICE_ACCOUNT`・`LINE_CHANNEL_ACCESS_TOKEN`・`LINE_CHANNEL_SECRET`（名前と種類だけ取得。値は見ていない）
   - `LINE_LOGIN_` で始まる設定は無い（＝LINEでログインは未設定・未公開）
-  - **コード全体がリポジトリと同じかは未確認**（冒頭の表記だけでは一致としない）。照合は「7. 照合と確認の実行方法」の `ops:worker-compare` で行う。
-- 残る確認：①隔離したクラウドFirestoreでの結合確認 ②稼働中Worker全体とリポジトリの照合 ③iPhoneでの実機確認（初回連携・通常の再利用・通知から予定表示・別ブラウザーに戻った場合）
+- 確認の状況：①隔離したクラウドFirestoreでの結合確認 ✅（2026-10-04） ②稼働中Worker全体とリポジトリの照合 ✅（2026-10-04） ③iPhoneでの実機確認（初回連携・通常の再利用・通知から予定表示・別ブラウザーに戻った場合）は未完了
 
 ---
 
@@ -166,11 +166,11 @@
 
 ## 6. 未確認・残っていること
 
-公開（main への反映・本番の設定変更）の前に、次の3つが残っています。どれも未確認です。
+公開（main への反映・本番の設定変更）の前の確認は、次のとおりです。
 
-1. **隔離したクラウドFirestoreでの結合確認**：エミュレーターの本物のREST APIでは、GitHub Actionsで確認済み。クラウドでは未実施。→ `ops:cloud-firestore-check`
-2. **稼働中Worker全体とリポジトリの照合**：利用者の画面で、名前・URL・バージョンID・Cron・シークレット名・冒頭の版表示までは確認済み。コード全体は未確認。→ `ops:worker-compare`
-3. **iPhoneでの実機確認**（5.の1〜5）→ `ops:staging-deploy` で試験環境を作ってから
+1. **隔離したクラウドFirestoreでの結合確認**：✅ テスト用プロジェクト `mainico-test` で成功（2026-10-04、`ops:cloud-firestore-check`）
+2. **稼働中Worker全体とリポジトリの照合**：✅ 稼働中のコードは `main` の `worker.js` と同じ（末尾の改行だけ違う。2026-10-04、`ops:worker-compare`）
+3. **iPhoneでの実機確認**（5.の1〜5）：未完了。試験環境 `mainiko-line-staging` は `ops:staging-deploy` で作成済み
 
 そのほか、知っておいてほしいこと：
 
