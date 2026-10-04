@@ -568,3 +568,81 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.equal((await run('2026-10-05', 12, 0)).length, 0, '受付済みの再送キーでは二重に届かない');
   console.log('ひと声のきっかけのLINE(1日1通・時刻・操作・連絡済み・了解・お休み・担当・上限・削除中・再送) passed');
 }
+/* 利用数の集計(2026-10-04): 日ごとに「ご本人の操作の数」と「家族の記録の数」だけを数え、運営者にだけ全体の数字を返す */
+{
+  for (const k of [...db.keys()]) if (/^(groups\/g[1-4]\/yotei|watchTags|tagAlertCounters|lineDeliveryReceipts|usageStats|ops)\//.test(k)) db.delete(k);
+  for (const k of [...db.keys()]) if (/^groups\/g4\/events\//.test(k)) db.delete(k);
+  put('groups/g5', { createdBy: S('f5') });
+  put('groups/g5/members/h5', { name: S('ばあば'), role: S('honnin'), status: S('approved') });
+  put('groups/g5/members/f5', { name: S('むすめ'), role: S('kazoku'), status: S('approved') });
+  const RealDate = Date;
+  let fixed = 0;
+  class FixedDate extends RealDate { constructor(...a) { if (a.length) super(...a); else super(fixed); } static now() { return fixed; } }
+  const at = (day, h, m = 0) => { const [y, mo, d] = day.split('-').map(Number); return RealDate.UTC(y, mo - 1, d, h - 9, m); };
+  const run = async (day, h, m = 0) => { fixed = at(day, h, m); globalThis.Date = FixedDate; try { await tick(); } finally { globalThis.Date = RealDate; } };
+  let n = 0;
+  const ev = (uid, type, date) => put('groups/g5/events/u' + (n++), { uid: S(uid), type: S(type), date: S(date), memo: S('中身は読まない') });
+  ev('h5', 'aisatsu', '2026-10-05'); ev('h5', 'kusuri', '2026-10-05'); ev('f5', 'aisatsu-back', '2026-10-05');
+  ev('h5', 'hitokoe-consent', '2026-10-05'); ev('f5', 'hitokoe-config', '2026-10-05'); ev('f5', 'line-link-log', '2026-10-05');
+  ev('h5', 'onegai', '2026-10-06');
+  const statsOf = () => [...db].filter(([p, d]) => p.startsWith('usageStats/') && d.fields.groupId?.stringValue === 'g5').map(([p, d]) => ({ p, f: d.fields }))[0];
+  // 1. その日の分は、翌日の朝5時を過ぎてから数える
+  await run('2026-10-06', 4, 30);
+  assert.ok(!statsOf() || statsOf().f.through.stringValue < '2026-10-05', '翌朝5時前は前の日を数えない');
+  await run('2026-10-06', 5, 15);
+  let st = statsOf();
+  assert.ok(st, '集計ができる');
+  assert.equal(st.f.through.stringValue, '2026-10-05');
+  assert.equal(st.f.start.stringValue, '2026-10-05', '初めて操作があった日');
+  const d5 = st.f.days.mapValue.fields['2026-10-05'].mapValue.fields;
+  assert.equal(d5.h.integerValue, '2', 'ご本人の操作(挨拶・薬)。了解の記録は数えない');
+  assert.equal(d5.f.integerValue, '1', '家族の記録(返事)。設定・連携の記録は数えない');
+  assert.ok(!JSON.stringify(st.f).includes('ばあば') && !JSON.stringify(st.f).includes('中身'), '名前・中身は残さない');
+  assert.ok(!/g5/.test(st.p), '文書の番号に家庭の番号をそのまま使わない');
+  // 2. 同じ日は二度数えない。次の日の分は次の朝
+  await run('2026-10-06', 5, 30);
+  assert.equal(statsOf().f.through.stringValue, '2026-10-05');
+  await run('2026-10-07', 5, 15);
+  st = statsOf();
+  assert.equal(st.f.through.stringValue, '2026-10-06');
+  assert.equal(st.f.days.mapValue.fields['2026-10-06'].mapValue.fields.h.integerValue, '1');
+  // 3. 運営者の登録: 合言葉が未設定なら案内だけ・違えば断る・合えば登録。運営者以外の「集計」には案内だけ
+  const said = async (uid, text) => { await hook([{ type: 'message', replyToken: 'q' + uid, source: user(uid), message: { type: 'text', text } }]); return replies.at(-1).messages[0].text; };
+  assert.match(await said('Uop', '運営者登録 さくら'), /お返事や相談は届きません/, '合言葉が未設定なら何もしない');
+  env.OPERATOR_PASSPHRASE = 'さくら 2026';
+  assert.match(await said('Uop', '運営者登録 もも'), /合言葉が違います/);
+  assert.match(await said('Uop', '運営者登録 さくら２０２６'), /運営者として登録しました/, '全角・空白の違いは同じとみなす');
+  assert.match(await said('Uother', '集計'), /お返事や相談は届きません/, '運営者以外には集計を返さない');
+  fixed = at('2026-10-07', 9); globalThis.Date = FixedDate;
+  let report;
+  try { report = await said('Uop', '集計'); } finally { globalThis.Date = RealDate; }
+  assert.match(report, /利用の集計（10月6日まで）/);
+  assert.match(report, /直近7日に、ご本人の操作があった世帯：1\/1（100%）/);
+  assert.match(report, /本人操作割合：75%（本人3件・家族1件）/);
+  assert.match(report, /3日目にも、ご本人の操作があった世帯：対象なし/);
+  assert.match(report, /8週目も続いている世帯：対象なし/);
+  assert.match(report, /ご本人の操作があった日数）：2/);
+  assert.ok(!/ばあば|むすめ|g5/.test(report), '名前・家庭の番号は返さない');
+  // 4. 試せるのは1日5回まで
+  for (let i = 0; i < 5; i++) await said('Ubad', '運営者登録 ちがう' + i);
+  assert.match(await said('Ubad', '運営者登録 さくら2026'), /試せる回数を超えました/);
+  assert.equal(db.get('ops/operator').fields.lineUserId.stringValue, 'Uop', '運営者は変わらない');
+  delete env.OPERATOR_PASSPHRASE;
+  // 5. 3日目・8週目の判定
+  put('usageStats/uX', { groupId: S('g5'), honnin: { booleanValue: true }, start: S('2026-08-01'), through: S('2026-10-06'),
+    days: { mapValue: { fields: { '2026-08-03': { mapValue: { fields: { h: { integerValue: '1' }, f: { integerValue: '0' } } } },
+      '2026-09-22': { mapValue: { fields: { h: { integerValue: '2' }, f: { integerValue: '2' } } } } } } } });
+  fixed = at('2026-10-07', 9); globalThis.Date = FixedDate;
+  try { report = await said('Uop', '集計'); } finally { globalThis.Date = RealDate; }
+  assert.match(report, /ご本人が参加している世帯：2/);
+  assert.match(report, /3日目にも、ご本人の操作があった世帯：1\/1（100%）/);
+  assert.match(report, /8週目も続いている世帯：1\/1（100%）/);
+  assert.match(report, /直近7日に、ご本人の操作があった世帯：1\/2（50%）/);
+  // 6. 家庭を削除中になったら、見回りの後片付けで集計を消す
+  put('groups/g5', { createdBy: S('f5'), deletionState: S('deleting') });
+  const g5Stats = () => [...db].filter(([p, d]) => p.startsWith('usageStats/') && d.fields.groupId?.stringValue === 'g5').length;
+  for (let i = 0; i < 8 && g5Stats(); i++) await run('2026-10-07', 6, i * 15);
+  assert.equal(g5Stats(), 0, '削除中の家庭の集計は消す');
+  assert.ok([...db.keys()].some((k) => k.startsWith('usageStats/')), 'ほかの家庭の集計は残す');
+  console.log('利用数の集計(朝5時以降・1日ずつ・数えない記録・名前を残さない・運営者の登録と回数制限・集計の返事・3日目と8週目・削除) passed');
+}

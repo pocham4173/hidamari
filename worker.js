@@ -17,6 +17,8 @@
  *     - 「ひと声のきっかけ」(2026-10-04): 家族が「LINEにも送る」をオンにし、ご本人が了解した家庭で、
  *       決めた時刻までにご本人の操作が1つもない日だけ、その日の担当の家族1人へ1日1通送る。
  *       文面に名前・様子は書かない。操作があったかは、その日の記録の「種類と書いた人」だけで判断する(中身は読まない)。
+ *     - 利用数の集計(2026-10-04): 世帯ごとに、日ごとの「ご本人の操作の数」と「家族の記録の数」だけを数える
+ *       (記録の中身・名前は読まない)。運営者がLINEで「集計」と送ると、全体の数字だけを返事する。
  *  3. 月200通(無料プラン)を守る上限ガード
  *     - 残りが TAG_RESERVE 通以下になったら予定のお知らせを止め、タグの分を残す
  *     - 家庭ごとに1日 HOUSEHOLD_DAILY_LIMIT 通まで(タグは止めずに数だけ数える)
@@ -29,6 +31,8 @@
  *  LINE_CHANNEL_SECRET        … LINE Developers の チャネルシークレット
  *  LINE_CHANNEL_ACCESS_TOKEN  … LINE Developers の チャネルアクセストークン（長期）
  *  FIREBASE_SERVICE_ACCOUNT   … Firebase の サービスアカウント秘密鍵（JSONファイルの中身をまるごと）
+ *  OPERATOR_PASSPHRASE        … (なくても動く)運営者が決めた合言葉。LINEで「運営者登録 合言葉」と送ると、
+ *                               そのLINEが運営者になり、「集計」で利用数の集計を受け取れる
  *
  * 送る内容は、予定の日付・時刻・場所・予定名・登録した人の名前だけ。
  * 服薬・体調・伝言などの記録の中身は読みにも行かない(ひと声のきっかけで、その日の記録の種類と書いた人だけを見る)。
@@ -53,7 +57,13 @@ const HITOKOE_MONTHLY_LIMIT = 90;           // ひと声のきっかけのLINE�
 const HITOKOE_WINDOW_HOURS = 3;              // 決めた時刻から3時間のうちだけ送る(遅れた知らせは送らない)
 const HITOKOE_REQUEST_BUDGET = 36;           // ひと声の処理はここまで。残りは後片付けに回す
 const HITOKOE_NOT_ACTIVITY = new Set(['hitokoe-consent', 'device-recovery', 'person-ui-config']); // hitokoe.js と同じ
-const VERSION_TEXT = '版：2026-10-04 ひと声のきっかけをLINEにも';
+const USAGE_KEEP_DAYS = 70;                  // 利用数の集計: 日ごとの数を残す日数(8週間の継続を見るため)
+const USAGE_PER_RUN = 4;                     // 1回の見回りで集計する世帯の数
+const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで。残りは後片付けに回す
+// 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
+const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
+  'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined']);
+const VERSION_TEXT = '版：2026-10-04 ひと声のLINE・利用数の集計';
 
 export default {
   async fetch(request, env, ctx) {
@@ -142,6 +152,15 @@ async function handleEvent(ev, env, fs) {
   const invite = INVITE_RE.exec(text);
   if (invite) {
     return reply(env, ev.replyToken, await acceptInvite(env, fs, invite[1], lineUserId));
+  }
+  // 運営者だけ: 合言葉で登録し、「集計」で全体の数字を受け取る(ほかの人には今までどおりの案内)
+  if (text.startsWith('運営者登録')) {
+    return reply(env, ev.replyToken, await registerOperator(env, fs, text.slice('運営者登録'.length), lineUserId));
+  }
+  if (text === '集計') {
+    const op = await fs.get('ops/operator');
+    if (op && op.fields.lineUserId === lineUserId) return reply(env, ev.replyToken, await usageReport(fs, new Date()));
+    return reply(env, ev.replyToken, MSG_HELP);
   }
   if (CODE_RE.test(text)) {
     return reply(env, ev.replyToken, await linkByCode(fs, text, lineUserId));
@@ -416,6 +435,11 @@ async function runNotifications(env) {
     try { sent += await runHitokoe(env, fs, now, book, groups); }
     catch (e) { if (e.message !== 'request-budget') console.error('hitokoe', e.message); }
     finally { fs.softLimit = 0; }
+    // 利用数の集計(前の日の分を、世帯ごとに少しずつ)
+    fs.softLimit = USAGE_REQUEST_BUDGET;
+    try { await runUsageStats(fs, now, groups); }
+    catch (e) { if (e.message !== 'request-budget') console.error('usage', e.message); }
+    finally { fs.softLimit = 0; }
     // Clean one verified orphan link per run without relying on a complete household list.
     const cleanupLinks = await fs.list('lineLinks', ['groupId']);
     if (cleanupLinks.length) {
@@ -431,6 +455,13 @@ async function runNotifications(env) {
       const group = rec && typeof d.fields.groupId === 'string' ? await fs.get('groups/' + d.fields.groupId) : null;
       if (!rec || rec.fields.groupId !== d.fields.groupId || rec.fields.status !== 'joined') await fs.delete(d.path);
       else if (!group || group.fields.deletionState === 'deleting') { await fs.delete(d.path); await fs.delete('lineRecipients/' + d.id); }
+    }
+    // 利用数の集計を1件ずつ見直す(家庭がなくなった・削除中なら消す)
+    const usageDocs = await fs.list('usageStats', ['groupId']);
+    if (usageDocs.length) {
+      const d = usageDocs[Math.floor(now.getTime()/900000)%usageDocs.length];
+      const group = typeof d.fields.groupId === 'string' ? await fs.get('groups/' + d.fields.groupId) : null;
+      if (!group || group.fields.deletionState === 'deleting') await fs.delete(d.path);
     }
     for (const collectionId of ['lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
       const expired = await fs.query('', {from:[{collectionId}],
@@ -622,6 +653,100 @@ async function runHitokoe(env, fs, now, book, groups) {
     await fs.set(receiptPath, { acceptedAt: new Date(), expiresAt: new Date(now.getTime() + 2 * 86400000) });
   }
   return sent;
+}
+
+/* ================= 利用数の集計(2026-10-04・事業計画書 第2版の Phase 0 の判定用) =================
+ * 世帯ごとに usageStats/{番号} へ、日ごとに {h: ご本人の操作の数, f: 家族の記録の数} だけを残す(USAGE_KEEP_DAYS 日分)。
+ * 読むのは、その日の記録の「種類」と「書いた人」だけ。名前・記録の中身は読まない・残さない。
+ * 日付は記録の date(夜中0〜4時は前の日)で数えるため、その日の分は翌日の朝5時を過ぎてから数える。
+ * 家庭がなくなったら、見回りの後片付けで消す。 */
+function addDays(day, n) { const d = new Date(day + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function usageLastDay(now) { return jstDateString(new Date(now.getTime() - 29 * 3600000)); }
+async function usageId(groupId) {
+  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('usage\n' + groupId)));
+  return 'u' + Array.from(bytes.slice(0, 10), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+async function runUsageStats(fs, now, groups) {
+  const last = usageLastDay(now);
+  let done = 0;
+  const offset = groups.length ? Math.floor(now.getTime() / 900000) % groups.length : 0;
+  for (const g of [...groups.slice(offset), ...groups.slice(0, offset)]) {
+    if (done >= USAGE_PER_RUN) break;
+    if (g.fields.deletionState === 'deleting') continue;
+    const path = 'usageStats/' + await usageId(g.id);
+    const prev = await fs.get(path);
+    const through = prev && typeof prev.fields.through === 'string' ? prev.fields.through : '';
+    if (through >= last) continue;
+    // 1回に1日ずつ。止まっていた分は7日前までさかのぼる
+    let day = through ? addDays(through, 1) : last;
+    if (day < addDays(last, -6)) day = addDays(last, -6);
+    done++;
+    const members = await fs.list(g.path + '/members', ['role', 'mode', 'status']);
+    const honnin = new Set(members.filter((m) => memberApproved(m.fields) && memberHonnin(m.fields)).map((m) => m.id));
+    const rows = await fs.query(g.path, { from: [{ collectionId: 'events' }], where: fieldEq('date', { stringValue: day }),
+      select: { fields: [{ fieldPath: 'type' }, { fieldPath: 'uid' }] } });
+    let h = 0, f = 0;
+    for (const r of rows) {
+      if (USAGE_NOT_OPERATION.has(r.fields.type) || typeof r.fields.uid !== 'string') continue;
+      if (honnin.has(r.fields.uid)) h++; else f++;
+    }
+    const days = {};
+    const oldest = addDays(last, -(USAGE_KEEP_DAYS - 1));
+    const prevDays = prev && prev.fields.days && typeof prev.fields.days === 'object' ? prev.fields.days : {};
+    for (const k of Object.keys(prevDays)) if (k >= oldest && prevDays[k] && typeof prevDays[k] === 'object') days[k] = { h: Number(prevDays[k].h) || 0, f: Number(prevDays[k].f) || 0 };
+    if (h || f) days[day] = { h, f };
+    const start = prev && typeof prev.fields.start === 'string' && prev.fields.start ? prev.fields.start : (h || f ? day : '');
+    await fs.set(path, { groupId: g.id, start, through: day, honnin: honnin.size > 0, days, updatedAt: new Date() });
+  }
+}
+/* 運営者に返す全体の数字(世帯の番号・名前は出さない) */
+function usageSummary(docs, now) {
+  const last = usageLastDay(now);
+  const homes = docs.map((d) => d.fields).filter((x) => x.honnin === true && typeof x.start === 'string' && x.start);
+  const day = (x, k) => (x.days && x.days[k]) || { h: 0, f: 0 };
+  const range = (from, to) => { const out = []; for (let k = from; k <= to; k = addDays(k, 1)) out.push(k); return out; };
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) + '%' : '—');
+  const week = range(addDays(last, -6), last);
+  const pressed7 = homes.map((x) => week.filter((k) => day(x, k).h > 0).length).sort((a, b) => b - a);
+  const active7 = pressed7.filter((n) => n > 0).length;
+  let h28 = 0, f28 = 0;
+  for (const x of homes) for (const k of range(addDays(last, -27), last)) { h28 += day(x, k).h; f28 += day(x, k).f; }
+  const d3 = homes.filter((x) => addDays(x.start, 2) <= last);
+  const d3ok = d3.filter((x) => day(x, addDays(x.start, 2)).h > 0).length;
+  const w8 = homes.filter((x) => addDays(x.start, 55) <= last);
+  const w8ok = w8.filter((x) => range(addDays(x.start, 49), addDays(x.start, 55)).some((k) => day(x, k).h > 0)).length;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(last);
+  return [
+    '📊 まいにこ 利用の集計（' + (+m[2]) + '月' + (+m[3]) + '日まで）',
+    'ご本人が参加している世帯：' + homes.length,
+    '',
+    '直近7日に、ご本人の操作があった世帯：' + active7 + '/' + homes.length + '（' + pct(active7, homes.length) + '）',
+    '直近28日の本人操作割合：' + pct(h28, h28 + f28) + '（本人' + h28 + '件・家族' + f28 + '件）',
+    '3日目にも、ご本人の操作があった世帯：' + (d3.length ? d3ok + '/' + d3.length + '（' + pct(d3ok, d3.length) + '）' : '対象なし'),
+    '8週目も続いている世帯：' + (w8.length ? w8ok + '/' + w8.length + '（' + pct(w8ok, w8.length) + '）' : '対象なし（始めて8週間たった世帯がまだありません）'),
+    '世帯ごとの直近7日（ご本人の操作があった日数）：' + (pressed7.length ? pressed7.join('・') : 'なし'),
+    '',
+    '※ 名前・記録の中身・世帯の番号は含みません。前の日までの数です（毎朝5時以降に少しずつ数えます）。',
+  ].join('\n');
+}
+async function usageReport(fs, now) {
+  return usageSummary(await fs.list('usageStats', ['honnin', 'start', 'days']), now);
+}
+/* 運営者の登録: Cloudflare に入れた合言葉と同じなら、このLINEを運営者にする(1日5回まで試せる) */
+async function registerOperator(env, fs, given, lineUserId) {
+  const norm = (v) => String(v || '').normalize('NFKC').toUpperCase().replace(/[\s\-ー－_]/g, '');
+  const secret = norm(env.OPERATOR_PASSPHRASE);
+  if (!secret) return MSG_HELP;
+  const today = jstDateString(new Date());
+  const tries = await fs.get('ops/operatorAttempts');
+  const count = tries && tries.fields.day === today && Number.isFinite(tries.fields.count) ? tries.fields.count : 0;
+  if (count >= 5) return '今日は試せる回数を超えました。明日もう一度送ってください。';
+  if (norm(given) !== secret) {
+    await fs.set('ops/operatorAttempts', { day: today, count: count + 1 });
+    return '合言葉が違います。';
+  }
+  await fs.set('ops/operator', { lineUserId, at: new Date() });
+  return '運営者として登録しました。「集計」と送ると、利用数の集計（全体の数字だけ）を返します。';
 }
 
 /* ================= おまもりタグのお知らせ(2026-09-30) =================
