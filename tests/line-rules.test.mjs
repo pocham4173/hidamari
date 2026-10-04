@@ -104,7 +104,14 @@ try {
   /* 送信先の招待と、予定ごとの相手(2026-10-04) */
   const rec = (uid, extra) => ({ groupId: 'g1', name: 'おばあちゃん', status: 'pending', createdBy: uid, createdAt: serverTimestamp(), ...extra });
   const invite = (uid, rid, hours, extra) => ({ groupId: 'g1', recipientId: rid, createdBy: uid, createdAt: serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + hours * 3600000), ...extra });
-  await check('28. 承認済みの家族は送信先(承認待ち)を作れる', setDoc(doc(m1, 'lineRecipients', 'r1'), rec('m1')), true);
+  const share = (extra) => ({ version: 'line-share-20261004', acceptedAt: serverTimestamp(), honninAgreed: true, name: 'テスト', ...extra });
+  await check('27a. 同意していない家族は送信先を作れない', setDoc(doc(m1, 'lineRecipients', 'r0'), rec('m1')), false);
+  await check('27b. ご本人の了解なしの同意は記録できない', setDoc(doc(m1, 'groups', 'g1', 'lineShareConsents', 'm1'), share({ honninAgreed: false })), false);
+  await check('27c. 他人の名義で同意を記録できない', setDoc(doc(m2, 'groups', 'g1', 'lineShareConsents', 'm1'), share()), false);
+  await check('27d. 承認待ちの人は同意を記録できない', setDoc(doc(p1, 'groups', 'g1', 'lineShareConsents', 'p1'), share()), false);
+  await check('27e. 自分の同意を記録できる', setDoc(doc(m1, 'groups', 'g1', 'lineShareConsents', 'm1'), share()), true);
+  await check('27f. 家族は、だれが同意したか見られる', getDoc(doc(m2, 'groups', 'g1', 'lineShareConsents', 'm1')), true);
+  await check('28. 同意した家族は送信先(承認待ち)を作れる', setDoc(doc(m1, 'lineRecipients', 'r1'), rec('m1')), true);
   await check('29. 送信先を最初から「登録済み」にはできない', setDoc(doc(m1, 'lineRecipients', 'r2'), rec('m1', { status: 'joined' })), false);
   await check('30. 送信先にLINEの利用者識別子を書けない', setDoc(doc(m1, 'lineRecipients', 'r3'), rec('m1', { lineUserId: 'Uevil' })), false);
   await check('31. 承認待ちの人は送信先を作れない', setDoc(doc(p1, 'lineRecipients', 'r4'), rec('p1')), false);
@@ -116,6 +123,7 @@ try {
   await check('37. 家族は7日間の招待を作れる', setDoc(doc(m1, 'lineInvites', 'KNVT234567'), invite('m1', 'r1', 24 * 7)), true);
   await check('38. 8日以上の招待は作れない', setDoc(doc(m1, 'lineInvites', 'KNVT234568'), invite('m1', 'r1', 24 * 8)), false);
   await check('39. 他人名義の招待は作れない', setDoc(doc(m2, 'lineInvites', 'KNVT234569'), invite('m1', 'r1', 24)), false);
+  await check('39a. 同意していない家族は招待を作れない', setDoc(doc(m2, 'lineInvites', 'KNVT23456C'), invite('m2', 'r1', 24)), false);
   await check('40. 存在しない送信先への招待は作れない', setDoc(doc(m1, 'lineInvites', 'KNVT23456A'), invite('m1', 'nope', 24)), false);
   await env.withSecurityRulesDisabled(async (c) => {
     await setDoc(doc(c.firestore(), 'lineRecipients', 'rJ'), { groupId: 'g1', name: '登録済み', status: 'joined', createdBy: 'm1', lineName: 'X' });
@@ -128,6 +136,8 @@ try {
     setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y7'), yotei('m1', { notifyAt: inMin(60), notifyTo: ['u:m1', 'r:r1'] })), true);
   await check('45. 自分の予定の知らせる相手を変えられる',
     setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y7'), { notifyTo: null, updatedAt: serverTimestamp() }, { merge: true }), true);
+  await check('45a. 同意はやめられる(削除)', deleteDoc(doc(m1, 'groups', 'g1', 'lineShareConsents', 'm1')), true);
+  await check('45b. 同意をやめた後は招待を作れない', setDoc(doc(m1, 'lineInvites', 'KNVT23456D'), invite('m1', 'r1', 24)), false);
   await check('46. 21件以上の相手は拒否される',
     setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y8'), yotei('m1', { notifyTo: Array.from({ length: 21 }, (_, i) => 'u:' + i) })), false);
 

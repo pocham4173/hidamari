@@ -260,6 +260,21 @@ service cloud.firestore {
           && (!('notifyTo' in d) || d.notifyTo == null || (d.notifyTo is list && d.notifyTo.size() <= 20));
       }
 
+      /* アプリを使わない人(招待した送信先)へ予定を送る同意(2026-10-04)。
+         この機能を使う家族だけが、使う前に本人として同意する。ご本人の了解を得たことも確かめる。
+         同意した家族だけが送信先・招待を作れ、送信役も送る直前にこの同意を確かめる。やめるときは削除する。 */
+      match /lineShareConsents/{uid} {
+        allow get, list: if isApproved(groupId) && hasConsent();
+        allow create: if request.auth.uid == uid && isApproved(groupId) && hasConsent() && writableGroup(groupId)
+          && request.resource.data.keys().hasOnly(['version', 'acceptedAt', 'honninAgreed', 'name'])
+          && request.resource.data.version in ['line-share-20261004']
+          && request.resource.data.acceptedAt == request.time
+          && request.resource.data.honninAgreed == true
+          && request.resource.data.name is string && request.resource.data.name.size() <= 40;
+        allow update: if false;
+        allow delete: if signedIn() && request.auth.uid == uid;
+      }
+
       match /yotei/{yoteiId} {
         allow read: if (isApproved(groupId) && hasConsent()) || deletingOwner(groupId);
 
@@ -397,7 +412,8 @@ service cloud.firestore {
         && validRecipientName(request.resource.data.name)
         && request.resource.data.status == 'pending'
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(db)/documents/groups/$(request.resource.data.groupId)/lineShareConsents/$(request.auth.uid));
       // 家族が変えられるのは名前だけ(状態・LINE名・登録日時は送信役が書く)
       allow update: if isApproved(resource.data.groupId) && hasConsent()
         && writableGroup(resource.data.groupId)
@@ -418,6 +434,7 @@ service cloud.firestore {
         && isApproved(request.resource.data.groupId) && hasConsent()
         && writableGroup(request.resource.data.groupId)
         && request.resource.data.createdBy == request.auth.uid
+        && exists(/databases/$(db)/documents/groups/$(request.resource.data.groupId)/lineShareConsents/$(request.auth.uid))
         && exists(/databases/$(db)/documents/lineRecipients/$(request.resource.data.recipientId))
         && get(/databases/$(db)/documents/lineRecipients/$(request.resource.data.recipientId)).data.groupId == request.resource.data.groupId
         && get(/databases/$(db)/documents/lineRecipients/$(request.resource.data.recipientId)).data.status == 'pending'

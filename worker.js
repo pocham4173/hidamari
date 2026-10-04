@@ -12,6 +12,7 @@
  *       承認済みの人へ「予定のお知らせ」を送る。送ったら予定に送信済みの印を付ける。
  *       予定に notifyTo(知らせる相手)があれば、その人だけに送る。招待した送信先('r:〜')へは、
  *       notifyTo で選ばれた予定だけを送る(選んでいない予定・おまもりタグは送らない)。
+ *       送るのは、予定を登録した家族が「アプリを使わない人へ送る」ことに同意しているときだけ。
  *     - おまもりタグが読み取られたら、LINE連携した家族(ご本人以外)へ知らせる。
  *  3. 月200通(無料プラン)を守る上限ガード
  *     - 残りが TAG_RESERVE 通以下になったら予定のお知らせを止め、タグの分を残す
@@ -328,7 +329,10 @@ async function runNotifications(env) {
         const notifyTo = Array.isArray(y.fields.notifyTo) ? y.fields.notifyTo.filter(v => typeof v === 'string') : null;
         const links = (notifyTo ? allLinks.filter(l => notifyTo.includes('u:' + l.id)) : allLinks)
           .map(l => ({kind:'u', id:l.id, path:l.path, fields:l.fields}));
-        const wanted = notifyTo ? notifyTo.filter(v => v.startsWith('r:')).map(v => v.slice(2)) : [];
+        let wanted = notifyTo ? notifyTo.filter(v => v.startsWith('r:')).map(v => v.slice(2)) : [];
+        // 招待した送信先へは、予定を登録した家族が「アプリを使わない人へ送る」ことに同意しているときだけ送る
+        const shareConsentPath = g.path + '/lineShareConsents/' + String(y.fields.uid || '');
+        if (wanted.length && !(typeof y.fields.uid === 'string' && y.fields.uid && await fs.get(shareConsentPath))) wanted = [];
         if (wanted.length) {
           const ids = await fs.query('', {from:[{collectionId:'lineRecipientIds'}],
             where:fieldEq('groupId',{stringValue:g.id})});
@@ -364,6 +368,7 @@ async function runNotifications(env) {
             // 招待した送信先: 家族が削除・LINEで停止していないこと(登録済みの送信先の控えと同じ相手であること)
             const rec = await fs.get('lineRecipients/' + link.id);
             if (!rec || rec.fields.groupId !== g.id || rec.fields.status !== 'joined') continue;
+            if (!await fs.get(shareConsentPath)) continue;   // 同意をやめた後は送らない
             const currentIds = await fs.get(link.path);
             if (!currentIds || currentIds.fields.groupId !== g.id || currentIds.fields.lineUserId !== to) continue;
           } else {

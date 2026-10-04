@@ -13,7 +13,7 @@ async function waitFor(fn, label) {
   assert.fail('timeout: ' + label);
 }
 
-function setup({ linked = false, failLink = false, recipients = [] } = {}) {
+function setup({ linked = false, failLink = false, recipients = [], share = true } = {}) {
   const dom = new JSDOM('<div id="area"></div><div id="settings-line-log"></div><div id="who"></div>', { url: 'https://pocham4173.github.io/hidamari/', runScripts: 'outside-only' });
   const c = dom.getInternalVMContext();
   const written = [], updated = [], deleted = [];
@@ -52,7 +52,14 @@ function setup({ linked = false, failLink = false, recipients = [] } = {}) {
         onSnapshot: (cb) => { recCb = cb; cb(snapOf(recDocs())); return () => { recCb = null; }; },
       }),
     }) },
-    col: (name) => ({ where: (f, op, v) => q(name === 'members' ? members.map((m) => ({ id: m.id, data: m.data })) : logs.map((l) => ({ id: l.uid, data: () => ({ ...l, type: v }) }))) }),
+    col: (name) => ({
+      where: (f, op, v) => q(name === 'members' ? members.map((m) => ({ id: m.id, data: m.data })) : logs.map((l) => ({ id: l.uid, data: () => ({ ...l, type: v }) }))),
+      doc: (id) => ({
+        get: async () => ({ exists: name === 'lineShareConsents' && share, data: () => ({ version: 'line-share-20261004', honninAgreed: true }) }),
+        set: async (v) => { written.push({ name: 'group/' + name, id, v }); share = true; },
+        delete: async () => { deleted.push({ name: 'group/' + name, id }); share = false; },
+      }),
+    }),
     prompt: () => '  ばあば  ',
     appConfirm: async () => true,
   });
@@ -163,10 +170,37 @@ function setup({ linked = false, failLink = false, recipients = [] } = {}) {
   assert.deepEqual(plain(W.readWho('who')), ['r:r1'], '消えた送信先は保存し直さない');
 }
 
+{ // 同意していない家族: 送信先の追加の前に、同意の画面を出す。チェック2つで同意を記録して使い始める
+  const t = setup({ share: false, recipients: [{ id: 'r1', groupId: 'g1', name: 'ヘルパーさん', status: 'joined' }] });
+  await t.c.MainicoLine.render('area');
+  const area = t.d.getElementById('area');
+  assert.equal(area.querySelector('[data-line-act="invite"]'), null, '同意の前は招待を作れない');
+  assert.match(area.textContent, /使う前に、確認してください/);
+  assert.match(area.textContent, /服薬・体調の記録、伝言、おまもりタグのお知らせは送りません/);
+  area.querySelector('[data-line-act="share-consent"]').click();
+  await tick();
+  assert.match(area.textContent, /2つのチェックを入れてください/);
+  assert.equal(t.written.length, 0);
+  area.querySelector('[data-share-ok]').checked = true;
+  area.querySelector('[data-share-honnin]').checked = true;
+  area.querySelector('[data-line-act="share-consent"]').click();
+  await waitFor(() => area.querySelector('[data-line-act="invite"]'), 'consented');
+  const rec = t.written.find((w) => w.name === 'group/lineShareConsents');
+  assert.equal(rec.id, 'me'); assert.equal(rec.v.version, 'line-share-20261004'); assert.equal(rec.v.honninAgreed, true); assert.equal(rec.v.acceptedAt, 'ts');
+  // 同意をやめる
+  area.querySelector('[data-line-act="share-withdraw"]').click();
+  await waitFor(() => area.querySelector('[data-line-act="share-consent"]'), 'withdrawn');
+  assert.deepEqual(plain(t.deleted.at(-1)), { name: 'group/lineShareConsents', id: 'me' });
+  // 同意していないと、予定の「知らせる人」に招待した人は出ない
+  await t.c.MainicoLine.renderWho('who', ['r:r1']);
+  assert.deepEqual([...t.d.querySelectorAll('#who .ln-chip')].map((b) => b.textContent), ['自分', 'お母さん', '兄 <b>x</b>']);
+  assert.deepEqual(plain(t.c.MainicoLine.readWho('who')), [], '同意をやめた人の予定には、招待した人を残さない');
+}
+
 { // 通信できない
   const t = setup({ failLink: true });
   await t.c.MainicoLine.render('area');
   assert.match(t.d.getElementById('area').textContent, /確認できませんでした/);
   assert.ok(t.d.querySelector('[data-line-act="reload"]'));
 }
-console.log('LINEの設定画面: 4枚のカード・送信先の一覧・ボタンで登録・招待リンク・名前変更/再送/削除・予定ごとに知らせる人・通信失敗 passed');
+console.log('LINEの設定画面: 4枚のカード・送信先の一覧・ボタンで登録・招待リンク・名前変更/再送/削除・予定ごとに知らせる人・送る前の同意・通信失敗 passed');

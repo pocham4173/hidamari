@@ -145,6 +145,8 @@
       bind(area,areaId); return;
     }
     var linked=!!(link && link.groupId===(typeof global.gid==='function'?global.gid():''));
+    var share=await readShareConsent(myUid);
+    if(seq!==renderSeq) return;
     var self;
     if(linked){
       self='<p class="ln-status ok">✓ 自分のLINEを登録済み。予定の「知らせる人」で自分を選べます。</p>'+
@@ -158,24 +160,62 @@
         '<div data-line-code></div>';
     }
     self+='<div class="save-state" data-line-state aria-live="polite"></div>';
-    var share='https://line.me/R/share?text='+encodeURIComponent('まいにこの予定のお知らせを、LINEで受け取れるようにしてね。\nまいにこを開いて「設定」→「LINEで予定のお知らせ」→「自分のLINEを登録する」を押すだけです。\n'+appUrl());
+    var askUrl='https://line.me/R/share?text='+encodeURIComponent('まいにこの予定のお知らせを、LINEで受け取れるようにしてね。\nまいにこを開いて「設定」→「LINEで予定のお知らせ」→「自分のLINEを登録する」を押すだけです。\n'+appUrl());
     area.innerHTML=
       card('me','me','自分のLINEを登録する','',self)+
       card('add','add','LINEの送信先を追加','予定をLINEで送れる人を増やす',
-        '<p class="ln-sub">名前を入れて招待を送り、相手がLINEで<b>送信</b>を押したら登録完了です。アプリを使わない人にも届けられます。</p>'+
-        '<label class="ln-label" for="'+h(areaId)+'-invite-name">通知する人の名前</label>'+
-        '<input class="ln-input" id="'+h(areaId)+'-invite-name" maxlength="40" placeholder="例：お母さん、みき" data-line-invite-name>'+
-        '<button class="set-btn ln-line" type="button" data-line-act="invite">招待リンクを作る</button>'+
-        '<div data-line-invite></div>'+
-        '<p class="ln-sub">予定ごとに選んだ人にだけ、通知が届きます。届くのは予定の日付・時刻・場所・予定名・登録した人の名前です。</p>')+
+        '<p class="ln-sub">名前を入れて招待を送り、相手がLINEで<b>送信</b>を押したら登録完了です。ヘルパーさんやデイサービスなど、アプリを使わない人にも予定を伝えられます。</p>'+
+        (share?
+          '<label class="ln-label" for="'+h(areaId)+'-invite-name">通知する人の名前</label>'+
+          '<input class="ln-input" id="'+h(areaId)+'-invite-name" maxlength="40" placeholder="例：お母さん、ヘルパーの山田さん" data-line-invite-name>'+
+          '<button class="set-btn ln-line" type="button" data-line-act="invite">招待リンクを作る</button>'+
+          '<div data-line-invite></div>'+
+          '<p class="ln-sub">予定ごとに選んだ人にだけ、通知が届きます。届くのは予定の日付・時刻・場所・予定名・登録した人の名前です。</p>'+
+          '<p class="ln-sub">✓ アプリを使わない人へ送ることに同意済み'+(toDate(share.acceptedAt)?'（'+h(jpDateTime(toDate(share.acceptedAt)))+'）':'')+
+          ' <button type="button" class="ln-link" data-line-act="share-withdraw">同意をやめる</button></p>'
+        :
+          '<div class="ln-consent"><p><b>使う前に、確認してください</b></p><ul>'+
+          '<li>招待した人には、あなたが予定ごとに「知らせる」と選んだ予定の<b>日付・時刻・場所・予定名・登録した人の名前</b>がLINEで届きます。</li>'+
+          '<li>服薬・体調の記録、伝言、おまもりタグのお知らせは送りません。</li>'+
+          '<li>LINEの通知として、相手のスマホのロック画面に出ることがあります。</li>'+
+          '<li>招待した人は、LINEで「解除」と送ればいつでも止められます。あなたも送信先の削除や、この同意をやめることがいつでもできます。</li></ul>'+
+          '<label class="ln-check"><input type="checkbox" data-share-ok> 上の内容で、アプリを使わない人に予定を送ることに同意します</label>'+
+          '<label class="ln-check"><input type="checkbox" data-share-honnin> ご本人の予定を送るときは、ご本人の了解を得ます（ご本人が自分で使う場合は、自分で了解したことになります）</label>'+
+          '<button class="set-btn ln-line" type="button" data-line-act="share-consent">同意して使い始める</button>'+
+          '<div class="save-state" data-share-state aria-live="polite"></div></div>'
+        ))+
       card('list','list','LINEの送信先','','<div data-line-family><p class="note">読み込んでいます…</p></div>')+
       card('send','send','家族に頼む','アプリを使う家族へ、つなぎ方を送る',
         '<p class="ln-sub">家族がアプリから自分のLINEを登録すると、「LINEの送信先」に✓が付きます。</p>'+
-        '<a class="set-btn ln-soft" href="'+h(share)+'" target="_blank" rel="noopener noreferrer">LINEで家族に頼む</a>')+
+        '<a class="set-btn ln-soft" href="'+h(askUrl)+'" target="_blank" rel="noopener noreferrer">LINEで家族に頼む</a>')+
       '<details class="ln-more"><summary>LINEに届く内容</summary><p class="note">予定の日付・時刻・場所・予定名・登録した人の名前です。服薬・体調の記録や伝言は送りません。LINEヤフー株式会社のLINEを通じて届き、ロック画面に表示されることがあります。招待した人には、その人に知らせると選んだ予定だけが届きます（おまもりタグのお知らせは、アプリで登録した家族だけに届きます）。</p></details>';
     bind(area,areaId);
     watchFamily(area,areaId,myUid,linked,seq);
     if(!linked) watchLink(areaId,myUid,seq);
+  }
+  /* アプリを使わない人へ送る同意(この家族の中で、自分の同意)。読めないときは未同意として扱う */
+  var SHARE_VERSION='line-share-20261004';
+  async function readShareConsent(myUid){
+    try{
+      if(typeof global.col!=='function') return null;
+      var snap=await global.col('lineShareConsents').doc(myUid).get();
+      return snap.exists?(snap.data()||{}):null;
+    }catch(e){ return null; }
+  }
+  async function giveShareConsent(area,areaId){
+    var ok=area.querySelector('[data-share-ok]'), hon=area.querySelector('[data-share-honnin]'), st=area.querySelector('[data-share-state]');
+    if(!ok||!hon||!ok.checked||!hon.checked){ if(st){ st.textContent='2つのチェックを入れてください'; st.classList.add('err'); } return; }
+    if(st){ st.textContent='保存しています…'; st.classList.remove('err'); }
+    try{
+      await global.col('lineShareConsents').doc(global.uid()).set({version:SHARE_VERSION,acceptedAt:global.firebase.firestore.FieldValue.serverTimestamp(),honninAgreed:true,
+        name:String(typeof global.myName==='function'?global.myName():'').slice(0,40)});
+      render(areaId);
+    }catch(e){ if(st){ st.textContent='保存できませんでした。通信を確認して、もう一度押してください'; st.classList.add('err'); } }
+  }
+  async function withdrawShareConsent(areaId){
+    if(!await ask('アプリを使わない人へ予定を送る同意をやめますか？\nやめると、あなたが登録した予定は、招待した人に届かなくなります。送信先の一覧はそのまま残ります。','同意をやめる')) return;
+    try{ await global.col('lineShareConsents').doc(global.uid()).delete(); render(areaId); }
+    catch(e){ if(global.alert) global.alert('同意をやめられませんでした。通信を確認してください'); }
   }
   /* 家族と招待した人の一覧(家族の状態は連携の記録から。招待した人は送信先の文書を見守る) */
   var familyRows=[], recipientRows=[];
@@ -326,6 +366,8 @@
         if(act==='unlink') unlink(area,areaId,btn);
         if(act==='check') render(areaId);
         if(act==='invite') createInvite(area);
+        if(act==='share-consent') giveShareConsent(area,areaId);
+        if(act==='share-withdraw') withdrawShareConsent(areaId);
       };
     });
   }
@@ -460,8 +502,11 @@
     try{
       var ms_=await global.col('members').where('status','==','approved').get();
       ms_.forEach(function(d){ items.push({key:'u:'+d.id,label:d.id===me?'自分':((d.data()||{}).name||'家族'),family:true,self:d.id===me}); });
-      var rs=await global.db.collection('lineRecipients').where('groupId','==',global.gid()).get();
-      rs.forEach(function(d){ var v=d.data()||{}; if(v.status==='joined') items.push({key:'r:'+d.id,label:v.name||'送信先',family:false}); });
+      var shareOk=!!(await readShareConsent(me));
+      if(shareOk){
+        var rs=await global.db.collection('lineRecipients').where('groupId','==',global.gid()).get();
+        rs.forEach(function(d){ var v=d.data()||{}; if(v.status==='joined') items.push({key:'r:'+d.id,label:v.name||'送信先',family:false}); });
+      }
     }catch(e){
       box.innerHTML='<p class="note">知らせる人を読み込めませんでした。このまま保存すると、LINEを登録した家族全員に届きます。</p>';
       return;
@@ -473,7 +518,7 @@
     var draw=function(){
       box.innerHTML='<div class="ln-ttl">知らせる人</div><div class="ln-chips">'+items.map(function(it,i){
         return '<button type="button" class="ln-chip'+(it.on?' on':'')+(it.family?'':' ext')+'" aria-pressed="'+(it.on?'true':'false')+'" data-who="'+i+'">'+(it.on?'✓ ':'')+h(it.label)+'</button>';
-      }).join('')+'</div><p class="note">選んだ人にだけ届きます。LINEを登録していない人には届きません。'+(items.some(function(it){return !it.family;})?'':'アプリを使わない人に届けるときは「設定 → LINEで予定のお知らせ」で招待できます。')+'</p>';
+      }).join('')+'</div><p class="note">選んだ人にだけ届きます。LINEを登録していない人には届きません。'+(items.some(function(it){return !it.family;})?'':'ヘルパーさんなど、アプリを使わない人に届けるときは「設定 → LINEで予定のお知らせ」で同意して招待できます。')+'</p>';
       box.querySelectorAll('[data-who]').forEach(function(b){
         b.onclick=function(){ var it=items[+b.getAttribute('data-who')]; it.on=!it.on; draw(); };
       });

@@ -269,6 +269,15 @@ assert.match(replies.at(-1).messages[0].text, /お返事や相談は届きませ
 
   // 送る相手: notifyTo なし=つないだ家族全員(送信先へは送らない)、'r:'=選んだ送信先、'u:'=選んだ家族
   put('lineLinks/fam', { lineUserId: S('Ufam'), groupId: S('g1') });
+  // 予定を登録した家族が同意していないと、招待した送信先へは送らない
+  {
+    const b0 = pushes.length;
+    put('groups/g1/yotei/yNoConsent', { kind: S('📌'), date: S(ds), label: S('同意なし'), uid: S('owner'), notifyAt: T(new Date(Date.now() - 60000)), notifyTo: { arrayValue: { values: [S('r:r1')] } } });
+    await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } }); await waiter;
+    assert.equal(pushes.length, b0, '同意のない家族の予定は、招待した送信先へ送らない');
+    db.delete('groups/g1/yotei/yNoConsent');
+  }
+  put('groups/g1/lineShareConsents/owner', { version: S('line-share-20261004'), honninAgreed: { booleanValue: true }, acceptedAt: T(new Date()) });
   const before = pushes.length;
   const past = T(new Date(Date.now() - 60000));
   const arr = (...v) => ({ arrayValue: { values: v.map(S) } });
@@ -279,6 +288,16 @@ assert.match(replies.at(-1).messages[0].text, /お返事や相談は届きませ
   for (let i = 0; i < 3; i++) { await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } }); await waiter; }
   const got = pushes.slice(before).map((p) => p.to + ':' + p.messages[0].text.split('\n').find((l) => /家族みんな|おばあちゃんだけ|ふたり/.test(l)));
   assert.deepEqual(got.sort(), ['Ufam:📌 ふたり', 'Ufam:📌 家族みんな', 'Ugrand:📌 おばあちゃんだけ', 'Ugrand:📌 ふたり']);
+  // 同意をやめたら、その後は送らない
+  {
+    db.delete('groups/g1/lineShareConsents/owner');
+    const b1 = pushes.length;
+    put('groups/g1/yotei/yWithdrawn', { kind: S('📌'), date: S(ds), label: S('同意をやめた後'), uid: S('owner'), notifyAt: T(new Date(Date.now() - 60000)), notifyTo: arr('r:r1') });
+    await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } }); await waiter;
+    assert.equal(pushes.length, b1, '同意をやめた後は送らない');
+    db.delete('groups/g1/yotei/yWithdrawn');
+    put('groups/g1/lineShareConsents/owner', { version: S('line-share-20261004'), honninAgreed: { booleanValue: true }, acceptedAt: T(new Date()) });
+  }
   // 家族が送信先を削除したら、その後は送らない(控えが残っていても)
   db.delete('lineRecipients/r1');
   const before2 = pushes.length;
