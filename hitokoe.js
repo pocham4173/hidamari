@@ -3,7 +3,7 @@
  * 押されなかった日は、心配の知らせではなく、声を聞くきっかけとして、家族の一人にそっと届きます。
  * まいにこやLINEに頼らず、家族が自分から声をかける(電話する・顔を見に行く)きっかけにするための機能です。
  *
- * しくみ(段階1: アプリの中だけ。LINEには送らない)
+ * しくみ(段階1: アプリの中。2026-10-04から「LINEにも送る」を選べる)
  *  - 家族が設定でオンにし、時刻(9・10・11・12時)を選ぶ。初めは切ってある。
  *  - オンにしたときだけ、ご本人のスマホに1回確認を出す。ご本人が「はい」を選ぶまでは動かない。
  *  - その時刻までにご本人の操作(挨拶・薬・体調・お願いなど)が1つもない日だけ、担当の家族1人のホームに出る。
@@ -12,9 +12,12 @@
  *  - 入院・旅行・デイサービスの日は「お休み」(毎週の曜日・期間)にできる。
  *  - 受け取った人が「連絡しました」を押すと、ほかの家族にも「○○さんが11:20に連絡しました」と出る。
  *  - ご本人の画面には、了解の確認のほかは何も出さない。催促も警告もしない。
+ *  - 「LINEにも送る」をオンにすると、担当の家族が自分のLINEを登録しているとき、LINEにも1日1通届く
+ *    (送るのはLINE送信役 worker.js。文面に名前・様子は書かない。まいにこ全体で月90通まで)。
+ *    オンにしたときは、ご本人にもう一度了解を聞く(LINEに届くことを確認の文に書く)。
  *
  * 記録(家庭の events)
- *  hitokoe-config    家族の設定(最新1件が有効)。{enabled, hour, offWeekdays, pauses, assignees, requestId}
+ *  hitokoe-config    家族の設定(最新1件が有効)。{enabled, line, hour, offWeekdays, pauses, assignees, requestId}
  *  hitokoe-consent   ご本人の了解。{requestId, answer:'yes'|'no'}(ルールでご本人だけが書ける)
  *  hitokoe-contacted 家族の「連絡しました」。{target, date}
  */
@@ -40,13 +43,13 @@
 
   /* 設定を正しい形にそろえる(壊れた値や古い形でも落ちないように) */
   function normalizeConfig(c){
-    if(!c||c.type!=='hitokoe-config') return {enabled:false,hour:DEFAULT_HOUR,offWeekdays:[],pauses:[],assignees:{},requestId:'',uid:'',name:''};
+    if(!c||c.type!=='hitokoe-config') return {enabled:false,line:false,hour:DEFAULT_HOUR,offWeekdays:[],pauses:[],assignees:{},requestId:'',uid:'',name:''};
     var hour=HOURS.indexOf(Number(c.hour))>=0?Number(c.hour):DEFAULT_HOUR;
     var off=Array.isArray(c.offWeekdays)?c.offWeekdays.map(Number).filter(function(n){return n>=0&&n<=6;}):[];
     var pauses=Array.isArray(c.pauses)?c.pauses.filter(function(p){return p&&/^\d{4}-\d{2}-\d{2}$/.test(p.from)&&/^\d{4}-\d{2}-\d{2}$/.test(p.to)&&p.from<=p.to;}).slice(0,10):[];
     var as={};
     if(c.assignees&&typeof c.assignees==='object') Object.keys(c.assignees).forEach(function(k){ if(/^[0-6]$/.test(k)&&typeof c.assignees[k]==='string') as[k]=c.assignees[k]; });
-    return {enabled:c.enabled===true,hour:hour,offWeekdays:off,pauses:pauses,assignees:as,
+    return {enabled:c.enabled===true,line:c.line===true,hour:hour,offWeekdays:off,pauses:pauses,assignees:as,
       requestId:typeof c.requestId==='string'?c.requestId:'',uid:typeof c.uid==='string'?c.uid:'',name:typeof c.name==='string'?c.name:'',at:millis(c)};
   }
   function latestConfig(rows){ return normalizeConfig(newest((rows||[]).filter(function(v){ return v&&v.type==='hitokoe-config'; }))); }
@@ -124,16 +127,17 @@
       if(r.state==='off') return n+'切っています';
       if(r.state==='waiting-consent') return n+'ご本人の了解待ちです（ご本人がまいにこを開くと、確認が1回だけ出ます）';
       if(r.state==='declined') return n+'ご本人が「やめておく」を選びました。動いていません';
-      return n+'ご本人が了解しています'+(r.consentAt?'（'+(new Date(r.consentAt).getMonth()+1)+'月'+new Date(r.consentAt).getDate()+'日）':'');
+      return n+'ご本人が了解しています'+(r.consentAt?'（'+(new Date(r.consentAt).getMonth()+1)+'月'+new Date(r.consentAt).getDate()+'日）':'')+(r.config&&r.config.line?'。LINEにも送ります':'');
     }).join('<br>');
   }
   function settingsHtml(cfg,members,results){
     var fam=Object.keys(members).filter(function(u){ return approved(members[u])&&!isHonnin(members[u]); });
     var opt=function(sel){ return '<option value="">（設定した人）</option>'+fam.map(function(u){ return '<option value="'+esc(u)+'"'+(sel===u?' selected':'')+'>'+esc(members[u].name||'家族')+'</option>'; }).join(''); };
-    var h='<p class="note">押されなかった日は、心配の知らせではなく、声を聞くきっかけとして、家族の一人にそっと届きます。まいにこやLINEに頼らず、自分から声をかけるための機能です。お知らせはアプリの中だけに出ます（LINEには送りません）。</p>'+
+    var h='<p class="note">押されなかった日は、心配の知らせではなく、声を聞くきっかけとして、家族の一人にそっと届きます。まいにこやLINEに頼らず、自分から声をかけるための機能です。お知らせは受け取る家族のアプリの中に出ます。「LINEにも送る」を選ぶと、受け取る家族のLINEにも1日1通届きます（名前や様子は書きません）。</p>'+
       '<p class="note hitokoe-small">'+esc(NOTES)+'</p>'+
       '<p class="note" data-hitokoe-status>'+statusText(results)+'</p>'+
       '<label class="consent-item"><input type="checkbox" data-hk="enabled"'+(cfg.enabled?' checked':'')+'> 使う（オンにすると、ご本人のスマホに了解の確認が1回出ます）</label>'+
+      '<label class="consent-item"><input type="checkbox" data-hk="line"'+(cfg.line?' checked':'')+'> LINEにも送る（受け取る家族が「LINEで予定のお知らせ」で自分のLINEを登録しているとき。まいにこ全体で月90通までの無料の範囲で送ります。上限に達した月は、アプリの中だけに出ます）</label>'+
       '<label>お知らせする時刻<select data-hk="hour">'+HOURS.map(function(x){ return '<option value="'+x+'"'+(cfg.hour===x?' selected':'')+'>'+x+'時までに届かないとき</option>'; }).join('')+'</select></label>'+
       '<details><summary>曜日ごとの担当（受け取る家族は1人）</summary><div class="hitokoe-grid">';
     for(var i=0;i<7;i++) h+='<label>'+WD.charAt(i)+'曜<select data-hk-day="'+i+'">'+opt(cfg.assignees[String(i)]||'')+'</select></label>';
@@ -151,8 +155,9 @@
   function pauseItems(list){
     return list.map(function(p,k){ return '<li>'+esc(p.from)+' 〜 '+esc(p.to)+' <button type="button" class="yt-del" data-hk-unpause="'+k+'">消す</button></li>'; }).join('');
   }
-  function consentQuestion(hour,who){
-    return '挨拶やお薬などの記録が'+hour+'時までに1つもない日は、'+who+'に「声をかけるきっかけ」のお知らせが届きます。よろしいですか。';
+  function consentQuestion(hour,who,line){
+    return '挨拶やお薬などの記録が'+hour+'時までに1つもない日は、'+who+'に「声をかけるきっかけ」のお知らせが届きます。'+
+      (line?'お知らせは、まいにこの画面と、LINEにも届きます（LINEには名前や様子は書きません）。':'')+'よろしいですか。';
   }
 
   /* ===== つなぎ込み ===== */
@@ -227,14 +232,16 @@
         var as={}; for(var i=0;i<7;i++){ var v=q('[data-hk-day="'+i+'"]').value; if(v) as[String(i)]=v; }
         var off=[]; for(var j=0;j<7;j++) if(q('[data-hk-off="'+j+'"]').checked) off.push(j);
         var today=ctx.day();
-        var data={type:'hitokoe-config',enabled:on,hour:Number(q('[data-hk="hour"]').value)||DEFAULT_HOUR,
+        var line=on&&q('[data-hk="line"]').checked;
+        var data={type:'hitokoe-config',enabled:on,line:line,hour:Number(q('[data-hk="hour"]').value)||DEFAULT_HOUR,
           assignees:as,offWeekdays:off,pauses:st.pausesDraft.filter(function(p){ return p.to>=today; }).slice(0,10),
-          /* 切っている状態からオンにしたときだけ、ご本人にもう一度了解を聞く */
-          requestId:on?(cfg.enabled&&cfg.requestId?cfg.requestId:'r'+Date.now().toString(36)):'',
+          /* 切っている状態からオンにしたとき・LINEにも送るを新しく選んだときだけ、ご本人にもう一度了解を聞く */
+          requestId:on?(cfg.enabled&&cfg.requestId&&(cfg.line||!line)?cfg.requestId:'r'+Date.now().toString(36)):'',
           name:ctx.myName(),clientAt:Date.now()};
-        if(on&&!cfg.enabled&&!await ctx.confirm('オンにすると、ご本人のスマホに「'+consentQuestion(data.hour,'ご家族')+'」と1回だけ確認が出ます。ご本人が「はい」を選ぶまでは動きません。ご本人が「やめておく」を選んだら、その気持ちを大切にしてください。','オンにする')) return;
+        var ask=on&&data.requestId!==cfg.requestId;
+        if(ask&&!await ctx.confirm((cfg.enabled?'LINEにも送るようにすると':'オンにすると')+'、ご本人のスマホに「'+consentQuestion(data.hour,'ご家族',line)+'」と1回だけ確認が出ます。ご本人が「はい」を選ぶまでは動きません。ご本人が「やめておく」を選んだら、その気持ちを大切にしてください。',cfg.enabled?'LINEにも送る':'オンにする')) return;
         btn.disabled=true; state('保存しています…');
-        try{ await ctx.addEvent(data); state(on?(cfg.enabled?'保存しました':'保存しました。ご本人の了解を待っています'):'切りました。お知らせは出ません'); }
+        try{ await ctx.addEvent(data); state(on?(ask?'保存しました。ご本人の了解を待っています':'保存しました'):'切りました。お知らせは出ません'); }
         catch(e){ state('保存できませんでした。通信を確認してください',true); }
         finally{ btn.disabled=false; }
       });
@@ -257,7 +264,7 @@
       [0,1,2,3,4,5,6].forEach(function(i){ var u=cfg.assignees[String(i)]||cfg.uid; var m=mem[u]; if(m&&m.name&&names.indexOf(m.name)<0) names.push(m.name); });
       if(!names.length&&mem[cfg.uid]&&mem[cfg.uid].name) names.push(mem[cfg.uid].name);
       var who=names.length?names.join('さん・')+'さん':'ご家族';
-      var text=consentQuestion(cfg.hour,who)+'\n\n声をかけるきっかけにするためのものです。押し忘れても大丈夫です。あとから「その他の設定」でやめることもできます。';
+      var text=consentQuestion(cfg.hour,who,cfg.line)+'\n\n声をかけるきっかけにするためのものです。押し忘れても大丈夫です。あとから「その他の設定」でやめることもできます。';
       ctx.ask(text,'はい','やめておく').then(function(yes){
         /* 画面が切り替わって答えがなかったときは、記録せず次の機会にもう一度聞く */
         if(yes===null||yes===undefined){ st.asking=''; return; }
@@ -282,7 +289,7 @@
       if(!cfg.enabled||!cfg.requestId) return {enabled:false};
       var me=ctx.uid();
       var mine=newest(st.mine.filter(function(v){ return v.uid===me&&v.requestId===cfg.requestId&&(v.answer==='yes'||v.answer==='no'); }));
-      return {enabled:true,hour:cfg.hour,answer:mine?mine.answer:''};
+      return {enabled:true,hour:cfg.hour,line:cfg.line,answer:mine?mine.answer:''};
     }
     function answer(yes){
       var cfg=latestConfig(st.configRows);

@@ -451,3 +451,120 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.deepEqual(got, ['Ub0', 'Ub1', 'Ub2', 'Ub3', 'Ub4', 'Ub5'], '6人全員に1回ずつ届く');
   console.log('家族が多い家庭のタグのお知らせ(続きから・二重なし) passed');
 }
+/* ひと声のきっかけ(2026-10-04): 「LINEにも送る」をオンにし、ご本人が了解した家庭だけ、
+   決めた時刻から3時間のうちに、ご本人の操作がない日に、その日の担当1人へ1日1通。名前・様子は書かない。 */
+{
+  // 前の検査で残った予定・タグ・家庭を片付ける(日付を進めると送信待ちになり、1回の通信の上限を使ってしまうため)
+  for (const k of [...db.keys()]) if (/^(watchTags|tagAlertCounters|lineUsage|lineDeliveryReceipts|groups\/g3)\b|^groups\/g1\/yotei\//.test(k)) db.delete(k);
+  put('groups/g4', { createdBy: S('f4') });
+  put('groups/g4/members/h4', { name: S('花子'), role: S('honnin'), status: S('approved') });
+  put('groups/g4/members/f4', { name: S('太郎'), role: S('kazoku'), status: S('approved') });
+  put('groups/g4/members/f4b', { name: S('次子'), role: S('kazoku'), status: S('approved') });
+  for (const id of ['h4', 'f4', 'f4b']) put('consents/' + id, consent());
+  put('lineLinks/f4', { lineUserId: S('Uf4'), groupId: S('g4') });
+  put('lineLinks/f4b', { lineUserId: S('Uf4b'), groupId: S('g4') });
+  const RealDate = Date;
+  let fixed = 0;
+  class FixedDate extends RealDate { constructor(...a) { if (a.length) super(...a); else super(fixed); } static now() { return fixed; } }
+  // 日本時間 → UTC(9時間前)
+  const at = (day, h, m = 0) => { const [y, mo, d] = day.split('-').map(Number); return RealDate.UTC(y, mo - 1, d, h - 9, m); };
+  let n = 0;
+  const ev = (fields) => put('groups/g4/events/hk' + (n++), fields);
+  const config = (extra = {}) => ev({ type: S('hitokoe-config'), enabled: { booleanValue: true }, line: { booleanValue: true },
+    hour: { integerValue: '11' }, requestId: S('r1'), uid: S('f4'), at: T(new RealDate(at('2026-10-04', 8, n))), ...extra });
+  // 場面ごとに初めからやり直す(LINE側が覚えている再送キーも忘れさせる。同じ日の同じ家庭は同じ再送キーのため)
+  const clear = () => { for (const k of [...db.keys()]) if (/^(groups\/g4\/events|lineDeliveryReceipts|lineUsage)\//.test(k)) db.delete(k); acceptedKeys.clear();
+    // 承認済みでない・削除中の場面のあと、見回りの後片付けがLINE連携を消すことがある(正しい動き)。つなぎ直す
+    put('lineLinks/f4', { lineUserId: S('Uf4'), groupId: S('g4') }); put('lineLinks/f4b', { lineUserId: S('Uf4b'), groupId: S('g4') }); };
+  const run = async (day, h, m = 0) => {
+    fixed = at(day, h, m); globalThis.Date = FixedDate;
+    const before = pushes.length;
+    try { await tick(); } finally { globalThis.Date = RealDate; }
+    return pushes.slice(before).filter((p) => /^Uf4/.test(p.to));
+  };
+  const yes = (requestId = 'r1') => ev({ type: S('hitokoe-consent'), uid: S('h4'), requestId: S(requestId), answer: S('yes'), at: T(new RealDate(at('2026-10-04', 9))) });
+  quota = { type: 'limited', value: 200 }; usage = 0;
+
+  // 1. 月曜11:30、ご本人の操作なし → 設定した太郎さんへ1通。文面に名前・様子は書かない
+  clear(); config(); yes();
+  let got = await run('2026-10-05', 11, 30);
+  assert.equal(got.length, 1, 'ひと声のきっかけが届く');
+  assert.equal(got[0].to, 'Uf4');
+  const text = got[0].messages[0].text;
+  assert.match(text, /ひと声のきっかけ（まいにこ）/);
+  assert.match(text, /返事や対応は必要ありません/);
+  assert.match(text, /安否確認・緊急通報ではありません/);
+  assert.ok(!/花子|太郎|次子/.test(text), '名前を書かない');
+  assert.equal(db.get('lineUsage/hitokoe-2026-10').fields.count.integerValue, '1', '月の数を数える');
+  // 2. 同じ日の次の回には送らない(1日1通)
+  assert.equal((await run('2026-10-05', 11, 45)).length, 0, '1日1通まで');
+  // 3. 時刻前・3時間を過ぎた後は送らない
+  clear(); config(); yes();
+  assert.equal((await run('2026-10-05', 10, 45)).length, 0, '時刻前は送らない');
+  assert.equal((await run('2026-10-05', 14, 0)).length, 0, '3時間を過ぎたら送らない');
+  // 4. ご本人の操作が1つでもあれば送らない。家族の記録・了解の記録・前の日の記録は数えない
+  clear(); config(); yes();
+  ev({ type: S('aisatsu-back'), uid: S('f4'), date: S('2026-10-05') });
+  ev({ type: S('hitokoe-consent'), uid: S('h4'), requestId: S('old'), answer: S('no'), date: S('2026-10-05') });
+  ev({ type: S('aisatsu'), uid: S('h4'), date: S('2026-10-04') });
+  ev({ type: S('kusuri'), uid: S('h4'), date: S('2026-10-05') });
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, 'ご本人の操作があれば送らない');
+  db.delete('groups/g4/events/hk' + (n - 1));
+  assert.equal((await run('2026-10-05', 11, 30)).length, 1, '家族の記録・了解・前の日は操作に数えない');
+  // 5. 家族がもう「連絡しました」を押していれば送らない
+  clear(); config(); yes();
+  ev({ type: S('hitokoe-contacted'), uid: S('f4b'), target: S('h4'), date: S('2026-10-05') });
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, '連絡済みなら送らない');
+  // 6. 「LINEにも送る」が切ってある・最新の設定で切った・了解がない・了解が古いお願いのもの・「やめておく」 → 送らない
+  clear(); config({ line: { booleanValue: false } }); yes();
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, 'LINEにも送るが切ってある');
+  clear(); config(); config({ enabled: { booleanValue: false } }); yes();
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, '最新の設定で切った');
+  clear(); config();
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, 'ご本人の了解がない');
+  clear(); config({ requestId: S('r2') }); yes('r1');
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, 'LINEにも送るにした後の了解がまだ');
+  clear(); config(); yes(); ev({ type: S('hitokoe-consent'), uid: S('h4'), requestId: S('r1'), answer: S('no'), at: T(new RealDate(at('2026-10-04', 10))) });
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, 'ご本人があとから「やめておく」にした');
+  // 7. お休み(毎週の曜日・期間)
+  clear(); config({ offWeekdays: { arrayValue: { values: [{ integerValue: '1' }] } } }); yes();
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, '毎週のお休み(月曜)');
+  clear(); config({ pauses: { arrayValue: { values: [{ mapValue: { fields: { from: S('2026-10-04'), to: S('2026-10-06') } } }] } } }); yes();
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, '期間のお休み');
+  // 8. 曜日ごとの担当(火曜は次子さん)。担当がLINE連携していなければ送らない(アプリの中だけ)
+  clear(); config({ assignees: { mapValue: { fields: { 2: S('f4b') } } } }); yes();
+  got = await run('2026-10-06', 11, 30);
+  assert.equal(got.length, 1); assert.equal(got[0].to, 'Uf4b', '火曜の担当へ');
+  clear(); config({ assignees: { mapValue: { fields: { 2: S('f4b') } } } }); yes();
+  const saved = db.get('lineLinks/f4b'); db.delete('lineLinks/f4b');
+  assert.equal((await run('2026-10-06', 11, 30)).length, 0, '担当がLINE連携していなければ送らない');
+  db.set('lineLinks/f4b', saved);
+  // 9. 担当が承認済みでなくなった・ご本人だけの家庭 → 送らない
+  clear(); config(); yes();
+  put('groups/g4/members/f4', { name: S('太郎'), role: S('kazoku'), status: S('pending') });
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, '担当が承認済みでない');
+  put('groups/g4/members/f4', { name: S('太郎'), role: S('kazoku'), status: S('approved') });
+  // 10. 上限: ひと声だけで月90通・月の残りがタグの分(50通)だけ → 送らない(アプリの中だけ)
+  clear(); config(); yes();
+  put('lineUsage/hitokoe-2026-10', { month: S('2026-10'), count: { integerValue: '90' } });
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, 'ひと声は月90通まで');
+  clear(); config(); yes();
+  usage = 150;
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, 'タグの分は残す');
+  usage = 149;
+  assert.equal((await run('2026-10-05', 11, 30)).length, 1, '残りがあれば送る');
+  // 11. 家庭を削除中なら送らない
+  clear(); config(); yes();
+  put('groups/g4', { createdBy: S('f4'), deletionState: S('deleting') });
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0, '削除中の家庭');
+  put('groups/g4', { createdBy: S('f4') });
+  // 12. 送信に失敗したら、次の回に同じ再送キーで送り直す(二重には届かない)
+  clear(); config(); yes(); usage = 0;
+  pushFailure = true;
+  assert.equal((await run('2026-10-05', 11, 30)).length, 0);
+  pushFailure = false;
+  lostResponse = true;
+  assert.equal((await run('2026-10-05', 11, 45)).length, 1, '次の回に届く');
+  assert.equal((await run('2026-10-05', 12, 0)).length, 0, '受付済みの再送キーでは二重に届かない');
+  console.log('ひと声のきっかけのLINE(1日1通・時刻・操作・連絡済み・了解・お休み・担当・上限・削除中・再送) passed');
+}
