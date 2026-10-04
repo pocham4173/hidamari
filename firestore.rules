@@ -255,7 +255,24 @@ service cloud.firestore {
       function validYoteiExtras(d) {
         return (!('place' in d) || (d.place is string && d.place.size() <= 60))
           && (!('notifyAt' in d) || d.notifyAt == null || d.notifyAt is timestamp)
-          && (!('category' in d) || (d.category is string && d.category.size() <= 20));
+          && (!('category' in d) || (d.category is string && d.category.size() <= 20))
+          // LINEで知らせる相手(2026-10-04)。null=つないだ家族全員。'u:<uid>'(家族)・'r:<id>'(招待した送信先)を20件まで
+          && (!('notifyTo' in d) || d.notifyTo == null || (d.notifyTo is list && d.notifyTo.size() <= 20));
+      }
+
+      /* アプリを使わない人(招待した送信先)へ予定を送る同意(2026-10-04)。
+         この機能を使う家族だけが、使う前に本人として同意する。ご本人の了解を得たことも確かめる。
+         同意した家族だけが送信先・招待を作れ、送信役も送る直前にこの同意を確かめる。やめるときは削除する。 */
+      match /lineShareConsents/{uid} {
+        allow get, list: if isApproved(groupId) && hasConsent();
+        allow create: if request.auth.uid == uid && isApproved(groupId) && hasConsent() && writableGroup(groupId)
+          && request.resource.data.keys().hasOnly(['version', 'acceptedAt', 'honninAgreed', 'name'])
+          && request.resource.data.version in ['line-share-20261004']
+          && request.resource.data.acceptedAt == request.time
+          && request.resource.data.honninAgreed == true
+          && request.resource.data.name is string && request.resource.data.name.size() <= 40;
+        allow update: if false;
+        allow delete: if signedIn() && request.auth.uid == uid;
       }
 
       match /yotei/{yoteiId} {
@@ -266,7 +283,7 @@ service cloud.firestore {
           && request.resource.data.get('uid', null) == request.auth.uid
           && request.resource.data.keys().hasOnly([
             'kind', 'date', 'time', 'label', 'color', 'repeat',
-            'uid', 'createdAt', 'updatedAt', 'place', 'notifyAt', 'category'
+            'uid', 'createdAt', 'updatedAt', 'place', 'notifyAt', 'category', 'notifyTo'
           ])
           && validYoteiExtras(request.resource.data)
           && request.resource.data.keys().hasAll([
@@ -286,7 +303,7 @@ service cloud.firestore {
               || resource.data.get('uid', null) == request.auth.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'kind', 'date', 'time', 'label', 'color', 'repeat', 'uid', 'updatedAt',
-            'place', 'notifyAt', 'category'
+            'place', 'notifyAt', 'category', 'notifyTo'
           ])
           && validYoteiExtras(request.resource.data)
           && request.resource.data.get('updatedAt', null) == request.time
@@ -380,6 +397,51 @@ service cloud.firestore {
         && request.resource.data.expiresAt <= request.time + duration.value(11, 'm');
       allow update: if false;
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // LINEの送信先(招待・2026-10-04)。アプリを使わない人にも、選んだ予定のお知らせだけをLINEで届ける。
+    // 家族(承認済み)が名前を入れて作り、相手がLINEで招待コードを送ると、送信役(サーバー)が「登録済み」にする。
+    // LINEの利用者識別子はここに置かない(送信役だけが読む lineRecipientIds に置く)。
+    match /lineRecipients/{rid} {
+      function validRecipientName(n) { return n is string && n.size() >= 1 && n.size() <= 40; }
+      allow get, list: if resource.data.groupId is string && isApproved(resource.data.groupId) && hasConsent();
+      allow create: if request.resource.data.keys().hasOnly(['groupId', 'name', 'status', 'createdBy', 'createdAt'])
+        && request.resource.data.groupId is string
+        && isApproved(request.resource.data.groupId) && hasConsent()
+        && writableGroup(request.resource.data.groupId)
+        && validRecipientName(request.resource.data.name)
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(db)/documents/groups/$(request.resource.data.groupId)/lineShareConsents/$(request.auth.uid));
+      // 家族が変えられるのは名前だけ(状態・LINE名・登録日時は送信役が書く)
+      allow update: if isApproved(resource.data.groupId) && hasConsent()
+        && writableGroup(resource.data.groupId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+        && validRecipientName(request.resource.data.name);
+      allow delete: if isApproved(resource.data.groupId) && hasConsent();
+    }
+    match /lineRecipientIds/{rid} {
+      allow read, write: if false;
+    }
+    // 送信先への招待コード(10文字・7日間)。照合は送信役が行う。
+    match /lineInvites/{code} {
+      allow get: if signedIn() && resource.data.createdBy == request.auth.uid;
+      allow list, update: if false;
+      allow create: if code.matches('^[A-HJ-NP-Z2-9]{10}$')
+        && request.resource.data.keys().hasOnly(['groupId', 'recipientId', 'createdBy', 'createdAt', 'expiresAt'])
+        && request.resource.data.groupId is string && request.resource.data.recipientId is string
+        && isApproved(request.resource.data.groupId) && hasConsent()
+        && writableGroup(request.resource.data.groupId)
+        && request.resource.data.createdBy == request.auth.uid
+        && exists(/databases/$(db)/documents/groups/$(request.resource.data.groupId)/lineShareConsents/$(request.auth.uid))
+        && exists(/databases/$(db)/documents/lineRecipients/$(request.resource.data.recipientId))
+        && get(/databases/$(db)/documents/lineRecipients/$(request.resource.data.recipientId)).data.groupId == request.resource.data.groupId
+        && get(/databases/$(db)/documents/lineRecipients/$(request.resource.data.recipientId)).data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(7, 'd') + duration.value(1, 'h');
+      allow delete: if signedIn() && resource.data.createdBy == request.auth.uid;
     }
 
     // 今月のLINEの残り通数(2026-10-01)。送信役だけが書き、同意済みの利用者は見られる(まいにこ全体で共通の数)。
