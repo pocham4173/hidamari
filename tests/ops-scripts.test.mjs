@@ -16,8 +16,9 @@ const mock = path.resolve('tests/helpers/mock-cloudflare.mjs');
 const repo = fs.readFileSync('worker.js', 'utf8');
 fs.writeFileSync(path.join(tmp, 'same.js'), repo);
 fs.writeFileSync(path.join(tmp, 'crlf.js'), repo.replace(/\n/g, '\r\n'));
+fs.writeFileSync(path.join(tmp, 'nofinalnl.js'), repo.replace(/\n+$/, ''));
 fs.writeFileSync(path.join(tmp, 'diff.js'), repo.replace('作り直し', 'つくりなおし'));
-for (const [file, mode, exact, normalized] of [['same.js', 'raw', '✅', '✅'], ['crlf.js', 'raw', '❌', '✅'], ['diff.js', 'multipart', '❌', '❌']]) {
+for (const [file, mode, exact, normalized] of [['same.js', 'raw', '✅', '✅'], ['crlf.js', 'raw', '❌', '✅'], ['nofinalnl.js', 'raw', '❌', '✅'], ['diff.js', 'multipart', '❌', '❌']]) {
   const out = path.join(tmp, 'out-' + file);
   const r = run('scripts/cloudflare-worker-compare.mjs', { CF_API_TOKEN: 'read-only-token', CF_ACCOUNT_ID: 'acc123', MOCK_LIVE_FILE: path.join(tmp, file), MOCK_MODE: mode, COMPARE_FILES: 'repo=worker.js', OUT_DIR: out }, ['--import', mock]);
   assert.equal(r.status, 0, r.stderr + r.stdout);

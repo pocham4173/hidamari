@@ -33,7 +33,7 @@ async function get(suffix, raw) {
   return data.result;
 }
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
-const norm = (s) => s.replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').replace(/\n+$/, '\n');
+const norm = (s) => s.replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').replace(/\n*$/, '\n');
 
 /* コード本体: まず main モジュールの中身(content/v2)、だめならモジュール一式(multipart)から js を取り出す */
 async function liveCode() {
