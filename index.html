@@ -7685,9 +7685,24 @@ function renderRecoveryBadges(){
 }
 function openDeviceStop(){
   if(typeof MainicoDeviceStop==='undefined'){alert('読み込みが終わっていません。通信を確認して、もう一度お試しください。');return;}
+  let lineNote='';
   MainicoDeviceStop.open({document:document,user:()=>auth.currentUser,
     credential:(email,password)=>firebase.auth.EmailAuthProvider.credential(email,password),
-    onDone:()=>{try{renderRecoveryBadges();}catch(e){}}});
+    beforeChange:async()=>{lineNote=await deviceStopLineLogin();},
+    onDone:()=>{try{renderRecoveryBadges();}catch(e){}if(lineNote)alert(lineNote);}});
+}
+/* ほかのスマホを止めるとき、なくしたスマホのLINEから入り直せないよう、LINEでログインのつながりも外す。
+   パスワードを変える前(本人確認の直後の鍵)に行う。知らせる文を返す(つないでいなければ空) */
+async function deviceStopLineLogin(){
+  if(!window.MAINICO_LINE_AUTH_URL||typeof lineLoginService!=='function'||!auth.currentUser)return '';
+  try{
+    const snap=await db.collection('lineLoginAccounts').doc(auth.currentUser.uid).get({source:'server'});
+    if(!snap.exists)return '';
+    await lineLoginService().unlink();
+    return 'なくしたスマホのLINEから入り直せないよう、「LINEでログイン」のつながりも外しました。使う場合は、このスマホの設定から、もう一度つないでください。';
+  }catch(e){
+    return '「LINEでログイン」のつながりを外せませんでした。なくしたスマホのLINEから入れないよう、設定の「LINEでログインの連携を解除する」から外してください。';
+  }
 }
 /* ご本人のスマホは、復旧の設定状態を家族に知らせる(状態が変わったときだけ記録する) */
 async function reportDeviceRecovery(retry){

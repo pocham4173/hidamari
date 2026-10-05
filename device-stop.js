@@ -38,6 +38,8 @@
       var e = new Error('no-recovery'); e.code = 'no-recovery'; throw e;
     }
     await user.reauthenticateWithCredential(ctx.credential(user.email, current));
+    // パスワードを変える前の、確かめたばかりの鍵で行う後始末(LINEでログインの解除など)。失敗しても止めることを優先する
+    if (typeof ctx.beforeChange === 'function') { try { await ctx.beforeChange(); } catch (err) { /* 呼び出し側で知らせる */ } }
     await user.updatePassword(next);
     try { await user.getIdToken(true); } catch (err) { /* 新しい鍵は次の通信で取り直される */ }
     return true;
