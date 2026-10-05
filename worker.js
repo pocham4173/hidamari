@@ -65,7 +65,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined']);
-const VERSION_TEXT = '版：2026-10-05 予定を1人1通に・家族のアンケートの集計';
+const VERSION_TEXT = '版：2026-10-05 見回りの見直し（二重送信・通信の節約・回数）';
 
 export default {
   async fetch(request, env, ctx) {
@@ -354,6 +354,12 @@ async function runNotifications(env) {
     try { await runUsageStats(fs, now, groups); }
     catch (e) { if (e.message !== 'request-budget') console.error('usage', e.message); }
     finally { fs.softLimit = 0; }
+    // 期限切れの記録(通知文の控えなど)を先に消す。プライバシーポリシーで約束している片付けなので、ほかの見直しより先
+    for (const collectionId of ['lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
+      const expired = await fs.query('', {from:[{collectionId}],
+        where:{fieldFilter:{field:{fieldPath:'expiresAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},limit:3});
+      for (const d of expired) await fs.delete(d.path);
+    }
     // Clean one verified orphan link per run without relying on a complete household list.
     const cleanupLinks = await fs.list('lineLinks', ['groupId']);
     if (cleanupLinks.length) {
@@ -385,11 +391,6 @@ async function runNotifications(env) {
       const group = typeof gid === 'string' && gid ? await fs.get('groups/' + gid) : null;
       const member = group && group.fields.deletionState !== 'deleting' && typeof uid === 'string' && uid ? await fs.get('groups/' + gid + '/members/' + uid) : null;
       if (!member || await fs.get('accountClosures/' + uid)) await fs.delete(d.path);
-    }
-    for (const collectionId of ['lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
-      const expired = await fs.query('', {from:[{collectionId}],
-        where:{fieldFilter:{field:{fieldPath:'expiresAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},limit:3});
-      for (const d of expired) await fs.delete(d.path);
     }
   } catch (e) {
     if (e.message !== 'request-budget') throw e;
@@ -468,15 +469,16 @@ class UsageBook {
     if (this.quota) { this.quota.used++; this.quotaDirty = true; }
   }
   async flush() {
-    for (const groupId of this.dirty) {
-      await this.fs.set('lineUsage/' + groupId, { day: this.day, count: this.homes.get(groupId), updatedAt: new Date(), expiresAt: new Date(this.now.getTime() + 2 * 86400000) }, true);
-    }
-    this.dirty.clear();
+    // ひと声の月の数は上限(90通)の判断に使うので、いちばん先に、最後の後片付け枠で書く
     if (this.hitokoeDirty) {
       await this.fs.set('lineUsage/hitokoe-' + this.day.slice(0, 7), { month: this.day.slice(0, 7), count: this.hitokoeCount,
         limit: HITOKOE_MONTHLY_LIMIT, updatedAt: new Date(), expiresAt: new Date(this.now.getTime() + 40 * 86400000) }, true);
       this.hitokoeDirty = false;
     }
+    for (const groupId of this.dirty) {
+      await this.fs.set('lineUsage/' + groupId, { day: this.day, count: this.homes.get(groupId), updatedAt: new Date(), expiresAt: new Date(this.now.getTime() + 2 * 86400000) }, true);
+    }
+    this.dirty.clear();
     if (this.quota) {
       const remaining = this.quota.limit === null ? null : Math.max(0, this.quota.limit - this.quota.used);
       await this.fs.set('lineStatus/quota', { limit: this.quota.limit, used: this.quota.used, remaining,
@@ -591,10 +593,13 @@ async function usageId(groupId) {
 }
 async function runUsageStats(fs, now, groups) {
   const last = usageLastDay(now);
-  let done = 0;
+  // その日の分が全世帯で済んでいたら、世帯ごとに読み直さない(毎回の通信を節約する)
+  const progress = await fs.get('ops/usageProgress');
+  if (progress && progress.fields.day === last) return;
+  let done = 0, finished = true;
   const offset = groups.length ? Math.floor(now.getTime() / 900000) % groups.length : 0;
   for (const g of [...groups.slice(offset), ...groups.slice(0, offset)]) {
-    if (done >= USAGE_PER_RUN) break;
+    if (done >= USAGE_PER_RUN) { finished = false; break; }
     if (g.fields.deletionState === 'deleting') continue;
     const path = 'usageStats/' + await usageId(g.id);
     const prev = await fs.get(path);
@@ -604,6 +609,7 @@ async function runUsageStats(fs, now, groups) {
     let day = through ? addDays(through, 1) : last;
     if (day < addDays(last, -6)) day = addDays(last, -6);
     done++;
+    if (day < last) finished = false;   // まだ続きの日がある
     const members = await fs.list(g.path + '/members', ['role', 'mode', 'status']);
     const honnin = new Set(members.filter((m) => memberApproved(m.fields) && memberHonnin(m.fields)).map((m) => m.id));
     const rows = await fs.query(g.path, { from: [{ collectionId: 'events' }], where: fieldEq('date', { stringValue: day }),
@@ -621,6 +627,7 @@ async function runUsageStats(fs, now, groups) {
     const start = prev && typeof prev.fields.start === 'string' && prev.fields.start ? prev.fields.start : (h || f ? day : '');
     await fs.set(path, { groupId: g.id, start, through: day, honnin: honnin.size > 0, days, updatedAt: new Date() });
   }
+  if (finished) await fs.set('ops/usageProgress', { day: last, updatedAt: new Date() });
 }
 /* 運営者に返す全体の数字(世帯の番号・名前は出さない) */
 function usageSummary(docs, now) {
@@ -654,11 +661,13 @@ function usageSummary(docs, now) {
 }
 async function usageReport(fs, now) {
   const text = usageSummary(await fs.list('usageStats', ['honnin', 'start', 'days']), now);
-  return text + '\n\n' + surveySummary(await fs.list('surveyAnswers', ['kind', 'month', 'absences', 'burden', 'uid']), now);
+  return text + '\n\n' + surveySummary(await fs.list('surveyAnswers', ['kind', 'month', 'absences', 'burden', 'uid', 'answeredAt']), now);
 }
 /* 家族の1分アンケート(2026-10-05)の全体の数字。答えた人の名前・家庭は出さない */
 function surveySummary(docs, now) {
-  const rows = docs.map((d) => d.fields).filter((x) => typeof x.uid === 'string' && typeof x.month === 'string');
+  // 答えた時刻(サーバーの時刻)の月と、答えの月が同じものだけ数える(端末の時計のずれ・まとめての書き込みを除く)
+  const rows = docs.map((d) => d.fields).filter((x) => typeof x.uid === 'string' && typeof x.month === 'string'
+    && x.answeredAt instanceof Date && jstDateString(x.answeredAt).slice(0, 7) === x.month);
   if (!rows.length) return '📝 家族のアンケート：まだ答えがありません';
   const month = jstDateString(now).slice(0, 7);
   const base = rows.filter((x) => x.kind === 'baseline');
@@ -683,11 +692,16 @@ async function registerOperator(env, fs, given, lineUserId) {
   const secret = norm(env.OPERATOR_PASSPHRASE);
   if (!secret) return MSG_HELP;
   const today = jstDateString(new Date());
+  // 試した回数は、LINEの利用者ごと(元に戻せない番号で)に1日5回まで。ほかの人が試しても、運営者は締め出されない
+  const who = (await deliveryKey('operator\n' + lineUserId)).replace(/-/g, '');
   const tries = await fs.get('ops/operatorAttempts');
-  const count = tries && tries.fields.day === today && Number.isFinite(tries.fields.count) ? tries.fields.count : 0;
-  if (count >= 5) return '今日は試せる回数を超えました。明日もう一度送ってください。';
+  const sameDay = tries && tries.fields.day === today;
+  const users = sameDay && tries.fields.users && typeof tries.fields.users === 'object' ? tries.fields.users : {};
+  const total = sameDay && Number.isFinite(tries.fields.count) ? tries.fields.count : 0;
+  const mine = Number.isFinite(users[who]) ? users[who] : 0;
+  if (mine >= 5 || total >= 200) return '今日は試せる回数を超えました。明日もう一度送ってください。';
   if (norm(given) !== secret) {
-    await fs.set('ops/operatorAttempts', { day: today, count: count + 1 });
+    await fs.set('ops/operatorAttempts', { day: today, count: total + 1, users: { ...users, [who]: mine + 1 } });
     return '合言葉が違います。';
   }
   await fs.set('ops/operator', { lineUserId, at: new Date() });
@@ -895,6 +909,16 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
     // 同じ人に同じ予定が2回入らないように(家族として・招待した送信先として、の両方で選ばれたときなど)
     const pairs = byTo.get(to);
     let items = [...new Set(pairs.map(p => p.y))].sort(order);
+    // まとめて送る予定のうち、この人に受け付け済みのもの(前の回に別のまとめ・1件で送ったもの)は除く。
+    // 1件ずつの受付記録の場所は、1件で送るときの再送キーと同じ
+    const singleKey = (y) => deliveryKey(y.path + '\n' + y.updateTime + '\n' + to);
+    if (items.length > 1) {
+      const singles = await fs.getMany(await Promise.all(items.map(async (y) => 'lineDeliveryReceipts/' + await singleKey(y))));
+      const already = new Set(items.filter((y, i) => singles[i] && singles[i].fields.acceptedAt instanceof Date));
+      for (const y of already) { const p = plans.get(y.path); p.accepted++; p.eligible = true; }
+      items = items.filter((y) => !already.has(y));
+      if (!items.length) continue;
+    }
     const keyOf = async (list) => list.length === 1
       ? deliveryKey(list[0].path + '\n' + list[0].updateTime + '\n' + to)   // 1件のときは今までと同じ再送キー
       : deliveryKey('bundle\n' + list.map(y => y.path + '\n' + y.updateTime).join('\n') + '\n' + to);
@@ -949,6 +973,13 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
     for (const y of items) plans.get(y.path).accepted++;
     // A crash before this write is safe: LINE recognizes the same retry key.
     await fs.set(receiptPath, {acceptedAt:new Date(), expiresAt:new Date(lastAt+13*3600000)});
+    // まとめて送ったときは、予定ごとの受付記録も残す(次の回にまとめの中身が変わっても、同じ予定を二度送らない)
+    if (items.length > 1) {
+      const at = new Date();
+      await fs.commit(await Promise.all(items.map(async (y) => ({
+        update: {name: fs.root + '/lineDeliveryReceipts/' + await singleKey(y), fields: toFields({acceptedAt: at, expiresAt: new Date(lastAt + 13*3600000)})},
+        updateMask: {fieldPaths: ['acceptedAt', 'expiresAt']}}))));
+    }
   }
   for (const {y, accepted, complete} of plans.values()) {
     if (complete && accepted > 0) {
@@ -1100,6 +1131,15 @@ class Firestore {
       body: body ? JSON.stringify(body) : undefined,
     });
     return res;
+  }
+  /* 複数の文書を1回の通信で読む。並びは paths と同じで、ないものは null */
+  async getMany(paths) {
+    if (!paths.length) return [];
+    const res = await this.call('POST', this.base + ':batchGet', { documents: paths.map((p) => this.root + '/' + p) });
+    if (!res.ok) throw new Error('batchGet ' + res.status + ' ' + await res.text());
+    const found = new Map();
+    for (const r of await res.json()) if (r && r.found) found.set(r.found.name, parseDoc(r.found, this.root));
+    return paths.map((p) => found.get(this.root + '/' + p) || null);
   }
   async get(path) {
     const res = await this.call('GET', this.base + '/' + path);
