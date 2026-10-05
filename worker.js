@@ -1633,7 +1633,9 @@ async function reconnectExchange(fs, code) {
   // 再接続で入った鍵には via:'reconnect' を付け、24時間は取り消しにくい操作を止める(firestore.rules の recentReconnect)
   await revokeSessions(fs, target);
   const customToken = await mintCustomToken(fs, target, { via: 'reconnect' });
-  await fs.delete(path).catch(() => {});
+  // 使い終わったコードは消す。消せなかったときも、やり直しには使えない印を付ける(もう一度鍵を出さない)
+  try { await fs.delete(path); }
+  catch (e) { await fs.commit([{ update: { name: fs.root + '/' + path, fields: toFields({ retried: true }) }, updateMask: { fieldPaths: ['retried'] } }]).catch(() => false); }
   return { customToken, uid: target, lineLoginRemoved };
 }
 async function revokeSessions(fs, uid) {
