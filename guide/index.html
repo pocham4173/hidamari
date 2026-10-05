@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>まいにこの使い方</title>
+<meta name="description" content="押すだけで「今日も元気」が家族に届く。まいにこの使い方を、画面の写真つきでまとめました。">
+<meta property="og:title" content="まいにこの使い方（写真つき）">
+<meta property="og:description" content="ご本人はボタンを押すだけ。家族はようすと予定を見られます。">
+<link rel="icon" href="../icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #243747; --orange: #e0732f; --orange-bg: #fdf1e7; --text: #2b2b2b; --muted: #6b7280;
+    --bg: #faf7f2; --card: #ffffff; --line: #e8e1d6; --green: #06c755; --blue: #2f5fb3;
+    --sand: #fbf3df; --sage: #ebf3ec; --rose: #fbeceb;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif; line-height: 1.85; letter-spacing: .03em; font-size: 17px; -webkit-text-size-adjust: 100%; }
+  a { color: var(--blue); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+
+  /* 上の帯 */
+  .bar { position: sticky; top: 0; z-index: 5; background: rgba(250,247,242,.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .bar .wrap { display: flex; align-items: center; gap: 10px; height: 56px; }
+  .bar img { width: 32px; height: 32px; border-radius: 9px; }
+  .bar b { color: var(--navy); letter-spacing: .2em; font-size: 17px; }
+  .bar a.open { margin-left: auto; text-decoration: none; background: var(--orange); color: #fff; font-size: 14px; font-weight: 700; padding: 8px 16px; border-radius: 999px; }
+
+  /* はじめ */
+  .hero { padding: 34px 0 10px; }
+  .eyebrow { color: var(--orange); font-weight: 700; font-size: 14px; letter-spacing: .2em; }
+  h1 { font-size: clamp(26px, 7vw, 36px); line-height: 1.4; color: var(--navy); margin: 6px 0 12px; letter-spacing: .08em; }
+  .lead { margin: 0 0 18px; }
+  .points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
+  .points li { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 6px; text-align: center; font-size: 14px; font-weight: 700; color: var(--navy); line-height: 1.5; }
+  .points li span { display: block; font-size: 26px; margin-bottom: 2px; }
+
+  /* もくじ */
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; padding: 0; list-style: none; }
+  .toc a { display: inline-block; text-decoration: none; background: var(--card); border: 1px solid var(--line); color: var(--navy); font-size: 14.5px; font-weight: 700; padding: 7px 13px; border-radius: 999px; }
+
+  /* 章 */
+  section.chapter { padding: 30px 0 6px; }
+  .chap-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .chap-no { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--orange); color: #fff; font-weight: 900; font-size: 18px; }
+  h2 { font-size: 23px; color: var(--navy); margin: 0; line-height: 1.4; letter-spacing: .06em; }
+  .chap-lead { margin: 6px 0 14px; }
+  .who { display: inline-block; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 1px 10px; margin-left: 4px; vertical-align: 3px; }
+  .who.fam { background: #e7eefb; color: var(--blue); }
+  .who.hon { background: var(--orange-bg); color: var(--orange); }
+
+  .step { display: grid; grid-template-columns: 1fr; gap: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; margin: 0 0 14px; }
+  .step h3 { margin: 0 0 6px; font-size: 18px; color: var(--navy); line-height: 1.5; }
+  .step h3 .n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 13px; margin-right: 8px; vertical-align: 2px; }
+  .step p { margin: 0 0 8px; }
+  .step ul, .step ol { margin: 4px 0 8px; padding-left: 1.3em; }
+  .step li { margin: 2px 0; }
+  .tip { background: var(--sand); border-radius: 12px; padding: 10px 12px; font-size: 15px; margin-top: 8px; }
+  .tip b { color: #7a5a14; }
+  .safe { background: var(--sage); }
+  .safe b { color: #2f6b3f; }
+  .btnlike { display: inline-block; font-weight: 700; color: var(--navy); background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 0 7px; font-size: .92em; white-space: nowrap; }
+  .btnlike.or { background: var(--orange); color: #fff; border-color: var(--orange); }
+
+  /* スマホの画面 */
+  .phones { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  figure.phone { margin: 0; width: min(240px, 46%); text-align: center; }
+  .frame { border: 6px solid #2b2b2b; border-radius: 26px; overflow: hidden; background: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+  .frame img { display: block; width: 100%; height: auto; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  @media (min-width: 640px) {
+    .step.with-pic { grid-template-columns: 1fr 230px; align-items: start; }
+    .step.with-pic .phones figure.phone { width: 100%; }
+  }
+
+  /* 注意事項 */
+  .caution { background: var(--rose); border: 2px solid #e5a5a0; border-radius: 18px; padding: 16px 18px; }
+  .caution h2 { font-size: 20px; color: #9b2c22; margin-bottom: 6px; }
+  .caution ul { margin: 0; padding-left: 1.3em; }
+  .caution li { margin: 6px 0; }
+
+  /* よくある質問 */
+  details.faq { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0 16px; margin: 0 0 10px; }
+  details.faq summary { cursor: pointer; font-weight: 700; color: var(--navy); padding: 14px 0; list-style: none; }
+  details.faq summary::before { content: "Q. "; color: var(--orange); }
+  details.faq[open] summary { border-bottom: 1px dashed var(--line); }
+  details.faq p { margin: 10px 0 14px; }
+
+  footer { margin: 34px 0 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+  footer a { margin-right: 14px; }
+  .back-top { display: block; text-align: right; font-size: 14px; margin: 4px 0 0; }
+</style>
+</head>
+<body>
+<div class="bar"><div class="wrap">
+  <img src="../icon-192.png" alt="">
+  <b>まいにこ</b>
+  <a class="open" href="../">アプリを開く</a>
+</div></div>
+
+<main class="wrap">
+  <div class="hero">
+    <div class="eyebrow">使い方ガイド</div>
+    <h1>押すだけで、<br>「今日も元気」が家族に。</h1>
+    <p class="lead">ご本人はボタンを押すだけ。家族は、ようすと予定をいつでも見られます。</p>
+    <ul class="points">
+      <li><span>☀️</span>押すだけで<br>家族に届く</li>
+      <li><span>📅</span>予定は<br>LINEでも</li>
+      <li><span>🔒</span>見られるのは<br>家族だけ</li>
+    </ul>
+    <ul class="toc">
+      <li><a href="#start">はじめかた</a></li>
+      <li><a href="#join">ご本人をつなぐ</a></li>
+      <li><a href="#daily">ご本人の毎日</a></li>
+      <li><a href="#family">家族が見る</a></li>
+      <li><a href="#yotei">予定・LINE</a></li>
+      <li><a href="#kiroku">ふり返り</a></li>
+      <li><a href="#hitokoe">ひと声</a></li>
+      <li><a href="#anshin">もしもの備え</a></li>
+      <li><a href="#recovery">スマホを替えるとき</a></li>
+      <li><a href="#caution">注意</a></li>
+      <li><a href="#faq">よくある質問</a></li>
+    </ul>
+  </div>
+
+  <!-- 1 はじめかた -->
+  <section class="chapter" id="start">
+    <div class="chap-head"><div class="chap-no">1</div><h2>はじめかた<span class="who fam">家族のスマホ</span></h2></div>
+    <p class="chap-lead">ダウンロードはいりません。ホームページを開くだけで使えます。まず、家族のスマホで始めます。</p>
+
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">1</span>まいにこを開いて、使い方を選ぶ</h3>
+        <p>上の <span class="btnlike or">アプリを開く</span> を押します。<br>家族のスマホなら <span class="btnlike or">本人と家族が使う</span> を選びます。</p>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/01-entry.jpg" alt="まいにこの入口の画面" loading="lazy"></div><figcaption>最初の画面</figcaption></figure></div>
+    </div>
+
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">2</span>お約束を読んで、同意する</h3>
+        <p>3つのお約束を読み、<span class="btnlike or">この内容で進む</span>。<br>次の画面で「すべてに同意します」にチェックを入れて <span class="btnlike or">同意してはじめる</span>。</p>
+        <div class="tip safe"><b>安心</b>　カメラも位置情報も使いません。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/02-promise.jpg" alt="3つのお約束の画面" loading="lazy"></div><figcaption>3つのお約束</figcaption></figure></div>
+    </div>
+
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">3</span>名前を入れて、家族をつくる</h3>
+        <p>家族の中での呼び名（例：りえ）を入れて <span class="btnlike or">つぎへ</span>。<br>ご本人に説明したことにチェックを入れ、<span class="btnlike or">ご本人と一緒に初期設定する</span> を押します。</p>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/05-connect.jpg" alt="家族とつながる画面" loading="lazy"></div><figcaption>家族をつくる</figcaption></figure></div>
+    </div>
+
+    <div class="step">
+      <div>
+        <h3><span class="n">4</span>ホーム画面に追加する</h3>
+        <p>次からすぐ開けるように、スマホのホーム画面にアイコンを置きます。</p>
+        <ul>
+          <li><b>iPhone</b>：Safariの下の共有ボタン（□に↑）→「ホーム画面に追加」</li>
+          <li><b>Android</b>：右上の︙ →「ホーム画面に追加」</li>
+        </ul>
+        <div class="tip"><b>ポイント</b>　次からは、必ずホーム画面のアイコンから開いてください。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 ご本人をつなぐ -->
+  <section class="chapter" id="join">
+    <div class="chap-head"><div class="chap-no">2</div><h2>ご本人のスマホをつなぐ</h2></div>
+    <p class="chap-lead">家族が招待コードを作り、ご本人のスマホで入れます。</p>
+
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">1</span>招待コードを作る<span class="who fam">家族</span></h3>
+        <p>「⚙️ 設定」→「家族の管理」→ <span class="btnlike">招待コードを作る</span>。<br>8文字のコードとQRが出ます。</p>
+        <div class="tip"><b>ポイント</b>　コードは24時間・1回だけ使えます。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/06-invite.jpg" alt="招待コードを作る画面" loading="lazy"></div><figcaption>招待コード</figcaption></figure></div>
+    </div>
+
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">2</span>ご本人のスマホでコードを入れる<span class="who hon">ご本人</span></h3>
+        <p>ご本人のスマホでまいにこを開き、<span class="btnlike or">本人が使う</span> → 同意 → コードを入れて <span class="btnlike">招待コードで参加</span>。<br>QRを読むこともできます。</p>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/07-join-code.jpg" alt="招待コードを入れる画面" loading="lazy"></div><figcaption>コードを入れる</figcaption></figure></div>
+    </div>
+
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">3</span>「参加を認める」を押す<span class="who fam">家族</span></h3>
+        <p>家族のホームに出る <span class="btnlike">参加を認める</span> を押せば完了です。</p>
+        <div class="tip safe"><b>安心</b>　認めた人しか、記録は見られません。心当たりのない申請は「認めない」を押してください。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/08-approve.jpg" alt="参加を認める画面" loading="lazy"></div><figcaption>参加を認める</figcaption></figure></div>
+    </div>
+  </section>
+
+  <!-- 3 ご本人の毎日 -->
+  <section class="chapter" id="daily">
+    <div class="chap-head"><div class="chap-no">3</div><h2>ご本人の毎日<span class="who hon">ご本人</span></h2></div>
+    <p class="chap-lead">大きなボタンを押すだけ。押したことが家族に届きます。</p>
+
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">1</span>朝は「おはよう」</h3>
+        <p><span class="btnlike">☀️ おはよう</span> を押すと、家族に届きます。今日の調子も選べます。</p>
+        <div class="tip"><b>ポイント</b>　押すと声でもお知らせします。音は消せます。</div>
+      </div>
+      <div class="phones">
+        <figure class="phone"><div class="frame"><img src="img/09-person-home.jpg" alt="ご本人のホーム画面" loading="lazy"></div><figcaption>ご本人のホーム</figcaption></figure>
+        <figure class="phone"><div class="frame"><img src="img/10-person-ohayo.jpg" alt="おはようを押したところ" loading="lazy"></div><figcaption>押したところ</figcaption></figure>
+      </div>
+    </div>
+
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">2</span>お薬を飲んだら押す・お願いを伝える</h3>
+        <p><span class="btnlike">💊 朝の薬を飲みました</span> を押すと記録されます。<br><span class="btnlike">ちょっとお願い</span> から「話したい」「買い物をお願い」などを送れます。</p>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/11-person-onegai.jpg" alt="ちょっとお願いの画面" loading="lazy"></div><figcaption>ちょっとお願い</figcaption></figure></div>
+    </div>
+  </section>
+
+  <!-- 4 家族が見る -->
+  <section class="chapter" id="family">
+    <div class="chap-head"><div class="chap-no">4</div><h2>家族が見る・返事する<span class="who fam">家族</span></h2></div>
+    <p class="chap-lead">ホームの「本人とのやりとり」に、ご本人が押したことが届きます。</p>
+
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">1</span>今日のようすを見る</h3>
+        <p>「今日のようす：挨拶 あり／お薬の記録 1回」のように、ひと目で分かります。</p>
+        <h3><span class="n">2</span>ボタンで返事する</h3>
+        <p>お願いには <span class="btnlike">今から対応するね</span> などを押すだけ。返事はご本人の画面に出ます。</p>
+        <div class="tip"><b>ポイント</b>　返事は必須ではありません。催促もしません。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/12-family-yaritori.jpg" alt="本人とのやりとり" loading="lazy"></div><figcaption>本人とのやりとり</figcaption></figure></div>
+    </div>
+  </section>
+
+  <!-- 5 予定・LINE -->
+  <section class="chapter" id="yotei">
+    <div class="chap-head"><div class="chap-no">5</div><h2>予定を入れる・LINEで知らせる</h2></div>
+    <p class="chap-lead">通院やデイサービスの日を入れると、ご本人の画面に「あと何日」と出ます。</p>
+
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">1</span>「＋ 予定を入れる」</h3>
+        <p>「予定」のページで <span class="btnlike">＋ 予定を入れる</span>。予定名・日付・時間を入れて <span class="btnlike or">保存する</span>。</p>
+        <h3><span class="n">2</span>LINEでも知らせる（使う人だけ）</h3>
+        <p>「LINEで知らせる日時」を入れると、その時間にLINEで届きます。<span class="btnlike">前日の夜7時</span> なども選べます。</p>
+        <div class="tip"><b>ポイント</b>　はじめに「設定」→「LINEで予定のお知らせ」で、受け取る人のLINEをつないでおきます。</div>
+      </div>
+      <div class="phones">
+        <figure class="phone"><div class="frame"><img src="img/13-yotei-form.jpg" alt="予定を入れる画面" loading="lazy"></div><figcaption>予定を入れる</figcaption></figure>
+        <figure class="phone"><div class="frame"><img src="img/14-yotei-list.jpg" alt="カレンダーと予定" loading="lazy"></div><figcaption>カレンダー</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 ふり返り -->
+  <section class="chapter" id="kiroku">
+    <div class="chap-head"><div class="chap-no">6</div><h2>ふり返り</h2></div>
+    <p class="chap-lead">日ごとの記録や、月のまとめを見返せます。通院のときにも役立ちます。</p>
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">1</span>「ふり返り」を開く</h3>
+        <p>カレンダーで日を選ぶと、その日の記録が出ます。誰が・いつ押したかが分かります。</p>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/15-kiroku.jpg" alt="ふり返りの画面" loading="lazy"></div><figcaption>ふり返り</figcaption></figure></div>
+    </div>
+  </section>
+
+  <!-- 7 ひと声 -->
+  <section class="chapter" id="hitokoe">
+    <div class="chap-head"><div class="chap-no">7</div><h2>ひと声のきっかけ</h2></div>
+    <p class="chap-lead">押されなかった日に、家族の1人へ「声をかけてみませんか」とそっと届きます。</p>
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">1</span>家族が設定する</h3>
+        <p>「設定」→「ひと声のきっかけ」で <span class="btnlike">使う</span> にチェック。時刻と担当の家族を決めます。</p>
+        <h3><span class="n">2</span>ご本人が「はい」を選ぶ</h3>
+        <p>ご本人の画面に確認が1回出ます。「はい」を選んだときだけ動きます。</p>
+        <div class="tip safe"><b>安心</b>　心配の知らせではありません。家族から声をかけるためのきっかけです。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/17-hitokoe.jpg" alt="ひと声のきっかけの設定" loading="lazy"></div><figcaption>ひと声のきっかけ</figcaption></figure></div>
+    </div>
+  </section>
+
+  <!-- 8 もしもの備え -->
+  <section class="chapter" id="anshin">
+    <div class="chap-head"><div class="chap-no">8</div><h2>もしもの備え（安心）</h2></div>
+    <p class="chap-lead">「安心」のページに、もしものときに使うものをまとめています。</p>
+    <div class="step with-pic">
+      <div>
+        <ul>
+          <li><b>お薬手帳</b>：写真を保存して、すぐ見せられます</li>
+          <li><b>相談先を探す</b>：上田市の相談先にすぐたどり着けます</li>
+          <li><b>おまもりタグ</b>：名前を出さずに、家族へ知らせる紙のQR</li>
+          <li><b>災害用QR</b>：避難のときに見せる連絡先</li>
+        </ul>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/16-anshin.jpg" alt="安心のページ" loading="lazy"></div><figcaption>安心のページ</figcaption></figure></div>
+    </div>
+  </section>
+
+  <!-- 9 スマホを替えるとき -->
+  <section class="chapter" id="recovery">
+    <div class="chap-head"><div class="chap-no">9</div><h2>スマホを替える・なくす前に</h2></div>
+    <p class="chap-lead">最初に1回だけ「復旧の設定」をしておくと、新しいスマホでも記録に戻れます。</p>
+    <div class="step with-pic">
+      <div>
+        <h3><span class="n">1</span>「復旧を設定する」</h3>
+        <p>「設定」→「機種変更・アカウントの復旧」で、メールアドレスとパスワード（12文字以上）を入れます。届いたメールのリンクを開けば完了です。</p>
+        <h3><span class="n">2</span>新しいスマホで戻る</h3>
+        <p>新しいスマホでまいにこを開き、入口の <span class="btnlike">以前のアカウントを復旧する</span> から入ります。</p>
+        <div class="tip"><b>ポイント</b>　ご本人も家族も、それぞれ自分のスマホで設定してください。パスワードは紙に書かず、安全な場所に。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/18-recovery.jpg" alt="復旧の設定" loading="lazy"></div><figcaption>復旧の設定</figcaption></figure></div>
+    </div>
+  </section>
+
+  <!-- 注意 -->
+  <section class="chapter" id="caution">
+    <div class="caution">
+      <h2>⚠️ 注意してほしいこと</h2>
+      <ul>
+        <li><b>119番・110番の代わりではありません。</b>急ぐときは直接電話してください。</li>
+        <li>お知らせは、遅れたり届かなかったりすることがあります。<b>知らせがないことは、無事の保証ではありません。</b></li>
+        <li><b>ご本人がいやなときは、使わないでください。</b>家族だけで決めないでください。</li>
+        <li>招待コード・QR・6けたの番号は、<b>人に見せたり教えたりしないでください。</b></li>
+        <li>ホームに「🔐 安全のお知らせ」が出て、心当たりがないときは、すぐ家族で確かめてください。</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- よくある質問 -->
+  <section class="chapter" id="faq">
+    <div class="chap-head"><div class="chap-no">?</div><h2>よくある質問</h2></div>
+    <details class="faq"><summary>お金はかかりますか？</summary><p>試験運用中は無料です（スマホの通信料はかかります）。</p></details>
+    <details class="faq"><summary>ご本人がスマホを持っていません</summary><p>入口で「家族だけで使う」を選ぶと、家族が記録する使い方ができます。</p></details>
+    <details class="faq"><summary>押し忘れたら、どうなりますか？</summary><p>何も起きません。催促もしません。ひと声のきっかけを使っている場合だけ、家族の1人に「声をかけてみませんか」と届きます。</p></details>
+    <details class="faq"><summary>記録を消したい・やめたい</summary><p>いつでもやめられます。「設定」→「データの削除・利用の終了」から、記録やアカウントを消せます。詳しくは<a href="../help.html#end">利用を終えるとき</a>。</p></details>
+    <details class="faq"><summary>動かない・保存できない</summary><p>電波のよいところで開き直してください。それでも直らないときは<a href="../help.html#trouble">困ったとき</a>を見てください。</p></details>
+  </section>
+
+  <footer>
+    <a href="../">アプリを開く</a><a href="../help.html">詳しい説明</a><a href="../privacy.html">プライバシーポリシー</a>
+    <p>問い合わせ：pocham4173@gmail.com（お返事に数日かかることがあります）<br>まいにこ ― 家族のつながり ／ 運営：川村 理絵 ／ 写真は試験用のデータです</p>
+    <a class="back-top" href="#">↑ 上へ</a>
+  </footer>
+</main>
+</body>
+</html>
