@@ -237,6 +237,8 @@ function closeHouseholdDeletion(){
 }
 async function runHouseholdDeletion(){
   if(deletionBusy || (!isHouseholdOwner() && !deletionResumeOnly))return;
+  // 再接続QRで入ってから24時間は、削除を始めない(始めた削除の再開はできる)
+  if(!deletionResumeOnly && !householdDeleting && typeof reconnectLocked==='function' && await reconnectLocked())return;
   const confirmation=document.getElementById('deletion-confirm').value.trim();
   if(confirmation!==MainicoDeletion.CONFIRMATION){document.getElementById('deletion-state').textContent='「共有データを削除」と入力してください。';return;}
   const notebookScope={uid:uid(),groupId:gid()};
@@ -492,8 +494,9 @@ function getAccountClosureService(){
     onDeleteFailure:()=>{accountClosureStopping=false;localStorage.removeItem(ACCOUNT_CLOSED_KEY);}
   });return accountClosureService;
 }
-function openAccountDeletion(){
+async function openAccountDeletion(){
   if(deletionBusy || recoveryBusy || accountClosureBusy)return;
+  if(typeof reconnectLocked==='function' && await reconnectLocked())return;
   if(typeof appDialogCancelAll==='function')appDialogCancelAll();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
   document.getElementById('account-deletion-modal').classList.add('show');
   document.getElementById('account-deletion-identity').textContent='削除対象：'+(auth.currentUser?.email||'この端末でログインしている、メール未登録のアカウント');

@@ -34,6 +34,7 @@
       expired: 'このQRは時間切れです（10分）。ご家族に、もう一度QRを出してもらってください。',
       'not-allowed': 'このQRでは、つなげません。QRを出したご家族が今も家庭に参加しているか、ご本人として参加しているかを確かめてください。',
       'account-unavailable': 'このアカウントは、いまは使えません（終了手続き中など）。',
+      'open-home-app': 'ホーム画面のまいにこを開いて、入口の「ご本人：前のスマホの記録に戻る」から、このQRを読んでください。（この画面ではQRを使っていません。前のスマホもそのままです）',
       'device-in-use': 'このスマホは、すでに家庭とつながっています。記録が混ざらないよう、切り替えはしません。新しいスマホで読んでください。',
       'setup-pending': 'このスマホで家庭の作成・参加が途中です。先に、その手続きをやめてから読んでください。',
       'deletion-pending': 'このスマホで削除の確認が残っています。先に削除画面で確認してください。',
@@ -52,8 +53,9 @@
     }
     return out;
   }
-  function qrUrl(code) { return APP_ORIGIN + APP_PATH + '?reconnect=' + encodeURIComponent(code); }
-  /* 読み取った文字から再接続コードを取り出す(まいにこのアドレス+?reconnect=、またはコードの文字だけ) */
+  /* QRの中身。コードは # のあと(GitHub Pages のサーバーには送られない。#line-auth と同じ) */
+  function qrUrl(code) { return APP_ORIGIN + APP_PATH + '#reconnect=' + encodeURIComponent(code); }
+  /* 読み取った文字から再接続コードを取り出す(まいにこのアドレス+#reconnect= または ?reconnect=、またはコードの文字だけ) */
   function parse(text) {
     const raw = String(text == null ? '' : text).trim();
     if (!raw) return null;
@@ -62,8 +64,36 @@
     let u;
     try { u = new URL(raw); } catch (e) { return null; }
     if (u.origin !== APP_ORIGIN || (u.pathname !== APP_PATH && u.pathname !== APP_PATH + 'index.html')) return null;
-    const code = String(u.searchParams.get('reconnect') || '').trim().toUpperCase();
+    const fromHash = new URLSearchParams(u.hash.replace(/^#/, '')).get('reconnect');
+    const code = String(fromHash || u.searchParams.get('reconnect') || '').trim().toUpperCase();
     return CODE_RE.test(code) ? code : null;
+  }
+  /* 保存する文書の番号: SHA-256("reconnect\n"+コード) の16進64文字(コードそのものは保存しない。送信役と同じ計算) */
+  async function docId(code, subtle) {
+    const d = new Uint8Array(await subtle.digest('SHA-256', new TextEncoder().encode('reconnect\n' + code)));
+    return Array.from(d, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  /* iPhone・iPad で、ホーム画面のまいにこ(アプリとして開いた画面)ではないとき true。
+     iPhone の標準カメラで読むと Safari で開き、ホーム画面のまいにこと保存場所が別になるため、そこではコードを使わない */
+  function needsHomeApp(nav) {
+    if (!nav) return false;
+    const ua = String(nav.userAgent || '');
+    const ios = /iPhone|iPad|iPod/.test(ua) || (nav.platform === 'MacIntel' && Number(nav.maxTouchPoints) > 1);
+    return ios && nav.standalone !== true;
+  }
+  /* 再接続で入ってから24時間は、取り消しにくい操作を止める(firestore.rules の recentReconnect と同じ)。
+     止めている間は、使えるようになる時刻を返す。それ以外は null */
+  const LOCK_MS = 24 * 3600 * 1000;
+  function lockedUntil(claims, now) {
+    if (!claims || claims.via !== 'reconnect') return null;
+    const at = Number(claims.auth_time) * 1000;
+    if (!isFinite(at)) return null;
+    const until = new Date(at + LOCK_MS);
+    return until.getTime() > (now || new Date()).getTime() ? until : null;
+  }
+  function lockMessage(until) {
+    const d = until instanceof Date ? until : new Date(until);
+    return '新しいスマホをつないでから24時間は、この操作はできません（安全のため）。' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + d.getHours() + '時' + String(d.getMinutes()).padStart(2, '0') + '分以降にお試しください。';
   }
   function cleanBase(value) {
     const s = String(value || '').trim().replace(/\/+$/, '');
@@ -96,5 +126,5 @@
     };
   }
 
-  return { newCode, qrUrl, parse, client, message, CODE_RE, TTL_MS };
+  return { newCode, qrUrl, parse, docId, needsHomeApp, lockedUntil, lockMessage, client, message, CODE_RE, TTL_MS, LOCK_MS };
 });

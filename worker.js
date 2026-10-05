@@ -1565,8 +1565,10 @@ async function handleReconnect(request, env) {
   }
 }
 function isHonninMember(m) { return !!m && (m.fields.role === 'honnin' || m.fields.mode === 'honnin'); }
+/* 再接続コードの文書の場所。コードそのものは保存しない(SHA-256 の16進64文字を文書IDにする) */
+async function reconnectPath(code) { return 'reconnectCodes/' + await sha256Hex('reconnect\n' + code); }
 async function reconnectExchange(fs, code) {
-  const path = 'reconnectCodes/' + code;
+  const path = await reconnectPath(code);
   const first = await fs.get(path);
   if (!first) throw new AuthProblem('used', 410);
   const groupId = first.fields.groupId, target = first.fields.targetUid, creator = first.fields.createdBy;
@@ -1583,38 +1585,56 @@ async function reconnectExchange(fs, code) {
   if (!famOk || famOk.role === 'honnin' || famOk.mode === 'honnin') throw new AuthProblem('not-allowed', 403);
   if (!honOk || !(honOk.role === 'honnin' || honOk.mode === 'honnin')) throw new AuthProblem('not-allowed', 403);
   if (!await authUserState(fs, target)) throw new AuthProblem('account-unavailable', 403);
-  // 確かめたあとに、コードの取り消し・名簿の変更・家庭の削除・終了手続きが先に確定したら、この確定は失敗する
-  const txn = await fs.beginTransaction();
-  let committed = false, lineLoginRemoved = false;
-  try {
-    const cur = await fs.get(path, txn);
-    const group = await fs.get('groups/' + groupId, txn);
-    const fam = await fs.get('groups/' + groupId + '/members/' + creator, txn);
-    const hon = await fs.get('groups/' + groupId + '/members/' + target, txn);
-    const closure = await fs.get('accountClosures/' + target, txn);
-    const famClosure = await fs.get('accountClosures/' + creator, txn);
-    if (!cur || cur.updateTime !== first.updateTime) throw new AuthProblem('used', 410);
-    if (!group || group.fields.deletionState === 'deleting') throw new AuthProblem('not-allowed', 403);
-    const approved = (m) => m && (m.fields.status === undefined || m.fields.status === 'approved');
-    if (!approved(fam) || isHonninMember(fam) || !approved(hon) || !isHonninMember(hon)) throw new AuthProblem('not-allowed', 403);
-    if (closure || famClosure) throw new AuthProblem('account-unavailable', 403);
-    // なくしたスマホに残ったLINEから入り直せないよう、LINEでログインのつながりも同じ確定で外す
-    const writes = [{ delete: fs.root + '/' + path, currentDocument: { updateTime: first.updateTime } }];
-    const acc = await fs.get('lineLoginAccounts/' + target, txn);
-    if (acc) {
-      writes.push({ delete: fs.root + '/' + acc.path, currentDocument: { updateTime: acc.updateTime } });
-      const link = typeof acc.fields.lineKey === 'string' ? await fs.get('lineLoginLinks/' + acc.fields.lineKey, txn) : null;
+  let lineLoginRemoved = false;
+  if (first.fields.state === 'consumed') {
+    // 確定のあと、前のスマホを止める・鍵を出すところで失敗したときだけ、期限内に1回だけやり直せる
+    if (first.fields.retried === true) throw new AuthProblem('used', 410);
+    if (!await fs.commit([{ update: { name: fs.root + '/' + path, fields: toFields({ retried: true }) }, updateMask: { fieldPaths: ['retried'] },
+      currentDocument: { updateTime: first.updateTime } }])) throw new AuthProblem('used', 410);
+    lineLoginRemoved = first.fields.lineLoginRemoved === true;
+  } else {
+    // 確かめたあとに、コードの取り消し・名簿の変更・家庭の削除・終了手続き・同意の取り消しが先に確定したら、この確定は失敗する
+    const txn = await fs.beginTransaction();
+    let committed = false;
+    try {
+      const cur = await fs.get(path, txn);
+      const group = await fs.get('groups/' + groupId, txn);
+      const fam = await fs.get('groups/' + groupId + '/members/' + creator, txn);
+      const hon = await fs.get('groups/' + groupId + '/members/' + target, txn);
+      const closure = await fs.get('accountClosures/' + target, txn);
+      const famClosure = await fs.get('accountClosures/' + creator, txn);
+      const famConsent = await fs.get('consents/' + creator, txn);
+      const honConsent = await fs.get('consents/' + target, txn);
+      if (!cur || cur.updateTime !== first.updateTime || cur.fields.state === 'consumed') throw new AuthProblem('used', 410);
+      if (!group || group.fields.deletionState === 'deleting') throw new AuthProblem('not-allowed', 403);
+      const approved = (m) => m && (m.fields.status === undefined || m.fields.status === 'approved');
+      if (!approved(fam) || isHonninMember(fam) || !approved(hon) || !isHonninMember(hon)) throw new AuthProblem('not-allowed', 403);
+      if (!validConsent(famConsent && famConsent.fields) || !validConsent(honConsent && honConsent.fields)) throw new AuthProblem('not-allowed', 403);
+      if (closure || famClosure) throw new AuthProblem('account-unavailable', 403);
+      // なくしたスマホに残ったLINEから入り直せないよう、LINEでログインのつながりも同じ確定で外す
+      const acc = await fs.get('lineLoginAccounts/' + target, txn);
+      const link = acc && typeof acc.fields.lineKey === 'string' ? await fs.get('lineLoginLinks/' + acc.fields.lineKey, txn) : null;
+      lineLoginRemoved = !!acc;
+      // コードはすぐには消さず「使った」印を付ける(前のスマホを止める・鍵を出すのが済んでから消す)
+      const writes = [{ update: { name: fs.root + '/' + path, fields: toFields({ state: 'consumed', consumedAt: new Date(), lineLoginRemoved }) },
+        updateMask: { fieldPaths: ['state', 'consumedAt', 'lineLoginRemoved'] }, currentDocument: { updateTime: first.updateTime } }];
+      if (acc) writes.push({ delete: fs.root + '/' + acc.path, currentDocument: { updateTime: acc.updateTime } });
       if (link && link.fields.uid === target) writes.push({ delete: fs.root + '/' + link.path, currentDocument: { updateTime: link.updateTime } });
-      lineLoginRemoved = true;
+      // 家族全員とご本人の画面に「つなぎました」を残す(アプリからは作れない・消せない)
+      writes.push(securityEventWrite(fs, groupId, { type: 'device-reconnect', uid: creator, targetUid: target,
+        name: typeof fam.fields.name === 'string' ? fam.fields.name.slice(0, 80) : '' }));
+      committed = await fs.commit(writes, txn);
+    } finally {
+      if (!committed) await fs.rollback(txn);
     }
-    committed = await fs.commit(writes, txn);
-  } finally {
-    if (!committed) await fs.rollback(txn);
+    if (!committed) throw new AuthProblem('used', 410);
   }
-  if (!committed) throw new AuthProblem('used', 410);
-  // 前のスマホ(なくしたスマホ)のログインを無効にする。新しいスマホは、この後のカスタムトークンで入る
+  // 前のスマホ(なくしたスマホ)のログインを無効にする。新しいスマホは、この後のカスタムトークンで入る。
+  // 再接続で入った鍵には via:'reconnect' を付け、24時間は取り消しにくい操作を止める(firestore.rules の recentReconnect)
   await revokeSessions(fs, target);
-  return { customToken: await mintCustomToken(fs, target), uid: target, lineLoginRemoved };
+  const customToken = await mintCustomToken(fs, target, { via: 'reconnect' });
+  await fs.delete(path).catch(() => {});
+  return { customToken, uid: target, lineLoginRemoved };
 }
 async function revokeSessions(fs, uid) {
   const res = await fs.call('POST', 'https://identitytoolkit.googleapis.com/v1/projects/' + fs.sa.project_id + '/accounts:update',
@@ -1736,11 +1756,12 @@ async function verifyJwt(fs, token, opt) {
   if (!ok) throw new Error('jwt signature');
   return claims;
 }
-async function mintCustomToken(fs, uid) {
+/* claims: 任意の追加の印(再接続のときだけ { via:'reconnect' })。LINEでログインには付けない */
+async function mintCustomToken(fs, uid, claims) {
   const now = Math.floor(Date.now() / 1000);
   return signServiceJwt(fs.sa, { alg: 'RS256', typ: 'JWT' }, { iss: fs.sa.client_email, sub: fs.sa.client_email,
     aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
-    iat: now, exp: now + CUSTOM_TOKEN_TTL_S, uid });
+    iat: now, exp: now + CUSTOM_TOKEN_TTL_S, uid, ...(claims ? { claims } : {}) });
 }
 
 function randomHex(bytes) {

@@ -38,6 +38,13 @@ service cloud.firestore {
     }
 
     // 管理者は groups.createdBy のアカウントだけ(作成者。管理者の交代で受け取った人に移る)。画面の role や自己申告は権限に使わない。
+    /* 再接続QR(2026-10-06): 家族がご本人の新しいスマホをつないでから24時間は、取り消しにくい操作を止める。
+       送信役が再接続のときだけ、ログインの鍵に via:'reconnect' を付ける(LINEでログインには付けない) */
+    function recentReconnect() {
+      return request.auth != null
+        && request.auth.token.get('via', '') == 'reconnect'
+        && request.time < timestamp.value(request.auth.token.auth_time * 1000) + duration.value(24, 'h');
+    }
     function isOwner(groupId) {
       return signedIn()
         && exists(/databases/$(db)/documents/groups/$(groupId))
@@ -97,7 +104,7 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
     function startDeletion(groupId) {
-      return isOwner(groupId)
+      return isOwner(groupId) && !recentReconnect()
         && changed().hasOnly(['deletionState', 'deletionStartedAt'])
         && request.resource.data.deletionState == 'deleting'
         && request.resource.data.deletionStartedAt == request.time;
@@ -111,7 +118,7 @@ service cloud.firestore {
         && get(/databases/$(db)/documents/groups/$(groupId)/members/$(target)).data.get('mode', 'kazoku') != 'honnin';
     }
     function requestTransfer(groupId) {
-      return isOwner(groupId) && hasConsent()
+      return isOwner(groupId) && hasConsent() && !recentReconnect()
         && changed().hasOnly(['pendingOwner', 'pendingOwnerAt'])
         && request.resource.data.keys().hasAll(['pendingOwner', 'pendingOwnerAt'])
         && request.resource.data.pendingOwnerAt == request.time
@@ -202,7 +209,7 @@ service cloud.firestore {
             )
           );
 
-        allow update: if (activeOwner(groupId)
+        allow update: if (activeOwner(groupId) && !recentReconnect()
           && resource.data.status == 'pending'
           && request.resource.data.status == 'approved'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
@@ -215,7 +222,7 @@ service cloud.firestore {
         allow delete: if deletingOwner(groupId)
           || (isActive(groupId)
             && uid != get(/databases/$(db)/documents/groups/$(groupId)).data.createdBy
-            && (activeOwner(groupId) || (signedIn() && request.auth.uid == uid)));
+            && ((activeOwner(groupId) && !recentReconnect()) || (signedIn() && request.auth.uid == uid)));
       }
 
       /* 記録の種類(2026-10-01): アプリが書く種類だけを受け付ける。
@@ -236,7 +243,7 @@ service cloud.firestore {
             'hitokoe-config', 'hitokoe-consent', 'hitokoe-contacted', 'device-recovery'
           ]
           && (d.type != 'line-link-log' || (d.get('action', '') == 'unlinked' && d.get('via', '') == 'app'))
-          && (d.type != 'hitokoe-consent' || isHonninMember(groupId));
+          && (d.type != 'hitokoe-consent' || (isHonninMember(groupId) && !recentReconnect()));
       }
 
       match /events/{eventId} {
@@ -362,7 +369,7 @@ service cloud.firestore {
     // Auth削除後も旧IDトークンを拒否する最小の閉鎖記録。クライアントから解除不可。
     match /accountClosures/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
-      allow create: if signedIn() && request.auth.uid == uid
+      allow create: if signedIn() && request.auth.uid == uid && !recentReconnect()
         && request.resource.data.keys().hasOnly(['requestedAt'])
         && request.resource.data.requestedAt == request.time;
       allow list, update, delete: if false;
@@ -409,16 +416,18 @@ service cloud.firestore {
     // 承認済みの本人名義で作り、10分だけ有効。照合と連携は送信役(サーバー)が行う。
     /* ご本人の新しいスマホを再接続QRでつなぐ(2026-10-05・作り直し設計書 A2)。
        家族(承認済み・同意あり・ご本人ではない)が、同じ家庭のご本人あての1回限り・10分のコードを作る。
-       コードの照合と、ご本人のUIDでのログインは送信役(サーバー)だけが行う。作った家族は確認と取り消しができる。 */
-    match /reconnectCodes/{code} {
+       コードの照合と、ご本人のUIDでのログインは送信役(サーバー)だけが行う。作った家族は確認と取り消しができる。
+       (2026-10-06) 送信役は確定のとき state:'consumed' を付け、前のスマホを止めて鍵を出してから消す。 */
+    match /reconnectCodes/{id} {
       function memberDoc(groupId, uid) { return get(/databases/$(db)/documents/groups/$(groupId)/members/$(uid)).data; }
       function honninDoc(m) { return m.get('role', '') == 'honnin' || m.get('mode', '') == 'honnin'; }
       allow get: if signedIn() && resource.data.createdBy == request.auth.uid;
       allow list, update: if false;
-      allow create: if code.matches('^[A-HJ-NP-Z2-9]{16}$')
+      // 文書IDはコードそのものではなく、SHA-256("reconnect\n"+コード) の16進64文字(コードは保存しない)
+      allow create: if id.matches('^[0-9a-f]{64}$')
         && request.resource.data.keys().hasOnly(['groupId', 'targetUid', 'createdBy', 'createdAt', 'expiresAt'])
         && request.resource.data.groupId is string && request.resource.data.targetUid is string
-        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == request.auth.uid && !recentReconnect()
         && request.resource.data.targetUid != request.auth.uid
         && isApproved(request.resource.data.groupId) && hasConsent()
         && writableGroup(request.resource.data.groupId)

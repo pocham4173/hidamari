@@ -2224,7 +2224,7 @@ setTimeout(function(){
 <script src="line-login-ui.js?v=20261003"></script>
 <script src="hitokoe.js?v=20261004"></script>
 <script src="qr-scan.js?v=20261005"></script>
-<script src="reconnect.js?v=20261005"></script>
+<script src="reconnect.js?v=20261006"></script>
 <script src="device-stop.js?v=20261005"></script>
 <script src="family-survey.js?v=20261005"></script>
 <script src="security-notices.js?v=20261006"></script>
@@ -3949,7 +3949,7 @@ function getOwnerTransfer(){
     group:()=>grp(),serverTimestamp:()=>firebase.firestore.FieldValue.serverTimestamp(),
     deleteField:()=>firebase.firestore.FieldValue.delete(),
     credential:(email,password)=>firebase.auth.EmailAuthProvider.credential(email,password),
-    ask:(text,ok)=>(typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(text,ok),
+    ask:async(text,ok)=>{if(await reconnectLocked())return false;return (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(text,ok);},
     openRecovery:()=>{if(typeof openSettings==='function')openSettings();if(typeof openRecoveryMenu==='function')openRecoveryMenu();}
   });
   return ownerTransferCtl;
@@ -4107,6 +4107,7 @@ async function openMembers(){
 async function honninRemove(mid, isMe){
   mid=memberRef(mid);
   isMe=mid===uid();
+  if(!isMe&&await reconnectLocked())return;
   if(mid===householdOwnerId){await appNotice('管理者は参加解除できません。家庭全体の利用を終える場合は共有データの削除を選んでください。');return;}
   if(!isMe && !requireHouseholdOwner())return;
   const msg=isMe
@@ -6580,6 +6581,7 @@ function refreshSetMembersIfOpen(){
 }
 async function approveMember(mid){
   if(!requireHouseholdOwner())return;
+  if(await reconnectLocked())return;
   try{
     const mname=memberNames[mid]||'新しい家族';
     mid=memberRef(mid);
@@ -6601,6 +6603,7 @@ async function denyMember(mid){
 async function removeMember(mid, isMe){
   mid=memberRef(mid);
   isMe=mid===uid();
+  if(!isMe&&await reconnectLocked())return;
   if(mid===householdOwnerId){await appNotice('管理者は参加解除できません。家庭全体の利用を終える場合は共有データの削除を選んでください。');return;}
   if(!isMe && !requireHouseholdOwner())return;
   if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(isMe?'この端末の接続を解除しますか？\n\n・解除すると、この家族の記録は見られなくなります':'この人の接続を解除しますか？\n\n・解除後、その人は共有サーバーの記録を新たに取得できなくなります\n・相手の端末に保存済みの写真・コピーは各端末で削除が必要です','解除する')) return;
@@ -7613,12 +7616,15 @@ function reconnectService(){
   return reconnectSvc;
 }
 function reconnectEnabled(){try{return !!reconnectService()&&reconnectService().enabled();}catch(e){return false;}}
-/* スマホの「カメラ」で読んだときのアドレス(?reconnect=コード)は、読んだらすぐ消す */
+/* スマホの「カメラ」で読んだときのアドレス(#reconnect=コード。前の形の ?reconnect= も)は、読んだらすぐ消す */
 (function(){
   try{
-    const u=new URL(location.href);if(!u.searchParams.has('reconnect'))return;
+    const u=new URL(location.href);
+    const inHash=/(^#|&)reconnect=/.test(u.hash);
+    if(!inHash&&!u.searchParams.has('reconnect'))return;
     const code=window.MainicoReconnect&&MainicoReconnect.parse(location.href);
-    u.searchParams.delete('reconnect');history.replaceState(null,'',u.pathname+(u.search||'')+u.hash);
+    u.searchParams.delete('reconnect');
+    history.replaceState(null,'',u.pathname+(u.search||'')+(inHash?'':u.hash));
     if(code)reconnectPending=code;
   }catch(e){}
 })();
@@ -7629,7 +7635,12 @@ function reconnectStateEl(){
 function reconnectOnEntry(){
   const on=reconnectEnabled()&&!gid();
   ['entry-reconnect','welcome-reconnect'].forEach(id=>{const b=document.getElementById(id);if(b)b.hidden=!on;});
-  if(on&&reconnectPending){const code=reconnectPending;reconnectPending='';reconnectConfirm(code);}
+  if(on&&reconnectPending){
+    const code=reconnectPending;reconnectPending='';
+    // iPhoneの標準カメラで読むと Safari で開く。ホーム画面のまいにことは保存場所が別なので、ここではコードを使わず案内だけ
+    if(MainicoReconnect.needsHomeApp(navigator)){const s=reconnectStateEl();if(s)s.textContent=MainicoReconnect.message({code:'open-home-app'});return;}
+    reconnectConfirm(code);
+  }
 }
 function reconnectScan(){
   if(!reconnectEnabled()||typeof MainicoQrScan==='undefined'){const s=reconnectStateEl();if(s)s.textContent=MainicoReconnect?MainicoReconnect.message({code:'disabled'}):'';return;}
@@ -7640,14 +7651,16 @@ function reconnectScan(){
 }
 async function reconnectConfirm(code){
   const ask=typeof appConfirm==='function'?appConfirm:(t=>Promise.resolve(confirm(t)));
-  const ok=await ask('このスマホを、ご本人の今までのまいにこにつなぎます。\n\n・今までの記録に戻れます\n・前のスマホ（なくしたスマホなど）は、遅くとも1時間で使えなくなります','つなぐ','やめる',true);
+  const ok=await ask('このスマホを、ご本人の今までのまいにこにつなぎます。\n\n・今までの記録に戻れます\n・前のスマホ（なくしたスマホなど）は、遅くとも1時間で使えなくなります\n・つないだことは、家族全員とご本人の画面に記録されます\n・つないでから24時間は、家庭の削除・家族の承認や解除などはできません（安全のため）','つなぐ','やめる',true);
   if(ok)reconnectFinish(code);
 }
 async function reconnectFinish(code){
   const state=reconnectStateEl();
   if(reconnectBusy)return;reconnectBusy=true;
-  if(state)state.textContent='つないでいます…';
   try{
+    // ホーム画面のまいにこ以外(iPhoneのSafariなど)では、コードを使わない(使うと、ホーム画面のまいにこからは入れないまま、前のスマホも止まる)
+    if(MainicoReconnect.needsHomeApp(navigator))throw Object.assign(new Error('open-home-app'),{code:'open-home-app'});
+    if(state)state.textContent='つないでいます…';
     const before=typeof lineSessionSnapshot==='function'?lineSessionSnapshot():null;
     const current=auth.currentUser;
     // 記録のある画面を、別のアカウントに切り替えない
@@ -7680,7 +7693,22 @@ function renderReconnectButtons(){
   b.hidden=!(reconnectEnabled()&&gid()&&me&&memberInfoByUid[me]&&!memberIsHonnin(me)&&reconnectTargets().length);
 }
 let reconnectTimer=null;
+/* 再接続QRで入ってから24時間は、取り消しにくい操作を止める(firestore.rules の recentReconnect と同じ判定)。
+   止めているときは、使えるようになる時刻を返す */
+async function reconnectLockUntil(){
+  const u=auth.currentUser;
+  if(!u||typeof MainicoReconnect==='undefined')return null;
+  try{return MainicoReconnect.lockedUntil((await u.getIdTokenResult()).claims,new Date());}catch(e){return null;}
+}
+/* 止めているときは案内を出して true */
+async function reconnectLocked(){
+  const until=await reconnectLockUntil();
+  if(!until)return false;
+  await (typeof appNotice==='function'?appNotice(MainicoReconnect.lockMessage(until)):Promise.resolve(alert(MainicoReconnect.lockMessage(until))));
+  return true;
+}
 async function openReconnectMaker(){
+  if(await reconnectLocked())return;
   const targets=reconnectTargets();
   if(!targets.length||typeof MainicoReconnect==='undefined')return;
   const wrap=document.createElement('div');
@@ -7690,18 +7718,19 @@ async function openReconnectMaker(){
     '<div data-rc="pick"></div><div data-rc="qr" style="text-align:center;"></div>'+
     '<div class="save-state" data-rc="state" role="status" aria-live="polite"></div>'+
     '<p class="note">このQRは<b>10分・1回だけ</b>使えます。<b>ご本人のスマホ以外に見せないでください</b>（読んだスマホが、ご本人として入れます）。つないだあと、前のスマホは遅くとも1時間で使えなくなります。</p>'+
+    '<p class="note">つないだことは、<b>家族全員とご本人の画面に記録されます</b>（あなたの名前と日時）。つないでから24時間は、そのスマホでは家庭の削除・家族の承認や解除・アカウントの終了などができません（安全のため）。</p>'+
     '<button class="set-btn warn" type="button" data-rc="cancel" hidden>QRを取り消す</button>'+
     '<button class="modal-close" type="button" data-rc="close">とじる</button></div>';
   document.body.appendChild(wrap);
   const q=s=>wrap.querySelector('[data-rc="'+s+'"]');
   const say=(t,err)=>{const e=q('state');e.textContent=t;e.classList.toggle('err',!!err);};
-  let code='';
+  let code='',docId='';
   const stop=()=>{if(reconnectTimer){clearInterval(reconnectTimer);reconnectTimer=null;}};
   const close=async()=>{stop();wrap.remove();};
   q('close').addEventListener('click',close);
   q('cancel').addEventListener('click',async()=>{
     if(!code)return;
-    try{await db.collection('reconnectCodes').doc(code).delete();stop();q('qr').innerHTML='';q('cancel').hidden=true;say('QRを取り消しました。');code='';}
+    try{await db.collection('reconnectCodes').doc(docId).delete();stop();q('qr').innerHTML='';q('cancel').hidden=true;say('QRを取り消しました。');code='';docId='';}
     catch(e){say('取り消せませんでした。通信を確かめて、もう一度押してください。',true);}
   });
   const make=async target=>{
@@ -7709,9 +7738,11 @@ async function openReconnectMaker(){
     code=MainicoReconnect.newCode(window.crypto);
     const exp=Date.now()+MainicoReconnect.TTL_MS;
     try{
-      await db.collection('reconnectCodes').doc(code).set({groupId:gid(),targetUid:target,createdBy:uid(),
+      // 保存するのはコードそのものではなく、コードから作った元に戻せない番号(送信役と同じ計算)
+      docId=await MainicoReconnect.docId(code,window.crypto.subtle);
+      await db.collection('reconnectCodes').doc(docId).set({groupId:gid(),targetUid:target,createdBy:uid(),
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),expiresAt:firebase.firestore.Timestamp.fromMillis(exp)});
-    }catch(e){code='';say('QRを作れませんでした。通信と、家庭への参加の状態を確かめてください。',true);return;}
+    }catch(e){code='';docId='';say('QRを作れませんでした。通信と、家庭への参加の状態を確かめてください。',true);return;}
     if(typeof qrcode!=='function'){say('QRを表示できませんでした。通信を確かめてください。',true);return;}
     const qr=qrcode(0,'M');qr.addData(MainicoReconnect.qrUrl(code));qr.make();
     q('qr').innerHTML=qr.createImgTag(5,8,'再接続QR');
@@ -7722,7 +7753,7 @@ async function openReconnectMaker(){
       if(left<=0){stop();q('qr').innerHTML='';q('cancel').hidden=true;say('時間切れです。必要なら、もう一度とじて開き直してください。');return;}
       say(name+'さんのスマホで読んでください（あと'+Math.floor(left/60)+'分'+String(left%60).padStart(2,'0')+'秒）');
       if(left%5===0){
-        try{const d=await db.collection('reconnectCodes').doc(code).get({source:'server'});if(!d.exists)throw new Error('gone');}
+        try{const d=await db.collection('reconnectCodes').doc(docId).get({source:'server'});if(!d.exists)throw new Error('gone');}
         catch(e){stop();q('qr').innerHTML='';q('cancel').hidden=true;say(name+'さんの新しいスマホがつながりました（またはQRが使われました）。');}
       }
     };
@@ -7787,7 +7818,11 @@ function initHitokoePrompt(){
   if(typeof MainicoHitokoe==='undefined')return;
   hitokoePrompt=MainicoHitokoe.createPersonPrompt({col:col,addEvent:addEvent,uid:uid,members:()=>memberInfoByUid,
     day:()=>(typeof personDay==='function'?personDay():todayStr()),storage:previewStorage,speak:t=>speak(t),
-    ask:(t,yes,no)=>(typeof appConfirm==='function'?appConfirm(t,yes,no,true):Promise.resolve(confirm(t)))});
+    ask:async(t,yes,no)=>{
+      // 再接続QRで入ってから24時間は、ひと声の了解をたずねない(24時間たったら、あらためてたずねる)
+      if(await reconnectLockUntil())return null;
+      return typeof appConfirm==='function'?appConfirm(t,yes,no,true):confirm(t);
+    }});
   hitokoePrompt.start();
 }
 
