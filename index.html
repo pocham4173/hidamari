@@ -398,6 +398,9 @@ table.cal-rec td.pad{background:none;}
 .set-back{flex:0 0 auto;background:#fff;border:2px solid #D8CDBA;border-radius:12px;font-family:inherit;font-size:1rem;font-weight:700;color:var(--cha);padding:10px 14px;cursor:pointer;}
 .set-head .ttl{margin:0;flex:1;text-align:center;padding-right:76px;}
 .set-menu{border:1px solid #E2D9C8;border-radius:14px;margin-top:10px;background:#fff;overflow:hidden;}
+.guide-link{display:flex;align-items:center;gap:12px;margin:0 0 12px;padding:14px 16px;border-radius:14px;background:#FDF1E7;border:2px solid #F28A42;color:#7A3E12;font-weight:800;font-size:1.05rem;text-decoration:none;}
+.guide-link span{font-size:1.6rem;line-height:1;}
+.guide-link small{display:block;font-weight:500;font-size:.85rem;color:#8A6F4D;}
 .set-menu>summary{list-style:none;cursor:pointer;padding:15px 12px;font-weight:800;font-size:1.02rem;color:var(--cha);display:flex;justify-content:space-between;align-items:center;gap:8px;}
 .set-menu>summary::-webkit-details-marker{display:none;}
 .set-menu>summary::after{content:"▸";color:#B9A98D;flex:0 0 auto;}
@@ -1290,9 +1293,9 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 
 <div class="modal" id="person-settings-modal"><div class="modal-box adult-font">
   <div class="ttl">その他の設定</div>
+  <a class="guide-link" href="guide/" target="_blank" rel="noopener"><span>📷</span><div>使い方ガイド<small>写真つきで、手順を見られます</small></div></a>
   <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;"><h4>家族との連携</h4>
     <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
-    <p class="note">招待した家族の参加を管理者が承認すると、お願い・返事を送れるようになります。以前のやりとりはホームで確認できます。</p>
     <button class="set-btn" data-owner-only hidden onclick="makeInvite('person-invite-area')">招待コードを作る</button>
     <div id="person-invite-area"></div>
     <button class="set-btn" onclick="closePersonSettings();openMembers()">参加している人を確認する</button>
@@ -1301,7 +1304,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <div class="set-sec"><h4>LINEで予定のお知らせ</h4>
     <div id="person-line-area"></div>
   </div>
-  <div class="set-sec"><h4>LINEでログイン（いつもの画面に戻る方法）</h4>
+  <div class="set-sec" data-line-login-only hidden><h4>LINEでログイン（いつもの画面に戻る方法）</h4>
     <div id="person-line-login-area"></div>
   </div>
   <div class="set-sec" style="border-top:none;"><h4>声のお返事（読み上げ）</h4>
@@ -1328,7 +1331,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   </div>
   <div class="set-sec"><h4>機種変更・スマホをなくしたとき</h4>
     <p class="note" data-recovery-status aria-live="polite"></p>
-    <div class="note">ご家族と一緒に設定しておくと、新しいスマホでも今までの記録に戻れます。ご本人のメールアドレスを使います。ご本人がパスワードを覚えておく必要はありません（ご家族が控えておいてください）。</div>
+    <div class="note">ご家族と一緒に設定すると、新しいスマホでも記録に戻れます。パスワードはご家族が控えておいてください。</div>
     <button class="set-btn" onclick="openRecovery()">復旧を設定する</button>
     <button class="set-btn" type="button" data-device-stop hidden onclick="openDeviceStop()">スマホをなくしたとき：ほかのスマホを止める</button>
     <a class="set-btn" href="help.html#recovery" target="_blank" rel="noopener">機種変更・復旧の手順を見る</a>
@@ -1572,6 +1575,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <p data-recovery-status></p>
       <button class="set-btn" type="button" onclick="openRecoveryMenu()">復旧を設定する</button>
     </div>
+    <a class="guide-link" href="guide/" target="_blank" rel="noopener"><span>📷</span><div>使い方ガイド<small>写真つきで、手順を見られます</small></div></a>
 
     <details class="set-menu" id="menu-family">
       <summary>家族の管理</summary>
@@ -1614,7 +1618,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <details class="set-menu" id="menu-person-ui" ontoggle="if(this.open)renderPersonUiConfig()">
       <summary>ご本人の画面に出すもの</summary>
       <div class="set-menu-body">
-        <p class="note">ご本人の画面を、その方に合わせて短くできます。「おはよう」「ちょっとお願い」「今日の予定」はいつも出ます。お薬は、飲む時間だけ残せます。変更はご本人のスマホにも反映されます。</p>
+        <p class="note">ご本人の画面に出すボタンを減らせます。「おはよう」「ちょっとお願い」「今日の予定」はいつも出ます。</p>
         <div class="pui-checks" id="pui-checks">
           <label><input type="checkbox" value="kibun">今日の調子（体調を選ぶボタン）</label>
           <label><input type="checkbox" value="cal">カレンダーを見る</label>
@@ -1637,7 +1641,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       </div>
     </details>
 
-    <details class="set-menu" id="menu-line-login" ontoggle="if(this.open&&typeof renderLineLoginSettings==='function')renderLineLoginSettings('settings-line-login-area')">
+    <details class="set-menu" id="menu-line-login" data-line-login-only hidden ontoggle="if(this.open&&typeof renderLineLoginSettings==='function')renderLineLoginSettings('settings-line-login-area')">
       <summary>LINEでログイン<span class="set-menu-sub">いつもの画面に戻る方法</span></summary>
       <div class="set-menu-body">
         <div id="settings-line-login-area"></div>
@@ -1960,7 +1964,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
             <input type="datetime-local" id="yt-notify">
             <div class="ln-quick"><button type="button" onclick="MainicoLine.preset('yt-notify','yt-date','eve')">前日の夜7時</button><button type="button" onclick="MainicoLine.preset('yt-notify','yt-date','morning')">当日の朝7時</button><button type="button" onclick="document.getElementById('yt-notify').value=''">知らせない</button></div>
             <div class="ln-who" id="yt-notify-who"></div>
-            <div class="note">入れた日時に、選んだ人へLINEで届きます（15分ほど遅れることがあります）。同じ時刻の予定は、1人に1通にまとめて届きます（「前日の夜7時」がおすすめです）。登録や招待は「設定 → LINEで予定のお知らせ」から。</div>
+            <div class="note">入れた日時にLINEで届きます（15分ほど遅れることがあります）。</div>
           </div>
           <div class="yt-form-row">
             <label>絵文字<input type="text" id="yt-kind" value="📌" maxlength="8" placeholder="絵文字"></label>
@@ -1996,12 +2000,12 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div class="card dom-yotei">
         <h3>これからの予定</h3>
         <div id="yt-list"><div class="empty">まだ登録がありません</div></div>
-        <div class="note">「Googleカレンダーに追加」を押すと、Googleカレンダーの登録画面が開きます。内容を確かめて保存してください（まいにこから自動では書き込みません）。</div>
+        <div class="note">Googleカレンダーの画面が開きます。内容を確かめて保存してください。</div>
       </div>
       <details class="card dom-yotei" id="line-history-card">
         <summary class="fold-ttl">LINEでお知らせした履歴</summary>
         <div id="line-history"><div class="empty">読み込み中…</div></div>
-        <div class="note">「送信済み」はLINE側が受け付けた記録で、読んだことの確認ではありません。同じ予定で何度か送った場合は、その下にすべての送信記録を表示します（2026年9月29日以降の送信から）。お知らせの変更は、予定を登録した人だけができます。</div>
+        <div class="note">「送信済み」は、LINEが受け付けた記録です。読んだかどうかは分かりません。</div>
       </details>
     </div>
 
@@ -2014,7 +2018,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <div id="yr-list"><div class="empty">読み込み中…</div></div>
       </div>
       <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div id="rec-source-legend" class="note" style="margin:0 0 10px;">記録した人と時間を確認できます。</div><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
-      <details class="card dom-record"><summary class="fold-ttl" id="rec-sum-ttl">今月のまとめ</summary><div class="rec-sum" id="rec-sum"></div><div class="note">「今月の経過日数中に何件あり、何日に記録があったか」を同じ形でまとめています。良い・悪いや健康状態の判断はしていません。この記録は医療機関の診療記録ではありません。</div></details>
+      <details class="card dom-record"><summary class="fold-ttl" id="rec-sum-ttl">今月のまとめ</summary><div class="rec-sum" id="rec-sum"></div><div class="note">件数と日数のまとめです。良い・悪いの判断はしていません。医療の記録ではありません。</div></details>
       <details class="card dom-record"><summary class="fold-ttl">期間のグラフ</summary>
         <div class="rg-period">
           <button type="button" id="rg-p1" class="on" onclick="rgSelect(1)">1か月</button>
@@ -2250,6 +2254,8 @@ if(window.MAINICO_RECAPTCHA_SITE_KEY){
 }
 const db = previewApp.firestore();
 window.db = db;
+/* LINEでログインは、送信役の場所が設定されるまで(準備中のあいだ)メニューに出さない */
+document.querySelectorAll('[data-line-login-only]').forEach(el=>{el.hidden=!window.MAINICO_LINE_AUTH_URL;});
 window.mainicoStartupStage='ログインの準備中';
 if('serviceWorker' in navigator){
   try{ navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('service worker',e); }); }
