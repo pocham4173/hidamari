@@ -366,6 +366,28 @@ service cloud.firestore {
       allow list, update, delete: if false;
     }
 
+    /* 家族の1分アンケート(2026-10-05・試験運用の評価用・任意)。
+       答えた本人だけが読み書きでき、ほかの家族には見えない。1人1か月1件(番号は「利用者ID_年-月」)。
+       全体の数字だけを、送信役(サーバー)が運営者に返す。 */
+    match /surveyAnswers/{id} {
+      allow get, list: if signedIn() && resource.data.uid == request.auth.uid;
+      allow create, update: if hasConsent()
+        && request.resource.data.keys().hasOnly(['uid', 'groupId', 'month', 'kind', 'absences', 'burden', 'answeredAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.month is string
+        && request.resource.data.month.matches('^20[0-9]{2}-(0[1-9]|1[0-2])$')
+        && id == request.auth.uid + '_' + request.resource.data.month
+        && request.resource.data.kind in ['baseline', 'monthly']
+        && request.resource.data.absences in [-1, 0, 1, 2, 4]
+        && request.resource.data.burden in ['', 'less', 'same', 'more', 'unknown']
+        && (request.resource.data.kind == 'monthly' || request.resource.data.burden == '')
+        && request.resource.data.answeredAt == request.time
+        && request.resource.data.groupId is string
+        && isApproved(request.resource.data.groupId) && writableGroup(request.resource.data.groupId)
+        && (resource == null || resource.data.uid == request.auth.uid);
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
     // 復旧先だけを保存。一般家族に他人の認証UIDの検索は許可しない。
     match /accounts/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
