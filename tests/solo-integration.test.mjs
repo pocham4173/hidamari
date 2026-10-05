@@ -18,7 +18,7 @@ const snap=(members,cache=false,pending=false)=>({metadata:{fromCache:cache,hasP
 const hidden=(family,person,shared)=>assert.deepEqual(gates.map(v=>v.hidden),[family,person,shared]);
 c.startFamilyConnection();assert.match(labels[0].textContent,/確認できません/);hidden(true,true,true);
 assert.equal(conversations[0].hidden,false);assert.equal(sends[0].disabled,true,'初回の通信待ちは会話の位置を残して送信しない');
-listeners[0].ok(snap([['me','kazoku']]));assert.match(labels[0].textContent,/ほかの承認済み参加者はいません/);hidden(true,true,true);
+listeners[0].ok(snap([['me','kazoku']]));assert.match(labels[0].textContent,/ほかの家族はまだいません/);hidden(true,true,true);
 assert.equal(els['family-task-kind-family'].disabled,true);
 assert.doesNotMatch(els['home-summary-description'].textContent,/家族/);
 // Code redeemed, but not approved: no premature collaboration UI.

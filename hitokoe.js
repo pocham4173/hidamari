@@ -133,11 +133,11 @@
   function settingsHtml(cfg,members,results){
     var fam=Object.keys(members).filter(function(u){ return approved(members[u])&&!isHonnin(members[u]); });
     var opt=function(sel){ return '<option value="">（設定した人）</option>'+fam.map(function(u){ return '<option value="'+esc(u)+'"'+(sel===u?' selected':'')+'>'+esc(members[u].name||'家族')+'</option>'; }).join(''); };
-    var h='<p class="note">押されなかった日は、心配の知らせではなく、声を聞くきっかけとして、家族の一人にそっと届きます。まいにこやLINEに頼らず、自分から声をかけるための機能です。お知らせは受け取る家族のアプリの中に出ます。「LINEにも送る」を選ぶと、受け取る家族のLINEにも1日1通届きます（名前や様子は書きません）。</p>'+
+    var h='<p class="note">押されなかった日に、家族の1人へ「声をかけてみませんか」とそっと届きます。心配の知らせではありません。</p>'+
       '<p class="note hitokoe-small">'+esc(NOTES)+'</p>'+
       '<p class="note" data-hitokoe-status>'+statusText(results)+'</p>'+
       '<label class="consent-item"><input type="checkbox" data-hk="enabled"'+(cfg.enabled?' checked':'')+'> 使う（オンにすると、ご本人のスマホに了解の確認が1回出ます）</label>'+
-      '<label class="consent-item"><input type="checkbox" data-hk="line"'+(cfg.line?' checked':'')+'> LINEにも送る（受け取る家族が「LINEで予定のお知らせ」で自分のLINEを登録しているとき。まいにこ全体で月90通までの無料の範囲で送ります。上限に達した月は、アプリの中だけに出ます）</label>'+
+      '<label class="consent-item"><input type="checkbox" data-hk="line"'+(cfg.line?' checked':'')+'> LINEにも送る（1日1通・名前や様子は書きません）</label>'+
       '<label>お知らせする時刻<select data-hk="hour">'+HOURS.map(function(x){ return '<option value="'+x+'"'+(cfg.hour===x?' selected':'')+'>'+x+'時までに届かないとき</option>'; }).join('')+'</select></label>'+
       '<details><summary>曜日ごとの担当（受け取る家族は1人）</summary><div class="hitokoe-grid">';
     for(var i=0;i<7;i++) h+='<label>'+WD.charAt(i)+'曜<select data-hk-day="'+i+'">'+opt(cfg.assignees[String(i)]||'')+'</select></label>';
