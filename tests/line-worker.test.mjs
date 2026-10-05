@@ -286,8 +286,9 @@ assert.match(replies.at(-1).messages[0].text, /お返事や相談は届きませ
   put('groups/g1/yotei/yUR', { kind: S('📌'), date: S(ds), label: S('ふたり'), uid: S('owner'), notifyAt: past, notifyTo: arr('u:fam', 'r:r1', 'r:gone') });
   // 1回の見回りの通信には上限があるので、残りは次の回に送る
   for (let i = 0; i < 3; i++) { await worker.scheduled({}, env, { waitUntil: (p) => { waiter = p; } }); await waiter; }
-  const got = pushes.slice(before).map((p) => p.to + ':' + p.messages[0].text.split('\n').find((l) => /家族みんな|おばあちゃんだけ|ふたり/.test(l)));
-  assert.deepEqual(got.sort(), ['Ufam:📌 ふたり', 'Ufam:📌 家族みんな', 'Ugrand:📌 おばあちゃんだけ', 'Ugrand:📌 ふたり']);
+  // 同じ回に送る予定は、受け取る人ごとに1通にまとめる(2026-10-04)
+  const got = pushes.slice(before).map((p) => p.to + ':' + p.messages[0].text.split('\n').filter((l) => /家族みんな|おばあちゃんだけ|ふたり/.test(l)).map((l) => l.replace(/^【\d】/, '')).sort().join('+'));
+  assert.deepEqual(got.sort(), ['Ufam:📌 ふたり+📌 家族みんな', 'Ugrand:📌 おばあちゃんだけ+📌 ふたり'], '1人に1通で、選ばれた予定だけ');
   // 同意をやめたら、その後は送らない
   {
     db.delete('groups/g1/lineShareConsents/owner');
@@ -322,7 +323,7 @@ assert.match(replies.at(-1).messages[0].text, /お返事や相談は届きませ
 }
 // 13. 動作確認ページ
 const res = await worker.fetch(new Request('https://w.example/'), env, {});
-assert.match(await res.text(), /^まいにこ LINE送信役は動いています（版：2026-10-04 /);
+assert.match(await res.text(), /^まいにこ LINE送信役は動いています（版：2026-\d\d-\d\d /);
 
 console.log('line worker: 署名確認・友だち追加・連携(期限切れ/承認待ちは不可)・見回り送信(対象者/文面/二重送信なし/古い予定/削除中の家庭)・解除・ブロック・送信先の招待と予定ごとの相手 14項目 passed');
 
@@ -645,4 +646,51 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.equal(g5Stats(), 0, '削除中の家庭の集計は消す');
   assert.ok([...db.keys()].some((k) => k.startsWith('usageStats/')), 'ほかの家庭の集計は残す');
   console.log('利用数の集計(朝5時以降・1日ずつ・数えない記録・名前を残さない・運営者の登録と回数制限・集計の返事・3日目と8週目・削除) passed');
+}
+/* 予定のお知らせを、受け取る人ごとに1通にまとめる(2026-10-04・事業計画書 第2版の「前日にまとめて1通」) */
+{
+  for (const k of [...db.keys()]) if (/^(groups\/g[1-5]\/yotei|watchTags|tagAlertCounters|lineDeliveryReceipts|lineUsage)\//.test(k)) db.delete(k);
+  acceptedKeys.clear(); quota = { type: 'limited', value: 200 }; usage = 0;
+  put('groups/g6', { createdBy: S('o6') });
+  put('groups/g6/members/o6', { name: S('りえ'), status: S('approved') });
+  put('groups/g6/members/m6', { name: S('あに'), status: S('approved') });
+  for (const id of ['o6', 'm6']) put('consents/' + id, consent());
+  put('lineLinks/o6', { lineUserId: S('Uo6'), groupId: S('g6') });
+  put('lineLinks/m6', { lineUserId: S('Um6'), groupId: S('g6') });
+  const at = T(new Date(Date.now() - 60000));
+  const yo = (id, label, time, extra = {}) => put('groups/g6/yotei/' + id, { kind: S('📌'), date: S('2026-10-08'), time: S(time), label: S(label), uid: S('o6'), notifyAt: at, ...extra });
+  yo('b1', '歯医者', '10:00'); yo('b2', 'デイサービス', '09:00'); yo('b3', '買い物', '15:00', { notifyTo: { arrayValue: { values: [S('u:o6')] } } });
+  const b0 = pushes.length;
+  for (let i = 0; i < 3 && ['b1', 'b2', 'b3'].some((k) => db.get('groups/g6/yotei/' + k).fields.notifyAt?.timestampValue); i++) await tick();
+  const mine = pushes.slice(b0).filter((p) => /^U[om]6$/.test(p.to));
+  assert.equal(mine.length, 2, '受け取る人ごとに1通(3件でも)');
+  const toO = mine.find((p) => p.to === 'Uo6').messages[0].text, toM = mine.find((p) => p.to === 'Um6').messages[0].text;
+  assert.match(toO, /予定のお知らせ（まいにこ）3件/);
+  assert.ok(toO.indexOf('デイサービス') < toO.indexOf('歯医者') && toO.indexOf('歯医者') < toO.indexOf('買い物'), '時刻の順');
+  assert.equal((toO.match(/確認する：https:\/\/pocham4173\.github\.io\/hidamari\/\?openExternalBrowser=1#schedule=/g) || []).length, 3, '予定ごとに開くリンク');
+  assert.match(toO, /（登録：りえ）/);
+  assert.match(toM, /予定のお知らせ（まいにこ）2件/);
+  assert.ok(!toM.includes('買い物'), '選ばれていない人には、その予定を入れない');
+  for (const k of ['b1', 'b2', 'b3']) assert.equal(db.get('groups/g6/yotei/' + k).fields.notificationStatus.stringValue, 'accepted', k + ' は送信済み');
+  assert.equal(db.get('groups/g6/yotei/b1').fields.notifyLog.arrayValue.values.at(-1).mapValue.fields.count.integerValue, '2', '送った人の数');
+  assert.equal(db.get('lineUsage/g6').fields.count.integerValue, '2', '通数は2(予定の数ではなく受け取った人の数)');
+  // 送れなかった回は印を付けず、次の回に同じ再送キーで送り直す。受付済みの再送キーでは二重に届かない
+  yo('c1', 'つぎの予定A', '10:00'); yo('c2', 'つぎの予定B', '11:00');
+  const before = pushes.length;
+  pushFailure = true; await tick(); pushFailure = false;
+  assert.ok(db.get('groups/g6/yotei/c1').fields.notifyAt?.timestampValue, '失敗したら送信待ちのまま');
+  lostResponse = true;
+  for (let i = 0; i < 3 && ['c1', 'c2'].some((k) => db.get('groups/g6/yotei/' + k).fields.notifyAt?.timestampValue); i++) await tick();
+  const sentC = pushes.slice(before).filter((p) => /^U[om]6$/.test(p.to)).map((p) => p.to).sort();
+  assert.deepEqual(sentC, ['Um6', 'Uo6'], '1人1通ずつ(応答が失われても二重に届かない)');
+  assert.equal(db.get('groups/g6/yotei/c2').fields.notificationStatus.stringValue, 'accepted');
+  // 上限: この回に送る通数(受け取る人の数)で判断する
+  put('lineUsage/g6', { day: S(new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)), count: { integerValue: '19' } });
+  yo('d1', '上限の予定A', '10:00'); yo('d2', '上限の予定B', '11:00');
+  const bd = pushes.length; await tick();
+  assert.equal(pushes.length, bd, '家庭の1日の上限を超えるときは送らない');
+  assert.equal(db.get('groups/g6/yotei/d1').fields.notificationStatus.stringValue, 'limited');
+  assert.equal(db.get('groups/g6/yotei/d2').fields.notificationStatus.stringValue, 'limited');
+  db.delete('groups/g6'); for (const k of [...db.keys()]) if (k.startsWith('groups/g6/')) db.delete(k);
+  console.log('予定のお知らせを1人1通にまとめる(件数・時刻の順・選ばれた予定だけ・通数・送り直し・二重なし・上限) passed');
 }
