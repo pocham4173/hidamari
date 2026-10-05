@@ -75,4 +75,22 @@ async function run(u, values, done) {
   assert.match(fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8'), /'device-stop\.js'/);
   assert.match(fs.readFileSync(new URL('../help.html', import.meta.url), 'utf8'), /ほかのスマホを止める/);
 }
-console.log('ほかのスマホを止める: 入力の確かめ・本人確認と変更・違うパスワード・足りない入力・復旧なし・つなぎ込み 6項目 passed');
+// 7. 後始末(LINEでログインの解除)は、本人確認のあと・パスワードを変える前。失敗しても止めることは続ける
+{
+  for (const fail of [false, true]) {
+    const u = user();
+    const dom = new JSDOM('<body></body>');
+    const doc = dom.window.document;
+    D.open({ document: doc, user: () => u, credential: (e, p) => ({ e, p }),
+      beforeChange: async () => { u.calls.push(['before']); if (fail) throw new Error('offline'); } });
+    const q = (s) => doc.querySelector(s);
+    q('[data-ds="current"]').value = 'now-password'; q('[data-ds="next"]').value = 'new-password-1'; q('[data-ds="again"]').value = 'new-password-1';
+    q('[data-ds-act="stop"]').dispatchEvent(new dom.window.Event('click'));
+    for (let i = 0; i < 6; i++) await new Promise((r) => setTimeout(r, 0));
+    assert.deepEqual(u.calls.map((c) => c[0]), ['reauth', 'before', 'update', 'token']);
+  }
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /beforeChange:async\(\)=>\{lineNote=await deviceStopLineLogin\(\);\}/);
+  assert.match(html, /async function deviceStopLineLogin\(\)\{\n  if\(!window\.MAINICO_LINE_AUTH_URL/, 'LINEでログインが未設定なら何もしない');
+}
+console.log('ほかのスマホを止める: 入力の確かめ・本人確認と変更・違うパスワード・足りない入力・復旧なし・つなぎ込み・LINEでログインの解除の順番 7項目 passed');
