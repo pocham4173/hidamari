@@ -323,6 +323,7 @@ assert.equal((await begin('login', acH({ exp: now() - 1 }))).res.status, 401);
   assert.ok(!/http-equiv="refresh"/.test(cb.html), '自動では移動しない(番号を見た本人が進む)');
   assert.match(cb.html, /href="https:\/\/pocham4173\.github\.io\/hidamari\/#line-auth=[0-9a-f]{32}&amp;c=\d{6}"/);
   assert.match(cb.html, /番号を入れた人は、あなたのまいにこに入れます/);
+  assert.match(cb.html, /このログインは \d+月\d+日 \d+時\d\d分 に始まりました。あなたが始めたものでなければ/, '始まった時刻を出す');
   assert.match(cb.html, /取り消す（ログインしない）/);
   assert.ok(!/eyJ/.test(cb.html), 'トークンを戻り先ページやURLに載せない');
   const st = await (await api('status', { tx: data.tx, secret }, acH())).json();
@@ -346,6 +347,13 @@ assert.equal((await begin('login', acH({ exp: now() - 1 }))).res.status, 401);
   // 再送・二重交換はできない
   assert.equal((await api('exchange', { tx: data.tx, secret, code: cb.code }, acH())).status, 410);
   assert.equal(authUsers.size, 4, '新しいアカウントは作らない');
+  // 家族全員とご本人の画面に出す「安全のお知らせ」を、確定と同じコミットで1件だけ残す
+  const sec = [...db.keys()].filter((k) => k.startsWith('groups/g2/events/') && db.get(k).fields.type?.stringValue === 'line-login-signin');
+  assert.equal(sec.length, 1, 'LINEでログインの記録');
+  const ev = db.get(sec[0]).fields;
+  assert.equal(ev.uid.stringValue, 'anon');
+  assert.ok(ev.at.timestampValue && ev.clientAt && ev.date.stringValue);
+  assert.ok(!JSON.stringify(ev).includes(LINE_A), 'LINEの識別子は記録に入れない');
 }
 
 /* 8. つないでいないLINE: 新規登録はせず案内だけ。お知らせ用の連携だけではログインできない */

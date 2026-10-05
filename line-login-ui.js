@@ -362,6 +362,13 @@ async function renderLineLoginSettings(areaId){
     area.appendChild(lineEl('p','note','LINEでログインの状態を確認できませんでした。通信を確認してください。'));
     const again=lineEl('button','set-btn','もう一度確認する');again.type='button';again.addEventListener('click',()=>renderLineLoginSettings(areaId));area.appendChild(again);return;
   }
+  // ほかのスマホを止めたときに解除できなかったら、解除できるまで案内を出し続ける
+  const pending=typeof lineUnlinkPending==='function'&&lineUnlinkPending();
+  if(!linked&&pending)lineUnlinkPending(false);
+  if(linked&&pending){
+    const warn=lineEl('p','note err','⚠️ ほかのスマホを止めたとき、「LINEでログイン」のつながりを外せませんでした。なくしたスマホのLINEから入れるおそれがあります。下の「LINEでログインの連携を解除する」を押してください。');
+    warn.setAttribute('role','alert');area.appendChild(warn);
+  }
   if(linked){
     const at=linked.linkedAt&&typeof linked.linkedAt.toDate==='function'?linked.linkedAt.toDate():null;
     area.appendChild(lineEl('p','note','✅ このアカウントは、LINEでログインできます'+(at?'（'+(at.getMonth()+1)+'月'+at.getDate()+'日から）':'')+'。LINEの「まいにこを開く」やお知らせのリンクから、いつもの画面に入れます。'));
@@ -373,6 +380,7 @@ async function renderLineLoginSettings(areaId){
     const off=lineEl('button','set-btn warn','LINEでログインの連携を解除する');off.type='button';off.addEventListener('click',()=>unlinkLineLogin(areaId,off));area.appendChild(off);
   }else{
     area.appendChild(lineEl('p','note','LINEとつなぐと、LINEの「まいにこを開く」や予定のお知らせのリンクから、登録や使い方の選び直しなしで、いつもの画面に入れます。今の記録・家族・役割はそのままです。'));
+    area.appendChild(lineEl('p','note','LINEの利用者番号そのものは保存せず、照合のための元に戻せない値（ハッシュ）だけを保存します。LINEでログインで入ったときは、家族全員とご本人の画面に「安全のお知らせ」が出ます。'));
     const on=lineEl('button','set-btn','LINEとつなぐ');on.type='button';on.addEventListener('click',()=>openLineLink(''));area.appendChild(on);
   }
   const state=lineEl('div','save-state');state.setAttribute('aria-live','polite');state.dataset.lineLoginState='1';area.appendChild(state);

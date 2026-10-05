@@ -68,13 +68,13 @@ const TAG_REQUEST_BUDGET = 30;               // タグの処理に使う通信�
 const HITOKOE_MONTHLY_LIMIT = 90;           // ひと声のきっかけのLINEは、まいにこ全体で月90通まで(無料の200通の内側)
 const HITOKOE_WINDOW_HOURS = 3;              // 決めた時刻から3時間のうちだけ送る(遅れた知らせは送らない)
 const HITOKOE_REQUEST_BUDGET = 36;           // ひと声の処理はここまで。残りは後片付けに回す
-const HITOKOE_NOT_ACTIVITY = new Set(['hitokoe-consent', 'device-recovery', 'person-ui-config']); // hitokoe.js と同じ
+const HITOKOE_NOT_ACTIVITY = new Set(['hitokoe-consent', 'device-recovery', 'person-ui-config', 'line-login-signin', 'device-reconnect']); // hitokoe.js と同じ
 const USAGE_KEEP_DAYS = 70;                  // 利用数の集計: 日ごとの数を残す日数(8週間の継続を見るため)
 const USAGE_PER_RUN = 4;                     // 1回の見回りで集計する世帯の数
 const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで。残りは後片付けに回す
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
-  'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined']);
+  'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined', 'line-login-signin', 'device-reconnect']);
 const VERSION_TEXT = '版：2026-10-05 見回りの見直し・LINEでログイン';
 
 export default {
@@ -305,12 +305,23 @@ async function removeLinksFor(fs, lineUserId, via) {
 
 /* LINE連携の記録(2026-09-29): 家庭の events に type:'line-link-log' で残す。家族全員が設定画面で見られる。
    LINEの利用者識別子は記録に入れない。 */
+function jstClock(d) { const j = new Date(d.getTime() + 9 * 3600000); return (j.getUTCMonth() + 1) + '月' + j.getUTCDate() + '日 ' + j.getUTCHours() + '時' + String(j.getUTCMinutes()).padStart(2, '0') + '分'; }
 function jstDateString(d) { return new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 10); }
 function linkLogWrite(fs, groupId, uid, name, action, via, at) {
   const id = 'line' + crypto.randomUUID().replace(/-/g, '');
   return {update: {name: fs.root + '/groups/' + groupId + '/events/' + id,
     fields: toFields({type: 'line-link-log', action, via, uid, name: typeof name === 'string' ? name : '',
       date: jstDateString(at), at, clientAt: at.getTime()})},
+    currentDocument: {exists: false}};
+}
+
+/* 安全のお知らせ(2026-10-06): ログインに関わる出来事を家庭の events に残す(送信役だけが書く)。
+   type: 'line-login-signin'(LINEでログインで入った) / 'device-reconnect'(再接続QRでご本人の新しいスマホをつないだ) */
+function securityEventWrite(fs, groupId, fields) {
+  const at = new Date();
+  const id = 'sec' + crypto.randomUUID().replace(/-/g, '');
+  return {update: {name: fs.root + '/groups/' + groupId + '/events/' + id,
+    fields: toFields({...fields, date: jstDateString(at), at, clientAt: at.getTime()})},
     currentDocument: {exists: false}};
 }
 
@@ -1266,6 +1277,7 @@ async function lineCallbackVerified(env, fs, url, tx, path, f, appLink, finish, 
   if (!await markReady({ uid: link.fields.uid })) return usedPage();
   // 自動では移動しない: 番号を入れた人があなたのまいにこに入れるため、必ず本人が見て進む
   return authPage(200, 'LINEの確認ができました', [
+    ...(f.createdAt instanceof Date ? ['このログインは ' + jstClock(f.createdAt) + ' に始まりました。あなたが始めたものでなければ、番号を誰にも伝えず、下の「取り消す」を押してください。'] : []),
     'この画面でまいにこを使うときは、下の「この画面でまいにこを開く」を押してください。',
     '別の画面（ホーム画面のまいにこなど）で「LINEで続ける」を押した場合は、その画面に戻って次の番号を入れてください（5分以内）。'],
     appLink + '&c=' + confirmCode, { code: confirmCode, tx, cancel: true,
@@ -1427,10 +1439,15 @@ async function lineExchange(env, fs, request, body) {
     const cur = await fs.get(t.path, txn);
     const link = await fs.get('lineLoginLinks/' + lineKey, txn);
     const closure = await fs.get('accountClosures/' + uid, txn);
+    const account = await fs.get('accounts/' + uid, txn);
     if (!cur || cur.updateTime !== t.updateTime || cur.fields.status !== 'authenticated') throw new AuthProblem('used', 410);
     if (!link || link.fields.uid !== uid) throw new AuthProblem('not-linked', 403);
     if (closure) throw new AuthProblem('account-unavailable', 403);
-    committed = await fs.commit([txDone(fs, t, 'done')], txn);
+    const writes = [txDone(fs, t, 'done')];
+    // 家族全員とご本人の画面に「LINEでログインで入った」を残す(番号を聞き出す詐欺に気づけるように)。アプリからは作れない・消せない
+    const groupId = account && account.fields.groupId;
+    if (typeof groupId === 'string' && groupId) writes.push(securityEventWrite(fs, groupId, { type: 'line-login-signin', uid }));
+    committed = await fs.commit(writes, txn);
   } finally {
     if (!committed) await fs.rollback(txn);
   }

@@ -1210,6 +1210,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <button class="ht-yomi" type="button" onclick="event.stopPropagation();speakToday()">🔊 音声で聞く</button>
     </div>
     <div id="h-approve"></div>
+    <div id="person-security-notices"></div>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
     <div id="person-record-actions" hidden><button class="set-btn" id="person-record-correct" type="button" onclick="openCancel()">記録を確認・とりけす</button></div>
     <button class="aisatsu" id="btn-a" onclick="sendAisatsu()">
@@ -1753,6 +1754,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div id="owner-transfer-card"></div>
       <div id="hitokoe-card"></div>
       <div id="family-notices"></div>
+      <div id="security-notices"></div>
       <div id="survey-card"></div>
 
       <div class="card dom-record" id="card-actions" data-communication-gate="person">
@@ -2221,6 +2223,7 @@ setTimeout(function(){
 <script src="qr-scan.js?v=20261004"></script>
 <script src="device-stop.js?v=20261005"></script>
 <script src="family-survey.js?v=20261005"></script>
+<script src="security-notices.js?v=20261006"></script>
 <script src="family-guide.js?v=20261002"></script>
 <script src="owner-transfer.js?v=20261002"></script>
 <script>
@@ -3655,6 +3658,7 @@ function initHonnin(){
   initMemberInfo();
   initYoteiNotes();
   initHitokoePrompt();
+  initSecurityNotices('person-security-notices');
   reportDeviceRecovery();
 
   if(yoteiUnsub) yoteiUnsub();
@@ -4009,7 +4013,7 @@ function cancelRecordLabel(v){
   return nm[v.type]?nm[v.type](v):'記録';
 }
 /* 取り消し一覧に出さない種類(設定や、家族が見る連携の記録) */
-const CANCEL_HIDDEN_TYPES={'hitokoe-config':1,'hitokoe-consent':1,'device-recovery':1,'line-link-log':1,'care-config':1,'kibun-config':1,'yotei-cat-config':1,'person-ui-config':1,'medicine-info':1,'family-contact':1};
+const CANCEL_HIDDEN_TYPES={'line-login-signin':1,'device-reconnect':1,'hitokoe-config':1,'hitokoe-consent':1,'device-recovery':1,'line-link-log':1,'care-config':1,'kibun-config':1,'yotei-cat-config':1,'person-ui-config':1,'medicine-info':1,'family-contact':1};
 function cancelDialogKeydown(event){
   if(event.key==='Escape'){event.preventDefault();closeCancel();return;}
   if(event.key!=='Tab')return;
@@ -4452,6 +4456,7 @@ function initKazoku(){
   initMemberInfo();
   initHitokoe();
   initSurvey();
+  initSecurityNotices('security-notices');
   initYoteiCategories();
   initDisaster();
   loadWatchTag();
@@ -5111,7 +5116,9 @@ var REC_LABEL = {
   'memo':           function(v){ return ['家族の様子メモ','', (v.name||'家族')+'さん: '+(v.text||'')]; },
   'disaster-safe':  function(v){ return ['防災','', (v.name||'家族')+'さんが「無事です」と記録しました']; },
   'disaster-evacuating': function(v){ return ['防災','', (v.name||'家族')+'さんが「避難中です」と記録しました']; },
-  'disaster-help':  function(v){ return ['防災','k-onegai', (v.name||'家族')+'さんが「助けが必要です」と記録しました（緊急通報ではありません）']; }
+  'disaster-help':  function(v){ return ['防災','k-onegai', (v.name||'家族')+'さんが「助けが必要です」と記録しました（緊急通報ではありません）']; },
+  'line-login-signin': function(v){ return ['安全のお知らせ','', MainicoSecurityNotices.text(v,securityNoticeName)]; },
+  'device-reconnect':  function(v){ return ['安全のお知らせ','', MainicoSecurityNotices.text(v,securityNoticeName)]; }
 };
 /* 日をまたいだ返事に、どの日のお願いへの返事かを添えます */
 function recReplyFor(v){
@@ -7629,6 +7636,18 @@ function initSurvey(){
     save:(id,data)=>db.collection('surveyAnswers').doc(id).set(Object.assign({},data,{answeredAt:firebase.firestore.FieldValue.serverTimestamp()}))});
   surveyCtl.start();
 }
+/* 安全のお知らせ(LINEでログイン・再接続QR)。家族のホームとご本人の画面の両方に出す */
+let securityNoticeCtl={};
+function securityNoticeName(u){ return (u&&memberInfoByUid[u]&&memberInfoByUid[u].name)||''; }
+function initSecurityNotices(boxId){
+  if(securityNoticeCtl[boxId]){securityNoticeCtl[boxId].stop();delete securityNoticeCtl[boxId];}
+  if(typeof MainicoSecurityNotices==='undefined'||!uid()||!gid())return;
+  securityNoticeCtl[boxId]=MainicoSecurityNotices.create({document:document,boxId:boxId,nameOf:securityNoticeName,now:()=>new Date(),
+    watch:cb=>col('events').where('type','in',MainicoSecurityNotices.TYPES).onSnapshot(snap=>{
+      const rows=[];snap.forEach(d=>rows.push(d.data()));cb(rows);
+    },()=>{})});
+  securityNoticeCtl[boxId].start();
+}
 function initHitokoePrompt(){
   if(hitokoePrompt){hitokoePrompt.stop();hitokoePrompt=null;}
   if(typeof MainicoHitokoe==='undefined')return;
@@ -7685,24 +7704,44 @@ function renderRecoveryBadges(){
 }
 function openDeviceStop(){
   if(typeof MainicoDeviceStop==='undefined'){alert('読み込みが終わっていません。通信を確認して、もう一度お試しください。');return;}
-  let lineNote='';
+  let lineState='';
   MainicoDeviceStop.open({document:document,user:()=>auth.currentUser,
     credential:(email,password)=>firebase.auth.EmailAuthProvider.credential(email,password),
-    beforeChange:async()=>{lineNote=await deviceStopLineLogin();},
-    onDone:()=>{try{renderRecoveryBadges();}catch(e){}if(lineNote)alert(lineNote);}});
+    beforeChange:async()=>{lineState=await deviceStopLineLogin(false);return lineState;},
+    afterChange:async(reauthOk)=>{lineState=reauthOk?await deviceStopLineLogin(true):'failed';},
+    onDone:()=>{
+      try{renderRecoveryBadges();}catch(e){}
+      if(lineState==='done')alert('なくしたスマホのLINEから入り直せないよう、「LINEでログイン」のつながりも外しました。使う場合は、このスマホの設定から、もう一度つないでください。');
+      if(lineState==='failed'){
+        lineUnlinkPending(true);
+        alert('「LINEでログイン」のつながりを外せませんでした。なくしたスマホのLINEから入れないよう、設定の「LINEでログイン」の「連携を解除する」を押してください。解除できるまで、設定にこの案内を出します。');
+        try{renderLineLoginSettings('settings-line-login-area');renderLineLoginSettings('person-line-login-area');}catch(e){}
+      }
+    }});
 }
 /* ほかのスマホを止めるとき、なくしたスマホのLINEから入り直せないよう、LINEでログインのつながりも外す。
-   パスワードを変える前(本人確認の直後の鍵)に行う。知らせる文を返す(つないでいなければ空) */
-async function deviceStopLineLogin(){
+   1回目はパスワードを変える前(本人確認の直後の鍵)、だめなら変えたあと(新しいパスワードで確かめ直した鍵)にもう1回。
+   返す値: ''(つないでいない・使っていない) / 'done'(外した) / 'retry'(1回目がだめ) / 'failed'(2回目もだめ) */
+async function deviceStopLineLogin(second){
   if(!window.MAINICO_LINE_AUTH_URL||typeof lineLoginService!=='function'||!auth.currentUser)return '';
   try{
     const snap=await db.collection('lineLoginAccounts').doc(auth.currentUser.uid).get({source:'server'});
     if(!snap.exists)return '';
     await lineLoginService().unlink();
-    return 'なくしたスマホのLINEから入り直せないよう、「LINEでログイン」のつながりも外しました。使う場合は、このスマホの設定から、もう一度つないでください。';
+    lineUnlinkPending(false);
+    return 'done';
   }catch(e){
-    return '「LINEでログイン」のつながりを外せませんでした。なくしたスマホのLINEから入れないよう、設定の「LINEでログインの連携を解除する」から外してください。';
+    return second?'failed':'retry';
   }
+}
+/* LINEでログインの解除が残っている印(この端末・この利用者だけ)。解除できるまで設定に案内を出す */
+function lineUnlinkPending(on){
+  const key='mainicoLineUnlinkPending-'+(auth.currentUser?auth.currentUser.uid:'');
+  try{
+    if(on===undefined)return localStorage.getItem(key)==='1';
+    if(on)localStorage.setItem(key,'1');else localStorage.removeItem(key);
+  }catch(e){}
+  return !!on;
 }
 /* ご本人のスマホは、復旧の設定状態を家族に知らせる(状態が変わったときだけ記録する) */
 async function reportDeviceRecovery(retry){
