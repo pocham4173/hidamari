@@ -2,15 +2,15 @@
    - 通信できるときは常に最新を取りに行き、取れたものを端末に控えておく(ネット優先)。
    - 電波がないときは控えを使う。アプリの画面が開けないときは offline.html(もしもの控え)を出す。
    - 共有記録(Firestore)の通信は控えない。控えるのは画面の部品だけ。 */
-const CACHE = 'mainico-shell-v8';  /* 2026-10-05 ほかのスマホを止める・家族の1分アンケート */
+const CACHE = 'mainico-shell-v10';  /* 2026-10-06 LINEでログイン + 安全のお知らせ */
 const SHELL = [
   './', 'index.html', 'offline.html', 'help.html', 'privacy.html', 'manifest.json',
   'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
   'ueda-centers.js', 'mainico-config.js', 'consent.js', 'consent-ui.js', 'account-recovery.js',
   'account-deletion.js', 'household-deletion.js', 'household-ui.js', 'medicine-notebook.js',
   'medicine-notebook.css', 'notebook-integration.js', 'person-speech.js', 'person-button-feedback.js',
-  'family-connection.js', 'person-tasks.js', 'line-notify.js', 'hitokoe.js', 'family-guide.js', 'owner-transfer.js',
-  'qr-scan.js', 'device-stop.js', 'family-survey.js'
+  'family-connection.js', 'person-tasks.js', 'line-notify.js', 'line-login.js', 'line-login-ui.js', 'hitokoe.js', 'family-guide.js', 'owner-transfer.js',
+  'qr-scan.js', 'device-stop.js', 'family-survey.js', 'security-notices.js'
 ];
 /* 他のサイトから読む部品のうち、控えてよいもの(Firebaseの部品とフォント) */
 const CROSS_OK = [/^https:\/\/www\.gstatic\.com\/firebasejs\//, /^https:\/\/fonts\.(googleapis|gstatic)\.com\//];

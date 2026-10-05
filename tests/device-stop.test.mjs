@@ -75,4 +75,57 @@ async function run(u, values, done) {
   assert.match(fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8'), /'device-stop\.js'/);
   assert.match(fs.readFileSync(new URL('../help.html', import.meta.url), 'utf8'), /ほかのスマホを止める/);
 }
-console.log('ほかのスマホを止める: 入力の確かめ・本人確認と変更・違うパスワード・足りない入力・復旧なし・つなぎ込み 6項目 passed');
+// 7. 後始末(LINEでログインの解除)は、本人確認のあと・パスワードを変える前。失敗しても止めることは続ける。
+//    1回目がだめ('retry')なら、変えたあとに新しいパスワードで確かめ直してから、もう1回(afterChange)
+{
+  const runWith = async (before, opts = {}) => {
+    const u = user(opts.user);
+    const dom = new JSDOM('<body></body>');
+    const doc = dom.window.document;
+    const after = [];
+    D.open({ document: doc, user: () => u, credential: (e, p) => ({ e, p }),
+      beforeChange: async () => { u.calls.push(['before']); return before(); },
+      afterChange: async (ok) => { u.calls.push(['after', ok]); after.push(ok); } });
+    const q = (s) => doc.querySelector(s);
+    q('[data-ds="current"]').value = 'now-password'; q('[data-ds="next"]').value = 'new-password-1'; q('[data-ds="again"]').value = 'new-password-1';
+    q('[data-ds-act="stop"]').dispatchEvent(new dom.window.Event('click'));
+    for (let i = 0; i < 8; i++) await new Promise((r) => setTimeout(r, 0));
+    return { u, after, state: q('[data-ds-state]').textContent };
+  };
+  // 1回目で外せた → 変えたあとは何もしない
+  let r = await runWith(async () => 'done');
+  assert.deepEqual(r.u.calls.map((c) => c[0]), ['reauth', 'before', 'update', 'token']);
+  // 1回目がだめ → 変えたあとに、新しいパスワードで確かめ直してから、もう1回
+  r = await runWith(async () => 'retry');
+  assert.deepEqual(r.u.calls.map((c) => c[0]), ['reauth', 'before', 'update', 'token', 'reauth', 'after']);
+  assert.deepEqual(r.u.calls[4][1], { e: 'rie@example.com', p: 'new-password-1' }, '新しいパスワードで確かめ直す');
+  assert.deepEqual(r.after, [true]);
+  assert.match(r.state, /止めました/);
+  // 1回目で例外 → 同じく、もう1回
+  r = await runWith(async () => { throw new Error('offline'); });
+  assert.deepEqual(r.u.calls.map((c) => c[0]), ['reauth', 'before', 'update', 'token', 'reauth', 'after']);
+  // 確かめ直しができなかった → afterChange(false) を呼び、止めることは成功のまま
+  {
+    const u = user();
+    let n = 0;
+    u.reauthenticateWithCredential = async (c) => { u.calls.push(['reauth', c]); if (++n === 2) throw new Error('x'); };
+    const dom = new JSDOM('<body></body>'); const doc = dom.window.document; const after = [];
+    D.open({ document: doc, user: () => u, credential: (e, p) => ({ e, p }), beforeChange: async () => 'retry', afterChange: async (ok) => { after.push(ok); } });
+    const q = (s) => doc.querySelector(s);
+    q('[data-ds="current"]').value = 'now-password'; q('[data-ds="next"]').value = 'new-password-1'; q('[data-ds="again"]').value = 'new-password-1';
+    q('[data-ds-act="stop"]').dispatchEvent(new dom.window.Event('click'));
+    for (let i = 0; i < 8; i++) await new Promise((r2) => setTimeout(r2, 0));
+    assert.deepEqual(after, [false]);
+    assert.match(q('[data-ds-state]').textContent, /止めました/);
+  }
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /beforeChange:async\(\)=>\{lineState=await deviceStopLineLogin\(false\);return lineState;\}/);
+  assert.match(html, /afterChange:async\(reauthOk\)=>\{lineState=reauthOk\?await deviceStopLineLogin\(true\):'failed';\}/);
+  assert.match(html, /async function deviceStopLineLogin\(second\)\{\n  if\(!window\.MAINICO_LINE_AUTH_URL/, 'LINEでログインが未設定なら何もしない');
+  assert.match(html, /return second\?'failed':'retry';/);
+  assert.match(html, /if\(lineState==='failed'\)\{\n        lineUnlinkPending\(true\);/, '2回ともだめなら、解除できるまで設定に案内を出す');
+  const ui = fs.readFileSync(new URL('../line-login-ui.js', import.meta.url), 'utf8');
+  assert.match(ui, /if\(!linked&&pending\)lineUnlinkPending\(false\);/, '解除できたら案内を消す');
+  assert.match(ui, /if\(linked&&pending\)\{/);
+}
+console.log('ほかのスマホを止める: 入力の確かめ・本人確認と変更・違うパスワード・足りない入力・復旧なし・つなぎ込み・LINEでログインの解除の順番と再試行 7項目 passed');

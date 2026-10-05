@@ -24,7 +24,7 @@
 (function(global){
   'use strict';
   var HOURS=[9,10,11,12], DEFAULT_HOUR=11;
-  var NOT_ACTIVITY={'hitokoe-consent':1,'device-recovery':1,'person-ui-config':1};
+  var NOT_ACTIVITY={'hitokoe-consent':1,'device-recovery':1,'person-ui-config':1,'line-login-signin':1,'device-reconnect':1};
   var WD='日月火水木金土';
 
   function millis(v){

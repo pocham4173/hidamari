@@ -33,14 +33,19 @@ jobs:
       - name: 基本検査を実行
         run: node .github/scripts/check-basics.mjs
 
-      - name: LINE連携・送信失敗・同意取り消しの検査
-        run: node tests/line-worker.test.mjs
+      - name: LINE連携・送信失敗・同意取り消し・LINEでログインの検査
+        run: |
+          node tests/line-worker.test.mjs
+          node tests/line-login-worker.test.mjs
+          node tests/line-login-cloud-harness.test.mjs
+          node tests/ops-scripts.test.mjs
 
       - name: ひと声のきっかけの検査
         run: |
           node tests/hitokoe.test.mjs
           node tests/app-dialog.test.mjs
           node tests/invite-qr.test.mjs
+          node tests/family-guide.test.mjs
 
       - name: 家族ホーム・通信・伝言の回帰検査
         run: node tests/home-reliability.test.mjs
@@ -86,4 +91,7 @@ jobs:
           node tests/family-only-records.test.mjs
           node tests/consent.test.mjs
           node tests/consent-routing.test.mjs
+          node tests/person-ui.test.mjs
+          node tests/owner-transfer.test.mjs
           node tests/ueda-centers.test.mjs
+          node tests/line-login-client.test.mjs

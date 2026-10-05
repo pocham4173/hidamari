@@ -245,8 +245,10 @@ service cloud.firestore {
           && request.resource.data.uid == request.auth.uid
           && validEventType(groupId, request.resource.data);
         allow update: if false;
+        // 安全のお知らせ(LINEでログイン・再接続QR。送信役だけが書く)は、書いた人も消せない(家庭の削除のときだけ消える)
         allow delete: if deletingOwner(groupId) || (usableAccount() && isApproved(groupId)
-          && resource.data.uid == request.auth.uid);
+          && resource.data.uid == request.auth.uid
+          && !(resource.data.get('type', '') in ['line-login-signin', 'device-reconnect']));
       }
 
       /* 予定の追加項目(2026-09-26): 場所(60文字まで)と、LINEで知らせる日時。
@@ -478,6 +480,19 @@ service cloud.firestore {
       allow list: if false;
       allow create, update: if false;
       allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // LINEでログイン(2026-10-01)。つながりの記録・手続きは送信役(サーバー)だけが作成・変更・削除する。
+    // 本人は自分のアカウントがLINEでログインできるか(とその日時)だけを見られる。LINEの識別子は持たない。
+    match /lineLoginAccounts/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+    match /lineLoginLinks/{lineKey} {
+      allow read, write: if false;
+    }
+    match /lineAuthTx/{txId} {
+      allow read, write: if false;
     }
 
     match /invites/{code} {

@@ -81,6 +81,9 @@ try {
   await denied('17. メール確認が済んでいないと受け取れない', () => take(as('heir', fresh({ email_verified: false })), 'heir'));
   await denied('18. パスワードの入れ直しから5分を過ぎると受け取れない', () => take(as('heir', fresh({ auth_time: now() - 6 * 60 })), 'heir'));
   await denied('19. 管理者をほかの人にすり替えられない', () => take(as('heir'), 'other'));
+  // LINEでログイン(カスタムトークン)のセッション: メール確認済み・直後のログインでも、パスワードでの入れ直しなしでは受け取れない
+  await denied('19b. LINEでログインしただけ(sign_in_provider=custom)では受け取れない', () =>
+    take(as('heir', fresh({ firebase: { sign_in_provider: 'custom', identities: { email: ['heir@example.com'] } } })), 'heir'));
   await denied('20. 依頼を残したまま管理者だけ変えることはできない(片方だけ残らない)', () =>
     updateDoc(g(as('heir')), { createdBy: 'heir' }));
   await denied('21. 受け取りと同時に、ほかの項目は変えられない', () => take(as('heir'), 'heir', 'home', { deletionState: 'deleting' }));
