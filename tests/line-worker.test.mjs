@@ -26,7 +26,8 @@ const cmp = (a, b) => {
   return NaN;
 };
 const pushes = [], replies = [], keys = [];
-let pushFailure=false, lostResponse=false, requests=0;
+let pushFailure=false, lostResponse=false, requests=0, failTo='';
+const seen=[];   // 見回りで読み書きした文書の場所(通信の節約の確認用)
 let quota={type:'limited',value:200}, usage=0;
 const acceptedKeys=new Set();
 globalThis.fetch = async (url, opt = {}) => {
@@ -39,7 +40,7 @@ globalThis.fetch = async (url, opt = {}) => {
   if (url === 'https://api.line.me/v2/bot/message/quota/consumption') return json({ totalUsage: usage });
   if (url === 'https://api.line.me/v2/bot/message/push') {
     keys.push(opt.headers['x-line-retry-key']);
-    if(pushFailure) return json({},500);
+    if(pushFailure || (failTo && body.to===failTo)) return json({},500);
     if(acceptedKeys.has(keys.at(-1))) return new Response('{}',{status:409,headers:{'x-line-accepted-request-id':'accepted'}});
     acceptedKeys.add(keys.at(-1)); pushes.push(body); usage++;
     if(lostResponse) {lostResponse=false;throw new Error('lost response');}
@@ -52,6 +53,11 @@ globalThis.fetch = async (url, opt = {}) => {
   assert.equal(opt.headers.authorization, 'Bearer gtok');
   const u = new URL(url);
   let rest = decodeURIComponent(u.pathname).slice(('/v1/' + ROOT).length).replace(/^\//, '');
+  seen.push((opt.method || 'GET') + ' ' + rest);
+  if (rest === ':batchGet') {
+    // 本物と同じく、文書ごとに found(ある)か missing(ない)を返す
+    return json(body.documents.map((name) => { const path = name.slice(ROOT.length + 1); return db.has(path) ? { found: docJson(path) } : { missing: name }; }));
+  }
   if (rest === ':commit') {
     for(const w of body.writes){
       const path=(w.delete||w.update.name).slice(ROOT.length+1), pre=w.currentDocument;
@@ -628,6 +634,9 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   for (let i = 0; i < 5; i++) await said('Ubad', '運営者登録 ちがう' + i);
   assert.match(await said('Ubad', '運営者登録 さくら2026'), /試せる回数を超えました/);
   assert.equal(db.get('ops/operator').fields.lineUserId.stringValue, 'Uop', '運営者は変わらない');
+  // ほかの人が5回まちがえても、運営者本人は締め出されない(回数は人ごと)
+  assert.match(await said('Uop', '運営者登録 さくら2026'), /運営者として登録しました/);
+  assert.ok(!JSON.stringify(db.get('ops/operatorAttempts').fields).includes('Ubad'), 'LINEの利用者番号そのものは保存しない');
   delete env.OPERATOR_PASSPHRASE;
   // 5. 3日目・8週目の判定
   put('usageStats/uX', { groupId: S('g5'), honnin: { booleanValue: true }, start: S('2026-08-01'), through: S('2026-10-06'),
@@ -654,7 +663,10 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   for (const id of ['a7', 'b7', 'c7']) put('groups/g7/members/' + id, { name: S('家族' + id), status: S('approved') });
   const I = (n) => ({ integerValue: String(n) });
   const month = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 7);
-  const sv = (uid, m, kind, absences, burden) => put('surveyAnswers/' + uid + '_' + m, { uid: S(uid), groupId: S('g7'), month: S(m), kind: S(kind), absences: I(absences), burden: S(burden), answeredAt: T(new Date()) });
+  // 答えた時刻は、その月の中(サーバーの時刻)
+  const sv = (uid, m, kind, absences, burden, at = new Date(m + '-15T03:00:00Z')) => put('surveyAnswers/' + uid + '_' + m, { uid: S(uid), groupId: S('g7'), month: S(m), kind: S(kind), absences: I(absences), burden: S(burden), answeredAt: T(at) });
+  // 月と答えた時刻が合わない答え(端末の時計のずれ・前の月の分をまとめて書いたもの)は数えない
+  sv('d7', '2026-07', 'baseline', 4, '', new Date()); sv('d7', '2026-06', 'monthly', 4, 'more', new Date());
   sv('a7', '2026-08', 'baseline', 2, ''); sv('b7', '2026-08', 'baseline', 4, ''); sv('c7', '2026-08', 'baseline', -1, '');
   sv('a7', '2026-09', 'monthly', 1, 'same'); sv('a7', month, 'monthly', 0, 'less'); sv('b7', month, 'monthly', 2, 'less'); sv('c7', month, 'monthly', -1, 'more');
   env.OPERATOR_PASSPHRASE = 'さくら';
@@ -714,6 +726,22 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   const sentC = pushes.slice(before).filter((p) => /^U[om]6$/.test(p.to)).map((p) => p.to).sort();
   assert.deepEqual(sentC, ['Um6', 'Uo6'], '1人1通ずつ(応答が失われても二重に届かない)');
   assert.equal(db.get('groups/g6/yotei/c2').fields.notificationStatus.stringValue, 'accepted');
+  // まとめの中身が次の回に変わっても、受け付け済みの予定は同じ人に二度送らない
+  // (あにへの送信だけ失敗 → 予定は送信待ちのまま → 次の回に、りえだけの予定が増える)
+  yo('e1', '重複なしA', '10:00'); yo('e2', '重複なしB', '11:00');
+  const be = pushes.length;
+  failTo = 'Um6'; await tick(); failTo = '';
+  assert.equal(pushes.slice(be).filter((p) => p.to === 'Uo6').length, 1, 'りえには2件を1通で送った');
+  assert.ok(db.get('groups/g6/yotei/e1').fields.notifyAt?.timestampValue, 'あにの分が残るので送信待ちのまま');
+  yo('e3', '重複なしC', '12:00', { notifyTo: { arrayValue: { values: [S('u:o6')] } } });
+  const be2 = pushes.length;
+  for (let i = 0; i < 3 && ['e1', 'e2', 'e3'].some((k) => db.get('groups/g6/yotei/' + k).fields.notifyAt?.timestampValue); i++) await tick();
+  const toO2 = pushes.slice(be2).filter((p) => p.to === 'Uo6').map((p) => p.messages[0].text);
+  assert.equal(toO2.length, 1);
+  assert.ok(toO2[0].includes('重複なしC') && !toO2[0].includes('重複なしA') && !toO2[0].includes('重複なしB'), 'りえには増えた予定だけ: ' + toO2[0]);
+  const toM2 = pushes.slice(be2).filter((p) => p.to === 'Um6').map((p) => p.messages[0].text);
+  assert.ok(toM2.length === 1 && toM2[0].includes('重複なしA') && toM2[0].includes('重複なしB'), 'あにには2件を1通で');
+  for (const k of ['e1', 'e2', 'e3']) assert.equal(db.get('groups/g6/yotei/' + k).fields.notificationStatus.stringValue, 'accepted', k);
   // 上限: この回に送る通数(受け取る人の数)で判断する
   put('lineUsage/g6', { day: S(new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)), count: { integerValue: '19' } });
   yo('d1', '上限の予定A', '10:00'); yo('d2', '上限の予定B', '11:00');
@@ -722,5 +750,17 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.equal(db.get('groups/g6/yotei/d1').fields.notificationStatus.stringValue, 'limited');
   assert.equal(db.get('groups/g6/yotei/d2').fields.notificationStatus.stringValue, 'limited');
   db.delete('groups/g6'); for (const k of [...db.keys()]) if (k.startsWith('groups/g6/')) db.delete(k);
-  console.log('予定のお知らせを1人1通にまとめる(件数・時刻の順・選ばれた予定だけ・通数・送り直し・二重なし・上限) passed');
+  console.log('予定のお知らせを1人1通にまとめる(件数・時刻の順・選ばれた予定だけ・通数・送り直し・二重なし・中身が変わっても二重なし・上限) passed');
+}
+// 利用数の集計: その日の分が全世帯で済んだら、次の回からは世帯ごとに読み直さない(毎回の通信を節約)。
+// 期限切れの記録の片付けは、ほかの見直しより先に行う
+{
+  db.delete('ops/usageProgress');
+  for (let i = 0; i < 12 && !db.has('ops/usageProgress'); i++) await tick();
+  assert.ok(db.has('ops/usageProgress'), '全世帯の集計が済んだ印');
+  put('lineLinkCodes/old', { expiresAt: T(new Date(Date.now() - 60000)) });
+  seen.length = 0; await tick();
+  assert.ok(!seen.some((x) => /^GET usageStats\//.test(x)), '集計の済んだ日は世帯ごとに読まない: ' + seen.filter((x) => x.includes('usageStats')).join(','));
+  assert.ok(!db.has('lineLinkCodes/old'), '期限切れの記録は消える');
+  console.log('見回りの通信の節約(集計の済んだ日・期限切れの片付けが先) passed');
 }
