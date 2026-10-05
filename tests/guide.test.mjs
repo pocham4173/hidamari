@@ -13,4 +13,8 @@ const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 assert.match(html, /<button class="set-btn" type="button" onclick="openRecoveryMenu\(\)">復旧を設定する<\/button>\n    <\/div>\n    <a class="guide-link" href="guide\/"/);
 assert.match(html, /<div class="ttl">その他の設定<\/div>\n  <a class="guide-link" href="guide\/"/);
 assert.match(html, /<a class="consent-back" href="guide\/" target="_blank" rel="noopener">📷 写真つきの使い方<\/a>/, '入口からも');
+// 準備中の「LINEでログイン」は、送信役の場所が設定されるまでメニューに出さない
+assert.match(html, /id="menu-line-login" data-line-login-only hidden/);
+assert.match(html, /<div class="set-sec" data-line-login-only hidden><h4>LINEでログイン/);
+assert.match(html, /document\.querySelectorAll\('\[data-line-login-only\]'\)\.forEach\(el=>\{el\.hidden=!window\.MAINICO_LINE_AUTH_URL;\}\);/);
 console.log('使い方ガイド: 写真・注意事項・章・メニューから開ける passed');

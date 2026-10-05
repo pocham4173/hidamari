@@ -1304,7 +1304,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <div class="set-sec"><h4>LINEで予定のお知らせ</h4>
     <div id="person-line-area"></div>
   </div>
-  <div class="set-sec"><h4>LINEでログイン（いつもの画面に戻る方法）</h4>
+  <div class="set-sec" data-line-login-only hidden><h4>LINEでログイン（いつもの画面に戻る方法）</h4>
     <div id="person-line-login-area"></div>
   </div>
   <div class="set-sec" style="border-top:none;"><h4>声のお返事（読み上げ）</h4>
@@ -1641,7 +1641,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       </div>
     </details>
 
-    <details class="set-menu" id="menu-line-login" ontoggle="if(this.open&&typeof renderLineLoginSettings==='function')renderLineLoginSettings('settings-line-login-area')">
+    <details class="set-menu" id="menu-line-login" data-line-login-only hidden ontoggle="if(this.open&&typeof renderLineLoginSettings==='function')renderLineLoginSettings('settings-line-login-area')">
       <summary>LINEでログイン<span class="set-menu-sub">いつもの画面に戻る方法</span></summary>
       <div class="set-menu-body">
         <div id="settings-line-login-area"></div>
@@ -2254,6 +2254,8 @@ if(window.MAINICO_RECAPTCHA_SITE_KEY){
 }
 const db = previewApp.firestore();
 window.db = db;
+/* LINEでログインは、送信役の場所が設定されるまで(準備中のあいだ)メニューに出さない */
+document.querySelectorAll('[data-line-login-only]').forEach(el=>{el.hidden=!window.MAINICO_LINE_AUTH_URL;});
 window.mainicoStartupStage='ログインの準備中';
 if('serviceWorker' in navigator){
   try{ navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('service worker',e); }); }
