@@ -19,6 +19,7 @@
  *       文面に名前・様子は書かない。操作があったかは、その日の記録の「種類と書いた人」だけで判断する(中身は読まない)。
  *     - 利用数の集計(2026-10-04): 世帯ごとに、日ごとの「ご本人の操作の数」と「家族の記録の数」だけを数える
  *       (記録の中身・名前は読まない)。運営者がLINEで「集計」と送ると、全体の数字だけを返事する。
+ *     - 家族の1分アンケート(2026-10-05)の答えも、全体の数字だけを「集計」に足す。参加をやめた人などの答えは後片付けで消す。
  *  3. 月200通(無料プラン)を守る上限ガード
  *     - 残りが TAG_RESERVE 通以下になったら予定のお知らせを止め、タグの分を残す
  *     - 家庭ごとに1日 HOUSEHOLD_DAILY_LIMIT 通まで(タグは止めずに数だけ数える)
@@ -63,7 +64,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined']);
-const VERSION_TEXT = '版：2026-10-04 ひと声のLINE・利用数の集計';
+const VERSION_TEXT = '版：2026-10-05 家族のアンケートの集計';
 
 export default {
   async fetch(request, env, ctx) {
@@ -463,6 +464,15 @@ async function runNotifications(env) {
       const group = typeof d.fields.groupId === 'string' ? await fs.get('groups/' + d.fields.groupId) : null;
       if (!group || group.fields.deletionState === 'deleting') await fs.delete(d.path);
     }
+    // アンケートの答えを1件ずつ見直す(家庭がなくなった・削除中・参加をやめた・アカウントを削除した人の答えは消す)
+    const answers = await fs.list('surveyAnswers', ['groupId', 'uid']);
+    if (answers.length) {
+      const d = answers[Math.floor(now.getTime()/900000)%answers.length];
+      const gid = d.fields.groupId, uid = d.fields.uid;
+      const group = typeof gid === 'string' && gid ? await fs.get('groups/' + gid) : null;
+      const member = group && group.fields.deletionState !== 'deleting' && typeof uid === 'string' && uid ? await fs.get('groups/' + gid + '/members/' + uid) : null;
+      if (!member || await fs.get('accountClosures/' + uid)) await fs.delete(d.path);
+    }
     for (const collectionId of ['lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
       const expired = await fs.query('', {from:[{collectionId}],
         where:{fieldFilter:{field:{fieldPath:'expiresAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},limit:3});
@@ -730,7 +740,29 @@ function usageSummary(docs, now) {
   ].join('\n');
 }
 async function usageReport(fs, now) {
-  return usageSummary(await fs.list('usageStats', ['honnin', 'start', 'days']), now);
+  const text = usageSummary(await fs.list('usageStats', ['honnin', 'start', 'days']), now);
+  return text + '\n\n' + surveySummary(await fs.list('surveyAnswers', ['kind', 'month', 'absences', 'burden', 'uid']), now);
+}
+/* 家族の1分アンケート(2026-10-05)の全体の数字。答えた人の名前・家庭は出さない */
+function surveySummary(docs, now) {
+  const rows = docs.map((d) => d.fields).filter((x) => typeof x.uid === 'string' && typeof x.month === 'string');
+  if (!rows.length) return '📝 家族のアンケート：まだ答えがありません';
+  const month = jstDateString(now).slice(0, 7);
+  const base = rows.filter((x) => x.kind === 'baseline');
+  const monthly = rows.filter((x) => x.kind === 'monthly');
+  // 回数の選択肢: 0・1・2(2〜3回)・4(4回以上)。-1(働いていない・答えない)は数えない
+  const avg = (list) => { const v = list.map((x) => Number(x.absences)).filter((n) => n >= 0); return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) + '回（' + v.length + '人）' : '—'; };
+  // 一人ひとりの、いちばん新しい毎月の答え
+  const latest = new Map();
+  for (const x of monthly) if (!latest.has(x.uid) || latest.get(x.uid).month < x.month) latest.set(x.uid, x);
+  const last = [...latest.values()];
+  const burden = last.filter((x) => ['less', 'same', 'more'].includes(x.burden));
+  const less = burden.filter((x) => x.burden === 'less').length;
+  return ['📝 家族のアンケート（答えた家族：' + new Set(rows.map((x) => x.uid)).size + '人・今月の答え：' + rows.filter((x) => x.month === month).length + '件）',
+    '確認の負担が「減った」：' + (burden.length ? less + '/' + burden.length + '（' + Math.round(less / burden.length * 100) + '%）' : '—'),
+    '仕事を休んだ・早退した回数の平均（2〜3回は2、4回以上は4として計算）',
+    '　使い始める前の1か月：' + avg(base),
+    '　いちばん新しい1か月：' + avg(last)].join('\n');
 }
 /* 運営者の登録: Cloudflare に入れた合言葉と同じなら、このLINEを運営者にする(1日5回まで試せる) */
 async function registerOperator(env, fs, given, lineUserId) {
