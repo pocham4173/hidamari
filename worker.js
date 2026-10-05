@@ -10,6 +10,7 @@
  *  2. 15分ごとの見回り（Cron）
  *     - 「LINEで知らせる日時」を過ぎた予定を探し、その家庭でLINE連携した
  *       承認済みの人へ「予定のお知らせ」を送る。送ったら予定に送信済みの印を付ける。
+ *       同じ回に送る時刻になった予定は、受け取る人ごとに1通にまとめる(2026-10-05)。
  *       予定に notifyTo(知らせる相手)があれば、その人だけに送る。招待した送信先('r:〜')へは、
  *       notifyTo で選ばれた予定だけを送る(選んでいない予定・おまもりタグは送らない)。
  *       送るのは、予定を登録した家族が「アプリを使わない人へ送る」ことに同意しているときだけ。
@@ -64,7 +65,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined']);
-const VERSION_TEXT = '版：2026-10-05 家族のアンケートの集計';
+const VERSION_TEXT = '版：2026-10-05 予定を1人1通に・家族のアンケートの集計';
 
 export default {
   async fetch(request, env, ctx) {
@@ -341,95 +342,7 @@ async function runNotifications(env) {
         where: {fieldFilter:{field:{fieldPath:'notifyAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},
         orderBy: [{field:{fieldPath:'notifyAt'},direction:'ASCENDING'}], limit:10,
       });
-      for (const y of due) {
-        const at = y.fields.notifyAt;
-        if (!(at instanceof Date)) continue;
-        if (now.getTime() - at.getTime() > LATE_LIMIT_MS) {
-          await fs.patch(y.path, {notifyAt:null, notifiedAt:null, notificationStatus:'expired',
-            notifyLog: appendNotifyLog(y.fields.notifyLog, {status:'expired', at:now, scheduledAt:at})},
-            ['notifyAt','notifiedAt','notificationStatus','notifyLog'], y.updateTime);
-          continue;
-        }
-        const allLinks = await fs.query('', {from:[{collectionId:'lineLinks'}],
-          where:fieldEq('groupId',{stringValue:g.id})});
-        // 知らせる相手(notifyTo)。無い・null = つないだ家族全員(今までどおり)。
-        // 'u:<uid>' = 家族、'r:<送信先>' = 招待した送信先(選ばれた予定だけに送る)
-        const notifyTo = Array.isArray(y.fields.notifyTo) ? y.fields.notifyTo.filter(v => typeof v === 'string') : null;
-        const links = (notifyTo ? allLinks.filter(l => notifyTo.includes('u:' + l.id)) : allLinks)
-          .map(l => ({kind:'u', id:l.id, path:l.path, fields:l.fields}));
-        let wanted = notifyTo ? notifyTo.filter(v => v.startsWith('r:')).map(v => v.slice(2)) : [];
-        // 招待した送信先へは、予定を登録した家族が「アプリを使わない人へ送る」ことに同意しているときだけ送る
-        const shareConsentPath = g.path + '/lineShareConsents/' + String(y.fields.uid || '');
-        if (wanted.length && !(typeof y.fields.uid === 'string' && y.fields.uid && await fs.get(shareConsentPath))) wanted = [];
-        if (wanted.length) {
-          const ids = await fs.query('', {from:[{collectionId:'lineRecipientIds'}],
-            where:fieldEq('groupId',{stringValue:g.id})});
-          for (const d of ids) if (wanted.includes(d.id)) links.push({kind:'r', id:d.id, path:d.path, fields:d.fields});
-        }
-        // 上限ガード: 月の残りが少ない・この家庭の今日の分を使い切ったときは送らず、理由を記録に残す
-        const recipients = new Set(links.map(l => l.fields.lineUserId).filter(v => typeof v === 'string' && v)).size;
-        const blocked = recipients ? await book.scheduleBlocked(g.id, recipients) : '';
-        if (blocked) {
-          await fs.patch(y.path, {notifyAt:null, notifiedAt:null, notificationStatus:'limited',
-            notifyLog: appendNotifyLog(y.fields.notifyLog, {status:'limited', reason:blocked, at:now, scheduledAt:at})},
-            ['notifyAt','notifiedAt','notificationStatus','notifyLog'], y.updateTime);
-          continue;
-        }
-        const members = await fs.list(g.path + '/members', ['name']);
-        const owner = members.find(m => m.id === y.fields.uid);
-        const text = buildMessage(y.fields, owner && owner.fields.name || '', now, g.id, y.id);
-        let complete = true, accepted = 0;
-        const seen = new Set();
-        const start = links.length ? Math.floor(now.getTime()/900000) % links.length : 0;
-        for (const link of [...links.slice(start), ...links.slice(0,start)]) {
-          const to = link.fields.lineUserId;
-          if (typeof to !== 'string' || !to || seen.has(to)) continue;
-          // The same schedule revision and recipient always reuse one retry key.
-          const key = await deliveryKey(y.path + '\n' + y.updateTime + '\n' + to);
-          const receiptPath = 'lineDeliveryReceipts/' + key;
-          let receipt = await fs.get(receiptPath);
-          if (receipt && receipt.fields.acceptedAt instanceof Date) {
-            seen.add(to); accepted++; continue;
-          }
-          // Recheck server state immediately before each external transmission.
-          if (link.kind === 'r') {
-            // 招待した送信先: 家族が削除・LINEで停止していないこと(登録済みの送信先の控えと同じ相手であること)
-            const rec = await fs.get('lineRecipients/' + link.id);
-            if (!rec || rec.fields.groupId !== g.id || rec.fields.status !== 'joined') continue;
-            if (!await fs.get(shareConsentPath)) continue;   // 同意をやめた後は送らない
-            const currentIds = await fs.get(link.path);
-            if (!currentIds || currentIds.fields.groupId !== g.id || currentIds.fields.lineUserId !== to) continue;
-          } else {
-            if (!await approvedMember(fs, g.id, link.id)) continue;
-            const currentLink = await fs.get(link.path);
-            if (!currentLink || currentLink.fields.groupId !== g.id || currentLink.fields.lineUserId !== to) continue;
-          }
-          const currentSchedule = await fs.get(y.path);
-          if (!currentSchedule || currentSchedule.updateTime !== y.updateTime) {complete=false;break;}
-          // Persist one immutable payload before sending, including across midnight/restarts.
-          if (!receipt) {
-            await fs.commit([{update:{name:fs.root+'/'+receiptPath,
-              fields:toFields({text,expiresAt:new Date(at.getTime()+13*3600000)})},
-              currentDocument:{exists:false}}]);
-            receipt = await fs.get(receiptPath);
-          }
-          if (!receipt || typeof receipt.fields.text !== 'string') {complete=false;continue;}
-          seen.add(to);
-          const r = await push(env, fs, to, receipt.fields.text, key);
-          if (!r) {complete=false;continue;}
-          if (r === 'sent') { sent++; await book.count(g.id); }
-          accepted++;
-          // A crash before this write is safe: LINE recognizes the same retry key.
-          await fs.set(receiptPath, {acceptedAt:new Date(), expiresAt:new Date(at.getTime()+13*3600000)});
-        }
-        if (complete && accepted > 0) {
-          const sentAt = new Date();
-          await fs.patch(y.path, {notifyAt:null, notifiedAt:sentAt, notificationStatus:'accepted',
-            notifyLog: appendNotifyLog(y.fields.notifyLog, {status:'accepted', at:sentAt, scheduledAt:at, count:accepted})},
-            ['notifyAt','notifiedAt','notificationStatus','notifyLog'], y.updateTime);
-        }
-        // No eligible recipient or failed delivery: keep notifyAt for the next run.
-      }
+      sent += await sendDueSchedules(env, fs, g, due, now, book);
     }
     // ひと声のきっかけ(予定のお知らせの後。15分遅れても困らないため)
     fs.softLimit = HITOKOE_REQUEST_BUDGET;
@@ -886,6 +799,169 @@ function buildTagMessage(f, at) {
     '', 'まいにこで確認する', APP_URL + '?openExternalBrowser=1'].join('\n');
 }
 
+/* ================= 予定のお知らせ(2026-10-04 まとめて1通) =================
+ * 同じ見回りで送る時刻になった予定は、受け取る人ごとに1通にまとめる(事業計画書 第2版「予定の知らせは前日にまとめて1通」)。
+ * 例: 「前日の夜7時」にした明日の予定が3件あれば、受け取る人には1通で届く。1件だけのときは今までと同じ文面・同じ再送キー。
+ * 送る前に毎回、受け取る人(承認済み・連携が同じ相手・招待した送信先は登録済みで家族の同意あり)と予定(変わっていない)を確かめ直す。
+ * 上限ガードは、この家庭のこの回の「通数(受け取る人の数)」で判断し、超えるときはこの回の予定すべてを送らずに理由を残す。 */
+async function sendDueSchedules(env, fs, g, due, now, book) {
+  let sent = 0;
+  const live = [];
+  for (const y of due) {
+    const at = y.fields.notifyAt;
+    if (!(at instanceof Date)) continue;
+    if (now.getTime() - at.getTime() > LATE_LIMIT_MS) {
+      await fs.patch(y.path, {notifyAt:null, notifiedAt:null, notificationStatus:'expired',
+        notifyLog: appendNotifyLog(y.fields.notifyLog, {status:'expired', at:now, scheduledAt:at})},
+        ['notifyAt','notifiedAt','notificationStatus','notifyLog'], y.updateTime);
+      continue;
+    }
+    live.push(y);
+  }
+  if (!live.length) return 0;
+  const allLinks = await fs.query('', {from:[{collectionId:'lineLinks'}], where:fieldEq('groupId',{stringValue:g.id})});
+  const consentCache = new Map();
+  const shareConsent = async (uid) => {
+    if (typeof uid !== 'string' || !uid) return false;
+    if (!consentCache.has(uid)) consentCache.set(uid, !!await fs.get(g.path + '/lineShareConsents/' + uid));
+    return consentCache.get(uid);
+  };
+  let recipientIds = null;
+  // 受け取る人(LINEの利用者番号)ごとに、送る予定と、その予定で選ばれた理由(家族・招待した送信先)を集める
+  const byTo = new Map();
+  const plans = new Map();   // 予定の path → {y, accepted, complete}
+  for (const y of live) {
+    // 知らせる相手(notifyTo)。無い・null = つないだ家族全員(今までどおり)。
+    // 'u:<uid>' = 家族、'r:<送信先>' = 招待した送信先(選ばれた予定だけに送る)
+    const notifyTo = Array.isArray(y.fields.notifyTo) ? y.fields.notifyTo.filter(v => typeof v === 'string') : null;
+    const links = (notifyTo ? allLinks.filter(l => notifyTo.includes('u:' + l.id)) : allLinks)
+      .map(l => ({kind:'u', id:l.id, path:l.path, fields:l.fields}));
+    let wanted = notifyTo ? notifyTo.filter(v => v.startsWith('r:')).map(v => v.slice(2)) : [];
+    // 招待した送信先へは、予定を登録した家族が「アプリを使わない人へ送る」ことに同意しているときだけ送る
+    if (wanted.length && !await shareConsent(y.fields.uid)) wanted = [];
+    if (wanted.length) {
+      if (!recipientIds) recipientIds = await fs.query('', {from:[{collectionId:'lineRecipientIds'}], where:fieldEq('groupId',{stringValue:g.id})});
+      for (const d of recipientIds) if (wanted.includes(d.id)) links.push({kind:'r', id:d.id, path:d.path, fields:d.fields});
+    }
+    plans.set(y.path, {y, accepted:0, complete:true, eligible:false});
+    for (const link of links) {
+      const to = link.fields.lineUserId;
+      if (typeof to !== 'string' || !to) continue;
+      if (!byTo.has(to)) byTo.set(to, []);
+      byTo.get(to).push({y, link});
+    }
+  }
+  // 上限ガード: 月の残りが少ない・この家庭の今日の分を使い切ったときは送らず、理由を記録に残す
+  const blocked = byTo.size ? await book.scheduleBlocked(g.id, byTo.size) : '';
+  if (blocked) {
+    for (const {y} of plans.values()) {
+      await fs.patch(y.path, {notifyAt:null, notifiedAt:null, notificationStatus:'limited',
+        notifyLog: appendNotifyLog(y.fields.notifyLog, {status:'limited', reason:blocked, at:now, scheduledAt:y.fields.notifyAt})},
+        ['notifyAt','notifiedAt','notificationStatus','notifyLog'], y.updateTime);
+    }
+    return 0;
+  }
+  const members = await fs.list(g.path + '/members', ['name']);
+  const ownerName = (y) => { const m = members.find(x => x.id === y.fields.uid); return m && m.fields.name || ''; };
+  // 受け取る人ごとの確かめ直し(同じ回の中では使い回す)
+  const okCache = new Map();
+  const stillOk = async (link, y, to) => {
+    if (link.kind === 'r') {
+      // 招待した送信先: 家族が削除・LINEで停止していないこと(登録済みの送信先の控えと同じ相手であること)・同意をやめていないこと
+      const k = 'r:' + link.id;
+      if (!okCache.has(k)) {
+        const rec = await fs.get('lineRecipients/' + link.id);
+        const ids = rec && rec.fields.groupId === g.id && rec.fields.status === 'joined' ? await fs.get(link.path) : null;
+        okCache.set(k, !!ids && ids.fields.groupId === g.id && ids.fields.lineUserId === to);
+      }
+      if (!okCache.get(k)) return false;
+      const ck = 'c:' + y.fields.uid;
+      if (!okCache.has(ck)) okCache.set(ck, typeof y.fields.uid === 'string' && !!y.fields.uid && !!await fs.get(g.path + '/lineShareConsents/' + y.fields.uid));
+      return okCache.get(ck);
+    }
+    const k = 'u:' + link.id;
+    if (!okCache.has(k)) {
+      const member = await approvedMember(fs, g.id, link.id);
+      const current = member ? await fs.get(link.path) : null;
+      okCache.set(k, !!current && current.fields.groupId === g.id && current.fields.lineUserId === to);
+    }
+    return okCache.get(k);
+  };
+  const order = (a, b) => a.fields.notifyAt - b.fields.notifyAt || String(a.fields.date || '').localeCompare(String(b.fields.date || ''))
+    || String(a.fields.time || '').localeCompare(String(b.fields.time || '')) || a.path.localeCompare(b.path);
+  const tos = [...byTo.keys()];
+  const start = tos.length ? Math.floor(now.getTime()/900000) % tos.length : 0;
+  for (const to of [...tos.slice(start), ...tos.slice(0, start)]) {
+    // 同じ人に同じ予定が2回入らないように(家族として・招待した送信先として、の両方で選ばれたときなど)
+    const pairs = byTo.get(to);
+    let items = [...new Set(pairs.map(p => p.y))].sort(order);
+    const keyOf = async (list) => list.length === 1
+      ? deliveryKey(list[0].path + '\n' + list[0].updateTime + '\n' + to)   // 1件のときは今までと同じ再送キー
+      : deliveryKey('bundle\n' + list.map(y => y.path + '\n' + y.updateTime).join('\n') + '\n' + to);
+    let key = await keyOf(items);
+    let receiptPath = 'lineDeliveryReceipts/' + key;
+    let receipt = await fs.get(receiptPath);
+    if (receipt && receipt.fields.acceptedAt instanceof Date) {
+      for (const y of items) { const p = plans.get(y.path); p.accepted++; p.eligible = true; }
+      continue;
+    }
+    // Recheck server state immediately before each external transmission.
+    const okItems = [];
+    for (const y of items) {
+      let ok = false;
+      for (const p of pairs) if (p.y === y && await stillOk(p.link, y, to)) { ok = true; break; }
+      if (ok) okItems.push(y);
+    }
+    if (!okItems.length) continue;
+    const fresh = [];
+    for (const y of okItems) {
+      const current = await fs.get(y.path);
+      if (!current || current.updateTime !== y.updateTime) { plans.get(y.path).complete = false; continue; }
+      fresh.push(y);
+    }
+    for (const y of fresh) plans.get(y.path).eligible = true;
+    if (!fresh.length) continue;
+    if (fresh.length !== items.length) {
+      items = fresh;
+      key = await keyOf(items);
+      receiptPath = 'lineDeliveryReceipts/' + key;
+      receipt = await fs.get(receiptPath);
+      if (receipt && receipt.fields.acceptedAt instanceof Date) {
+        for (const y of items) plans.get(y.path).accepted++;
+        continue;
+      }
+    }
+    const lastAt = items.reduce((m, y) => Math.max(m, y.fields.notifyAt.getTime()), 0);
+    // Persist one immutable payload before sending, including across midnight/restarts.
+    if (!receipt) {
+      const text = items.length === 1
+        ? buildMessage(items[0].fields, ownerName(items[0]), now, g.id, items[0].id)
+        : buildBundleMessage(items, ownerName, now, g.id);
+      await fs.commit([{update:{name:fs.root+'/'+receiptPath,
+        fields:toFields({text,expiresAt:new Date(lastAt+13*3600000)})},
+        currentDocument:{exists:false}}]);
+      receipt = await fs.get(receiptPath);
+    }
+    if (!receipt || typeof receipt.fields.text !== 'string') { for (const y of items) plans.get(y.path).complete = false; continue; }
+    const r = await push(env, fs, to, receipt.fields.text, key);
+    if (!r) { for (const y of items) plans.get(y.path).complete = false; continue; }
+    if (r === 'sent') { sent++; await book.count(g.id); }
+    for (const y of items) plans.get(y.path).accepted++;
+    // A crash before this write is safe: LINE recognizes the same retry key.
+    await fs.set(receiptPath, {acceptedAt:new Date(), expiresAt:new Date(lastAt+13*3600000)});
+  }
+  for (const {y, accepted, complete} of plans.values()) {
+    if (complete && accepted > 0) {
+      const sentAt = new Date();
+      await fs.patch(y.path, {notifyAt:null, notifiedAt:sentAt, notificationStatus:'accepted',
+        notifyLog: appendNotifyLog(y.fields.notifyLog, {status:'accepted', at:sentAt, scheduledAt:y.fields.notifyAt, count:accepted})},
+        ['notifyAt','notifiedAt','notificationStatus','notifyLog'], y.updateTime);
+    }
+    // No eligible recipient or failed delivery: keep notifyAt for the next run.
+  }
+  return sent;
+}
+
 async function deliveryKey(value) {
   const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));
   bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
@@ -913,6 +989,18 @@ function buildMessage(y, ownerName, now, groupId, scheduleId) {
   if (ownerName) lines.push('（登録：' + clip(ownerName, 40) + '）');
   const url = APP_URL + '?openExternalBrowser=1#schedule=' + encodeURIComponent(scheduleId) + '&group=' + encodeURIComponent(groupId);
   lines.push('', 'カレンダーでこの予定を確認する', url);
+  return lines.join('\n');
+}
+/* まとめて1通(2件以上)。予定ごとに、日付・時刻・場所・予定名・登録した人と、カレンダーで開くリンク */
+function buildBundleMessage(items, ownerName, now, groupId) {
+  const lines = ['📅 予定のお知らせ（まいにこ）' + items.length + '件', ''];
+  items.forEach((y, i) => {
+    const one = buildMessage(y.fields, ownerName(y), now, groupId, y.id).split('\n').slice(1);
+    // 1件の文面から見出しを除き、リンクの案内を短くする
+    const link = one.pop(); one.pop(); if (one[one.length - 1] === '') one.pop();
+    lines.push('【' + (i + 1) + '】' + one.join('\n'), '確認する：' + link);
+    if (i < items.length - 1) lines.push('');
+  });
   return lines.join('\n');
 }
 function clip(v, n) { const s = String(v == null ? '' : v); return s.length > n ? s.slice(0, n) + '…' : s; }

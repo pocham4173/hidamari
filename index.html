@@ -1377,7 +1377,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <input type="datetime-local" id="ln-edit-at">
     <div class="ln-quick"><button type="button" onclick="MainicoLine.preset('ln-edit-at','ln-edit-date','eve')">前日の夜7時</button><button type="button" onclick="MainicoLine.preset('ln-edit-at','ln-edit-date','morning')">当日の朝7時</button><button type="button" onclick="document.getElementById('ln-edit-at').value=''">知らせない</button></div>
     <div class="ln-who" id="ln-edit-at-who"></div>
-    <div class="note">15分ほど遅れて届くことがあります。</div>
+    <div class="note">15分ほど遅れて届くことがあります。同じ時刻の予定は、1人に1通にまとめて届きます。</div>
   </div>
   <button class="big-btn yotei" type="button" id="ln-edit-save" onclick="saveLineNotifyEdit()">この内容で保存する</button>
   <div class="save-state" id="ln-edit-state" aria-live="polite"></div>
@@ -1906,7 +1906,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
             <input type="datetime-local" id="yt-notify">
             <div class="ln-quick"><button type="button" onclick="MainicoLine.preset('yt-notify','yt-date','eve')">前日の夜7時</button><button type="button" onclick="MainicoLine.preset('yt-notify','yt-date','morning')">当日の朝7時</button><button type="button" onclick="document.getElementById('yt-notify').value=''">知らせない</button></div>
             <div class="ln-who" id="yt-notify-who"></div>
-            <div class="note">入れた日時に、選んだ人へLINEで届きます（15分ほど遅れることがあります）。登録や招待は「設定 → LINEで予定のお知らせ」から。</div>
+            <div class="note">入れた日時に、選んだ人へLINEで届きます（15分ほど遅れることがあります）。同じ時刻の予定は、1人に1通にまとめて届きます（「前日の夜7時」がおすすめです）。登録や招待は「設定 → LINEで予定のお知らせ」から。</div>
           </div>
           <div class="yt-form-row">
             <label>絵文字<input type="text" id="yt-kind" value="📌" maxlength="8" placeholder="絵文字"></label>
