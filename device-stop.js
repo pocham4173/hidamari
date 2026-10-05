@@ -38,10 +38,18 @@
       var e = new Error('no-recovery'); e.code = 'no-recovery'; throw e;
     }
     await user.reauthenticateWithCredential(ctx.credential(user.email, current));
-    // パスワードを変える前の、確かめたばかりの鍵で行う後始末(LINEでログインの解除など)。失敗しても止めることを優先する
-    if (typeof ctx.beforeChange === 'function') { try { await ctx.beforeChange(); } catch (err) { /* 呼び出し側で知らせる */ } }
+    // パスワードを変える前の、確かめたばかりの鍵で行う後始末(LINEでログインの解除など)。失敗しても止めることを優先する。
+    // 'retry' が返ったら、パスワードを変えたあとに、新しいパスワードで本人確認をし直してから afterChange でもう一度行う
+    var again = false;
+    if (typeof ctx.beforeChange === 'function') { try { again = (await ctx.beforeChange()) === 'retry'; } catch (err) { again = true; } }
     await user.updatePassword(next);
     try { await user.getIdToken(true); } catch (err) { /* 新しい鍵は次の通信で取り直される */ }
+    if (again && typeof ctx.afterChange === 'function') {
+      // 変更のあとは前の鍵が失効扱いになるため、新しいパスワードで確かめ直す(鍵の auth_time が新しくなる)
+      var ok = true;
+      try { await user.reauthenticateWithCredential(ctx.credential(user.email, next)); } catch (err) { ok = false; }
+      try { await ctx.afterChange(ok); } catch (err) { /* 呼び出し側で知らせる */ }
+    }
     return true;
   }
 

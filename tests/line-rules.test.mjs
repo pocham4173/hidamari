@@ -160,6 +160,19 @@ try {
   await check('45b. 同意をやめた後は招待を作れない', setDoc(doc(m1, 'lineInvites', 'KNVT23456D'), invite('m1', 'r1', 24)), false);
   await check('46. 21件以上の相手は拒否される',
     setDoc(doc(m1, 'groups', 'g1', 'yotei', 'y8'), yotei('m1', { notifyTo: Array.from({ length: 21 }, (_, i) => 'u:' + i) })), false);
+  // 安全のお知らせ(2026-10-06): 送信役だけが書く。アプリからは作れない・書いた人も消せない
+  const secEv = (type, uid) => ({ type, uid, date: '2026-10-06', at: serverTimestamp(), clientAt: Date.now() });
+  await check('47. アプリから「LINEでログインで入った」の記録は作れない', setDoc(doc(m1, 'groups', 'g1', 'events', 'secX'), secEv('line-login-signin', 'm1')), false);
+  await check('48. アプリから「再接続QRでつないだ」の記録は作れない', setDoc(doc(m1, 'groups', 'g1', 'events', 'secY'), { ...secEv('device-reconnect', 'm1'), targetUid: 'h1' }), false);
+  await env.withSecurityRulesDisabled(async (c) => {
+    await setDoc(doc(c.firestore(), 'groups', 'g1', 'events', 'sec1'), { ...secEv('device-reconnect', 'm1'), targetUid: 'h1', at: Timestamp.now() });
+    await setDoc(doc(c.firestore(), 'groups', 'g1', 'events', 'sec2'), { ...secEv('line-login-signin', 'm2'), at: Timestamp.now() });
+    await setDoc(doc(c.firestore(), 'groups', 'g1', 'events', 'own1'), { type: 'memo', uid: 'm1', text: 'x', date: '2026-10-06', at: Timestamp.now() });
+  });
+  await check('49. 家族は安全のお知らせを読める', getDoc(doc(m2, 'groups', 'g1', 'events', 'sec1')), true);
+  await check('50. 再接続QRを作った家族も、その記録は消せない', deleteDoc(doc(m1, 'groups', 'g1', 'events', 'sec1')), false);
+  await check('51. LINEでログインで入った本人(のアカウント)も、その記録は消せない', deleteDoc(doc(m2, 'groups', 'g1', 'events', 'sec2')), false);
+  await check('52. 自分のふつうの記録は今までどおり消せる', deleteDoc(doc(m1, 'groups', 'g1', 'events', 'own1')), true);
 
   console.log('\n===== 検査結果 =====');
   for (const [mark, name] of results) console.log(mark, name);
