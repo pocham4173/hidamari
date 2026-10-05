@@ -80,6 +80,7 @@ globalThis.fetch = async (url, opt = {}) => {
   if (url === 'https://identitytoolkit.googleapis.com/v1/projects/demo/accounts:update') {
     assert.equal(opt.headers.authorization, 'Bearer gtok');
     revoked.push(body);
+    if (hooks.onRevoke) { const h = hooks.onRevoke; hooks.onRevoke = null; await h(); }
     if (revokeFail) return json({}, 500);
     return json({ localId: body.localId });
   }
@@ -272,7 +273,7 @@ const secEvents = () => [...db.keys()].filter((k) => k.startsWith('groups/g1/eve
   const r = await parse(await rc({ code: c }));
   revokeFail = false;
   assert.equal(r.status, 503); assert.ok(!r.body.customToken);
-  assert.equal(db.get(cpath(c)).fields.state.stringValue, 'consumed', '確定の印は付いている');
+  assert.equal(db.get(cpath(c)).fields.state.stringValue, 'failed', 'はっきり失敗した印');
   const evAfterFirst = secEvents().length;
   const r2 = await parse(await rc({ code: c }));
   assert.equal(r2.status, 200, 'やり直しで入れる ' + JSON.stringify(r2.body));
@@ -285,6 +286,18 @@ const secEvents = () => [...db.keys()].filter((k) => k.startsWith('groups/g1/eve
   assert.equal((await parse(await rc({ code: c3 }))).status, 503);
   revokeFail = false;
   assert.equal((await parse(await rc({ code: c3 }))).body.error, 'used', '2回目のやり直しはできない');
+}
+// 7b. 同じQRを2台で同時に読む: 1台目が処理中(前のスマホを止めている間)に2台目が送っても断る。鍵は1つだけ
+{
+  const c = newCode();
+  let second = null;
+  hooks.onRevoke = async () => { second = await parse(await rc({ code: c })); };
+  const first = await parse(await rc({ code: c }));
+  assert.equal(first.status, 200, '1台目は入れる');
+  assert.ok(second && second.body.error === 'used' && !second.body.customToken, '処理中の2台目は断る ' + JSON.stringify(second));
+  // 途中でWorkerが止まった(consumed のまま)コードも、やり直しには使えない
+  const c2 = newCode({ state: S('consumed') });
+  assert.equal((await parse(await rc({ code: c2 }))).body.error, 'used');
 }
 // 8. 見回りで、期限切れのコードを片付ける
 {
@@ -313,4 +326,29 @@ const secEvents = () => [...db.keys()].filter((k) => k.startsWith('groups/g1/eve
   const src = fs.readFileSync(new URL('../worker.js', import.meta.url), 'utf8');
   assert.match(src, /return \{ customToken: await mintCustomToken\(fs, uid\) \};/, 'LINEでログインは印なし');
 }
-console.log('再接続QR(worker): まいにこの画面だけ・App Check・同じUID・再接続の印・つないだ記録・1回だけ・前のログインを無効・期限・承認/ご本人/削除中/終了手続き/停止/別の家庭/同意・確定前の取り消しと削除と同意の取り消し・無効化の失敗とやり直し(1回)・片付け・LINEでログインのつながりを外す・コードを保存しない passed');
+// 11. 24時間の制限はサーバーの記録(reconnectLocks/{ご本人})。LINEでログインをつなぐ手続きも、その間は断る
+{
+  const r = await parse(await rc({ code: newCode() }));
+  assert.equal(r.status, 200);
+  const lock = db.get('reconnectLocks/hon');
+  assert.ok(lock, '制限の記録');
+  const until = Date.parse(lock.fields.until.timestampValue);
+  assert.ok(Math.abs(until - (Date.now() + 24 * 3600 * 1000)) < 5000, '24時間');
+  assert.equal(lock.fields.expiresAt.timestampValue, lock.fields.until.timestampValue, '期限が過ぎたら見回りで消す');
+  assert.equal(lock.fields.createdBy.stringValue, 'owner'); assert.equal(lock.fields.groupId.stringValue, 'g1');
+  const lineApi = (route, body, headers) => worker.fetch(new Request('https://w.example/auth/line/' + route, {
+    method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json', origin: APP, ...headers } }), env, {});
+  const auth = { authorization: 'Bearer ' + idToken('hon'), ...acH() };
+  const start = await parse(await lineApi('start', { purpose: 'link', secretHash: 'a'.repeat(64) }, auth));
+  assert.equal(start.status, 403); assert.equal(start.body.error, 'reconnect-locked', 'LINEとつながない');
+  const confirm = await parse(await lineApi('confirm', { tx: 'b'.repeat(32), secret: 'c'.repeat(64), code: '123456' }, auth));
+  assert.equal(confirm.body.error, 'reconnect-locked', '確定も断る');
+  // 24時間を過ぎたら、つなげる(手続きを始められる)
+  put('reconnectLocks/hon', { until: T(new Date(Date.now() - 1000)), expiresAt: T(new Date(Date.now() - 1000)) });
+  const after = await parse(await lineApi('start', { purpose: 'link', secretHash: 'a'.repeat(64) }, auth));
+  assert.equal(after.status, 200, JSON.stringify(after.body));
+  // 制限の記録がない人(再接続していない人)は今まで通り
+  const famStart = await parse(await lineApi('start', { purpose: 'link', secretHash: 'a'.repeat(64) }, { authorization: 'Bearer ' + idToken('owner'), ...acH() }));
+  assert.equal(famStart.status, 200, JSON.stringify(famStart.body));
+}
+console.log('再接続QR(worker): まいにこの画面だけ・App Check・同じUID・再接続の印・つないだ記録・1回だけ・前のログインを無効・期限・承認/ご本人/削除中/終了手続き/停止/別の家庭/同意・確定前の取り消しと削除と同意の取り消し・無効化の失敗とやり直し(1回)・片付け・LINEでログインのつながりを外す・コードを保存しない・同時読み取り・24時間の記録とLINEをつなぐ手続き passed');

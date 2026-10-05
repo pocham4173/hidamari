@@ -41,6 +41,10 @@ assert.equal(R.parse('ABCD2345'), null);
   assert.equal(R.lockedUntil({ via: 'reconnect', auth_time: t0 }, at(1)).getTime(), (t0 + 24 * 3600) * 1000);
   assert.equal(R.lockedUntil({ via: 'reconnect', auth_time: t0 }, at(24.01)), null, '24時間を過ぎたら使える');
   assert.equal(R.lockedUntil({ auth_time: t0 }, at(1)), null, '印のない鍵(LINEでログインなど)は今まで通り');
+  // サーバーの記録(reconnectLocks/{uid}.until)からの判定。入り直しても記録で止まる
+  assert.equal(R.lockedUntilRecord(at(23), at(1)).getTime(), at(23).getTime());
+  assert.equal(R.lockedUntilRecord(at(23), at(23.5)), null);
+  assert.equal(R.lockedUntilRecord(null, at(1)), null);
   assert.match(R.lockMessage(at(24)), /^新しいスマホをつないでから24時間は、この操作はできません（安全のため）。\d+月\d+日 \d+時\d\d分以降にお試しください。$/);
 }
 // 3. 送信役との通信
@@ -102,7 +106,14 @@ assert.equal(R.parse('ABCD2345'), null);
     /ask:async\(text,ok\)=>\{if\(await reconnectLocked\(\)\)return false;/,
     /if\(await reconnectLockUntil\(\)\)return null;/,
     /async function openReconnectMaker\(\)\{\n  if\(await reconnectLocked\(\)\)return;/]) assert.match(html, re);
+  // 画面の判定はサーバーの記録を先に読む
+  assert.match(html, /const snap=await db\.collection\('reconnectLocks'\)\.doc\(u\.uid\)\.get\(\{source:'server'\}\);/);
+  // 制限を抜ける入口(ほかのスマホを止める・復旧設定・LINEとつなぐ)も止める
+  assert.match(html, /async function openDeviceStop\(\)\{\n  if\(await reconnectLocked\(\)\)return;/);
+  assert.match(fs.readFileSync(new URL('../line-login-ui.js', import.meta.url), 'utf8'), /if\(typeof reconnectLocked==='function'&&await reconnectLocked\(\)\)return;/);
+  assert.match(fs.readFileSync(new URL('../line-login.js', import.meta.url), 'utf8'), /'reconnect-locked':'新しいスマホをつないでから24時間は、LINEとつなぐことはできません/);
   const hu = fs.readFileSync(new URL('../household-ui.js', import.meta.url), 'utf8');
+  assert.match(hu, /async function openRecovery\(switchAccount=false\)\{\n  \/\/ [^\n]*\n  if\(!switchAccount && typeof reconnectLocked==='function' && await reconnectLocked\(\)\)return;/, '復旧の設定も止める');
   assert.match(hu, /if\(!deletionResumeOnly && !householdDeleting && typeof reconnectLocked==='function' && await reconnectLocked\(\)\)return;/);
   assert.match(hu, /async function openAccountDeletion\(\)\{\n  if\(deletionBusy \|\| recoveryBusy \|\| accountClosureBusy\)return;\n  if\(typeof reconnectLocked==='function' && await reconnectLocked\(\)\)return;/);
   assert.match(html, /ご本人のスマホ以外に見せないでください/);

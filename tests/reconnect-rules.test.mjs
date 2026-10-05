@@ -86,6 +86,45 @@ try {
   await check('34. 24時間を過ぎたら: 家庭の削除を始められる', updateDoc(doc(hOld, 'groups', 'g3'), { deletionState: 'deleting', deletionStartedAt: serverTimestamp() }), true);
   await check('35. 24時間を過ぎたら: アカウントの終了手続きを始められる', setDoc(doc(hOld, 'accountClosures', 'h3'), { requestedAt: serverTimestamp() }), true);
 
+  // ---- 入り直し(メール・パスワードやLINEでログイン)をしても、サーバーの記録 reconnectLocks/{uid} で24時間は止まる ----
+  await env.withSecurityRulesDisabled(async (c) => {
+    const db = c.firestore();
+    for (const id of ['h4', 'k4', 'q6']) await setDoc(doc(db, 'consents', id), consentFixture(Timestamp.now()));
+    await setDoc(doc(db, 'groups', 'g4'), { createdBy: 'h4', createdAt: Timestamp.now() });
+    await setDoc(doc(db, 'groups', 'g4', 'members', 'h4'), { status: 'approved', role: 'honnin', mode: 'honnin' });
+    await setDoc(doc(db, 'groups', 'g4', 'members', 'k4'), { status: 'approved', role: 'kazoku', mode: 'kazoku' });
+    await setDoc(doc(db, 'groups', 'g4', 'members', 'q6'), { status: 'pending', role: 'kazoku', mode: 'kazoku' });
+    await setDoc(doc(db, 'accounts', 'k4'), { groupId: 'g4' });
+    // 再接続の確定で送信役が書く記録(ご本人 h4)。引継先 k4 にも記録がある場合の受け取りも確かめる
+    await setDoc(doc(db, 'reconnectLocks', 'h4'), { until: inMin(23 * 60), expiresAt: inMin(23 * 60), groupId: 'g4', createdBy: 'k4' });
+    await setDoc(doc(db, 'reconnectLocks', 'k4'), { until: inMin(23 * 60), expiresAt: inMin(23 * 60), groupId: 'g4', createdBy: 'x' });
+  });
+  const pw = { email: 'a@example.com', email_verified: true, auth_time: nowS - 10, firebase: { sign_in_provider: 'password' } };
+  const custom = { auth_time: nowS - 10, firebase: { sign_in_provider: 'custom' } };   // LINEでログイン(印なし)
+  const hPw = as('h4', pw), hLine = as('h4', custom), kPw = as('k4', pw), fPw = as('f2', pw);
+  await check('40. パスワードで入り直しても: 家庭の削除を始められない', updateDoc(doc(hPw, 'groups', 'g4'), { deletionState: 'deleting', deletionStartedAt: serverTimestamp() }), false);
+  await check('41. LINEでログインで入り直しても: 家庭の削除を始められない', updateDoc(doc(hLine, 'groups', 'g4'), { deletionState: 'deleting', deletionStartedAt: serverTimestamp() }), false);
+  await check('42. 入り直しても: 参加を承認できない', updateDoc(doc(hPw, 'groups', 'g4', 'members', 'q6'), { status: 'approved' }), false);
+  await check('43. 入り直しても: ほかの家族を解除できない', deleteDoc(doc(hPw, 'groups', 'g4', 'members', 'q6')), false);
+  await check('44. 入り直しても: 管理者の交代を頼めない', updateDoc(doc(hPw, 'groups', 'g4'), { pendingOwner: 'k4', pendingOwnerAt: serverTimestamp() }), false);
+  await check('45. 入り直しても: ひと声の了解を書けない', setDoc(doc(hLine, 'groups', 'g4', 'events', 'hk4'), { ...hk(), uid: 'h4' }), false);
+  await check('46. 入り直しても: 復旧設定が済んだ記録を書けない', setDoc(doc(hPw, 'groups', 'g4', 'events', 'dr4'), { type: 'device-recovery', uid: 'h4', state: 'ready', date: '2026-10-06', at: serverTimestamp(), clientAt: Date.now() }), false);
+  await check('47. 入り直しても: アカウントの終了手続きを始められない', setDoc(doc(hPw, 'accountClosures', 'h4'), { requestedAt: serverTimestamp() }), false);
+  await env.withSecurityRulesDisabled(async (c) => { await updateDoc(doc(c.firestore(), 'groups', 'g4'), { pendingOwner: 'k4', pendingOwnerAt: Timestamp.now() }); });
+  await check('48. 制限中の人は、管理者の交代を受け取れない', updateDoc(doc(kPw, 'groups', 'g4'), { createdBy: 'k4', pendingOwner: deleteField(), pendingOwnerAt: deleteField() }), false);
+  await check('49. 制限の記録は、本人だけが見られる', getDoc(doc(hPw, 'reconnectLocks', 'h4')), true);
+  await check('50. ほかの人は制限の記録を見られない', getDoc(doc(fPw, 'reconnectLocks', 'h4')), false);
+  await check('51. 本人も制限の記録を消せない・変えられない', deleteDoc(doc(hPw, 'reconnectLocks', 'h4')), false);
+  await check('52. 画面から制限の記録を作れない(期限を短くして作り直せない)', setDoc(doc(hPw, 'reconnectLocks', 'h4'), { until: Timestamp.now() }), false);
+  // 24時間を過ぎたら、今まで通り
+  await env.withSecurityRulesDisabled(async (c) => {
+    await setDoc(doc(c.firestore(), 'reconnectLocks', 'h4'), { until: Timestamp.fromMillis(Date.now() - 1000), expiresAt: Timestamp.fromMillis(Date.now() - 1000), groupId: 'g4', createdBy: 'k4' });
+    await setDoc(doc(c.firestore(), 'reconnectLocks', 'k4'), { until: Timestamp.fromMillis(Date.now() - 1000), expiresAt: Timestamp.fromMillis(Date.now() - 1000), groupId: 'g4', createdBy: 'x' });
+  });
+  await check('53. 期限が過ぎたら: 管理者の交代を受け取れる', updateDoc(doc(kPw, 'groups', 'g4'), { createdBy: 'k4', pendingOwner: deleteField(), pendingOwnerAt: deleteField() }), true);
+  await check('54. 期限が過ぎたら: 復旧設定が済んだ記録を書ける', setDoc(doc(hPw, 'groups', 'g4', 'events', 'dr5'), { type: 'device-recovery', uid: 'h4', state: 'ready', date: '2026-10-06', at: serverTimestamp(), clientAt: Date.now() }), true);
+  await check('55. 期限が過ぎたら: ひと声の了解を書ける', setDoc(doc(hLine, 'groups', 'g4', 'events', 'hk5'), { ...hk(), uid: 'h4' }), true);
+
   await env.withSecurityRulesDisabled(async (c) => { await setDoc(doc(c.firestore(), 'groups', 'g1'), { createdBy: 'f1', createdAt: Timestamp.now(), deletionState: 'deleting' }); });
   await check('18. 削除中の家庭では作れない', setDoc(doc(f1, 'reconnectCodes', H('J')), code('f1')), false);
   console.log('\n===== 検査結果 =====');

@@ -138,6 +138,8 @@ function applyRecoveryJournal(){
   return true;
 }
 async function openRecovery(switchAccount=false){
+  // 再接続QRで入ってから24時間は、復旧の設定(メール・パスワードの追加や変更)をしない(制限を抜けられないように)
+  if(!switchAccount && typeof reconnectLocked==='function' && await reconnectLocked())return;
   recoverySwitchScope=switchAccount && gid()?{uid:uid(),groupId:gid()}:null;
   if(typeof appDialogCancelAll==='function')appDialogCancelAll();document.querySelectorAll('.modal.show').forEach(el=>el.classList.remove('show'));
   document.getElementById('recovery-modal').classList.add('show');

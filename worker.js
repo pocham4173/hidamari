@@ -393,7 +393,7 @@ async function runNotifications(env) {
     catch (e) { if (e.message !== 'request-budget') console.error('usage', e.message); }
     finally { fs.softLimit = 0; }
     // 期限切れの記録(通知文の控えなど)を先に消す。プライバシーポリシーで約束している片付けなので、ほかの見直しより先
-    for (const collectionId of ['reconnectCodes','lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
+    for (const collectionId of ['reconnectCodes','reconnectLocks','lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
       const expired = await fs.query('', {from:[{collectionId}],
         where:{fieldFilter:{field:{fieldPath:'expiresAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},limit:3});
       for (const d of expired) await fs.delete(d.path);
@@ -1168,6 +1168,8 @@ async function lineStart(env, fs, request, body) {
   let uid = null;
   if (purpose === 'link') {
     uid = (await verifyFirebaseUser(env, fs, request)).uid;
+    // 再接続から24時間は、LINEをつながない(別の入り方を足して制限を抜けられないように)
+    if (await reconnectLockedNow(fs, uid)) throw new AuthProblem('reconnect-locked', 403);
     await requireHousehold(fs, uid);
   } else {
     await verifyAppCheck(env, fs, request);
@@ -1400,6 +1402,7 @@ function txDone(fs, t, status) {
 /* ---- つなぐ(元の認証済み画面で確定) ---- */
 async function lineConfirmLink(env, fs, request, body) {
   const user = await verifyFirebaseUser(env, fs, request);
+  if (await reconnectLockedNow(fs, user.uid)) throw new AuthProblem('reconnect-locked', 403);
   const t0 = await loadTx(fs, body, 'link');
   if (t0.fields.uid !== user.uid) throw new AuthProblem('wrong-account', 403);
   requireReady(t0);
@@ -1490,6 +1493,8 @@ async function lineUnlink(env, fs, request) {
   const writes = [{ delete: fs.root + '/' + acc.path, currentDocument: { updateTime: acc.updateTime } }];
   const link = typeof acc.fields.lineKey === 'string' ? await fs.get('lineLoginLinks/' + acc.fields.lineKey) : null;
   if (link && link.fields.uid === user.uid) writes.push({ delete: fs.root + '/' + link.path, currentDocument: { updateTime: link.updateTime } });
+  // 「解除が残っている」印も消す(ほかのスマホを止めたときに解除できなかった場合)
+  writes.push({ delete: fs.root + '/lineUnlinkPending/' + user.uid });
   if (!await fs.commit(writes)) throw new AuthProblem('retry', 409);
   return { unlinked: true };
 }
@@ -1586,10 +1591,12 @@ async function reconnectExchange(fs, code) {
   if (!honOk || !(honOk.role === 'honnin' || honOk.mode === 'honnin')) throw new AuthProblem('not-allowed', 403);
   if (!await authUserState(fs, target)) throw new AuthProblem('account-unavailable', 403);
   let lineLoginRemoved = false;
-  if (first.fields.state === 'consumed') {
-    // 確定のあと、前のスマホを止める・鍵を出すところで失敗したときだけ、期限内に1回だけやり直せる
+  // 処理中(consumed)のコードは断る。同じQRを2台で同時に読んでも、鍵を受け取れるのは1台だけ
+  if (first.fields.state === 'consumed') throw new AuthProblem('used', 410);
+  if (first.fields.state === 'failed') {
+    // 1回目が、前のスマホを止める・鍵を出すところで、はっきり失敗したときだけ、期限内に1回だけやり直せる
     if (first.fields.retried === true) throw new AuthProblem('used', 410);
-    if (!await fs.commit([{ update: { name: fs.root + '/' + path, fields: toFields({ retried: true }) }, updateMask: { fieldPaths: ['retried'] },
+    if (!await fs.commit([{ update: { name: fs.root + '/' + path, fields: toFields({ retried: true, state: 'consumed' }) }, updateMask: { fieldPaths: ['retried', 'state'] },
       currentDocument: { updateTime: first.updateTime } }])) throw new AuthProblem('used', 410);
     lineLoginRemoved = first.fields.lineLoginRemoved === true;
   } else {
@@ -1623,6 +1630,9 @@ async function reconnectExchange(fs, code) {
       // 家族全員とご本人の画面に「つなぎました」を残す(アプリからは作れない・消せない)
       writes.push(securityEventWrite(fs, groupId, { type: 'device-reconnect', uid: creator, targetUid: target,
         name: typeof fam.fields.name === 'string' ? fam.fields.name.slice(0, 80) : '' }));
+      // 24時間の制限の記録(ご本人のUIDごと)。ログインの入り直しでは外れない(firestore.rules の recentReconnect)
+      const until = new Date(Date.now() + RECONNECT_LOCK_MS);
+      writes.push({ update: { name: fs.root + '/reconnectLocks/' + target, fields: toFields({ until, expiresAt: until, groupId, createdBy: creator }) } });
       committed = await fs.commit(writes, txn);
     } finally {
       if (!committed) await fs.rollback(txn);
@@ -1631,12 +1641,29 @@ async function reconnectExchange(fs, code) {
   }
   // 前のスマホ(なくしたスマホ)のログインを無効にする。新しいスマホは、この後のカスタムトークンで入る。
   // 再接続で入った鍵には via:'reconnect' を付け、24時間は取り消しにくい操作を止める(firestore.rules の recentReconnect)
-  await revokeSessions(fs, target);
-  const customToken = await mintCustomToken(fs, target, { via: 'reconnect' });
+  let customToken;
+  try {
+    await revokeSessions(fs, target);
+    customToken = await mintCustomToken(fs, target, { via: 'reconnect' });
+  } catch (e) {
+    // はっきり失敗した: 処理中の印(consumed)を「失敗」に変えてから断る(やり直しはこの印のときだけ)
+    const cur = await fs.get(path).catch(() => null);
+    if (cur && cur.fields.state === 'consumed' && cur.fields.retried !== true) {
+      await fs.commit([{ update: { name: fs.root + '/' + path, fields: toFields({ state: 'failed' }) }, updateMask: { fieldPaths: ['state'] },
+        currentDocument: { updateTime: cur.updateTime } }]).catch(() => false);
+    }
+    throw e;
+  }
   // 使い終わったコードは消す。消せなかったときも、やり直しには使えない印を付ける(もう一度鍵を出さない)
   try { await fs.delete(path); }
   catch (e) { await fs.commit([{ update: { name: fs.root + '/' + path, fields: toFields({ retried: true }) }, updateMask: { fieldPaths: ['retried'] } }]).catch(() => false); }
   return { customToken, uid: target, lineLoginRemoved };
+}
+const RECONNECT_LOCK_MS = 24 * 3600 * 1000;
+/* 再接続から24時間の制限中なら true(LINEでログインをつなぐ手続きを止めるのに使う) */
+async function reconnectLockedNow(fs, uid) {
+  const lock = await fs.get('reconnectLocks/' + uid);
+  return !!lock && lock.fields.until instanceof Date && lock.fields.until.getTime() > Date.now();
 }
 async function revokeSessions(fs, uid) {
   const res = await fs.call('POST', 'https://identitytoolkit.googleapis.com/v1/projects/' + fs.sa.project_id + '/accounts:update',

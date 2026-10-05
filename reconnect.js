@@ -91,6 +91,11 @@
     const until = new Date(at + LOCK_MS);
     return until.getTime() > (now || new Date()).getTime() ? until : null;
   }
+  /* サーバーの記録 reconnectLocks/{uid} の until(Date)から。期限内ならその時刻、それ以外は null */
+  function lockedUntilRecord(until, now) {
+    const t = until instanceof Date ? until.getTime() : NaN;
+    return isFinite(t) && t > (now || new Date()).getTime() ? new Date(t) : null;
+  }
   function lockMessage(until) {
     const d = until instanceof Date ? until : new Date(until);
     return '新しいスマホをつないでから24時間は、この操作はできません（安全のため）。' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + d.getHours() + '時' + String(d.getMinutes()).padStart(2, '0') + '分以降にお試しください。';
@@ -126,5 +131,5 @@
     };
   }
 
-  return { newCode, qrUrl, parse, docId, needsHomeApp, lockedUntil, lockMessage, client, message, CODE_RE, TTL_MS, LOCK_MS };
+  return { newCode, qrUrl, parse, docId, needsHomeApp, lockedUntil, lockedUntilRecord, lockMessage, client, message, CODE_RE, TTL_MS, LOCK_MS };
 });
