@@ -647,6 +647,36 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.ok([...db.keys()].some((k) => k.startsWith('usageStats/')), 'ほかの家庭の集計は残す');
   console.log('利用数の集計(朝5時以降・1日ずつ・数えない記録・名前を残さない・運営者の登録と回数制限・集計の返事・3日目と8週目・削除) passed');
 }
+/* 家族の1分アンケート(2026-10-05): 運営者の「集計」に全体の数字だけを足す・参加をやめた人の答えは消す */
+{
+  for (const k of [...db.keys()]) if (/^(surveyAnswers|usageStats|ops)\//.test(k)) db.delete(k);
+  put('groups/g7', { createdBy: S('a7') });
+  for (const id of ['a7', 'b7', 'c7']) put('groups/g7/members/' + id, { name: S('家族' + id), status: S('approved') });
+  const I = (n) => ({ integerValue: String(n) });
+  const month = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 7);
+  const sv = (uid, m, kind, absences, burden) => put('surveyAnswers/' + uid + '_' + m, { uid: S(uid), groupId: S('g7'), month: S(m), kind: S(kind), absences: I(absences), burden: S(burden), answeredAt: T(new Date()) });
+  sv('a7', '2026-08', 'baseline', 2, ''); sv('b7', '2026-08', 'baseline', 4, ''); sv('c7', '2026-08', 'baseline', -1, '');
+  sv('a7', '2026-09', 'monthly', 1, 'same'); sv('a7', month, 'monthly', 0, 'less'); sv('b7', month, 'monthly', 2, 'less'); sv('c7', month, 'monthly', -1, 'more');
+  env.OPERATOR_PASSPHRASE = 'さくら';
+  await hook([{ type: 'message', replyToken: 'sv1', source: user('Uop7'), message: { type: 'text', text: '運営者登録 さくら' } }]);
+  await hook([{ type: 'message', replyToken: 'sv2', source: user('Uop7'), message: { type: 'text', text: '集計' } }]);
+  const report = replies.at(-1).messages[0].text;
+  delete env.OPERATOR_PASSPHRASE;
+  assert.match(report, /家族のアンケート（答えた家族：3人・今月の答え：3件）/);
+  assert.match(report, /確認の負担が「減った」：2\/3（67%）/, '一人ひとりの、いちばん新しい答えで数える');
+  assert.match(report, /使い始める前の1か月：3\.0回（2人）/, '働いていない・答えない は数えない');
+  assert.match(report, /いちばん新しい1か月：1\.0回（2人）/);
+  assert.ok(!/家族a7|a7|g7/.test(report), '名前・番号は出さない');
+  // 参加をやめた人・アカウントを削除した人の答えは、見回りの後片付けで消す
+  db.delete('groups/g7/members/c7'); put('accountClosures/b7', { requestedAt: T(new Date()) });
+  const RealDate = Date; let shift = 0;
+  class ShiftedDate extends RealDate { constructor(...a) { if (a.length) super(...a); else super(RealDate.now() + shift); } static now() { return RealDate.now() + shift; } }
+  globalThis.Date = ShiftedDate;
+  try { for (let i = 0; i < 16; i++) { shift = i * 900000; await tick(); } } finally { globalThis.Date = RealDate; }
+  const left = [...db.keys()].filter((k) => k.startsWith('surveyAnswers/')).map((k) => k.split('/')[1].split('_')[0]);
+  assert.ok(left.length && left.every((u) => u === 'a7'), '参加中の人の答えだけが残る (' + left.join(',') + ')');
+  console.log('家族のアンケートの集計(全体の数字だけ・新しい答え・数えない選択肢・名前なし・後片付け) passed');
+}
 /* 予定のお知らせを、受け取る人ごとに1通にまとめる(2026-10-04・事業計画書 第2版の「前日にまとめて1通」) */
 {
   for (const k of [...db.keys()]) if (/^(groups\/g[1-5]\/yotei|watchTags|tagAlertCounters|lineDeliveryReceipts|lineUsage)\//.test(k)) db.delete(k);

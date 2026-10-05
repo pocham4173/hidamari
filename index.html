@@ -89,6 +89,12 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .qr-scan-msg{font-weight:700;margin:12px 0 4px;color:#4A3A28;}
 .qr-scan-note{font-size:.85rem;color:#7A6650;margin:0 0 12px;}
 .qr-scan-btn{margin-bottom:12px;}
+/* 家族の1分アンケート(2026-10-05・family-survey.js) */
+.survey-card h3{margin:0 0 6px;font-size:1.05rem;}
+.survey-q{font-weight:700;margin:12px 0 6px;}
+.survey-opts{display:flex;flex-wrap:wrap;gap:6px 14px;}
+.survey-opt{display:flex;align-items:center;gap:4px;font-size:.98rem;}
+.survey-card .set-btn{margin-top:8px;}
 .consent-item{display:flex;gap:10px;align-items:flex-start;background:var(--asa);border:2px solid var(--hi-usui);border-radius:14px;padding:12px;margin-bottom:9px;font-size:.98rem;font-weight:700;line-height:1.6;cursor:pointer;text-align:left;}
 .consent-item .ck{width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:#E0711A;}
 .consent-page{background:#FFFFFF;}
@@ -1698,6 +1704,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div id="owner-transfer-card"></div>
       <div id="hitokoe-card"></div>
       <div id="family-notices"></div>
+      <div id="survey-card"></div>
 
       <div class="card dom-record" id="card-actions" data-communication-gate="person">
         <h3>本人とのやりとり</h3>
@@ -2162,6 +2169,7 @@ setTimeout(function(){
 <script src="hitokoe.js?v=20261004"></script>
 <script src="qr-scan.js?v=20261004"></script>
 <script src="device-stop.js?v=20261005"></script>
+<script src="family-survey.js?v=20261005"></script>
 <script src="family-guide.js?v=20261002"></script>
 <script src="owner-transfer.js?v=20261002"></script>
 <script>
@@ -4390,6 +4398,7 @@ function initKazoku(){
   initPersonUiConfig();
   initMemberInfo();
   initHitokoe();
+  initSurvey();
   initYoteiCategories();
   initDisaster();
   loadWatchTag();
@@ -7517,7 +7526,7 @@ function initMemberInfo(){
   if(memberInfoUnsub){try{memberInfoUnsub();}catch(e){}}
   memberInfoUnsub=col('members').onSnapshot(snap=>{
     const m={};snap.forEach(doc=>{m[doc.id]=doc.data();});memberInfoByUid=m;
-    try{if(hitokoeCtl)hitokoeCtl.renderCard();renderFamilyNotices();}catch(e){}
+    try{if(hitokoeCtl)hitokoeCtl.renderCard();renderFamilyNotices();if(surveyCtl)surveyCtl.render();}catch(e){}
     try{if(ownerTransferCtl){ownerTransferCtl.renderCard();ownerTransferCtl.renderSettings();}}catch(e){}
   },()=>{});
 }
@@ -7542,6 +7551,22 @@ function initHitokoe(){
     cardId:'hitokoe-card',settingsId:'settings-hitokoe'});
   hitokoeCtl.start();
   initFamilyNotices();
+}
+/* ===== 家族の1分アンケート(2026-10-05)・詳しくは family-survey.js ===== */
+let surveyCtl=null;
+function initSurvey(){
+  if(surveyCtl){surveyCtl.stop();surveyCtl=null;}
+  if(typeof MainicoSurvey==='undefined'||!uid()||!gid())return;
+  const me=uid();
+  surveyCtl=MainicoSurvey.create({document:document,storage:previewStorage,cardId:'survey-card',
+    uid:()=>me,groupId:gid,now:()=>new Date(),
+    /* 家族として参加している人だけ(ご本人の画面には出さない) */
+    isFamily:()=>uid()===me&&!!memberInfoByUid[me]&&!memberIsHonnin(me),
+    watchMine:cb=>db.collection('surveyAnswers').where('uid','==',me).onSnapshot(snap=>{
+      const rows=[];snap.forEach(d=>rows.push(d.data()));cb(rows);
+    },()=>{}),
+    save:(id,data)=>db.collection('surveyAnswers').doc(id).set(Object.assign({},data,{answeredAt:firebase.firestore.FieldValue.serverTimestamp()}))});
+  surveyCtl.start();
 }
 function initHitokoePrompt(){
   if(hitokoePrompt){hitokoePrompt.stop();hitokoePrompt=null;}
