@@ -86,6 +86,7 @@ jobs:
           node tests/line-settings.test.mjs
           node tests/hitokoe-settings.test.mjs
           node tests/qr-scan.test.mjs
+          node tests/device-stop.test.mjs
           node tests/recovery-feedback.test.mjs
           node tests/family-only-records.test.mjs
           node tests/consent.test.mjs

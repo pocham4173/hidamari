@@ -1283,6 +1283,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <p class="note" data-recovery-status aria-live="polite"></p>
     <div class="note">ご家族と一緒に設定しておくと、新しいスマホでも今までの記録に戻れます。ご本人のメールアドレスを使います。ご本人がパスワードを覚えておく必要はありません（ご家族が控えておいてください）。</div>
     <button class="set-btn" onclick="openRecovery()">復旧を設定する</button>
+    <button class="set-btn" type="button" data-device-stop hidden onclick="openDeviceStop()">スマホをなくしたとき：ほかのスマホを止める</button>
     <a class="set-btn" href="help.html#recovery" target="_blank" rel="noopener">機種変更・復旧の手順を見る</a>
   </div>
   <details class="person-family-procs" id="person-family-procs" ontoggle="guardPersonFamilyProcs(this)">
@@ -1595,6 +1596,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <p class="note" data-recovery-status aria-live="polite"></p>
         <button class="set-btn" onclick="openRecovery()">端末をなくす前に復旧を設定する</button>
     <button class="set-btn" onclick="openRecovery(true)">復旧設定済みのアカウントでログインする</button>
+        <button class="set-btn" type="button" data-device-stop hidden onclick="openDeviceStop()">スマホをなくしたとき：ほかのスマホを止める</button>
         <a class="set-btn" href="help.html#recovery" target="_blank" rel="noopener">機種変更・復旧の手順を見る</a>
         <div class="note">ご自身のメールアドレスを使います。家族は自分のアカウントで設定してください。</div>
       </div>
@@ -2159,6 +2161,7 @@ setTimeout(function(){
 <script src="line-notify.js?v=20261004"></script>
 <script src="hitokoe.js?v=20261004"></script>
 <script src="qr-scan.js?v=20261004"></script>
+<script src="device-stop.js?v=20261005"></script>
 <script src="family-guide.js?v=20261002"></script>
 <script src="owner-transfer.js?v=20261002"></script>
 <script>
@@ -7591,6 +7594,14 @@ function renderRecoveryBadges(){
   document.querySelectorAll('[data-recovery-status]').forEach(el=>{el.textContent=text;el.classList.toggle('warn-text',level==='none'||level==='unverified');});
   const top=document.getElementById('settings-recovery-top');
   if(top)top.hidden=!(level==='none'||level==='unverified');
+  /* ほかのスマホを止める(2026-10-05): 復旧の設定が済んでいるときだけ */
+  document.querySelectorAll('[data-device-stop]').forEach(el=>{el.hidden=level!=='ready';});
+}
+function openDeviceStop(){
+  if(typeof MainicoDeviceStop==='undefined'){alert('読み込みが終わっていません。通信を確認して、もう一度お試しください。');return;}
+  MainicoDeviceStop.open({document:document,user:()=>auth.currentUser,
+    credential:(email,password)=>firebase.auth.EmailAuthProvider.credential(email,password),
+    onDone:()=>{try{renderRecoveryBadges();}catch(e){}}});
 }
 /* ご本人のスマホは、復旧の設定状態を家族に知らせる(状態が変わったときだけ記録する) */
 async function reportDeviceRecovery(retry){
