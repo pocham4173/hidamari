@@ -1537,7 +1537,7 @@ async function reconnectExchange(fs, code) {
   if (!await authUserState(fs, target)) throw new AuthProblem('account-unavailable', 403);
   // 確かめたあとに、コードの取り消し・名簿の変更・家庭の削除・終了手続きが先に確定したら、この確定は失敗する
   const txn = await fs.beginTransaction();
-  let committed = false;
+  let committed = false, lineLoginRemoved = false;
   try {
     const cur = await fs.get(path, txn);
     const group = await fs.get('groups/' + groupId, txn);
@@ -1550,14 +1550,23 @@ async function reconnectExchange(fs, code) {
     const approved = (m) => m && (m.fields.status === undefined || m.fields.status === 'approved');
     if (!approved(fam) || isHonninMember(fam) || !approved(hon) || !isHonninMember(hon)) throw new AuthProblem('not-allowed', 403);
     if (closure || famClosure) throw new AuthProblem('account-unavailable', 403);
-    committed = await fs.commit([{ delete: fs.root + '/' + path, currentDocument: { updateTime: first.updateTime } }], txn);
+    // なくしたスマホに残ったLINEから入り直せないよう、LINEでログインのつながりも同じ確定で外す
+    const writes = [{ delete: fs.root + '/' + path, currentDocument: { updateTime: first.updateTime } }];
+    const acc = await fs.get('lineLoginAccounts/' + target, txn);
+    if (acc) {
+      writes.push({ delete: fs.root + '/' + acc.path, currentDocument: { updateTime: acc.updateTime } });
+      const link = typeof acc.fields.lineKey === 'string' ? await fs.get('lineLoginLinks/' + acc.fields.lineKey, txn) : null;
+      if (link && link.fields.uid === target) writes.push({ delete: fs.root + '/' + link.path, currentDocument: { updateTime: link.updateTime } });
+      lineLoginRemoved = true;
+    }
+    committed = await fs.commit(writes, txn);
   } finally {
     if (!committed) await fs.rollback(txn);
   }
   if (!committed) throw new AuthProblem('used', 410);
   // 前のスマホ(なくしたスマホ)のログインを無効にする。新しいスマホは、この後のカスタムトークンで入る
   await revokeSessions(fs, target);
-  return { customToken: await mintCustomToken(fs, target), uid: target };
+  return { customToken: await mintCustomToken(fs, target), uid: target, lineLoginRemoved };
 }
 async function revokeSessions(fs, uid) {
   const res = await fs.call('POST', 'https://identitytoolkit.googleapis.com/v1/projects/' + fs.sa.project_id + '/accounts:update',

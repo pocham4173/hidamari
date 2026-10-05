@@ -261,4 +261,18 @@ const tokenUid = (t) => JSON.parse(Buffer.from(t.split('.')[1], 'base64url').toS
   for (let i = 0; i < 20 && db.has('reconnectCodes/' + c); i++) await new Promise((r) => setTimeout(r, 50));
   assert.ok(!db.has('reconnectCodes/' + c), '期限切れのコードは見回りで消す');
 }
-console.log('再接続QR(worker): まいにこの画面だけ・App Check・同じUID・1回だけ・前のログインを無効・期限・承認/ご本人/削除中/終了手続き/停止/別の家庭・確定前の取り消しと削除・無効化の失敗・片付け passed');
+// 9. LINEでログインをつないでいたら、なくしたスマホのLINEから入り直せないよう、つながりも外す(ほかの人のつながりは残す)
+{
+  put('lineLoginAccounts/hon', { lineKey: S('k-hon'), linkedAt: T(new Date()) });
+  put('lineLoginLinks/k-hon', { uid: S('hon'), linkedAt: T(new Date()) });
+  put('lineLoginAccounts/owner', { lineKey: S('k-owner'), linkedAt: T(new Date()) });
+  put('lineLoginLinks/k-owner', { uid: S('owner'), linkedAt: T(new Date()) });
+  const r = await parse(await rc({ code: newCode() }));
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.lineLoginRemoved, true);
+  assert.ok(!db.has('lineLoginAccounts/hon') && !db.has('lineLoginLinks/k-hon'), 'ご本人のつながりは外す');
+  assert.ok(db.has('lineLoginAccounts/owner') && db.has('lineLoginLinks/k-owner'), 'ほかの家族のつながりは残す');
+  const again = await parse(await rc({ code: newCode() }));
+  assert.equal(again.body.lineLoginRemoved, false, 'つないでいなければ何もしない');
+}
+console.log('再接続QR(worker): まいにこの画面だけ・App Check・同じUID・1回だけ・前のログインを無効・期限・承認/ご本人/削除中/終了手続き/停止/別の家庭・確定前の取り消しと削除・無効化の失敗・片付け・LINEでログインのつながりを外す passed');

@@ -7657,6 +7657,7 @@ async function reconnectFinish(code){
     if(current&&typeof clearMainicoDeviceData==='function')clearMainicoDeviceData();
     await auth.signInWithCustomToken(result.customToken);
     if(state)state.textContent='つながりました。まいにこを開いています…';
+    if(result.lineLoginRemoved)alert('前のスマホから入り直せないよう、「LINEでログイン」のつながりも外しました。使う場合は、このスマホの設定から、もう一度つないでください。');
     location.reload();
   }catch(e){
     if(state)state.textContent=MainicoReconnect.message(e);
