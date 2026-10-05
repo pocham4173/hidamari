@@ -920,6 +920,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   </div>
   <div class="entry-tools">
     <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
+    <a class="consent-back" href="help.html#locked-out" target="_blank" rel="noopener">家族の誰も入れなくなったとき（運営者への相談）</a>
     <button class="install-main" id="install-main" type="button" onclick="installApp()">ホーム画面に追加</button>
     <p class="note">本サービスは119番通報や安否確認、医療行為の代替ではありません。</p><a class="consent-back" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
     <a class="consent-back" href="help.html" target="_blank" rel="noopener">使い方・困ったとき</a>
@@ -1093,7 +1094,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <p class="note" id="account-deletion-identity"></p>
   <p class="note">機種変更のためには削除しません。同じアカウントで使う他の端末にも影響します。残したいお薬手帳は、先に原本を書き出して別の保管先で開けることを確認してください。</p>
   <p class="note">先に、家庭全体を終了する方は共有データ削除、ご自身だけやめる方は参加解除を済ませます。下の「アカウントの終了を開始する」を押して開始が確認されると、このアカウントの通常利用は停止し、取り消せません。通信が切れた場合は、保存情報を消さず同じアカウントで再開してください。</p>
-  <p class="note">削除するのは今ログイン中のあなたの登録です。他の家族のログイン登録や、旧版で別の家庭に残った記録は削除しません。旧記録の整理を受け付ける専用の非公開窓口は、現在未設定です。以前のログイン情報の悪用を防ぐため、識別番号と閉鎖開始日時だけを運営の最終整理まで保管します。</p>
+  <p class="note">削除するのは今ログイン中のあなたの登録です。他の家族のログイン登録や、旧版で別の家庭に残った記録は削除しません。旧記録の整理は、運営者の問い合わせ先（pocham4173@gmail.com）で受け付けます。同じ家庭の別の家族への確認など、ご本人であることを確かめてから対応します。以前のログイン情報の悪用を防ぐため、識別番号と閉鎖開始日時だけを運営の最終整理まで保管します。</p>
   <div class="account-fields"><label for="account-deletion-password">現在のパスワード（復旧設定をした方）</label><input id="account-deletion-password" type="password" autocomplete="current-password" maxlength="128"></div>
   <button class="set-btn warn" onclick="prepareAccountDeletion()">アカウントの終了を開始する</button>
   <div class="account-fields"><label for="account-deletion-confirm">確認のため「アカウントを削除」と入力</label><input id="account-deletion-confirm" autocomplete="off"></div>
@@ -1103,7 +1104,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 </div></div>
 <div class="page" id="account-closed-page"><div class="setup-wrap">
   <div class="setup-ttl">アカウントの利用終了</div><p id="account-closed-state" role="status" class="setup-lead"></p>
-  <p class="note">利用終了の確認：共有データの削除・参加解除 → 自分のログイン登録の削除 → 印刷した災害QRを読み取れないよう切断して廃棄 → 他の端末のサイト保存・写真・スクリーンショットを各自で削除。紙や他端末のコピーは遠隔では消せません。旧記録の整理を受け付ける専用の非公開窓口は、現在未設定です。</p>
+  <p class="note">利用終了の確認：共有データの削除・参加解除 → 自分のログイン登録の削除 → 印刷した災害QRを読み取れないよう切断して廃棄 → 他の端末のサイト保存・写真・スクリーンショットを各自で削除。紙や他端末のコピーは遠隔では消せません。旧記録の整理は、運営者の問い合わせ先（pocham4173@gmail.com）で受け付けます。同じ家庭の別の家族への確認など、ご本人であることを確かめてから対応します。</p>
   <button class="consent-back" onclick="openNotebookCleanup()">端末内の控えを削除</button>
   <button class="entry-btn sub" onclick="restartAfterAccountClosure()">新しく利用を始める</button>
 </div></div>
@@ -1111,7 +1112,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <div class="ttl" id="deletion-title">共有データをすべて削除する</div>
   <p class="note">家族全員の共有データを終了する手続きです。機種変更や、自分だけ利用を休むときには使いません。残したいお薬手帳は、開始前に原本を書き出し、別の保管先で開けることを確認してください。</p>
   <p class="note">この家庭の全員の記録・予定・家族との接続・招待・おまもりタグとお知らせ・復旧先登録を共有サーバーから削除します。始めると利用を停止し、取り消せません。通信が切れたら、この画面で再開してください。</p>
-  <p class="note">この端末に保存した災害QRなども削除します。印刷物・他端末の保存内容・撮影したQRは各自で廃棄してください。ログイン用アカウントはこの操作では削除しません。共有削除の完了後「自分のログイン用アカウントを削除する」に進んでください。印刷した災害QRは読み取れないよう切断し、他の端末のサイト保存・写真・スクリーンショットも各自で削除してください。旧版で残った記録の整理を受け付ける専用の非公開窓口は、現在未設定です。</p>
+  <p class="note">この端末に保存した災害QRなども削除します。印刷物・他端末の保存内容・撮影したQRは各自で廃棄してください。ログイン用アカウントはこの操作では削除しません。共有削除の完了後「自分のログイン用アカウントを削除する」に進んでください。印刷した災害QRは読み取れないよう切断し、他の端末のサイト保存・写真・スクリーンショットも各自で削除してください。旧版で残った記録の整理は、運営者の問い合わせ先（pocham4173@gmail.com）で受け付けます。</p>
   <div class="account-fields"><label for="deletion-confirm">確認のため「共有データを削除」と入力</label><input id="deletion-confirm" autocomplete="off" spellcheck="false"></div>
   <button class="set-btn warn" id="deletion-run" onclick="runHouseholdDeletion()">削除を開始・再開する</button>
   <div class="save-state" id="deletion-state" role="status" aria-live="polite"></div>
@@ -1132,6 +1133,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <input type="text" id="in-code" class="setup-input" placeholder="招待コードを入力" autocapitalize="characters" autocomplete="off">
     <button class="entry-btn sub" onclick="joinByCode()">招待コードで参加</button>
     <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
+    <a class="consent-back" href="help.html#locked-out" target="_blank" rel="noopener">家族の誰も入れなくなったとき（運営者への相談）</a>
     <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、すでに利用中のご家族の画面の「設定」→「家族の管理」→「家族を追加する」で発行できます。コードで参加すると「承認待ち」になり、管理者が認めると利用できます。招待コードは一度使うと再び使えません。認められなかったときや申請を取り下げたときは、新しいコードを発行してもらってください。<br><br>この端末は一度つながると、モードを切り替えても同じご家族の記録を使います。</div>
     <button class="consent-back" onclick="showPage('entry')">← 入口に戻る</button>
   </div>
@@ -1604,6 +1606,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <button class="set-btn" onclick="openRecovery(true)">復旧設定済みのアカウントでログインする</button>
         <button class="set-btn" type="button" data-device-stop hidden onclick="openDeviceStop()">スマホをなくしたとき：ほかのスマホを止める</button>
         <a class="set-btn" href="help.html#recovery" target="_blank" rel="noopener">機種変更・復旧の手順を見る</a>
+        <a class="set-btn" href="help.html#locked-out" target="_blank" rel="noopener">家族の誰も入れなくなったとき</a>
         <div class="note">ご自身のメールアドレスを使います。家族は自分のアカウントで設定してください。</div>
       </div>
     </details>
