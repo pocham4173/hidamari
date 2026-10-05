@@ -105,16 +105,23 @@
     wrap.className = 'qr-scan';
     wrap.setAttribute('role', 'dialog');
     wrap.setAttribute('aria-modal', 'true');
-    wrap.setAttribute('aria-label', '招待QRを読み取る');
+    // 読み取るものを選べる(2026-10-05): 既定は招待QR。再接続QRなどは parse・title・notMine・note を渡す
+    const parse = typeof opts.parse === 'function' ? opts.parse : parseInvite;
+    const title = opts.title || '招待QRを読み取る';
+    const notMine = opts.notMine || 'まいにこの招待QRではありません。ご家族の「家族を追加する」で出したQRを映してください。';
+    const note = opts.note || 'ご家族の画面に出ている招待QRを、四角の中に映してください。カメラの映像は保存も送信もしません。';
+    wrap.setAttribute('aria-label', title);
     wrap.innerHTML =
       '<div class="qr-scan-box">' +
-      '<div class="qr-scan-ttl">招待QRを読み取る</div>' +
+      '<div class="qr-scan-ttl"></div>' +
       '<div class="qr-scan-view"><video playsinline muted autoplay></video><div class="qr-scan-frame" aria-hidden="true"></div></div>' +
       '<p class="qr-scan-msg" role="status" aria-live="polite">カメラを準備しています…</p>' +
-      '<p class="qr-scan-note">ご家族の画面に出ている招待QRを、四角の中に映してください。カメラの映像は保存も送信もしません。</p>' +
+      '<p class="qr-scan-note"></p>' +
       '<button type="button" class="entry-btn sub qr-scan-close">やめる（コードを入力する）</button>' +
       '</div>';
     doc.body.appendChild(wrap);
+    wrap.querySelector('.qr-scan-ttl').textContent = title;
+    wrap.querySelector('.qr-scan-note').textContent = note;
     const video = wrap.querySelector('video');
     const msg = wrap.querySelector('.qr-scan-msg');
     const say = (t) => { msg.textContent = t; };
@@ -154,9 +161,9 @@
         busy = true;
         try {
           for (const text of await detect(video)) {
-            const code = parseInvite(text);
+            const code = parse(text);
             if (code) { close(); opts.onCode(code); return; }
-            say('まいにこの招待QRではありません。ご家族の「家族を追加する」で出したQRを映してください。');
+            say(notMine);
           }
         } catch (e) { /* 1枚読めなくても続ける */ }
         finally { busy = false; }

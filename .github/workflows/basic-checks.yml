@@ -37,6 +37,8 @@ jobs:
         run: |
           node tests/line-worker.test.mjs
           node tests/line-login-worker.test.mjs
+          node tests/reconnect-worker.test.mjs
+          node tests/reconnect-client.test.mjs
           node tests/line-login-cloud-harness.test.mjs
           node tests/ops-scripts.test.mjs
 

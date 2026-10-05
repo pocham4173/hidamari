@@ -405,6 +405,31 @@ service cloud.firestore {
 
     // LINE連携コード(予定のお知らせ用・2026-09-26)。
     // 承認済みの本人名義で作り、10分だけ有効。照合と連携は送信役(サーバー)が行う。
+    /* ご本人の新しいスマホを再接続QRでつなぐ(2026-10-05・作り直し設計書 A2)。
+       家族(承認済み・同意あり・ご本人ではない)が、同じ家庭のご本人あての1回限り・10分のコードを作る。
+       コードの照合と、ご本人のUIDでのログインは送信役(サーバー)だけが行う。作った家族は確認と取り消しができる。 */
+    match /reconnectCodes/{code} {
+      function memberDoc(groupId, uid) { return get(/databases/$(db)/documents/groups/$(groupId)/members/$(uid)).data; }
+      function honninDoc(m) { return m.get('role', '') == 'honnin' || m.get('mode', '') == 'honnin'; }
+      allow get: if signedIn() && resource.data.createdBy == request.auth.uid;
+      allow list, update: if false;
+      allow create: if code.matches('^[A-HJ-NP-Z2-9]{16}$')
+        && request.resource.data.keys().hasOnly(['groupId', 'targetUid', 'createdBy', 'createdAt', 'expiresAt'])
+        && request.resource.data.groupId is string && request.resource.data.targetUid is string
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.targetUid != request.auth.uid
+        && isApproved(request.resource.data.groupId) && hasConsent()
+        && writableGroup(request.resource.data.groupId)
+        && !honninDoc(memberDoc(request.resource.data.groupId, request.auth.uid))
+        && exists(/databases/$(db)/documents/groups/$(request.resource.data.groupId)/members/$(request.resource.data.targetUid))
+        && memberDoc(request.resource.data.groupId, request.resource.data.targetUid).get('status', 'approved') == 'approved'
+        && honninDoc(memberDoc(request.resource.data.groupId, request.resource.data.targetUid))
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(11, 'm');
+      allow delete: if signedIn() && resource.data.createdBy == request.auth.uid;
+    }
+
     match /lineLinkCodes/{code} {
       allow get: if signedIn() && resource.data.uid == request.auth.uid;
       allow list: if false;

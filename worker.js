@@ -28,6 +28,9 @@
  *     - 1回の見回りで知らせるタグの読み取りは TAGS_PER_RUN 件まで(残りは次の回)
  *     - 残り通数は lineStatus/quota に書き、家族が設定画面で見られる
  *     - ひと声のきっかけは、まいにこ全体で月 HITOKOE_MONTHLY_LIMIT 通まで(タグの分は必ず残す)
+ *  5. ご本人の新しいスマホを再接続QRでつなぐ(2026-10-05追加・/auth/reconnect・作り直し設計書 A2)
+ *     - 家族が出した1回限り・10分のQR(reconnectCodes)を、ご本人の新しいスマホで読むと、
+ *       ご本人と同じUIDでまいにこに入れる(カスタムトークン)。前のスマホのログインは無効にする。
  *  4. LINEでログイン(2026-10-01追加・/auth/line/〜)
  *     - 既存のまいにこアカウント(Firebase UID)に、LINEログイン用のつながりを本人確認のうえで結びつける
  *     - つないだLINEで本人確認できたら、同じUIDでまいにこに入れる(新しいUIDや家庭は作らない)
@@ -85,6 +88,9 @@ export default {
     }
     if (url.pathname.startsWith('/auth/line/')) {
       return handleLineAuth(request, env, url);
+    }
+    if (url.pathname === '/auth/reconnect') {
+      return handleReconnect(request, env);
     }
     // 試験環境だけ: 同じWorkerでアプリの画面も配る(本番には ASSETS がないので、ここは通らない)
     if (env.ASSETS && url.pathname !== '/line' && url.pathname !== '/__status') {
@@ -410,7 +416,7 @@ async function runNotifications(env) {
       const member = group && group.fields.deletionState !== 'deleting' && typeof uid === 'string' && uid ? await fs.get('groups/' + gid + '/members/' + uid) : null;
       if (!member || await fs.get('accountClosures/' + uid)) await fs.delete(d.path);
     }
-    for (const collectionId of ['lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
+    for (const collectionId of ['reconnectCodes','lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
       const expired = await fs.query('', {from:[{collectionId}],
         where:{fieldFilter:{field:{fieldPath:'expiresAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},limit:3});
       for (const d of expired) await fs.delete(d.path);
@@ -1479,6 +1485,84 @@ async function cleanupLoginLink(fs, now) {
     if (e.message === 'request-budget') throw e;
     console.error('login link cleanup', e && e.name);
   }
+}
+
+/* ================= ご本人の新しいスマホを再接続QRでつなぐ(2026-10-05) =================
+ * 家族(承認済み・ご本人ではない)が、アプリで reconnectCodes/{コード} を作る(ルールで、作る人と相手を確かめる)。
+ *   コードは16文字(約80ビット)・10分・1回だけ。QRには「まいにこのアドレス + ?reconnect=コード」だけを入れる。
+ * ご本人の新しいスマホがQRを読むと、ここ(/auth/reconnect)にコードを送る(App Check つき・まいにこの画面からだけ)。
+ * 次のすべてを1つのトランザクションで確かめ、コードを消して確定したときだけ、ご本人のUIDのカスタムトークンを返す。
+ *   - コードがあり、期限内
+ *   - 作った家族が、いまも承認済み・同意あり・ご本人ではない・終了手続き中でない
+ *   - 相手が、同じ家庭のご本人(承認済み・同意あり)で、終了手続き中でない。家庭は削除中でない
+ * 確定のあと、相手の前のログインを無効にする(validSince)。なくしたスマホ・古いスマホは遅くとも1時間で使えなくなる。 */
+const RECONNECT_RE = /^[A-HJ-NP-Z2-9]{16}$/;
+async function handleReconnect(request, env) {
+  if ((request.headers.get('origin') || '') !== appOrigin(env)) return new Response('forbidden', { status: 403 });
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(env) });
+  if (request.method !== 'POST') return apiJson({ error: 'method' }, 405, env);
+  try {
+    let body;
+    try { body = await request.json(); } catch (e) { body = null; }
+    if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.code !== 'string' || !RECONNECT_RE.test(body.code)) {
+      return apiJson({ error: 'bad-request' }, 400, env);
+    }
+    const fs = new Firestore(env);
+    await verifyAppCheck(env, fs, request);
+    return apiJson(await reconnectExchange(fs, body.code), 200, env);
+  } catch (e) {
+    if (e instanceof AuthProblem) return apiJson({ error: e.code }, e.status, env);
+    console.error('reconnect failed', e && e.name);
+    return apiJson({ error: 'server' }, 503, env);
+  }
+}
+function isHonninMember(m) { return !!m && (m.fields.role === 'honnin' || m.fields.mode === 'honnin'); }
+async function reconnectExchange(fs, code) {
+  const path = 'reconnectCodes/' + code;
+  const first = await fs.get(path);
+  if (!first) throw new AuthProblem('used', 410);
+  const groupId = first.fields.groupId, target = first.fields.targetUid, creator = first.fields.createdBy;
+  if (!(first.fields.expiresAt instanceof Date) || first.fields.expiresAt.getTime() <= Date.now()) {
+    await fs.commit([{ delete: fs.root + '/' + path, currentDocument: { updateTime: first.updateTime } }]).catch(() => false);
+    throw new AuthProblem('expired', 410);
+  }
+  if (typeof groupId !== 'string' || !groupId || typeof target !== 'string' || !target || typeof creator !== 'string' || !creator || target === creator) {
+    throw new AuthProblem('used', 410);
+  }
+  // 同意・承認・終了手続き(accountClosures)は approvedMember で確かめる(作った家族も、相手も)
+  const famOk = await approvedMember(fs, groupId, creator);
+  const honOk = await approvedMember(fs, groupId, target);
+  if (!famOk || famOk.role === 'honnin' || famOk.mode === 'honnin') throw new AuthProblem('not-allowed', 403);
+  if (!honOk || !(honOk.role === 'honnin' || honOk.mode === 'honnin')) throw new AuthProblem('not-allowed', 403);
+  if (!await authUserState(fs, target)) throw new AuthProblem('account-unavailable', 403);
+  // 確かめたあとに、コードの取り消し・名簿の変更・家庭の削除・終了手続きが先に確定したら、この確定は失敗する
+  const txn = await fs.beginTransaction();
+  let committed = false;
+  try {
+    const cur = await fs.get(path, txn);
+    const group = await fs.get('groups/' + groupId, txn);
+    const fam = await fs.get('groups/' + groupId + '/members/' + creator, txn);
+    const hon = await fs.get('groups/' + groupId + '/members/' + target, txn);
+    const closure = await fs.get('accountClosures/' + target, txn);
+    const famClosure = await fs.get('accountClosures/' + creator, txn);
+    if (!cur || cur.updateTime !== first.updateTime) throw new AuthProblem('used', 410);
+    if (!group || group.fields.deletionState === 'deleting') throw new AuthProblem('not-allowed', 403);
+    const approved = (m) => m && (m.fields.status === undefined || m.fields.status === 'approved');
+    if (!approved(fam) || isHonninMember(fam) || !approved(hon) || !isHonninMember(hon)) throw new AuthProblem('not-allowed', 403);
+    if (closure || famClosure) throw new AuthProblem('account-unavailable', 403);
+    committed = await fs.commit([{ delete: fs.root + '/' + path, currentDocument: { updateTime: first.updateTime } }], txn);
+  } finally {
+    if (!committed) await fs.rollback(txn);
+  }
+  if (!committed) throw new AuthProblem('used', 410);
+  // 前のスマホ(なくしたスマホ)のログインを無効にする。新しいスマホは、この後のカスタムトークンで入る
+  await revokeSessions(fs, target);
+  return { customToken: await mintCustomToken(fs, target), uid: target };
+}
+async function revokeSessions(fs, uid) {
+  const res = await fs.call('POST', 'https://identitytoolkit.googleapis.com/v1/projects/' + fs.sa.project_id + '/accounts:update',
+    { localId: uid, validSince: String(Math.floor(Date.now() / 1000)) });
+  if (!res.ok) throw new Error('revoke ' + res.status);
 }
 
 /* ---- 確認の部品 ---- */
