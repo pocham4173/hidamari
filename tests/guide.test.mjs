@@ -25,7 +25,7 @@ for (const id of ['mistake', 'pending', 'voice', 'line', 'offline', 'newphone', 
 const help = fs.readFileSync(new URL('../help.html', import.meta.url), 'utf8');
 assert.match(help, /else if\(h==='#trouble'\)\{location\.replace\('guide\/trouble\.html'\);\}/);
 assert.match(help, /<label id="memo" for="question-template">/);
-assert.equal((html.match(/href="guide\/trouble\.html" target="_blank" rel="noopener">📷 困ったとき（写真つき）<\/a>/g) || []).length, 2);
+assert.equal((html.match(/href="guide\/trouble\.html">📷 困ったとき（写真つき）<\/a>/g) || []).length, 2);
 // LINEで予定のお知らせ(写真つき): つなぐ・予定に時間を入れる・ほかの人・やめる。LINEのメニューの「予定のお知らせ」(#line)からも開く
 for (const id of ['link', 'notify', 'others']) assert.match(line, new RegExp('id="' + id + '"'));
 assert.match(line, /月200通まで/);
@@ -42,4 +42,29 @@ for (const page of [guide, trouble, line]) {
 assert.match(printCss, /@media print \{[\s\S]*\.bar, \.toc, \.print-area/);
 assert.match(printJs, /im\.loading = 'eager'/, '写真を読み込んでから印刷');
 assert.match(printJs, /window\.print\(\)/);
-console.log('使い方ガイド: 写真・注意事項・章・メニューから開ける・印刷 passed');
+// 説明ページの「← まいにこに戻る」: 5つのページすべての一番上と本文のすぐ下。印刷では出さない
+const privacy = fs.readFileSync(new URL('../privacy.html', import.meta.url), 'utf8');
+const backCss = fs.readFileSync(new URL('../back-button.css', import.meta.url), 'utf8');
+const backJs = fs.readFileSync(new URL('../back-button.js', import.meta.url), 'utf8');
+for (const [name, page, href, pre] of [['guide', guide, '../', '../'], ['trouble', trouble, '../', '../'], ['line', line, '../', '../'], ['help', help, './index.html', ''], ['privacy', privacy, './index.html', '']]) {
+  const btn = '<a class="mainico-back" href="' + href + '" data-back>← まいにこに戻る</a>';
+  assert.equal(page.split(btn).length - 1, 2, name + ': 戻るボタンが2か所');
+  const top = page.indexOf(btn), bottom = page.lastIndexOf(btn);
+  assert.ok(top < page.indexOf('<h1'), name + ': 1つ目は一番上(見出しより前)');
+  assert.ok(bottom > page.indexOf('</h1>') && page.indexOf('<footer', bottom) > bottom, name + ': 2つ目は本文のすぐ下(フッターの前)');
+  assert.ok(page.includes('href="' + pre + 'back-button.css"') && page.includes('src="' + pre + 'back-button.js" defer'), name + ': 部品を読む');
+}
+assert.match(backCss, /min-height: 60px/);
+assert.match(backCss, /width: 100%/);
+assert.match(backCss, /font-size: 21px; font-weight: 700/);
+assert.match(backCss, /@media print \{ a\.mainico-back \{ display: none !important; \} \}/);
+assert.match(backJs, /history\.length <= 1/);
+assert.match(backJs, /history\.back\(\)/);
+assert.match(backJs, /open\.textContent = 'まいにこに戻る'/);
+// アプリの中(ご本人の画面・設定)からの説明ページは、同じ画面で開く(ホーム画面のまいにこでもログインしたまま戻れる)。入口・同意の画面は今回は変えない
+const appPart = html.slice(html.indexOf('<div class="page" id="honnin">'));
+assert.ok(appPart.length > 1000);
+for (const m of appPart.matchAll(/<a [^>]*href="(guide\/[^"]*|help\.html[^"]*|privacy\.html)"[^>]*>/g)) assert.ok(!/target="_blank"/.test(m[0]), '同じ画面で開く: ' + m[0]);
+assert.ok((appPart.match(/href="(guide\/|help\.html|privacy\.html)/g) || []).length >= 20);
+assert.match(html, /if\(id==='kazoku'\|\|id==='honnin'\)reopenAfterDoc\(id\);/, '戻ったら設定を開き直す');
+console.log('使い方ガイド: 写真・注意事項・章・メニューから開ける・印刷・戻るボタン passed');
