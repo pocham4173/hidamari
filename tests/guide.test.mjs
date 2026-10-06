@@ -31,4 +31,15 @@ for (const id of ['link', 'notify', 'others']) assert.match(line, new RegExp('id
 assert.match(line, /月200通まで/);
 assert.match(help, /else if\(h==='#line'\)\{location\.replace\('guide\/line\.html'\);\}/);
 assert.ok(!/help\.html#line"/.test(html), 'アプリからは写真つきの案内へ');
-console.log('使い方ガイド: 写真・注意事項・章・メニューから開ける passed');
+// 印刷: 3つのページとも「印刷する」ボタンがあり、紙ではメニューを消す
+const printCss = fs.readFileSync(new URL('../guide/print.css', import.meta.url), 'utf8');
+const printJs = fs.readFileSync(new URL('../guide/print.js', import.meta.url), 'utf8');
+for (const page of [guide, trouble, line]) {
+  assert.match(page, /<link rel="stylesheet" href="print\.css">\n<script src="print\.js" defer><\/script>/);
+  assert.match(page, /<button class="print-btn" type="button" data-print hidden>🖨 このページを印刷する<\/button>/);
+  assert.match(page, /<p class="print-url"><\/p>/);
+}
+assert.match(printCss, /@media print \{[\s\S]*\.bar, \.toc, \.print-area/);
+assert.match(printJs, /im\.loading = 'eager'/, '写真を読み込んでから印刷');
+assert.match(printJs, /window\.print\(\)/);
+console.log('使い方ガイド: 写真・注意事項・章・メニューから開ける・印刷 passed');
