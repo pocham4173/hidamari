@@ -3,8 +3,9 @@
 <head>
 <script>
 /* LINEのメニューの「使い方」などから開いたとき(場所の指定なし・「いつもの使い方」)は、写真つきの使い方ガイドへ。
+   「困ったとき」(#trouble)は、写真つきの困ったときへ。
    くわしい説明(このページの各章)へは、#notifications など場所を指定して開く */
-(function(){var h=location.hash;if(h===''||h==='#'||h==='#daily'){location.replace('guide/');}})();
+(function(){var h=location.hash;if(h===''||h==='#'||h==='#daily'){location.replace('guide/');}else if(h==='#trouble'){location.replace('guide/trouble.html');}})();
 </script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -122,7 +123,7 @@
 <p><strong>最初にデータ消去や入れ直しをしないでください。</strong>復旧設定をしていない登録や端末保存の資料を失うことがあります。</p>
 <ol><li>「送信しています」「確認しています」と表示されている間は、続けて押さず、同じ処理の結果を待ちます。待ち時間だけでは成功・失敗を判断できません。</li><li>通信状態を確認します。失敗の表示が出たら、入力が残っていることを確かめてから、案内に沿って再試行します。</li><li>再読み込みが必要なときは、先に書きかけの内容を自分で控えます。分からない場合は下の状況メモを残します。</li></ol>
 <p>参加の承認待ちは<a href="#family">家族の招待</a>、端末を替えた場合は<a href="#recovery">復旧の手順</a>へ。削除の完了が確認できない場合は、保存情報を消さず、同じアカウントで削除を再開します。</p>
-<label for="question-template"><strong>状況メモ（個人情報を入れない）</strong></label><textarea id="question-template" spellcheck="false">起きた日時：
+<label id="memo" for="question-template"><strong>状況メモ（個人情報を入れない）</strong></label><textarea id="question-template" spellcheck="false">起きた日時：
 端末の種類（例：iPhone）：
 ブラウザー（例：Safari）：
 選んだ使い方：
