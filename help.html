@@ -3,9 +3,9 @@
 <head>
 <script>
 /* LINEのメニューの「使い方」などから開いたとき(場所の指定なし・「いつもの使い方」)は、写真つきの使い方ガイドへ。
-   「困ったとき」(#trouble)は、写真つきの困ったときへ。
+   「困ったとき」(#trouble)は写真つきの困ったときへ、「予定のお知らせ」(#line)は写真つきのLINEの案内へ。
    くわしい説明(このページの各章)へは、#notifications など場所を指定して開く */
-(function(){var h=location.hash;if(h===''||h==='#'||h==='#daily'){location.replace('guide/');}else if(h==='#trouble'){location.replace('guide/trouble.html');}})();
+(function(){var h=location.hash;if(h===''||h==='#'||h==='#daily'){location.replace('guide/');}else if(h==='#trouble'){location.replace('guide/trouble.html');}else if(h==='#line'){location.replace('guide/line.html');}})();
 </script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
