@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const guide = fs.readFileSync(new URL('../guide/index.html', import.meta.url), 'utf8');
-const imgs = [...guide.matchAll(/src="img\/([^"]+)"/g)].map((m) => m[1]);
+const trouble = fs.readFileSync(new URL('../guide/trouble.html', import.meta.url), 'utf8');
+const imgs = [...(guide + trouble).matchAll(/src="img\/([^"]+)"/g)].map((m) => m[1]);
 assert.ok(imgs.length >= 10, '写真つき');
 for (const f of imgs) assert.ok(fs.existsSync(new URL('../guide/img/' + f, import.meta.url)), 'ある: ' + f);
 for (const f of fs.readdirSync(new URL('../guide/img/', import.meta.url))) assert.ok(imgs.includes(f), '使っていない写真はおかない: ' + f);
@@ -17,4 +18,11 @@ assert.match(html, /<a class="consent-back" href="guide\/" target="_blank" rel="
 assert.match(html, /id="menu-line-login" data-line-login-only hidden/);
 assert.match(html, /<div class="set-sec" data-line-login-only hidden><h4>LINEでログイン/);
 assert.match(html, /document\.querySelectorAll\('\[data-line-login-only\]'\)\.forEach\(el=>\{el\.hidden=!window\.MAINICO_LINE_AUTH_URL;\}\);/);
+// 困ったとき(写真つき): よくある困りごと・119番の注意・問い合わせ。LINEのメニューの「困ったとき」(#trouble)からも開く
+assert.match(trouble, /急ぐとき・命に関わるときは、119番・110番へ/);
+for (const id of ['mistake', 'pending', 'voice', 'line', 'offline', 'newphone', 'stuck', 'home', 'nobody', 'contact']) assert.match(trouble, new RegExp('id="' + id + '"'));
+const help = fs.readFileSync(new URL('../help.html', import.meta.url), 'utf8');
+assert.match(help, /else if\(h==='#trouble'\)\{location\.replace\('guide\/trouble\.html'\);\}/);
+assert.match(help, /<label id="memo" for="question-template">/);
+assert.equal((html.match(/href="guide\/trouble\.html" target="_blank" rel="noopener">📷 困ったとき（写真つき）<\/a>/g) || []).length, 2);
 console.log('使い方ガイド: 写真・注意事項・章・メニューから開ける passed');
