@@ -98,6 +98,8 @@
   .chat .bot { justify-self: start; background: #fff; color: #222; border-radius: 16px 16px 16px 4px; padding: 8px 12px; max-width: 92%; white-space: pre-line; }
   .chat-cap { text-align: center; font-size: 13px; color: var(--muted); margin-top: 6px; }
 </style>
+<link rel="stylesheet" href="print.css">
+<script src="print.js" defer></script>
 </head>
 <body>
 <div class="bar"><div class="wrap">
@@ -121,6 +123,7 @@
       <li><a href="#notify">予定に時間を入れる</a></li>
       <li><a href="#others">ほかの人にも送る・やめる</a></li>
     </ul>
+    <div class="print-area"><button class="print-btn" type="button" data-print hidden>🖨 このページを印刷する</button><p class="print-note" id="print-note" hidden>LINEの中では印刷できないことがあります。右上の「…」などから「ブラウザで開く」を選んで、もう一度押してください。</p></div>
   </div>
 
   <section class="chapter" id="link">
@@ -227,6 +230,7 @@
   <footer>
     <a href="../">アプリを開く</a><a href="./">使い方ガイド</a><a href="trouble.html">困ったとき</a><a href="../help.html#notifications">詳しい説明</a>
     <p>まいにこ ― 家族のつながり ／ 運営：川村 理絵 ／ 写真は試験用のデータです</p>
+    <p class="print-url"></p>
     <a class="back-top" href="#">↑ 上へ</a>
   </footer>
 </main>
