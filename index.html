@@ -558,6 +558,16 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .family-preview-link span{display:block;}
 .family-preview-link:focus-visible{outline:3px solid #315FAE;outline-offset:2px;}
 .family-jump{display:block;width:100%;min-height:48px;margin-top:10px;border:2px solid #4F7FD3;border-radius:11px;background:#fff;color:#315FAE;font:inherit;font-weight:900;cursor:pointer;}
+/* ホーム画面に追加のカード(2026-10-08) */
+.install-card{background:#EEF3FB;border:2px solid #315FAE;border-radius:16px;padding:14px;margin:0 0 14px;line-height:1.7;color:#22324A;}
+.install-card b{display:block;font-size:1.1rem;}
+.install-card p{margin:6px 0 8px;}
+.install-card .set-btn{display:block;width:100%;min-height:52px;font-weight:900;margin:6px 0 0;}
+.install-card .set-btn.install-go{background:#315FAE;color:#fff;border-color:#315FAE;}
+.install-card .set-btn.sub{background:#fff;}
+.set-btn.install-set{display:block;width:100%;min-height:52px;font-weight:900;margin:0 0 10px;}
+.set-btn.install-set[hidden]{display:none;}
+.install-card[hidden]{display:none;}
 /* 家庭につながっているスマホで受け取った招待(2026-10-07)・つながっている人 */
 .invite-switch-card{background:#FFF8EC;border:3px solid #E0732F;border-radius:18px;padding:16px;margin:0 0 14px;font-size:1.08rem;line-height:1.7;color:#3D2E1C;}
 .invite-switch-card b{display:block;font-size:1.2rem;margin-bottom:4px;}
@@ -956,7 +966,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <div id="select-box">
     <button class="entry-btn" onclick="pickMode('honnin')">本人が使う<small>ご本人のスマホ（ボタンを押して家族に伝える）</small></button>
     <button class="entry-btn" onclick="pickMode('kazoku')">本人と家族が使う<small>ご家族のスマホ（ご本人も別のスマホで使う家庭）</small></button>
-    <button class="entry-btn" onclick="pickMode('konly')">家族だけで使う<small>ご本人はスマホを使わず、家族が様子を残す</small></button>
+    <button class="entry-btn" onclick="pickMode('konly')">家族だけで使う<small>ご本人はスマホを使わず、家族が様子を残す（ほかの家族は招待QRで参加）</small></button>
     <button class="entry-btn" onclick="pickInvited()">招待された方<small>ご家族の方で、招待コードをお持ちの方</small></button>
   </div>
   <div class="entry-tools">
@@ -1216,6 +1226,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div id="invite-switch" class="invite-switch" role="region" aria-label="受け取った招待" hidden></div>
     <div id="h-approve"></div>
     <div id="person-security-notices"></div>
+    <div class="install-card" data-install-card hidden><b>📲 ホーム画面に追加しましょう</b><p>次から、ホーム画面の「まいにこ」のアイコンですぐ開けます。ブラウザーで開いたままだと、つながりが分かれることがあります。</p><button class="set-btn install-go" type="button" onclick="installApp()">ホーム画面に追加する</button><button class="set-btn sub" type="button" onclick="dismissInstallCard()">あとで</button></div>
     <div class="h-today" id="speech-notice" style="display:none;">
       <div class="ht-lb">はじめにお知らせ</div>
       <div style="font-size:1.05rem;line-height:1.7;color:#4A3A24;padding:4px 0;">このアプリは、ボタンを押すと声でもお知らせします。音を出したくないときは消せます。</div>
@@ -1306,6 +1317,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 <div class="modal" id="person-settings-modal"><div class="modal-box adult-font">
   <div class="ttl">その他の設定</div>
   <a class="guide-link" href="guide/"><span>📷</span><div>使い方ガイド<small>写真つきで、手順を見られます</small></div></a>
+  <button class="set-btn install-set" type="button" data-install-button hidden onclick="installApp()">📲 ホーム画面に追加する</button>
   <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;"><h4>家族との連携</h4>
     <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
     <p class="connected-people" data-connected-people aria-live="polite"></p>
@@ -1590,6 +1602,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <button class="set-btn" type="button" onclick="openRecoveryMenu()">復旧を設定する</button>
     </div>
     <a class="guide-link" href="guide/"><span>📷</span><div>使い方ガイド<small>写真つきで、手順を見られます</small></div></a>
+    <button class="set-btn install-set" type="button" data-install-button hidden onclick="installApp()">📲 ホーム画面に追加する</button>
 
     <details class="set-menu" id="menu-family">
       <summary>家族の管理</summary>
@@ -1772,6 +1785,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       </div>
 
       <div id="card-pending"></div>
+      <div class="install-card" data-install-card hidden><b>📲 ホーム画面に追加しましょう</b><p>次から、ホーム画面の「まいにこ」のアイコンですぐ開けます。ブラウザーで開いたままだと、つながりが分かれることがあります。</p><button class="set-btn install-go" type="button" onclick="installApp()">ホーム画面に追加する</button><button class="set-btn sub" type="button" onclick="dismissInstallCard()">あとで</button></div>
       <!-- 家族へのお知らせ(2026-10-01): ひと声のきっかけ・ご本人のスマホの復旧・LINEの残り通数 -->
       <div id="owner-transfer-card"></div>
       <div id="hitokoe-card"></div>
@@ -2855,9 +2869,21 @@ let deferredPrompt=null;
 function isStandalone(){
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
 }
+/* ホーム画面に追加していない(ブラウザーで開いている)ときだけ、ホームのカードと設定のボタンを出す(2026-10-08)。
+   カードは「あとで」で7日間しまう。設定のボタンはいつでも出す */
+const INSTALL_CARD_KEY='mainicoInstallCardLater';
 function updateInstallButton(){
   const b=document.getElementById('install-main');
   if(b) b.style.display=isStandalone()?'none':'block';
+  const standalone=isStandalone();
+  let later=0;try{later=Number(localStorage.getItem(INSTALL_CARD_KEY)||0);}catch(e){}
+  const hideCard=standalone||Date.now()-later<7*86400000;
+  document.querySelectorAll('[data-install-card]').forEach(el=>{el.hidden=hideCard;});
+  document.querySelectorAll('[data-install-button]').forEach(el=>{el.hidden=standalone;});
+}
+function dismissInstallCard(){
+  try{localStorage.setItem(INSTALL_CARD_KEY,String(Date.now()));}catch(e){}
+  updateInstallButton();
 }
 window.addEventListener('beforeinstallprompt', e=>{
   e.preventDefault();
@@ -3079,7 +3105,7 @@ function setupConnectPage(){
     lead.textContent='はじめては「ご本人と一緒に初期設定する」。招待された方は、QRかコードで参加します。';
     btn.textContent='ご本人と一緒に初期設定する'; tb.style.display='block';
   }else{
-    lead.textContent='はじめては「新しくはじめる」。招待された方は、QRかコードで参加します。';
+    lead.textContent='家族だけで使うときは、まず1人が「新しくはじめる」を押して家庭を作ります。ほかの家族は、あとで「設定」→「家族の管理」→「家族を追加する」で出す招待QRを読んで参加します。ご本人のスマホはいりません。招待された方は、下の欄にコードを入れるか、QRを読み取ってください。';
     btn.textContent='新しくはじめる'; tb.style.display='none';
   }
 }
