@@ -39,8 +39,8 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
 {
  const f=homeFixture('honnin');f.state(family);f.events([greeting,reply]);
  const panel=f.document.getElementById('person-conversation-panel');assert.ok(f.visible(panel));
- // 受け取った招待・参加を待っている人・安全のお知らせのカード(ふだんは空)は、ホームの一番上に置く。それ以外で数える
- const bodyKids=[...f.document.querySelector('.h-body').children].filter(el=>!['invite-switch','h-approve','person-security-notices'].includes(el.id));
+ // 受け取った招待・参加を待っている人・ホーム画面に追加・安全のお知らせのカード(ふだんは空か隠れている)は、ホームの一番上に置く。それ以外で数える
+ const bodyKids=[...f.document.querySelector('.h-body').children].filter(el=>!['invite-switch','h-approve','person-security-notices'].includes(el.id)&&!el.hasAttribute('data-install-card'));
  const hTodayIndex=bodyKids.indexOf(f.document.getElementById('h-today'));
  assert.ok(hTodayIndex>=0&&hTodayIndex<=1,'今日の予定は本人画面の最上部側（初回案内の次まで）にある');
  assert.equal(bodyKids[0],f.document.getElementById('speech-notice'),'音声の初回案内は一番上に出る');

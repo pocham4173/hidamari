@@ -74,4 +74,10 @@ assert.match(html, /<div id="person-invite-area"><\/div>\n    <div id="person-se
 assert.match(html, /<div id="settings-invite-area"><\/div>\n          <div id="settings-approve" class="settings-approve"><\/div>/, '家族の設定: 招待QRのすぐ下に「参加を認める」');
 assert.match(html, /renderPendingCard\('h-approve', snap\);renderPendingCard\('person-settings-approve', snap\);/);
 assert.match(html, /renderPendingCard\('card-pending', snap\);renderPendingCard\('settings-approve', snap\);/);
+// ホーム画面に追加: ご本人・家族のホームにカード、両方の設定にボタン(ブラウザーで開いているときだけ)
+assert.equal((html.match(/<div class="install-card" data-install-card hidden>/g) || []).length, 2);
+assert.equal((html.match(/data-install-button hidden onclick="installApp\(\)">📲 ホーム画面に追加する<\/button>/g) || []).length, 2);
+assert.match(html, /document\.querySelectorAll\('\[data-install-button\]'\)\.forEach\(el=>\{el\.hidden=standalone;\}\);/);
+// 家族だけで使う: 始め方とほかの家族の参加のしかた
+assert.match(html, /家族だけで使うときは、まず1人が「新しくはじめる」を押して家庭を作ります。ほかの家族は、あとで「設定」→「家族の管理」→「家族を追加する」で出す招待QRを読んで参加します。/);
 console.log('受け取った招待を黙って捨てない: 判断・つながっている人・画面のつなぎ込み passed');
