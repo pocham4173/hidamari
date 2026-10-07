@@ -577,6 +577,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .invite-switch-card .set-btn.sub{background:#fff;}
 .connected-people{font-weight:700;color:#2F4A3A;background:#EEF5EF;border-radius:10px;padding:8px 12px;margin:6px 0 10px;line-height:1.6;}
 .connected-people:empty{display:none;}
+.member-del.member-rename{border-color:#315FAE;color:#315FAE;margin-right:6px;}
 .invite-pending-note{background:#FFF8EC;border:2px solid #E0732F;border-radius:12px;padding:10px 12px;}
 .owner-transfer-card label,#owner-transfer-settings label{display:block;font-weight:700;margin:8px 0 4px;}
 .owner-transfer-card input[type=password],#owner-transfer-settings select{display:block;width:100%;box-sizing:border-box;min-height:48px;font:inherit;font-size:1.05rem;padding:8px 10px;border:2px solid #C9B79C;border-radius:10px;background:#fff;margin-bottom:6px;}
@@ -1321,6 +1322,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;"><h4>家族との連携</h4>
     <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
     <p class="connected-people" data-connected-people aria-live="polite"></p>
+    <button class="set-btn" type="button" onclick="openRename(uid())">自分の名前を変える</button>
     <button class="set-btn" data-owner-only hidden onclick="makeInvite('person-invite-area')">招待コードを作る</button>
     <div id="person-invite-area"></div>
     <div id="person-settings-approve" class="settings-approve"></div>
@@ -1756,6 +1758,16 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 </div>
 
 <!-- ===== 家族 ===== -->
+<!-- 名前を変える(2026-10-08) -->
+<div class="modal" id="rename-modal" role="dialog" aria-modal="true" aria-labelledby="rename-title"><div class="modal-box adult-font">
+  <div class="ttl" id="rename-title">名前を変える</div>
+  <p class="note" id="rename-lead"></p>
+  <input type="text" maxlength="40" id="rename-input" class="setup-input" autocomplete="off">
+  <p class="note" id="rename-state" role="status" aria-live="polite"></p>
+  <button class="set-btn" id="rename-save" type="button" onclick="saveRename()">この名前にする</button>
+  <button class="modal-close" type="button" onclick="closeRename()">やめる</button>
+</div></div>
+
 <div class="page" id="kazoku">
   <div class="f-head">
     <div class="lg" id="f-lg">まいにこ ─ ホーム</div>
@@ -6652,7 +6664,9 @@ async function renderSetMembers(){
       }else{
         const audience=MainicoFamilyConnection.recipient(v);
         const roleTag=audience==='honnin'?'（ご本人）':'';
-        html+='<div class="member-row"><span>'+esc(v.name)+roleTag+(me?'（あなた）':'')+'</span>'+
+        /* 名前を変える: 自分の名前と、ご本人の名前(2026-10-08) */
+        const rename=(me||audience==='honnin')?'<button class="member-del member-rename" onclick="openRename(\''+id+'\')">名前を変える</button>':'';
+        html+='<div class="member-row"><span>'+esc(v.name)+roleTag+(me?'（あなた）':'')+'</span>'+rename+
           ((!me&&doc.id!==householdOwnerId&&isHouseholdOwner())?'<button class="member-del" onclick="removeMember(\''+id+'\',false)">解除</button>':'<small>'+(doc.id===householdOwnerId?'管理者':(me?'':'参加メンバー'))+'</small>')+'</div>';
       }
     });
@@ -6665,6 +6679,46 @@ async function renderSetMembers(){
 function refreshSetMembersIfOpen(){
   const m=document.getElementById('settings-modal');
   if(m && m.classList.contains('show')) renderSetMembers();
+}
+/* ===== 名前を変える(2026-10-08) =====
+   自分の名前と、ご本人の名前を変えられる(firestore.rules: 家族の名簿は name だけを書き換える)。
+   前に残した記録の名前は、そのときの名前のまま */
+let renameTarget='',renameBusy=false;
+function openRename(id){
+  const mid=memberRef(id);if(!mid)return;
+  renameTarget=mid;
+  const info=(typeof memberInfoByUid!=='undefined'&&memberInfoByUid[mid])||{};
+  const honnin=MainicoFamilyConnection.recipient(info)==='honnin';
+  const isMe=mid===uid();
+  const now=typeof info.name==='string'?info.name:(memberNames[id]||'');
+  document.getElementById('rename-title').textContent=isMe?'自分の名前を変える':'ご本人の名前を変える';
+  document.getElementById('rename-lead').textContent=(isMe?'あなたの名前です。':'ご本人の名前です。')+'「つながっている人」や、これからの記録に出ます。'+(honnin?'例：花子（おばあちゃん）':'例：理絵');
+  const input=document.getElementById('rename-input');
+  input.value=now==='本人'?'':now;input.placeholder=honnin?'例：花子':'例：理絵';
+  document.getElementById('rename-state').textContent='';
+  document.getElementById('rename-save').disabled=false;
+  document.getElementById('rename-modal').classList.add('show');
+  setTimeout(()=>{try{input.focus();}catch(e){}},200);
+}
+function closeRename(){if(renameBusy)return;document.getElementById('rename-modal').classList.remove('show');}
+async function saveRename(){
+  if(renameBusy||!renameTarget)return;
+  const state=document.getElementById('rename-state');
+  const n=document.getElementById('rename-input').value.trim();
+  if(!n){state.textContent='名前を入れてください。';return;}
+  if(n.length>40){state.textContent='40文字までにしてください。';return;}
+  renameBusy=true;document.getElementById('rename-save').disabled=true;state.textContent='保存しています…';
+  const target=renameTarget,group=gid();
+  try{
+    await col('members').doc(target).update({name:n});
+    if(target===uid()&&group===gid())previewStorage.setItem('mainicoName',n);
+    renameBusy=false;closeRename();
+    refreshSetMembersIfOpen();
+    await appNotice('名前を「'+n+'」にしました。');
+  }catch(error){
+    console.warn('rename',error);renameBusy=false;document.getElementById('rename-save').disabled=false;
+    state.textContent=error&&error.code==='permission-denied'?'この名前は変えられませんでした。ご本人か自分の名前だけ変えられます。':'保存できませんでした。通信を確認して、もう一度押してください。';
+  }
 }
 async function approveMember(mid){
   if(!requireHouseholdOwner())return;
