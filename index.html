@@ -951,7 +951,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   </ul>
   <div class="open-place-note" id="open-place-note" hidden></div>
   <div class="invite-note" id="invite-note" role="status" hidden></div>
-  <div class="q">どなたのスマホで使いますか？</div>
+  <div class="q" id="entry-question">どなたのスマホで使いますか？</div>
   <div id="entry-state" class="save-state" role="status" aria-live="polite"></div>
   <div id="select-box">
     <button class="entry-btn" onclick="pickMode('honnin')">本人が使う<small>ご本人のスマホ（ボタンを押して家族に伝える）</small></button>
@@ -6721,9 +6721,16 @@ function clearInvite(){
   try{previewStorage.removeItem(INVITE_KEY);}catch(e){}
   if(window.caches)caches.open('mainico-invite').then(c=>c.delete('invite-code')).catch(()=>{});
 }
+/* ご本人からの招待のときは「ご家族として参加する」だけを出す(下の「本人が使う」などと押し間違えないように)。
+   招待を使わないときだけ、小さな「ほかの使い方を選ぶ」から元の選び方に戻れる */
+function showEntryChoices(on){
+  ['entry-question','select-box'].forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=!on;});
+}
+function skipInvite(){clearInvite();renderInviteNote();}
 function renderInviteNote(){
   const box=document.getElementById('invite-note');if(!box)return;
   const inv=gid()?null:readInvite();
+  showEntryChoices(true);
   if(!inv){box.hidden=true;box.textContent='';return;}
   box.hidden=false;
   if(isIosDevice()&&!isStandalone()){
@@ -6732,8 +6739,10 @@ function renderInviteNote(){
   }else{
     box.innerHTML=inv.from==='h'?
       '<b>ご本人から招待（コード <span class="code">'+esc(inv.code)+'</span>）を受け取りました。</b><br>このスマホは、ご家族として参加します。下のボタンを押し、同意とお名前を入れると、そのまま参加を申し込みます。'+
-      '<button class="entry-btn" type="button" onclick="pickInvited()">ご家族として参加する</button>':
+      '<button class="entry-btn" type="button" onclick="pickInvited()">ご家族として参加する</button>'+
+      '<button class="consent-back" type="button" onclick="skipInvite()">この招待を使わず、ほかの使い方を選ぶ</button>':
       '<b>招待コード <span class="code">'+esc(inv.code)+'</span> を受け取りました。</b><br>このスマホを使う人を選んでください。ご本人のスマホなら「本人が使う」、ご家族なら「招待された方」です。同意とお名前を入れると、そのまま参加を申し込みます。';
+    if(inv.from==='h')showEntryChoices(false);
   }
 }
 /* ===== 家庭につながっているスマホで招待を受け取ったとき(2026-10-07) =====

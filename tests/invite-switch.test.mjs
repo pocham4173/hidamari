@@ -67,4 +67,7 @@ assert.equal((html.match(/<p class="connected-people" data-connected-people aria
 assert.match(html, /id="pending-invite-note"/);
 const sw = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 assert.match(sw, /'invite-switch\.js'/);
+assert.match(html, /if\(inv\.from==='h'\)showEntryChoices\(false\);/, 'ご本人からの招待では「ご家族として参加する」だけ');
+assert.match(html, /onclick="skipInvite\(\)">この招待を使わず、ほかの使い方を選ぶ<\/button>/);
+assert.match(html, /\['entry-question','select-box'\]/);
 console.log('受け取った招待を黙って捨てない: 判断・つながっている人・画面のつなぎ込み passed');
