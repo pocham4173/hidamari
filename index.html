@@ -6771,7 +6771,8 @@ async function renderInviteSwitch(){
   if(!inv){box.hidden=true;box.innerHTML='';return;}
   if(inviteSwitchBusy)return;
   const generation=++inviteSwitchGeneration;
-  inviteSwitchCard(box,'<b>招待を受け取りました。</b><p>今の家族とのつながりを確認しています…</p>');
+  // 出ているカードは、確かめ直す間も消さない(押そうとしたボタンが消えないように)
+  if(box.hidden)inviteSwitchCard(box,'<b>招待を受け取りました。</b><p>今の家族とのつながりを確認しています…</p>');
   let result;
   try{result=await inviteSwitchPlan(inv);}
   catch(error){
@@ -6808,6 +6809,7 @@ async function moveToInvitedFamily(){
   if(inviteSwitchBusy)return;
   const inv=readInvite();if(!inv||!gid())return renderInviteSwitch();
   const state=t=>{const el=document.getElementById('invite-switch-state');if(el)el.textContent=t;};
+  state('確認しています…');
   let result;
   try{result=await inviteSwitchPlan(inv);}catch(error){state('今の家族とのつながりを確認できませんでした。通信を確認して、もう一度押してください。');return;}
   const {plan,label}=result;
