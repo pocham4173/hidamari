@@ -558,6 +558,16 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .family-preview-link span{display:block;}
 .family-preview-link:focus-visible{outline:3px solid #315FAE;outline-offset:2px;}
 .family-jump{display:block;width:100%;min-height:48px;margin-top:10px;border:2px solid #4F7FD3;border-radius:11px;background:#fff;color:#315FAE;font:inherit;font-weight:900;cursor:pointer;}
+/* 家庭につながっているスマホで受け取った招待(2026-10-07)・つながっている人 */
+.invite-switch-card{background:#FFF8EC;border:3px solid #E0732F;border-radius:18px;padding:16px;margin:0 0 14px;font-size:1.08rem;line-height:1.7;color:#3D2E1C;}
+.invite-switch-card b{display:block;font-size:1.2rem;margin-bottom:4px;}
+.invite-switch-card p{margin:6px 0 10px;}
+.invite-switch-card .set-btn{display:block;width:100%;min-height:56px;font-size:1.1rem;font-weight:900;margin:8px 0 0;}
+.invite-switch-card .set-btn.invite-move{background:#E0732F;color:#fff;border-color:#E0732F;}
+.invite-switch-card .set-btn.sub{background:#fff;}
+.connected-people{font-weight:700;color:#2F4A3A;background:#EEF5EF;border-radius:10px;padding:8px 12px;margin:6px 0 10px;line-height:1.6;}
+.connected-people:empty{display:none;}
+.invite-pending-note{background:#FFF8EC;border:2px solid #E0732F;border-radius:12px;padding:10px 12px;}
 .owner-transfer-card label,#owner-transfer-settings label{display:block;font-weight:700;margin:8px 0 4px;}
 .owner-transfer-card input[type=password],#owner-transfer-settings select{display:block;width:100%;box-sizing:border-box;min-height:48px;font:inherit;font-size:1.05rem;padding:8px 10px;border:2px solid #C9B79C;border-radius:10px;background:#fff;margin-bottom:6px;}
 .owner-transfer-card button[data-owner-transfer=accept]{background:#315FAE;color:#fff;border-color:#315FAE;}
@@ -1189,6 +1199,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <button class="set-btn" type="button" onclick="copyPendingHelp()">お願いする文をコピー</button>
       <p class="note" id="pending-copy-state" role="status"></p>
     </details>
+    <p class="note invite-pending-note" id="pending-invite-note" role="status" hidden>別の招待を受け取りました。今の申請はまだ残っています。受け取った招待で参加するときは、下の「申請を取り下げる」を押してください。入口に戻ると、受け取った招待で参加できます。</p>
     <button class="consent-back" id="pending-cancel" type="button" onclick="cancelJoinRequest()" disabled>申請を取り下げる</button>
     <p class="note">参加するのをやめるときだけ取り下げます。参加し直す場合は、新しい招待コードが必要です。</p>
   </div>
@@ -1202,6 +1213,9 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div class="h-time" id="h-time"></div>
   </div>
   <div class="h-body">
+    <div id="invite-switch" class="invite-switch" role="region" aria-label="受け取った招待" hidden></div>
+    <div id="h-approve"></div>
+    <div id="person-security-notices"></div>
     <div class="h-today" id="speech-notice" style="display:none;">
       <div class="ht-lb">はじめにお知らせ</div>
       <div style="font-size:1.05rem;line-height:1.7;color:#4A3A24;padding:4px 0;">このアプリは、ボタンを押すと声でもお知らせします。音を出したくないときは消せます。</div>
@@ -1213,8 +1227,6 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div id="h-today-list"></div>
       <button class="ht-yomi" type="button" onclick="event.stopPropagation();speakToday()">🔊 音声で聞く</button>
     </div>
-    <div id="h-approve"></div>
-    <div id="person-security-notices"></div>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
     <div id="person-record-actions" hidden><button class="set-btn" id="person-record-correct" type="button" onclick="openCancel()">記録を確認・とりけす</button></div>
     <button class="aisatsu" id="btn-a" onclick="sendAisatsu()">
@@ -1296,6 +1308,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <a class="guide-link" href="guide/"><span>📷</span><div>使い方ガイド<small>写真つきで、手順を見られます</small></div></a>
   <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;"><h4>家族との連携</h4>
     <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
+    <p class="connected-people" data-connected-people aria-live="polite"></p>
     <button class="set-btn" data-owner-only hidden onclick="makeInvite('person-invite-area')">招待コードを作る</button>
     <div id="person-invite-area"></div>
     <button class="set-btn" onclick="closePersonSettings();openMembers()">参加している人を確認する</button>
@@ -1583,6 +1596,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <div class="set-sec">
           <h4 id="settings-family-connection" tabindex="-1" style="scroll-margin-top:70px;">つながっている人</h4>
           <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
+          <p class="connected-people" data-connected-people aria-live="polite"></p>
           <div id="set-members"><div class="empty">読み込み中…</div></div>
 
         </div>
@@ -1737,6 +1751,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <!-- ホーム -->
     <div class="ftab" id="t-home">
       <!-- 家族のホーム(2026-10-02 並べ直し): 1 いま見てほしいこと → 2 毎日のひと押し → 3 今日のこと → 4 家族のあいだのこと → もしもの備え -->
+      <p class="connected-people" data-connected-people aria-live="polite"></p>
       <div class="card tag-home" id="watch-tag-home" style="display:none;">
         <div class="tag-home-head"><span class="ic">🔔</span><span>おまもりタグからのお知らせ</span><span class="tag-unread-count" id="tag-unread-count" style="display:none;"></span></div>
         <div class="tag-home-status" id="home-watch-tag-status"></div>
@@ -2231,6 +2246,7 @@ setTimeout(function(){
 <script src="security-notices.js?v=20261006"></script>
 <script src="family-guide.js?v=20261002"></script>
 <script src="owner-transfer.js?v=20261002"></script>
+<script src="invite-switch.js?v=20261007"></script>
 <script>
 const previewStorage={
   getItem:k=>localStorage.getItem(k),
@@ -2685,8 +2701,10 @@ function addEvent(data){
 let familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};
 let familyConnectionUnsub=null,familyConnectionGeneration=0;
 let lastFamilyAudience=null;
+let connectedPeopleText='';
 function stopFamilyConnection(){
   familyConnectionGeneration++;
+  connectedPeopleText='';
   lastFamilyAudience=null;
   if(typeof resetCommunication==='function')resetCommunication();
   if(familyConnectionUnsub){familyConnectionUnsub();familyConnectionUnsub=null;}
@@ -2768,6 +2786,8 @@ function renderFamilyConnection(){
     'ほかの家族はまだいません。':
     'ほかの家族 '+state.others+'人と記録を共有しています。';
   document.querySelectorAll('[data-connection-state]').forEach(el=>el.textContent=text);
+  /* 「つながっている人：○○さん（ご本人）、△△さん（ご家族）」。2台が別の家庭になっていたら、見比べてすぐ分かる */
+  document.querySelectorAll('[data-connected-people]').forEach(el=>{el.textContent=connectedPeopleText;el.hidden=!connectedPeopleText;});
   document.querySelectorAll('[data-request-audience]').forEach(el=>el.textContent=requestAudienceText());
   document.querySelectorAll('[data-person-audience]').forEach(el=>el.textContent=state.status==='unknown'?
     '本人用の参加状況は確認できません。保存と相手の確認は別です。':!state.personOthers?
@@ -2802,8 +2822,11 @@ function startFamilyConnection(reset=true){
   const current=()=>generation===familyConnectionGeneration&&owner===uid()&&group===gid()&&boot===householdBootGeneration;
   familyConnectionUnsub=col('members').onSnapshot({includeMetadataChanges:true},snap=>{
     if(!current())return;
-    familyConnection=MainicoFamilyConnection.classify(snap,owner);renderFamilyConnection();
-  },()=>{if(current()){familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};renderFamilyConnection();}});
+    familyConnection=MainicoFamilyConnection.classify(snap,owner);
+    const people=[];try{snap.forEach(doc=>people.push({id:doc.id,data:doc.data()}));}catch(e){}
+    connectedPeopleText=familyConnection.status==='unknown'||typeof MainicoInviteSwitch==='undefined'?'':MainicoInviteSwitch.peopleLine(people,owner);
+    renderFamilyConnection();
+  },()=>{if(current()){familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};connectedPeopleText='';renderFamilyConnection();}});
 }
 let personTasksController=null;
 function openPersonTasks(){
@@ -3023,8 +3046,15 @@ function afterConsent(mode=pendingMode){
   previewStorage.setItem('mainicoPendingMode', pendingMode);
   if(pendingMode!=='honnin' && !previewStorage.getItem('mainicoName')){ showPage('name-page'); return; }
   if(gid())return finishSetup();
+  openConnectOrJoin();
+}
+/* 受け取った招待があれば、接続の画面でもう一度押させず、そのまま参加を申し込む(2026-10-07)。
+   コードが使えないときは、接続の画面に残ってお知らせを出す */
+function openConnectOrJoin(){
   setupConnectPage();
   showPage('connect-page');
+  const inv=readInvite();
+  if(inv&&!gid()){const box=document.getElementById('in-code');if(box)box.value=inv.code;joinByCode();}
 }
 function setupConnectPage(){
   /* QRで受け取った招待コードがあれば、入れておく(2026-10-01) */
@@ -3067,8 +3097,7 @@ function saveName(){
   try{
     previewStorage.setItem('mainicoName',n);
     if(gid()){ finishSetup(); return; }
-    setupConnectPage();
-    showPage('connect-page');
+    openConnectOrJoin();
   }catch(error){alert('この端末に名前を保存できませんでした。保存情報は消さず、ブラウザーで開き直してください。');}
 }
 let groupCreating=false;
@@ -3305,6 +3334,8 @@ function showPending(){
   const context={userId:uid(),groupId:gid(),boot:householdBootGeneration,generation:++pendingGeneration};
   pendingContext=context;
   showPage('pending-page');
+  const otherInvite=document.getElementById('pending-invite-note');
+  if(otherInvite)otherInvite.hidden=!(typeof readInvite==='function'&&readInvite());
   pendingState('unknown','参加の申請状況を確認しています。');
   if(!context.userId||!context.groupId){
     pendingState('unknown','この端末の申請状況を確認できません。','保存情報を消さず、通信を確認して「参加状況を確認」を押してください。');
@@ -3438,6 +3469,7 @@ function startMode(){
   else showPage('entry');
   applyHouseholdPermissions();
   openScheduleLink();
+  if(gid()&&typeof renderInviteSwitch==='function')setTimeout(()=>{try{renderInviteSwitch();}catch(e){}},0);
 }
 function resetMode(){ previewStorage.removeItem('mainicoMode'); location.reload(); }
 function openBackConfirm(){
@@ -4005,7 +4037,7 @@ function renderPendingCard(elId, snap){
     const v=doc.data();
     const id=rememberMember(doc.id, v.name);
     html+='<div style="background:#fff;border:3px solid var(--aomidori);border-radius:18px;padding:15px;margin-bottom:12px;">'+
-      '<div style="font-size:1.05rem;font-weight:900;line-height:1.6;margin-bottom:10px;">'+esc(v.name)+'さんを家族として参加させますか?</div>'+
+      '<div style="font-size:1.2rem;font-weight:900;line-height:1.6;margin-bottom:10px;">'+esc(typeof MainicoInviteSwitch!=='undefined'?MainicoInviteSwitch.displayName(v):(v.name||'家族')+'さん')+'が参加を待っています</div>'+
       '<div style="display:flex;gap:8px;">'+
       '<button style="flex:1;font-family:inherit;font-size:1rem;font-weight:900;padding:13px;border:none;border-radius:12px;background:#5F7D52;color:#fff;cursor:pointer;" onclick="approveMember(\''+id+'\')">参加を認める</button>'+
       '<button style="flex:1;font-family:inherit;font-size:1rem;font-weight:900;padding:13px;border:2px solid #C9B8A0;border-radius:12px;background:#fff;color:#7A5A34;cursor:pointer;" onclick="denyMember(\''+id+'\')">認めない</button>'+
@@ -6648,7 +6680,8 @@ async function removeMember(mid, isMe){
    コードはこの端末の保存場所と、両方から見える控え(Cache)の両方に24時間だけ置く。 */
 const MAINICO_APP_URL='https://pocham4173.github.io/hidamari/';
 const INVITE_KEY='mainicoInviteCode',INVITE_TTL=24*60*60*1000;
-function inviteUrl(code){return MAINICO_APP_URL+'?invite='+encodeURIComponent(code);}
+/* 出した人がご本人なら from=h を付ける。受け取った側は、使い方を選ばずに「家族」として進む(名前は入れない) */
+function inviteUrl(code){return MAINICO_APP_URL+'?invite='+encodeURIComponent(code)+(previewStorage.getItem('mainicoMode')==='honnin'?'&from=h':'');}
 function inviteQrHtml(code){
   if(typeof qrcode!=='function')return '<div class="note">QRを表示できませんでした。上のコードを入力してもらうか、LINE・メールで送ってください。</div>';
   try{const qr=qrcode(0,'M');qr.addData(inviteUrl(code));qr.make();
@@ -6660,9 +6693,10 @@ function captureInviteFromUrl(){
   try{
     const u=new URL(location.href),code=String(u.searchParams.get('invite')||'').trim().toUpperCase();
     if(!u.searchParams.has('invite'))return;
-    u.searchParams.delete('invite');history.replaceState(null,'',u.pathname+(u.search||'')+u.hash);
+    const from=u.searchParams.get('from')==='h'?'h':'';
+    u.searchParams.delete('invite');u.searchParams.delete('from');history.replaceState(null,'',u.pathname+(u.search||'')+u.hash);
     if(!/^[A-HJ-NP-Z2-9]{8}$/.test(code))return;
-    const v=JSON.stringify({code,at:Date.now()});
+    const v=JSON.stringify(from?{code,at:Date.now(),from}:{code,at:Date.now()});
     try{previewStorage.setItem(INVITE_KEY,v);}catch(e){}
     if(window.caches)caches.open('mainico-invite').then(c=>c.put('invite-code',new Response(v))).catch(()=>{});
   }catch(e){}
@@ -6696,12 +6730,130 @@ function renderInviteNote(){
     box.innerHTML='<b>招待コード <span class="code">'+esc(inv.code)+'</span> を受け取りました。</b><br>iPhoneの方は、<b>先にこの画面を「ホーム画面に追加」して、追加した「まいにこ」から開いてください。</b>招待コードは自動で入ります（入っていないときは、上のコードを入れてください）。'+
       '<button class="set-btn" type="button" onclick="installApp()">ホーム画面に追加する方法</button>';
   }else{
-    box.innerHTML='<b>招待コード <span class="code">'+esc(inv.code)+'</span> を受け取りました。</b><br>このスマホを使う人を選んでください。ご本人のスマホなら「本人が使う」、ご家族なら「招待された方」です。コードは自動で入ります。';
+    box.innerHTML=inv.from==='h'?
+      '<b>ご本人から招待（コード <span class="code">'+esc(inv.code)+'</span>）を受け取りました。</b><br>このスマホは、ご家族として参加します。下のボタンを押し、同意とお名前を入れると、そのまま参加を申し込みます。'+
+      '<button class="entry-btn" type="button" onclick="pickInvited()">ご家族として参加する</button>':
+      '<b>招待コード <span class="code">'+esc(inv.code)+'</span> を受け取りました。</b><br>このスマホを使う人を選んでください。ご本人のスマホなら「本人が使う」、ご家族なら「招待された方」です。同意とお名前を入れると、そのまま参加を申し込みます。';
   }
+}
+/* ===== 家庭につながっているスマホで招待を受け取ったとき(2026-10-07) =====
+   招待を黙って捨てない。ホームの一番上にカードを出し、「招待された家族に移る」「今のままにする」を選んでもらう。
+   判断は invite-switch.js。移るときは確認1回で、今の家庭を消す(自分だけの家庭)か抜けて(参加メンバー)、参加申請まで続けて行う。 */
+let inviteSwitchBusy=false,inviteSwitchGeneration=0;
+function inviteSwitchBox(){
+  const box=document.getElementById('invite-switch');if(!box)return null;
+  const page=document.querySelector('#honnin.active,#kazoku.active');
+  const host=page?(page.id==='honnin'?page.querySelector('.h-body'):document.getElementById('t-home')):null;
+  if(host&&box.parentNode!==host)host.insertBefore(box,host.firstChild);
+  return page?box:null;
+}
+function inviteSwitchCard(box,html){box.innerHTML='<div class="invite-switch-card">'+html+'</div>';box.hidden=false;}
+async function inviteSwitchPlan(inv){
+  const group=gid(),me=uid();
+  let invite={exists:false};
+  try{
+    const snap=await db.collection('invites').doc(inv.code).get({source:'server'});
+    if(snap.exists){const d=snap.data();invite={exists:true,groupId:d.groupId,used:d.used===true,expiresAtMs:d.expiresAt&&typeof d.expiresAt.toMillis==='function'?d.expiresAt.toMillis():undefined};}
+  }catch(error){
+    // 招待が見つからない・家庭が終わっているときは、読み取り自体が断られる
+    if(!error||error.code!=='permission-denied')throw error;
+  }
+  const members=[];
+  (await col('members').get({source:'server'})).forEach(doc=>members.push({id:doc.id,data:doc.data()}));
+  if(group!==gid()||me!==uid())throw new Error('invite-switch/session-changed');
+  const plan=MainicoInviteSwitch.plan({invite,currentGroupId:group,members,ownUid:me,ownerUid:householdOwnerId,now:Date.now()});
+  return {plan,label:MainicoInviteSwitch.householdLabel(members,householdOwnerId)};
+}
+async function renderInviteSwitch(){
+  const box=inviteSwitchBox();
+  if(!box)return;
+  const inv=gid()?readInvite():null;
+  if(!inv){box.hidden=true;box.innerHTML='';return;}
+  if(inviteSwitchBusy)return;
+  const generation=++inviteSwitchGeneration;
+  inviteSwitchCard(box,'<b>招待を受け取りました。</b><p>今の家族とのつながりを確認しています…</p>');
+  let result;
+  try{result=await inviteSwitchPlan(inv);}
+  catch(error){
+    if(generation!==inviteSwitchGeneration)return;
+    console.warn('invite switch',error);
+    inviteSwitchCard(box,'<b>招待を受け取りました。</b><p>招待を確認できませんでした。通信を確認して、もう一度確かめてください。</p>'+
+      '<button class="set-btn" type="button" onclick="renderInviteSwitch()">もう一度確かめる</button><button class="set-btn sub" type="button" onclick="keepCurrentFamily()">今のままにする</button>');
+    return;
+  }
+  if(generation!==inviteSwitchGeneration)return;
+  const {plan,label}=result;
+  if(plan.kind==='same'){clearInvite();box.hidden=true;box.innerHTML='';return;}
+  if(plan.kind==='unusable'){
+    inviteSwitchCard(box,'<b>招待を受け取りました。</b><p>'+esc(MainicoInviteSwitch.UNUSABLE_TEXT[plan.reason])+'</p><button class="set-btn" type="button" onclick="keepCurrentFamily()">閉じる</button>');
+    return;
+  }
+  inviteSwitchCard(box,'<b>招待を受け取りました。</b><p>このスマホは今、別の家族（'+esc(label)+'）につながっています。</p>'+
+    '<button class="set-btn invite-move" type="button" onclick="moveToInvitedFamily()">招待された家族に移る</button>'+
+    '<button class="set-btn sub" type="button" onclick="keepCurrentFamily()">今のままにする</button>'+
+    '<p class="note" id="invite-switch-state" role="status" aria-live="polite"></p>');
+}
+function keepCurrentFamily(){
+  inviteSwitchGeneration++;clearInvite();
+  const box=document.getElementById('invite-switch');if(box){box.hidden=true;box.innerHTML='';}
+}
+function openOwnerTransferSettings(){
+  if(typeof openSettings!=='function')return;
+  openSettings();
+  const sec=document.getElementById('owner-transfer-sec');if(!sec)return;
+  const menu=sec.closest('details');if(menu)menu.open=true;
+  try{sec.scrollIntoView({block:'start'});}catch(e){}
+}
+async function moveToInvitedFamily(){
+  if(inviteSwitchBusy)return;
+  const inv=readInvite();if(!inv||!gid())return renderInviteSwitch();
+  const state=t=>{const el=document.getElementById('invite-switch-state');if(el)el.textContent=t;};
+  let result;
+  try{result=await inviteSwitchPlan(inv);}catch(error){state('今の家族とのつながりを確認できませんでした。通信を確認して、もう一度押してください。');return;}
+  const {plan,label}=result;
+  if(plan.kind==='same'||plan.kind==='unusable')return renderInviteSwitch();
+  if(plan.kind==='owner-blocked'){
+    await appNotice(MainicoInviteSwitch.blockedText(plan,label));
+    if(document.getElementById('kazoku').classList.contains('active'))openOwnerTransferSettings();
+    return;
+  }
+  const ask=typeof appConfirm==='function'?appConfirm:(t=>confirm(t));
+  if(!await ask(MainicoInviteSwitch.confirmText(plan,label),'移る'))return;
+  const curMode=previewStorage.getItem('mainicoMode')==='honnin'?'honnin':(isKOnly()?'konly':'kazoku');
+  const newMode=MainicoInviteSwitch.joinMode(inv.from,curMode);
+  const keepName=newMode==='honnin'?'本人':(curMode==='honnin'?'':(previewStorage.getItem('mainicoName')||''));
+  const scope={uid:uid(),groupId:gid()};
+  inviteSwitchBusy=true;
+  document.querySelectorAll('#invite-switch button').forEach(b=>b.disabled=true);
+  state(plan.kind==='delete-and-join'?'今の家庭を片付けています。画面を開いたままお待ちください…':'今の家族から抜けています。画面を開いたままお待ちください…');
+  try{
+    if(plan.kind==='delete-and-join'){
+      stopHouseholdSubscriptions();
+      await getDeletionService().run({groupId:scope.groupId,confirmation:MainicoDeletion.CONFIRMATION});
+      await clearNotebookForExit(scope);
+      clearMainicoDeviceData();
+    }else{
+      if(!await leaveHouseholdAccount())throw new Error('invite-switch/leave-refused');
+    }
+  }catch(error){
+    console.warn('invite switch move',error);
+    inviteSwitchBusy=false;
+    await appNotice('移れませんでした。今の家族とのつながりは、そのままです。通信を確認して、もう一度お試しください。'+(/[ぁ-んァ-ヶ一-龥]/.test(error&&error.message||'')?'\n'+error.message:''));
+    location.reload();return;
+  }
+  // 今の家庭とのつながりは終わった。招待と名前だけ戻して、参加の申し込みまで続ける
+  householdOwnerId='';householdVerified=false;
+  try{previewStorage.setItem(INVITE_KEY,JSON.stringify(inv));if(keepName)previewStorage.setItem('mainicoName',keepName);}catch(e){}
+  inviteSwitchBusy=false;
+  const box=document.getElementById('invite-switch');if(box){box.hidden=true;box.innerHTML='';}
+  document.getElementById('loading').style.display='none';
+  pendingMode=newMode;previewStorage.setItem('mainicoPendingMode',newMode);
+  // 同意は使い方ごと。いまの同意が新しい使い方のものなら、そのまま申し込む。違えば同意の画面から
+  if(await ensureConsentForMode(newMode,()=>afterConsent(newMode)))afterConsent(newMode);
 }
 captureInviteFromUrl();
 if(window.MainicoFamilyGuide)MainicoFamilyGuide.captureReplay(location,previewStorage,history);
-loadInviteFromCache().then(()=>{try{renderInviteNote();}catch(e){}});
+loadInviteFromCache().then(()=>{try{renderInviteNote();}catch(e){}try{renderInviteSwitch();}catch(e){}});
 
 async function makeInvite(targetId){
   if(!requireHouseholdOwner())return;
