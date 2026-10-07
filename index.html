@@ -1311,6 +1311,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <p class="connected-people" data-connected-people aria-live="polite"></p>
     <button class="set-btn" data-owner-only hidden onclick="makeInvite('person-invite-area')">招待コードを作る</button>
     <div id="person-invite-area"></div>
+    <div id="person-settings-approve" class="settings-approve"></div>
     <button class="set-btn" onclick="closePersonSettings();openMembers()">参加している人を確認する</button>
     <details><summary>以前の家族からの伝言を見る</summary><p class="note">連携を解除しても、家庭に残っている伝言はここから確認できます。</p><button class="set-btn" onclick="closePersonSettings();openPersonHistory()">伝言の履歴を見る</button></details>
   </div>
@@ -1605,6 +1606,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
           <div class="note" style="margin-top:0;">コードを作って家族に伝え、家族が入れたら「参加を認める」を押します。<span style="color:#8A6F4D;">コードは24時間・1回だけ使えます。</span></div>
           <button data-owner-only hidden class="set-btn" onclick="makeInvite('settings-invite-area')">招待コードを作る</button>
           <div id="settings-invite-area"></div>
+          <div id="settings-approve" class="settings-approve"></div>
         </div>
         <div class="set-sec" id="owner-transfer-sec">
           <h4>管理者を引き継ぐ</h4>
@@ -3714,7 +3716,7 @@ function initHonnin(){
 
   if(memWatchUnsub) memWatchUnsub();
   memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
-    lastPendingSnap={id:'h-approve',snap};renderPendingCard('h-approve', snap);
+    lastPendingSnap={id:'h-approve',snap};renderPendingCard('h-approve', snap);renderPendingCard('person-settings-approve', snap);
   }, err=>console.warn('members', err));
   subscribePersonConversation();
   initPersonUiConfig();
@@ -4020,7 +4022,7 @@ function ownerTransferChanged(data){
   ownerSeen=owner;
 }
 function afterOwnerChanged(){
-  try{if(lastPendingSnap)renderPendingCard(lastPendingSnap.id,lastPendingSnap.snap);}catch(e){}
+  try{if(lastPendingSnap){renderPendingCard(lastPendingSnap.id,lastPendingSnap.snap);renderPendingCard(lastPendingSnap.id==='h-approve'?'person-settings-approve':'settings-approve',lastPendingSnap.snap);}}catch(e){}
   try{const m=document.getElementById('settings-modal');if(m&&m.classList.contains('show'))renderSetMembers();}catch(e){}
   try{if(document.getElementById('kazoku').classList.contains('active')&&typeof loadWatchTag==='function')loadWatchTag();}catch(e){}
 }
@@ -4028,6 +4030,8 @@ document.addEventListener('click',ev=>{
   const b=ev.target&&ev.target.closest&&ev.target.closest('[data-owner-transfer]');
   if(!b)return;const ctl=getOwnerTransfer();if(ctl)ctl.handle(b.getAttribute('data-owner-transfer'));
 });
+/* 「参加を待っています」は、ホームの一番上と、招待QRを出した設定の中(招待コードのすぐ下)の両方に出す。
+   QRを出したまま待っていても、設定を閉じずにその場で「参加を認める」を押せる(2026-10-08 理絵さんの実機確認) */
 function renderPendingCard(elId, snap){
   const el=document.getElementById(elId);
   if(!el) return;
@@ -4526,7 +4530,7 @@ function initKazoku(){
   scheduleFamilyGuide();
   if(memWatchUnsub) memWatchUnsub();
   memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
-    lastPendingSnap={id:'card-pending',snap};renderPendingCard('card-pending', snap);
+    lastPendingSnap={id:'card-pending',snap};renderPendingCard('card-pending', snap);renderPendingCard('settings-approve', snap);
   }, err=>console.warn('members', err));
   subscribeFamilyConversation();
   const daySession=communicationSession();

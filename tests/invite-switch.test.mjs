@@ -70,4 +70,8 @@ assert.match(sw, /'invite-switch\.js'/);
 assert.match(html, /if\(inv\.from==='h'\)showEntryChoices\(false\);/, 'ご本人からの招待では「ご家族として参加する」だけ');
 assert.match(html, /onclick="skipInvite\(\)">この招待を使わず、ほかの使い方を選ぶ<\/button>/);
 assert.match(html, /\['entry-question','select-box'\]/);
+assert.match(html, /<div id="person-invite-area"><\/div>\n    <div id="person-settings-approve" class="settings-approve"><\/div>/, 'ご本人の設定: 招待QRのすぐ下に「参加を認める」');
+assert.match(html, /<div id="settings-invite-area"><\/div>\n          <div id="settings-approve" class="settings-approve"><\/div>/, '家族の設定: 招待QRのすぐ下に「参加を認める」');
+assert.match(html, /renderPendingCard\('h-approve', snap\);renderPendingCard\('person-settings-approve', snap\);/);
+assert.match(html, /renderPendingCard\('card-pending', snap\);renderPendingCard\('settings-approve', snap\);/);
 console.log('受け取った招待を黙って捨てない: 判断・つながっている人・画面のつなぎ込み passed');
