@@ -25,8 +25,8 @@
   .count { text-align: right; color: var(--muted); font-size: 14px; }
   .warn { background: var(--rose); border: 2px solid #e5a5a0; border-radius: 12px; padding: 10px 12px; color: #8a2a20; font-weight: 700; margin: 8px 0 0; }
   .tip { background: var(--sand); border-radius: 12px; padding: 10px 12px; font-size: 15px; }
-  button.send, button.copy { display: block; width: 100%; min-height: 60px; font: inherit; font-size: 20px; font-weight: 900; border-radius: 16px; cursor: pointer; margin: 10px 0 0; }
-  button.send { background: var(--orange); color: #fff; border: 0; }
+  a.send, button.copy { display: block; text-align: center; text-decoration: none; width: 100%; min-height: 60px; font: inherit; font-size: 20px; font-weight: 900; border-radius: 16px; cursor: pointer; margin: 10px 0 0; }
+  a.send { display: flex; align-items: center; justify-content: center; background: var(--orange); color: #fff !important; border: 0; }
   button.copy { background: #fff; color: var(--navy); border: 2px solid var(--navy); font-size: 17px; min-height: 52px; }
   .state { min-height: 1.6em; color: var(--navy); font-weight: 700; }
   .note { color: var(--muted); font-size: 14px; }
@@ -34,7 +34,6 @@
 </style>
 <link rel="stylesheet" href="back-button.css">
 <script src="back-button.js" defer></script>
-<script src="contact.js"></script>
 </head>
 <body>
 <main class="wrap">
@@ -43,86 +42,22 @@
   <p class="lead">困っていることを、運営者（川村 理絵）に伝えます。お返事に数日かかることがあります。</p>
   <div class="tip"><b>⚠️ 急ぐとき・命に関わるときは、119番・110番へ。</b>このフォームは急ぎの連絡には使えません。</div>
 
-  <form id="contact-form" novalidate>
-    <div class="card">
-      <label class="q">1. 困っていること</label>
-      <div class="opts" id="kind">
-        <label><input type="radio" name="kind" value="使い方がわからない" checked>使い方がわからない</label>
-        <label><input type="radio" name="kind" value="動かない・エラーが出る">動かない・エラーが出る</label>
-        <label><input type="radio" name="kind" value="家族とつながらない">家族とつながらない</label>
-        <label><input type="radio" name="kind" value="機種変更・入れなくなった">機種変更・入れなくなった</label>
-        <label><input type="radio" name="kind" value="やめたい・データを消したい">やめたい・データを消したい</label>
-        <label><input type="radio" name="kind" value="ご意見・その他">ご意見・その他</label>
-      </div>
-    </div>
-    <div class="card">
-      <label class="q">2. 使っているスマホ</label>
-      <div class="opts">
-        <label><input type="radio" name="phone" value="iPhone">iPhone</label>
-        <label><input type="radio" name="phone" value="Android">Android（アンドロイド）</label>
-        <label><input type="radio" name="phone" value="わからない" checked>わからない</label>
-      </div>
-    </div>
-    <div class="card">
-      <label class="q">3. このスマホの使い方</label>
-      <div class="opts">
-        <label><input type="radio" name="mode" value="ご本人のスマホ">ご本人のスマホ</label>
-        <label><input type="radio" name="mode" value="ご家族のスマホ">ご家族のスマホ</label>
-        <label><input type="radio" name="mode" value="わからない" checked>わからない</label>
-      </div>
-    </div>
-    <div class="card">
-      <label class="q" for="text">4. くわしく（どの画面で、何を押したら、どうなったか）</label>
-      <textarea id="text" maxlength="800" placeholder="例：設定の「招待コードを作る」を押したら、「作れませんでした」と出ました。"></textarea>
-      <div class="count"><span id="count">0</span> / 800文字</div>
-      <div class="warn" id="warn" role="alert" hidden></div>
-      <p class="note">名前・パスワード・招待コード・病気のこと・記録の中身は書かないでください。</p>
-    </div>
-    <button class="send" type="submit">✉️ メールを作って送る</button>
-    <p class="note">押すと、スマホのメールアプリが開き、上の内容が入ります。メールアプリで「送信」を押すと届きます。このページからは何も送りません。</p>
-    <button class="copy" type="button" id="copy">メールアプリが開かないときは：内容をコピーする</button>
-    <p class="state" id="state" role="status" aria-live="polite"></p>
-    <p class="note">コピーしたときは、<b id="to"></b> あてのメールに貼り付けて送ってください。</p>
-  </form>
+  <div class="card">
+    <p><b>Googleフォームで送ります。</b>選んで書くだけで、運営者に届きます。</p>
+    <ol>
+      <li>下の「問い合わせフォームを開く」を押します</li>
+      <li>困っていること・スマホ・使い方を選びます</li>
+      <li>くわしく書いて、いちばん下の「送信」を押します</li>
+    </ol>
+    <p class="note">お返事がほしいときは、最後の欄にメールアドレスを書いてください（なくても送れます）。</p>
+  </div>
+  <div class="warn">名前・パスワード・招待コード・病気のこと・記録の中身は書かないでください。</div>
+  <a class="send" id="open-form" href="https://docs.google.com/forms/d/e/1FAIpQLSfuGRFwXgJ5Rd2Gllo1Yp44o0PGs19bcdITAjRwtL7DFpl99A/viewform" target="_blank" rel="noopener noreferrer">✉️ 問い合わせフォームを開く</a>
+  <p class="note">Googleのページが開きます。送ったあとは、そのページを閉じると、まいにこに戻れます。</p>
+  <p class="note">フォームが開かないときは、<a href="mailto:pocham4173@gmail.com?subject=%E3%81%BE%E3%81%84%E3%81%AB%E3%81%93%E3%81%AE%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B">pocham4173@gmail.com</a> へメールでも送れます。</p>
 
   <a class="mainico-back" href="./index.html" data-back>← まいにこに戻る</a>
-  <p class="note">送っていただいた内容は、問い合わせへのお返事と、まいにこをよくするためだけに使います。くわしくは<a href="privacy.html">プライバシーポリシー</a>。</p>
+  <p class="note">送っていただいた内容は、Googleフォーム（Google LLC）に保存され、問い合わせへのお返事と、まいにこをよくするためだけに使います。くわしくは<a href="privacy.html">プライバシーポリシー</a>。</p>
 </main>
-<script>
-(function () {
-  'use strict';
-  var C = window.MainicoContact;
-  var $ = function (id) { return document.getElementById(id); };
-  var text = $('text');
-  $('to').textContent = C.TO;
-  function val(name) { var el = document.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : ''; }
-  function form() { return { kind: val('kind'), phone: val('phone'), mode: val('mode'), text: text.value }; }
-  function check() {
-    $('count').textContent = text.value.length;
-    var w = C.warnings(text.value);
-    $('warn').hidden = !w.length; $('warn').textContent = w.join(' ');
-    return w;
-  }
-  text.addEventListener('input', check);
-  function ready() {
-    if (!text.value.trim()) { $('state').textContent = '4. に、困っていることを書いてください。'; text.focus(); return null; }
-    if (check().length) { $('state').textContent = '赤い注意のところを直してから押してください。'; return null; }
-    return C.build(form());
-  }
-  $('contact-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-    var m = ready(); if (!m) return;
-    $('state').textContent = 'メールアプリを開いています。開いたら「送信」を押してください。';
-    location.href = m.href;
-  });
-  $('copy').addEventListener('click', function () {
-    var m = ready(); if (!m) return;
-    var all = 'あて先：' + m.to + '\n件名：' + m.subject + '\n\n' + m.body;
-    var done = function () { $('state').textContent = 'コピーしました。メールに貼り付けて、' + m.to + ' に送ってください。'; };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(all).then(done, function () { $('state').textContent = 'コピーできませんでした。' + m.to + ' に、内容を書いて送ってください。'; });
-    else $('state').textContent = 'コピーできませんでした。' + m.to + ' に、内容を書いて送ってください。';
-  });
-})();
-</script>
 </body>
 </html>
