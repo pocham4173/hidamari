@@ -50,6 +50,7 @@
   /* 招待で入るときの使い方。出した人がご本人なら「家族」。それ以外は、いまの使い方のまま */
   function joinMode(from, currentMode) {
     if (from === 'h') return 'kazoku';
+    if (from === 'k') return 'konly';
     return MODES.includes(currentMode) ? currentMode : null;
   }
   /* いまの家庭の呼び名(管理者の名前) */
@@ -81,8 +82,10 @@
     if (p.kind === 'leave-and-join') return '招待された家族に移りますか？\n\n・' + label + 'から抜けます。今の家庭の記録は見られなくなります（記録は今の家庭に残ります）。\n・このあと、招待された家族に参加を申し込みます。相手が「参加を認める」を押すと使えます。';
     return '';
   }
-  function blockedText(p, label) {
-    return 'このスマホは' + label + 'の管理者で、ほかに' + p.others + '人がつながっています。管理者がいなくなると家庭を管理できないため、このままでは移れません。\n\n移るときは：\n1. 「設定」→「家族の管理」→「管理者の交代」で、ほかの家族に管理者を渡す\n2. 渡し終わったら、もう一度この招待を開く（招待は24時間有効です。切れたら新しい招待QRをもらってください）';
+  function blockedText(p, label, onPersonScreen) {
+    const head = 'このスマホは' + label + 'の管理者で、ほかに' + p.others + '人がつながっています。管理者がいなくなると家庭を管理できないため、このままでは移れません。\n\n';
+    if (onPersonScreen) return head + 'ご本人のスマホからは、管理者を渡せません。移りたいときは、まいにこの「問い合わせる」から運営者に相談してください。';
+    return head + '移るときは：\n1. 「設定」→「家族の管理」→「管理者を引き継ぐ」で、ほかの家族に管理者を渡す\n2. 渡し終わったら、もう一度この招待を開く（招待は24時間有効です。切れたら新しい招待QRをもらってください）';
   }
   return { plan, joinMode, displayName, peopleLine, householdLabel, confirmText, blockedText, UNUSABLE_TEXT, audience, approved };
 });

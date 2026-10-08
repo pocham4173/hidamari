@@ -20,7 +20,8 @@ const blocked = S.plan({ invite: valid, currentGroupId: 'OLD', members: [me, hon
 assert.deepEqual(blocked, { kind: 'owner-blocked', others: 1 });
 const label = S.householdLabel([me, honnin], 'A');
 assert.equal(label, 'りえさんの家庭');
-assert.match(S.blockedText(blocked, label), /管理者の交代/);
+assert.match(S.blockedText(blocked, label), /「管理者を引き継ぐ」/);
+assert.match(S.blockedText(blocked, label, true), /問い合わせる/, 'ご本人の画面では、運営者への相談を案内');
 assert.match(S.blockedText(blocked, label), /ほかに1人がつながっています/);
 // 3. 管理者ではない: 抜けて参加申請まで
 assert.equal(S.plan({ invite: valid, currentGroupId: 'OLD', members: [me, honnin], ownUid: 'A', ownerUid: 'H', now }).kind, 'leave-and-join');
@@ -37,6 +38,7 @@ assert.match(S.confirmText({ kind: 'leave-and-join' }, 'ご本人の家庭'), /�
 // 5. 使い方: ご本人からの招待なら「家族」。それ以外はいまの使い方のまま
 assert.equal(S.joinMode('h', 'honnin'), 'kazoku');
 assert.equal(S.joinMode('h', 'kazoku'), 'kazoku');
+assert.equal(S.joinMode('k', 'kazoku'), 'konly', '家族だけで使う家庭の招待は、家族だけで使う');
 assert.equal(S.joinMode('', 'konly'), 'konly');
 assert.equal(S.joinMode(undefined, 'honnin'), 'honnin');
 
@@ -60,14 +62,14 @@ assert.match(html, /await getDeletionService\(\)\.run\(\{groupId:scope\.groupId,
 assert.match(html, /if\(!await leaveHouseholdAccount\(\)\)throw new Error\('invite-switch\/leave-refused'\)/, '参加メンバーは抜けてから移る');
 assert.match(html, /if\(await ensureConsentForMode\(newMode,\(\)=>afterConsent\(newMode\)\)\)afterConsent\(newMode\);/, '同意が済んでいれば、そのまま参加申請');
 assert.match(html, /function openConnectOrJoin\(\)\{[\s\S]{0,200}joinByCode\(\);\}/, '受け取った招待があれば、そのまま参加を申し込む');
-assert.match(html, /\(previewStorage\.getItem\('mainicoMode'\)==='honnin'\?'&from=h':''\)/, 'ご本人の招待QRには from=h');
+assert.match(html, /\(previewStorage\.getItem\('mainicoMode'\)==='honnin'\?'&from=h':\(typeof isKOnly==='function'&&isKOnly\(\)\?'&from=k':''\)\)/, 'ご本人の招待QRには from=h');
 assert.match(html, /onclick="pickInvited\(\)">ご家族として参加する<\/button>/, 'ご本人からの招待は、使い方を選ばずに家族として');
 assert.match(html, /が参加を待っています<\/div>/);
 assert.equal((html.match(/<p class="connected-people" data-connected-people aria-live="polite"><\/p>/g) || []).length, 3, '家族のホーム・家族の設定・ご本人の設定');
 assert.match(html, /id="pending-invite-note"/);
 const sw = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 assert.match(sw, /'invite-switch\.js'/);
-assert.match(html, /if\(inv\.from==='h'\)showEntryChoices\(false\);/, 'ご本人からの招待では「ご家族として参加する」だけ');
+assert.match(html, /if\(inv\.from==='h'\|\|inv\.from==='k'\)showEntryChoices\(false\);/, 'ご本人からの招待では「ご家族として参加する」だけ');
 assert.match(html, /onclick="skipInvite\(\)">この招待を使わず、ほかの使い方を選ぶ<\/button>/);
 assert.match(html, /\['entry-question','select-box'\]/);
 assert.match(html, /<div id="person-invite-area"><\/div>\n    <div id="person-settings-approve" class="settings-approve"><\/div>/, 'ご本人の設定: 招待QRのすぐ下に「参加を認める」');
@@ -80,4 +82,6 @@ assert.equal((html.match(/data-install-button hidden onclick="installApp\(\)">�
 assert.match(html, /document\.querySelectorAll\('\[data-install-button\]'\)\.forEach\(el=>\{el\.hidden=standalone;\}\);/);
 // 家族だけで使う: 始め方とほかの家族の参加のしかた
 assert.match(html, /家族だけで使うときは、まず1人が「新しくはじめる」を押して家庭を作ります。ほかの家族は、あとで「設定」→「家族の管理」→「家族を追加する」で出す招待QRを読んで参加します。/);
+assert.match(html, /isKOnly\(\)\?'&from=k':''/, '家族だけで使う家庭の招待QRには from=k');
+assert.match(html, /onclick="pickInvitedKonly\(\)">家族として参加する<\/button>/);
 console.log('受け取った招待を黙って捨てない: 判断・つながっている人・画面のつなぎ込み passed');

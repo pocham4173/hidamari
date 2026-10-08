@@ -75,7 +75,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined', 'line-login-signin', 'device-reconnect']);
-const VERSION_TEXT = '版：2026-10-05 見回りの見直し・LINEでログイン';
+const VERSION_TEXT = '版：2026-10-08 審査の指摘（友だち追加の確認・残り通数）';
 
 export default {
   async fetch(request, env, ctx) {
@@ -139,7 +139,8 @@ async function verifySignature(body, signature, secret) {
 
 const MSG_WELCOME =
   'まいにこ公式LINEです。友だち追加ありがとうございます。\n\n' +
-  '予定のお知らせを受け取るには、まいにこアプリの\n「設定」→「LINEで予定のお知らせ」→「LINEとつなぐ」\nを押してください。家族から招待が届いた方は、招待のリンクを開いて送信を押してください。';
+  '【次にすること】\nまいにこに戻って、「自分のLINEを登録する」→「LINEを開いて送る」を押してください。\n（まいにこの「設定」（ご本人は「その他の設定」）→「LINEで予定のお知らせ」にあります）\n\n' +
+  '家族から招待のリンクが届いた方は、そのリンクを開いて、送信を押してください。';
 const MSG_HELP =
   'このトークでは、つなぐためのコード・招待の受け付けと、予定のお知らせだけを行っています。\n' +
   'お返事や相談は届きません。急ぐときは電話などで連絡してください。\n\n' +
@@ -167,7 +168,7 @@ async function handleEvent(ev, env, fs) {
   if (text === '解除' || text === '連携解除') {
     const n = await removeLinksFor(fs, lineUserId, 'line') + await removeRecipientsFor(fs, lineUserId);
     return reply(env, ev.replyToken, n
-      ? '解除しました。このLINEには予定のお知らせが届かなくなります。\nまた受け取るときは、アプリの「LINEとつなぐ」か、家族からの新しい招待で登録してください。'
+      ? '解除しました。このLINEには予定のお知らせが届かなくなります。\nまた受け取るときは、アプリの「自分のLINEを登録する」か、家族からの新しい招待で登録してください。'
       : 'このLINEは、まいにこと連携していません。');
   }
   const invite = INVITE_RE.exec(text);
@@ -180,17 +181,17 @@ async function handleEvent(ev, env, fs) {
   }
   if (text === '集計') {
     const op = await fs.get('ops/operator');
-    if (op && op.fields.lineUserId === lineUserId) return reply(env, ev.replyToken, await usageReport(fs, new Date()));
+    if (op && op.fields.lineUserId === lineUserId) return reply(env, ev.replyToken, await usageReport(fs, new Date(), env));
     return reply(env, ev.replyToken, MSG_HELP);
   }
   if (CODE_RE.test(text)) {
-    return reply(env, ev.replyToken, await linkByCode(fs, text, lineUserId));
+    return reply(env, ev.replyToken, await linkByCode(env, fs, text, lineUserId));
   }
   return reply(env, ev.replyToken, MSG_HELP);
 }
 
-async function linkByCode(fs, code, lineUserId) {
-  const NG = 'コードが見つからないか、有効期限（10分）が切れています。\nまいにこアプリの「設定」→「LINEで予定のお知らせ」で、新しいコードを作ってください。';
+async function linkByCode(env, fs, code, lineUserId) {
+  const NG = 'コードが見つからないか、有効期限（10分）が切れています。\nまいにこアプリの「設定」（ご本人は「その他の設定」）→「LINEで予定のお知らせ」で、新しいコードを作ってください。';
   const c = await fs.get('lineLinkCodes/' + code);
   if (!c) return NG;
   const exp = c.fields.expiresAt;
@@ -215,8 +216,20 @@ async function linkByCode(fs, code, lineUserId) {
   ]);
   if (!consumed) return NG;
   const name = typeof member.name === 'string' && member.name ? member.name + 'さん、' : '';
-  return name + 'LINE連携しました。\n\nまいにこで「LINEで知らせる日時」を入れた予定が、このLINEに届きます。\n' +
-    'やめるときは、アプリの設定で解除するか、「解除」と送ってください。';
+  // 友だち追加がまだだと、お知らせは届かない。登録できたと言い切らず、先に友だち追加を頼む(2026-10-08 審査の指摘)
+  let friend = true;
+  try {
+    fs.reserve();
+    const res = await fetch('https://api.line.me/v2/bot/profile/' + encodeURIComponent(lineUserId),
+      { headers: { authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN } });
+    if (res.status === 404) friend = false;
+  } catch (e) { if (e.message === 'request-budget') throw e; }
+  if (!friend) return '⚠️ ' + name + 'LINE連携はできましたが、まだ、まいにこを友だち追加していないようです。\n\n' +
+    '友だち追加をしないと、予定のお知らせは届きません。このトーク画面の上の「追加」を押して、友だち追加してください。';
+  return '✅ ' + name + 'LINE連携しました。登録できました。\n\n' +
+    'これから、まいにこの予定のお知らせが、このLINEに届きます。\n' +
+    '（届くのは、予定に「LINEで知らせる日時」を入れたものだけです）\n\n' +
+    'やめるときは、このトークに「解除」と送ってください。';
 }
 
 /* 家族が招待した送信先の登録(2026-10-04)。
@@ -359,6 +372,13 @@ async function runNotifications(env) {
     // 期限切れの手続きの片付けは、通知より先に、決まった通信回数だけで行う(忙しい回でも後回しにならない)
     await cleanupAuthTx(fs, now);
     book.quota = await lineQuota(env, fs);
+    // 残り通数が取れないときは、直近24時間以内に記録した数で判断する(タグ用の残しを予定に使わないように)。それも無ければ止めない
+    if (!book.quota) {
+      const last = await fs.get('lineStatus/quota');
+      const f = last && last.fields;
+      if (f && f.checkedAt instanceof Date && now - f.checkedAt < 24 * 3600000 && Number.isFinite(f.limit) && Number.isFinite(f.used))
+        book.quota = { limit: f.limit, used: f.used, estimated: true };
+    }
     // おまもりタグのお知らせを先に送る(予定のお知らせより急ぐため)。失敗しても予定の送信は続ける。
     fs.softLimit = TAG_REQUEST_BUDGET;
     try { sent += await runTagAlerts(env, fs, now, book); }
@@ -516,8 +536,10 @@ class UsageBook {
     this.dirty.clear();
     if (this.quota) {
       const remaining = this.quota.limit === null ? null : Math.max(0, this.quota.limit - this.quota.used);
-      await this.fs.set('lineStatus/quota', { limit: this.quota.limit, used: this.quota.used, remaining,
-        reserve: TAG_RESERVE, checkedAt: new Date() }, true);
+      // 推定(LINEから取れず、前回の記録で判断した)ときは checkedAt を進めない(古い数をいつまでも新しいと扱わない)
+      await this.fs.set('lineStatus/quota', this.quota.estimated
+        ? { used: this.quota.used, remaining, estimatedAt: new Date() }
+        : { limit: this.quota.limit, used: this.quota.used, remaining, reserve: TAG_RESERVE, checkedAt: new Date() }, true);
     }
   }
 }
@@ -665,9 +687,16 @@ async function runUsageStats(fs, now, groups) {
   if (finished) await fs.set('ops/usageProgress', { day: last, updatedAt: new Date() });
 }
 /* 運営者に返す全体の数字(世帯の番号・名前は出さない) */
-function usageSummary(docs, now) {
+/* 試しに作った家庭は、Cloudflare の USAGE_EXCLUDE_GROUPS(家庭の番号をカンマ区切り)で集計から外す(2026-10-08 審査の指摘) */
+function excludedGroups(env) {
+  return new Set(String((env && env.USAGE_EXCLUDE_GROUPS) || '').split(',').map((v) => v.trim()).filter(Boolean));
+}
+function usageSummary(docs, now, exclude = new Set()) {
   const last = usageLastDay(now);
-  const homes = docs.map((d) => d.fields).filter((x) => x.honnin === true && typeof x.start === 'string' && x.start);
+  const all = docs.map((d) => d.fields).filter((x) => !exclude.has(x.groupId) && typeof x.start === 'string' && x.start);
+  const homes = all.filter((x) => x.honnin === true);
+  // 家族だけで使う世帯(ご本人が参加していない)は、家族の記録で別に数える
+  const konly = all.filter((x) => x.honnin !== true);
   const day = (x, k) => (x.days && x.days[k]) || { h: 0, f: 0 };
   const range = (from, to) => { const out = []; for (let k = from; k <= to; k = addDays(k, 1)) out.push(k); return out; };
   const pct = (a, b) => (b ? Math.round((a / b) * 100) + '%' : '—');
@@ -680,6 +709,9 @@ function usageSummary(docs, now) {
   const d3ok = d3.filter((x) => day(x, addDays(x.start, 2)).h > 0).length;
   const w8 = homes.filter((x) => addDays(x.start, 55) <= last);
   const w8ok = w8.filter((x) => range(addDays(x.start, 49), addDays(x.start, 55)).some((k) => day(x, k).h > 0)).length;
+  const kWeek = konly.filter((x) => week.some((k) => day(x, k).f > 0)).length;
+  const kW8 = konly.filter((x) => addDays(x.start, 55) <= last);
+  const kW8ok = kW8.filter((x) => range(addDays(x.start, 49), addDays(x.start, 55)).some((k) => day(x, k).f > 0)).length;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(last);
   return [
     '📊 まいにこ 利用の集計（' + (+m[2]) + '月' + (+m[3]) + '日まで）',
@@ -691,15 +723,25 @@ function usageSummary(docs, now) {
     '8週目も続いている世帯：' + (w8.length ? w8ok + '/' + w8.length + '（' + pct(w8ok, w8.length) + '）' : '対象なし（始めて8週間たった世帯がまだありません）'),
     '世帯ごとの直近7日（ご本人の操作があった日数）：' + (pressed7.length ? pressed7.join('・') : 'なし'),
     '',
+    '家族だけで使う世帯：' + konly.length,
+    '直近7日に、家族の記録があった世帯：' + kWeek + '/' + konly.length + '（' + pct(kWeek, konly.length) + '）',
+    '8週目も続いている世帯（家族の記録）：' + (kW8.length ? kW8ok + '/' + kW8.length + '（' + pct(kW8ok, kW8.length) + '）' : '対象なし'),
+    ...(exclude.size ? ['集計から外した家庭（試し用）：' + exclude.size + '件'] : []),
+    '※ 家庭を削除した世帯は、ここに含まれません（続いている割合は高めに出ます）。',
+    '',
     '※ 名前・記録の中身・世帯の番号は含みません。前の日までの数です（毎朝5時以降に少しずつ数えます）。',
   ].join('\n');
 }
-async function usageReport(fs, now) {
-  const text = usageSummary(await fs.list('usageStats', ['honnin', 'start', 'days']), now);
-  return text + '\n\n' + surveySummary(await fs.list('surveyAnswers', ['kind', 'month', 'absences', 'burden', 'uid', 'answeredAt']), now);
+async function usageReport(fs, now, env) {
+  const exclude = excludedGroups(env);
+  const stats = await fs.list('usageStats', ['groupId', 'honnin', 'start', 'days']);
+  const text = usageSummary(stats, now, exclude);
+  const honninGroups = new Set(stats.map((d) => d.fields).filter((x) => x.honnin === true).map((x) => x.groupId));
+  const answers = (await fs.list('surveyAnswers', ['kind', 'month', 'absences', 'burden', 'uid', 'groupId', 'answeredAt'])).filter((d) => !exclude.has(d.fields.groupId));
+  return text + '\n\n' + surveySummary(answers, now, honninGroups);
 }
 /* 家族の1分アンケート(2026-10-05)の全体の数字。答えた人の名前・家庭は出さない */
-function surveySummary(docs, now) {
+function surveySummary(docs, now, honninGroups = null) {
   // 答えた時刻(サーバーの時刻)の月と、答えの月が同じものだけ数える(端末の時計のずれ・まとめての書き込みを除く)
   const rows = docs.map((d) => d.fields).filter((x) => typeof x.uid === 'string' && typeof x.month === 'string'
     && x.answeredAt instanceof Date && jstDateString(x.answeredAt).slice(0, 7) === x.month);
@@ -715,11 +757,20 @@ function surveySummary(docs, now) {
   const last = [...latest.values()];
   const burden = last.filter((x) => ['less', 'same', 'more'].includes(x.burden));
   const less = burden.filter((x) => x.burden === 'less').length;
+  // 同じ人の「使い始める前」と「いちばん新しい月」の差(両方答えた人だけ)
+  const baseOf = new Map(base.filter((x) => Number(x.absences) >= 0).map((x) => [x.uid, Number(x.absences)]));
+  const pairs = last.filter((x) => Number(x.absences) >= 0 && baseOf.has(x.uid)).map((x) => Number(x.absences) - baseOf.get(x.uid));
+  const pairText = pairs.length ? (pairs.reduce((a, b) => a + b, 0) / pairs.length).toFixed(1) + '回（' + pairs.length + '人）' : '—（両方に答えた人がまだいません）';
+  // ご本人も使う世帯と、家族だけで使う世帯に分けた「減った」の割合
+  const split = (list, isHonnin) => { const l = list.filter((x) => honninGroups && (honninGroups.has(x.groupId) === isHonnin)); const n = l.filter((x) => x.burden === 'less').length; return l.length ? n + '/' + l.length : '—'; };
   return ['📝 家族のアンケート（答えた家族：' + new Set(rows.map((x) => x.uid)).size + '人・今月の答え：' + rows.filter((x) => x.month === month).length + '件）',
     '確認の負担が「減った」：' + (burden.length ? less + '/' + burden.length + '（' + Math.round(less / burden.length * 100) + '%）' : '—'),
     '仕事を休んだ・早退した回数の平均（2〜3回は2、4回以上は4として計算）',
     '　使い始める前の1か月：' + avg(base),
-    '　いちばん新しい1か月：' + avg(last)].join('\n');
+    '　いちばん新しい1か月：' + avg(last),
+    '　同じ人どうしの差（新しい月−始める前）：' + pairText,
+    (honninGroups ? '確認の負担が「減った」：ご本人も使う世帯 ' + split(burden, true) + '／家族だけで使う世帯 ' + split(burden, false) : ''),
+    '※ アンケートに答えていない人は含みません。人数が少ないうちは、割合だけで判断しないでください。'].filter((v) => v !== '').join('\n');
 }
 /* 運営者の登録: Cloudflare に入れた合言葉と同じなら、このLINEを運営者にする(1日5回まで試せる) */
 async function registerOperator(env, fs, given, lineUserId) {

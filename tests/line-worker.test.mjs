@@ -134,13 +134,23 @@ assert.equal((await hook([], true)).status, 401);
 assert.equal((await hook([])).status, 200);
 // 3. 友だち追加 → 案内を返事
 await hook([{ type: 'follow', replyToken: 'r1', source: user('Uowner') }]);
-assert.match(replies.at(-1).messages[0].text, /LINEとつなぐ/);
+assert.match(replies.at(-1).messages[0].text, /「自分のLINEを登録する」/);
 // 4. 正しいコードで連携(全角・小文字・空白でも受け付ける)
 put('lineLinkCodes/ABCD2345', { uid: S('owner'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
 await hook([{ type: 'message', replyToken: 'r2', source: user('Uowner'), message: { type: 'text', text: 'ａｂｃｄ ２３４５' } }]);
 assert.match(replies.at(-1).messages[0].text, /理絵さん、LINE連携しました/);
 assert.equal(db.get('lineLinks/owner').fields.lineUserId.stringValue, 'Uowner');
 assert.equal(db.has('lineLinkCodes/ABCD2345'), false, '使ったコードは消える');
+// 4b. 友だち追加をしていないLINEからの登録は、「登録できました」と言い切らず、友だち追加を頼む(2026-10-08)
+{
+  const before = db.has('lineLinks/fam') ? db.get('lineLinks/fam') : null;
+  put('lineLinkCodes/NFRD2345', { uid: S('fam'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
+  await hook([{ type: 'message', replyToken: 'r2b', source: user('Unf'), message: { type: 'text', text: 'NFRD2345' } }]);
+  assert.match(replies.at(-1).messages[0].text, /まだ、まいにこを友だち追加していないようです/);
+  assert.doesNotMatch(replies.at(-1).messages[0].text, /登録できました/);
+  if (before) db.set('lineLinks/fam', before); else db.delete('lineLinks/fam');
+  for (const [p, d] of [...db]) if (p.startsWith('groups/g1/events/') && d.fields.type?.stringValue === 'line-link-log' && d.fields.uid?.stringValue === 'fam' && d.fields.action?.stringValue === 'linked') db.delete(p);
+}
 const linkLogs = (action) => [...db].filter(([p, d]) => p.startsWith('groups/g1/events/') && d.fields.type?.stringValue === 'line-link-log' && d.fields.action.stringValue === action).map(([, d]) => d.fields);
 assert.equal(linkLogs('linked').length, 1, '連携の記録が家庭に残る');
 assert.equal(linkLogs('linked')[0].uid.stringValue, 'owner');
@@ -648,6 +658,20 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.match(report, /3日目にも、ご本人の操作があった世帯：1\/1（100%）/);
   assert.match(report, /8週目も続いている世帯：1\/1（100%）/);
   assert.match(report, /直近7日に、ご本人の操作があった世帯：1\/2（50%）/);
+  // 6. 家族だけで使う世帯は別に数える・試し用の家庭は USAGE_EXCLUDE_GROUPS で外す(2026-10-08)
+  put('usageStats/uK', { groupId: S('gk'), honnin: { booleanValue: false }, start: S('2026-10-01'), through: S('2026-10-06'),
+    days: { mapValue: { fields: { '2026-10-05': { mapValue: { fields: { h: { integerValue: '0' }, f: { integerValue: '3' } } } } } } } });
+  fixed = at('2026-10-07', 9); globalThis.Date = FixedDate;
+  try { report = await said('Uop', '集計'); } finally { globalThis.Date = RealDate; }
+  assert.match(report, /家族だけで使う世帯：1/);
+  assert.match(report, /直近7日に、家族の記録があった世帯：1\/1（100%）/);
+  assert.match(report, /ご本人が参加している世帯：2/, '家族だけで使う世帯は、ご本人の数に混ぜない');
+  env.USAGE_EXCLUDE_GROUPS = 'gk, g5';
+  fixed = at('2026-10-07', 9); globalThis.Date = FixedDate;
+  try { report = await said('Uop', '集計'); } finally { globalThis.Date = RealDate; }
+  assert.match(report, /家族だけで使う世帯：0/);
+  assert.match(report, /集計から外した家庭（試し用）：2件/);
+  delete env.USAGE_EXCLUDE_GROUPS;
   // 6. 家庭を削除中になったら、見回りの後片付けで集計を消す
   put('groups/g5', { createdBy: S('f5'), deletionState: S('deleting') });
   const g5Stats = () => [...db].filter(([p, d]) => p.startsWith('usageStats/') && d.fields.groupId?.stringValue === 'g5').length;
