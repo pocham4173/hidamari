@@ -11,7 +11,6 @@ function createMainicoContactForm() {
     '⚠️ 名前・パスワード・招待コード・病気のこと・記録の中身は書かないでください。'
   );
   form.setCollectEmail(false);
-  form.setRequireLogin(false);
   form.setAllowResponseEdits(false);
   form.setLimitOneResponsePerUser(false);
   form.setProgressBar(false);
