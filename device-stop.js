@@ -13,7 +13,7 @@
   function message(e) {
     var code = e && e.code || '';
     if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials')
-      return '今のパスワードが違います。もう一度入れてください。';
+      return '今のパスワードが違います。もう一度入れてください。分からないときは、「機種変更・アカウントの復旧」の「パスワードを忘れた方」で新しいパスワードにすると、ほかのスマホも同じように（1時間ほどで）止まります。';
     if (code === 'auth/weak-password') return '新しいパスワードが設定条件を満たしていません。' + MIN + '文字以上の、推測されにくいパスワードにしてください。';
     if (code === 'auth/too-many-requests') return '何度も試したため、しばらく使えません。時間をおいてから、もう一度お試しください。';
     if (code === 'auth/network-request-failed') return '通信できませんでした。電波のよいところで、もう一度お試しください。';

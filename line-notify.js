@@ -87,7 +87,7 @@
     if(v&&v.notificationStatus==='expired') return '🔔 LINEのお知らせ期限が過ぎました（送信完了は未確認）';
     if(v&&v.notificationStatus==='limited') return '🔔 LINEで送れる数の上限のため、この予定は送りませんでした';
     var sent=toDate(v&&v.notifiedAt);
-    if(sent) return '🔔 LINEでお知らせ済み（'+jpDateTime(sent)+'）';
+    if(sent) return '🔔 LINEに送信済み（'+jpDateTime(sent)+'）';
     return '';
   }
 
@@ -255,7 +255,7 @@
         '<small>家族（アプリ）</small><small class="'+(m.ok?'ln-ok':'')+'">'+(m.ok?'✓ 登録済み':'まだ登録していません')+'</small></div></li>';
     });
     recipientRows.forEach(function(r){
-      var st=r.status==='joined'?'<small class="ln-ok">✓ 登録済み</small>':r.status==='stopped'?'<small class="ln-ng">LINEで受け取りを停止しました</small>':'<small>相手の承認待ち</small>';
+      var st=r.status==='joined'?'<small class="ln-ok">✓ 登録済み</small>':r.status==='stopped'?'<small class="ln-ng">LINEで受け取りを停止しました</small>':'<small>相手の送信待ち（招待の文を送ると登録されます）</small>';
       var hist=[];
       var c=toDate(r.createdAt), j=toDate(r.joinedAt), s=toDate(r.stoppedAt);
       if(c) hist.push('招待を作成：'+jpDateTime(c));
@@ -321,7 +321,7 @@
     var me=typeof global.myName==='function'?global.myName():'家族';
     var url=inviteUrl(code);
     var text=me+'さんから、まいにこの予定のお知らせの招待が届きました。\n'+
-      '下のリンクを開くと、LINEのトークに招待の文が入っています。そのまま送信を押すと、'+me+'さんが「知らせる」と選んだ予定だけが、あなたのLINEに届くようになります（'+INVITE_DAYS+'日間有効）。\n'+
+      '下のリンクを開くと、LINEのトークに招待の文が入っています。そのまま送信を押すと、'+me+'さんが「知らせる」と選んだ予定だけが、あなたのLINEに送られるようになります（'+INVITE_DAYS+'日間有効）。\n'+
       'やめるときは、トークで「解除」と送れば止まります。\n'+url;
     box.innerHTML='<div class="ln-share"><p><b>'+h(r.name||'送信先')+'さんへの招待リンクができました</b></p>'+
       '<a class="set-btn ln-line" href="https://line.me/R/share?text='+h(encodeURIComponent(text))+'" target="_blank" rel="noopener noreferrer">LINEで招待を送る</a>'+
@@ -354,7 +354,12 @@
         if(seq!==renderSeq||!snap.exists) return;
         var g=typeof global.gid==='function'?global.gid():'';
         if((snap.data()||{}).groupId===g){ stopWatch(); render(areaId); if(typeof renderLog==='function') renderLog('settings-line-log'); }
-      },function(){});
+      },function(){
+        /* 見張れないときは黙らない: 自動で変わらないことを知らせる */
+        if(seq!==renderSeq) return;
+        var a=global.document&&global.document.getElementById(areaId);
+        if(a) setState(a,'登録できたかを自動で確かめられません。LINEで送ったあとは「つながったか確かめる」を押してください。',true);
+      });
     }catch(e){ linkWatch=null; }
   }
   function bind(area,areaId){
@@ -398,7 +403,8 @@
       return;
     }
     setState(area,'');
-    btn.hidden=true;
+    /* 10分を過ぎたら作り直せるように、ボタンは消さずに「作り直す」にする(2026-10-08 審査の指摘) */
+    btn.textContent='10分たったとき：コードを作り直す';
     var box=area.querySelector('[data-line-code]');
     var until=new Date(Date.now()+CODE_MINUTES*60*1000);
     /* 友だち追加の前にLINEを開くと、トークが真っ暗のままになることがある(2026-10-08 理絵さんの実機確認) */
@@ -406,7 +412,8 @@
       '<a class="set-btn ln-line" href="'+h(sendCodeUrl(code))+'" target="_blank" rel="noopener noreferrer">LINEを開いて送る</a>'+
       '<p class="ln-sub">開いたLINEのトークに、つなぐためのコードが入っています。そのまま<b>送信</b>を押してください。送ると、この画面が自動で「登録済み」に変わります（'+h(two(until.getHours())+':'+two(until.getMinutes()))+'まで有効）。</p>'+
       '<details class="ln-more"><summary>うまく開かないとき</summary><p class="note">LINEのトークが真っ暗のまま動かないときは、LINEを一度閉じて開き直してください。コードが入ったまま出てくるので、<b>送信</b>を押します。</p><p class="note">それでもだめなときは、まいにこ公式LINEのトークに、次のコードを送ってください。他の人には見せないでください。</p><div class="code-show">'+h(code)+'</div>'+
-      '<button class="set-btn" type="button" data-line-act="check">つながったか確かめる</button></details>';
+      '</details>'+
+      '<button class="set-btn" type="button" data-line-act="check">送ったのに変わらないとき：つながったか確かめる</button>';
     bind(area,areaId);
   }
   async function unlink(area,areaId,btn){

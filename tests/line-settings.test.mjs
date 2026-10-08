@@ -86,7 +86,7 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   assert.ok(rows.some((r) => /お母さん家族（アプリ）✓ 登録済み/.test(r)));
   assert.ok(rows.some((r) => /兄 <b>x<\/b>家族（アプリ）まだ/.test(r)), '名前は文字として表示');
   assert.ok(rows.some((r) => /おばあちゃんLINE名：おばあ✓ 登録済み招待の履歴/.test(r)));
-  assert.ok(rows.some((r) => /おじ <i>y<\/i>相手の承認待ち/.test(r)));
+  assert.ok(rows.some((r) => /おじ <i>y<\/i>相手の送信待ち（招待の文を送ると登録されます）/.test(r)));
   assert.ok(rows.some((r) => /いとこLINEで受け取りを停止しました/.test(r)));
   assert.equal(area.querySelector('.ln-family b i'), null);
   assert.match(area.textContent, /LINEで受け取れる人：2人/);
