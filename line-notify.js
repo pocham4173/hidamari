@@ -401,9 +401,11 @@
     btn.hidden=true;
     var box=area.querySelector('[data-line-code]');
     var until=new Date(Date.now()+CODE_MINUTES*60*1000);
-    box.innerHTML='<a class="set-btn ln-line" href="'+h(sendCodeUrl(code))+'" target="_blank" rel="noopener noreferrer">LINEを開いて送る</a>'+
+    /* 友だち追加の前にLINEを開くと、トークが真っ暗のままになることがある(2026-10-08 理絵さんの実機確認) */
+    box.innerHTML='<p class="ln-sub"><b>先に「まいにこを友だち追加」を済ませてから</b>、下のボタンを押してください。</p>'+
+      '<a class="set-btn ln-line" href="'+h(sendCodeUrl(code))+'" target="_blank" rel="noopener noreferrer">LINEを開いて送る</a>'+
       '<p class="ln-sub">開いたLINEのトークに、つなぐためのコードが入っています。そのまま<b>送信</b>を押してください。送ると、この画面が自動で「登録済み」に変わります（'+h(two(until.getHours())+':'+two(until.getMinutes()))+'まで有効）。</p>'+
-      '<details class="ln-more"><summary>うまく開かないとき</summary><p class="note">まいにこ公式LINEのトークに、次のコードを送ってください。他の人には見せないでください。</p><div class="code-show">'+h(code)+'</div>'+
+      '<details class="ln-more"><summary>うまく開かないとき</summary><p class="note">LINEのトークが真っ暗のまま動かないときは、LINEを一度閉じて開き直してください。コードが入ったまま出てくるので、<b>送信</b>を押します。</p><p class="note">それでもだめなときは、まいにこ公式LINEのトークに、次のコードを送ってください。他の人には見せないでください。</p><div class="code-show">'+h(code)+'</div>'+
       '<button class="set-btn" type="button" data-line-act="check">つながったか確かめる</button></details>';
     bind(area,areaId);
   }
