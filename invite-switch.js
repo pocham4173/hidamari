@@ -50,6 +50,7 @@
   /* 招待で入るときの使い方。出した人がご本人なら「家族」。それ以外は、いまの使い方のまま */
   function joinMode(from, currentMode) {
     if (from === 'h') return 'kazoku';
+    if (from === 'k') return 'konly';
     return MODES.includes(currentMode) ? currentMode : null;
   }
   /* いまの家庭の呼び名(管理者の名前) */
