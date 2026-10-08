@@ -82,14 +82,15 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   assert.match(area.textContent, /最初に1回、自分のLINEを登録してください/);
   await waitFor(() => area.querySelectorAll('.ln-family li').length === 6, 'list');
   const rows = [...area.querySelectorAll('.ln-family li')].map((li) => li.textContent);
-  assert.match(rows[0], /^自分（りえ）家族（アプリ）まだ登録していません/, '自分が先頭・実際の連携状態');
-  assert.ok(rows.some((r) => /お母さん家族（アプリ）✓ 登録済み/.test(r)));
-  assert.ok(rows.some((r) => /兄 <b>x<\/b>家族（アプリ）まだ/.test(r)), '名前は文字として表示');
-  assert.ok(rows.some((r) => /おばあちゃんLINE名：おばあ✓ 登録済み招待の履歴/.test(r)));
-  assert.ok(rows.some((r) => /おじ <i>y<\/i>相手の送信待ち（招待の文を送ると登録されます）/.test(r)));
-  assert.ok(rows.some((r) => /いとこLINEで受け取りを停止しました/.test(r)));
+  assert.match(rows[0], /^自分（りえ）LINE：まだつないでいません/, '自分が先頭・実際の連携状態');
+  assert.ok(rows.some((r) => /お母さんLINE：✓ 受け取れます/.test(r)));
+  assert.ok(rows.some((r) => /兄 <b>x<\/b>LINE：まだ/.test(r)), '名前は文字として表示');
+  assert.ok(rows.some((r) => /おばあちゃんLINEの名前：おばあLINE：✓ 受け取れます招待の履歴/.test(r)));
+  assert.ok(rows.some((r) => /おじ <i>y<\/i>LINE：まだ登録していません（招待の文を送ると登録されます）/.test(r)));
+  assert.ok(rows.some((r) => /いとこLINE：受け取りを止めました/.test(r)));
   assert.equal(area.querySelector('.ln-family b i'), null);
-  assert.match(area.textContent, /LINEで受け取れる人：2人/);
+  assert.deepEqual([...area.querySelectorAll('.ln-group-title')].map((e) => e.textContent), ['まいにこアプリを使っている家族', 'アプリを使わず、LINEだけで受け取る人'], '2つに分けて見せる');
+  assert.match(area.textContent, /いまLINEで受け取れる人：合わせて2人/);
   // 再送は承認待ちの人だけ
   assert.deepEqual([...area.querySelectorAll('[data-rec-act="resend"]')].map((b) => b.getAttribute('data-rid')), ['r2']);
   assert.ok(t.hasWatch(), '登録の途中は状態を見守る');

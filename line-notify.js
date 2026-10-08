@@ -94,7 +94,7 @@
   /* ===== 設定画面のLINE欄（2026-10-04 ヒビルカと同じ形） =====
      カード1「自分のLINEを登録する」：ボタンを押すだけでつなぐ(LINEのトークにコードを入れた状態で開く)
      カード2「LINEの送信先を追加」 ：名前を入れて招待を送る。相手がLINEで送信すると「登録済み」になる
-     カード3「LINEの送信先」       ：家族(アプリ)と招待した人の一覧。名前変更・招待の再送・削除
+     カード3「LINEの送信先」       ：アプリを使う家族／LINEだけで受け取る人 の2つに分けた一覧。名前変更・招待の再送・削除
      カード4「家族に頼む」         ：アプリを使う家族へ、つなぎ方をLINEで送る
      招待した人(アプリを使わない人)には、予定ごとに「知らせる」と選んだ予定だけが届く。
      LINEの利用者識別子は画面に置かない(登録は送信役が、署名を確かめたLINEの受付から行う) */
@@ -248,29 +248,35 @@
     }catch(e){ recipientRows=[]; draw(); }
     draw();
   }
+  /* 一覧は2つに分ける: アプリを使う家族 / アプリを使わずLINEだけで受け取る人(10/8 理絵さん「この見方がわかりづらい」) */
   function familyHtml(){
-    var html='<ul class="ln-family">';
+    var html='<p class="ln-group-title">まいにこアプリを使っている家族</p><ul class="ln-family">';
     familyRows.forEach(function(m){
-      html+='<li><div class="ln-who-name"><b>'+h(m.self?'自分':(m.name||'家族'))+'</b>'+(m.self&&m.name?'<small>（'+h(m.name)+'）</small>':'')+
-        '<small>家族（アプリ）</small><small class="'+(m.ok?'ln-ok':'')+'">'+(m.ok?'✓ 登録済み':'まだ登録していません')+'</small></div></li>';
+      html+='<li><div class="ln-who-name"><b>'+h(m.self?'自分':(m.name||'家族'))+(m.self&&m.name?'（'+h(m.name)+'）':'')+'</b>'+
+        '<small class="'+(m.ok?'ln-ok':'')+'">'+(m.ok?'LINE：✓ 受け取れます':'LINE：まだつないでいません')+'</small></div></li>';
     });
+    html+='</ul>';
+    if(familyRows.some(function(m){return !m.ok;})) html+='<p class="ln-sub">※9月29日より前にLINEをつないだ人は、受け取れても✓が出ないことがあります。</p>';
+    html+='<p class="ln-group-title">アプリを使わず、LINEだけで受け取る人</p>';
+    if(!recipientRows.length) html+='<p class="ln-sub">まだいません。上の「LINEの送信先を追加」から招待できます。</p>';
+    else html+='<ul class="ln-family">';
     recipientRows.forEach(function(r){
-      var st=r.status==='joined'?'<small class="ln-ok">✓ 登録済み</small>':r.status==='stopped'?'<small class="ln-ng">LINEで受け取りを停止しました</small>':'<small>相手の送信待ち（招待の文を送ると登録されます）</small>';
+      var st=r.status==='joined'?'<small class="ln-ok">LINE：✓ 受け取れます</small>':r.status==='stopped'?'<small class="ln-ng">LINE：受け取りを止めました</small>':'<small>LINE：まだ登録していません（招待の文を送ると登録されます）</small>';
       var hist=[];
       var c=toDate(r.createdAt), j=toDate(r.joinedAt), s=toDate(r.stoppedAt);
       if(c) hist.push('招待を作成：'+jpDateTime(c));
       if(j) hist.push('登録：'+jpDateTime(j));
       if(s) hist.push('停止：'+jpDateTime(s));
-      html+='<li><div class="ln-who-name"><b>'+h(r.name||'送信先')+'</b>'+(r.lineName?'<small>LINE名：'+h(r.lineName)+'</small>':'')+st+
+      html+='<li><div class="ln-who-name"><b>'+h(r.name||'送信先')+'</b>'+(r.lineName?'<small>LINEの名前：'+h(r.lineName)+'</small>':'')+st+
         (hist.length?'<details class="ln-hist"><summary>招待の履歴</summary><small>'+hist.map(h).join('<br>')+'</small></details>':'')+
         '</div><div class="ln-row-actions">'+
-        '<button type="button" class="ln-mini" data-rec-act="rename" data-rid="'+h(r.id)+'">名前変更</button>'+
-        (r.status==='pending'?'<button type="button" class="ln-mini" data-rec-act="resend" data-rid="'+h(r.id)+'">招待を再送</button>':'')+
+        '<button type="button" class="ln-mini" data-rec-act="rename" data-rid="'+h(r.id)+'">名前を変える</button>'+
+        (r.status==='pending'?'<button type="button" class="ln-mini" data-rec-act="resend" data-rid="'+h(r.id)+'">招待を送り直す</button>':'')+
         '<button type="button" class="ln-mini" data-rec-act="delete" data-rid="'+h(r.id)+'">削除</button></div><div data-rec-box="'+h(r.id)+'"></div></li>';
     });
-    html+='</ul>';
+    if(recipientRows.length) html+='</ul>';
     var on=familyRows.filter(function(m){return m.ok;}).length+recipientRows.filter(function(r){return r.status==='joined';}).length;
-    html+='<p class="ln-sub">'+(on?'LINEで受け取れる人：'+on+'人':'まだLINEで受け取れる人はいません。')+'（家族の✓は、2026年9月29日より前に登録した人だと出ないことがあります）</p>';
+    html+='<p class="ln-total">'+(on?'いまLINEで受け取れる人：合わせて'+on+'人':'まだLINEで受け取れる人はいません。')+'</p>';
     return html;
   }
   function bindRows(box,areaId){
