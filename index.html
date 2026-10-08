@@ -3007,7 +3007,7 @@ function showPage(id){
 const DOC_RETURN_KEY='mainicoDocReturn';
 document.addEventListener('click',function(e){
   const a=e.target&&e.target.closest?e.target.closest('a[href]'):null;
-  if(!a||a.target==='_blank'||!/^(guide\/|help\.html|privacy\.html)/.test(a.getAttribute('href')||''))return;
+  if(!a||a.target==='_blank'||!/^(guide\/|help\.html|privacy\.html|contact\.html)/.test(a.getAttribute('href')||''))return;
   const open=function(id){const m=document.getElementById(id);return !!(m&&m.classList.contains('show'));};
   const from=open('person-settings-modal')?'person-settings':(open('settings-modal')?'settings':'');
   try{sessionStorage.setItem(DOC_RETURN_KEY,JSON.stringify({from:from,at:Date.now()}));}catch(err){}
@@ -3240,10 +3240,13 @@ async function joinByCode(){
     assertSameAccount();
     if(await resumeOtherSetup('join',code,assertSameAccount))return;
     assertSameAccount();
-    const inv=await db.collection('invites').doc(code).get({source:'server'});
-    assertSameAccount();
     /* 使えない招待は、受け取った控えから消す(次に開くたびに同じお知らせが出ないように) */
     const dropInvite=()=>{try{const kept=readInvite();if(kept&&kept.code===code){clearInvite();renderInviteNote();}}catch(e){}};
+    /* ない招待・終わった家庭の招待は、ルールで読み取り自体が断られる(permission-denied)。見つからないとして扱う */
+    let inv;
+    try{inv=await db.collection('invites').doc(code).get({source:'server'});}
+    catch(error){if(error&&error.code==='permission-denied')inv={exists:false};else throw error;}
+    assertSameAccount();
     if(!inv.exists){dropInvite();alert('招待コードが見つかりません。コードを確認してください。');return;}
     const v=inv.data();
     const key='mainico_join_pending_v1';
@@ -6858,7 +6861,7 @@ async function moveToInvitedFamily(){
   const {plan,label}=result;
   if(plan.kind==='same'||plan.kind==='unusable')return renderInviteSwitch();
   if(plan.kind==='owner-blocked'){
-    await appNotice(MainicoInviteSwitch.blockedText(plan,label));
+    await appNotice(MainicoInviteSwitch.blockedText(plan,label,document.getElementById('honnin').classList.contains('active')));
     if(document.getElementById('kazoku').classList.contains('active'))openOwnerTransferSettings();
     return;
   }
@@ -6883,7 +6886,9 @@ async function moveToInvitedFamily(){
   }catch(error){
     console.warn('invite switch move',error);
     inviteSwitchBusy=false;
-    await appNotice('移れませんでした。今の家族とのつながりは、そのままです。通信を確認して、もう一度お試しください。'+(/[ぁ-んァ-ヶ一-龥]/.test(error&&error.message||'')?'\n'+error.message:''));
+    /* 家庭の削除が途中まで進んでいたら「そのまま」とは言わない。読み込み直すと、削除の続きの画面が出る */
+    let deleting=false;try{deleting=plan.kind==='delete-and-join'&&!!getDeletionService().getPending();}catch(e){}
+    await appNotice((deleting?'今の家庭の片付けが途中で止まりました。このあと出る画面で、片付けの続きをしてください。片付けが終わったら、もう一度招待を開いてください。':'移れませんでした。今の家族とのつながりは、そのままです。通信を確認して、もう一度お試しください。')+(/[ぁ-んァ-ヶ一-龥]/.test(error&&error.message||'')?'\n'+error.message:''));
     location.reload();return;
   }
   // 今の家庭とのつながりは終わった。招待と名前だけ戻して、参加の申し込みまで続ける

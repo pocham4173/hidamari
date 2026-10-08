@@ -75,7 +75,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined', 'line-login-signin', 'device-reconnect']);
-const VERSION_TEXT = '版：2026-10-08 LINEの案内をわかりやすく';
+const VERSION_TEXT = '版：2026-10-08 LINEの案内をわかりやすく（2）';
 
 export default {
   async fetch(request, env, ctx) {
@@ -218,7 +218,7 @@ async function linkByCode(fs, code, lineUserId) {
   const name = typeof member.name === 'string' && member.name ? member.name + 'さん、' : '';
   return '✅ ' + name + 'LINE連携しました。登録できました。\n\n' +
     'これから、まいにこの予定のお知らせが、このLINEに届きます。\n' +
-    '（届くのは、予定に「LINEで知らせる時間」を入れたものだけです）\n\n' +
+    '（届くのは、予定に「LINEで知らせる日時」を入れたものだけです）\n\n' +
     'やめるときは、このトークに「解除」と送ってください。';
 }
 

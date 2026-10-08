@@ -20,7 +20,8 @@ const blocked = S.plan({ invite: valid, currentGroupId: 'OLD', members: [me, hon
 assert.deepEqual(blocked, { kind: 'owner-blocked', others: 1 });
 const label = S.householdLabel([me, honnin], 'A');
 assert.equal(label, 'りえさんの家庭');
-assert.match(S.blockedText(blocked, label), /管理者の交代/);
+assert.match(S.blockedText(blocked, label), /「管理者を引き継ぐ」/);
+assert.match(S.blockedText(blocked, label, true), /問い合わせる/, 'ご本人の画面では、運営者への相談を案内');
 assert.match(S.blockedText(blocked, label), /ほかに1人がつながっています/);
 // 3. 管理者ではない: 抜けて参加申請まで
 assert.equal(S.plan({ invite: valid, currentGroupId: 'OLD', members: [me, honnin], ownUid: 'A', ownerUid: 'H', now }).kind, 'leave-and-join');
