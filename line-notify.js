@@ -253,7 +253,8 @@
     var html='<p class="ln-group-title">まいにこアプリを使っている家族</p><ul class="ln-family">';
     familyRows.forEach(function(m){
       html+='<li><div class="ln-who-name"><b>'+h(m.self?'自分':(m.name||'家族'))+(m.self&&m.name?'（'+h(m.name)+'）':'')+'</b>'+
-        '<small class="'+(m.ok?'ln-ok':'')+'">'+(m.ok?'LINE：✓ 受け取れます':'LINE：まだつないでいません')+'</small></div></li>';
+        '<small class="'+(m.ok?'ln-ok':'')+'">'+(m.ok?'LINE：✓ 受け取れます':'LINE：まだつないでいません')+'</small></div>'+
+        (typeof global.canRename==='function'&&global.canRename(m.id)?'<div class="ln-row-actions"><button type="button" class="ln-mini" data-fam-rename="'+h(m.id)+'">名前を変える</button></div>':'')+'</li>';
     });
     html+='</ul>';
     if(familyRows.some(function(m){return !m.ok;})) html+='<p class="ln-sub">※9月29日より前にLINEをつないだ人は、受け取れても✓が出ないことがあります。</p>';
@@ -280,6 +281,9 @@
     return html;
   }
   function bindRows(box,areaId){
+    box.querySelectorAll('[data-fam-rename]').forEach(function(btn){
+      btn.onclick=function(){ if(typeof global.openRename==='function') global.openRename(btn.getAttribute('data-fam-rename')); };
+    });
     box.querySelectorAll('[data-rec-act]').forEach(function(btn){
       btn.onclick=function(){
         var rid=btn.getAttribute('data-rid'), act=btn.getAttribute('data-rec-act');

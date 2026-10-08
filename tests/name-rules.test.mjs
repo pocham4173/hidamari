@@ -1,5 +1,5 @@
 /* Firestore実動検査: 名前を変える(2026-10-08)
-   自分の名前と、ご本人(本人の画面で使う人)の名前だけを、承認済みの家族が変えられる。name 以外は変えられない。 */
+   自分の名前と、ご本人(本人の画面で使う人)の名前は、承認済みの家族が変えられる。管理者は家族全員の名前を変えられる。name 以外は変えられない。 */
 import {consentFixture} from './helpers/consent-fixture.mjs';
 import fs from 'node:fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
@@ -36,7 +36,8 @@ try {
   await allowed('3. 管理者でない家族も、ご本人の名前を変えられる', () => rename(as('other'), 'person', '花子'));
   await allowed('4. ご本人は、自分の名前を変えられる', () => rename(as('person'), 'person', 'はなこ'));
   await allowed('5. mode のない古い記録のご本人(role だけ)も変えられる', () => rename(as('other'), 'legacy', '花子'));
-  await denied('6. ほかの家族(ご本人ではない)の名前は変えられない', () => rename(as('other'), 'owner', 'へんな名前'));
+  await allowed('5b. 管理者は、ほかのご家族の名前も変えられる', () => rename(as('owner'), 'other', '理絵'));
+  await denied('6. 管理者でなければ、ほかの家族(ご本人ではない)の名前は変えられない', () => rename(as('other'), 'owner', 'へんな名前'));
   await denied('7. ご本人の画面から、家族の名前は変えられない', () => rename(as('person'), 'other', 'へんな名前'));
   await denied('8. 家庭の外の人は、ご本人の名前を変えられない', () => rename(as('outsider'), 'person', 'へんな名前'));
   await denied('9. 承認待ちの人は、自分の名前も変えられない', () => rename(as('waiting'), 'waiting', 'たろう'));

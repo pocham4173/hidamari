@@ -4236,6 +4236,7 @@ async function openMembers(){
         html+='<div class="member-row"><span>'+esc(v.name)+'（承認待ち）</span></div>';
       }else{
         html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?'（ご本人）':'')+(me?'（あなた）':'')+'</span>'+
+          (typeof canRename==='function'&&canRename(doc.id)?'<button class="member-del member-rename" onclick="openRename(\''+id+'\')">名前を変える</button>':'')+
           ((doc.id!==householdOwnerId&&(me||isHouseholdOwner()))?'<button class="member-del" onclick="honninRemove(\''+id+'\','+(me?'true':'false')+')">'+(me?'共有をやめる':'解除')+'</button>':'<small>'+(doc.id===householdOwnerId?'管理者':'参加メンバー')+'</small>')+'</div>';
       }
     });
@@ -6706,7 +6707,7 @@ async function renderSetMembers(){
         const audience=MainicoFamilyConnection.recipient(v);
         const roleTag=audience==='honnin'?'（ご本人）':'';
         /* 名前を変える: 自分・ご本人。管理者は家族全員(2026-10-08) */
-        const rename=canRename(id)?'<button class="member-del member-rename" onclick="openRename(\''+id+'\')">名前を変える</button>':'';
+        const rename=(typeof canRename==='function'&&canRename(id))?'<button class="member-del member-rename" onclick="openRename(\''+id+'\')">名前を変える</button>':'';
         html+='<div class="member-row"><span>'+esc(v.name)+roleTag+(me?'（あなた）':'')+'</span>'+rename+
           ((!me&&doc.id!==householdOwnerId&&isHouseholdOwner())?'<button class="member-del" onclick="removeMember(\''+id+'\',false)">解除</button>':'<small>'+(doc.id===householdOwnerId?'管理者':(me?'':'参加メンバー'))+'</small>')+'</div>';
       }
@@ -6762,6 +6763,11 @@ async function saveRename(){
     if(target===uid()&&group===gid())previewStorage.setItem('mainicoName',n);
     renameBusy=false;closeRename();
     refreshSetMembersIfOpen();
+    if(document.getElementById('members-modal')?.classList.contains('show'))openMembers();
+    if(window.MainicoLine){
+      if(document.getElementById('menu-line')?.open)MainicoLine.render('settings-line-area');
+      if(document.getElementById('person-settings-modal')?.classList.contains('show'))MainicoLine.render('person-line-area');
+    }
     await appNotice('名前を「'+n+'」にしました。');
   }catch(error){
     console.warn('rename',error);renameBusy=false;document.getElementById('rename-save').disabled=false;
