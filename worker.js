@@ -75,7 +75,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined', 'line-login-signin', 'device-reconnect']);
-const VERSION_TEXT = '版：2026-10-08 審査の指摘（友だち追加の確認・残り通数）';
+const VERSION_TEXT = '版：2026-10-09 予定のお知らせが通信の上限で止まらないように';
 
 export default {
   async fetch(request, env, ctx) {
@@ -963,26 +963,42 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
   }
   const members = await fs.list(g.path + '/members', ['name']);
   const ownerName = (y) => { const m = members.find(x => x.id === y.fields.uid); return m && m.fields.name || ''; };
-  // 受け取る人ごとの確かめ直し(同じ回の中では使い回す)
+  // 受け取る人ごとの確かめ直し(同じ回の中では使い回す)。
+  // 読み取りは、送る直前に1人分まとめて1回(batchGet)で行う(2026-10-09: 1件ずつ読むと、通信回数の上限で予定が送れない回が続いた)
   const okCache = new Map();
-  const stillOk = async (link, y, to) => {
+  const docCache = new Map();
+  const prefetch = async (paths) => {
+    const need = [...new Set(paths)].filter((p) => !docCache.has(p));
+    if (!need.length) return;
+    const docs = await fs.getMany(need);
+    need.forEach((p, i) => docCache.set(p, docs[i]));
+  };
+  const cget = (path) => docCache.has(path) ? docCache.get(path) : null;
+  const checkPaths = (link, y) => link.kind === 'r'
+    ? ['lineRecipients/' + link.id, link.path, g.path + '/lineShareConsents/' + y.fields.uid]
+    : ['groups/' + g.id, 'groups/' + g.id + '/members/' + link.id, 'accountClosures/' + link.id, 'consents/' + link.id, link.path];
+  const stillOk = (link, y, to) => {
     if (link.kind === 'r') {
       // 招待した送信先: 家族が削除・LINEで停止していないこと(登録済みの送信先の控えと同じ相手であること)・同意をやめていないこと
       const k = 'r:' + link.id;
       if (!okCache.has(k)) {
-        const rec = await fs.get('lineRecipients/' + link.id);
-        const ids = rec && rec.fields.groupId === g.id && rec.fields.status === 'joined' ? await fs.get(link.path) : null;
+        const rec = cget('lineRecipients/' + link.id);
+        const ids = rec && rec.fields.groupId === g.id && rec.fields.status === 'joined' ? cget(link.path) : null;
         okCache.set(k, !!ids && ids.fields.groupId === g.id && ids.fields.lineUserId === to);
       }
       if (!okCache.get(k)) return false;
-      const ck = 'c:' + y.fields.uid;
-      if (!okCache.has(ck)) okCache.set(ck, typeof y.fields.uid === 'string' && !!y.fields.uid && !!await fs.get(g.path + '/lineShareConsents/' + y.fields.uid));
-      return okCache.get(ck);
+      return typeof y.fields.uid === 'string' && !!y.fields.uid && !!cget(g.path + '/lineShareConsents/' + y.fields.uid);
     }
     const k = 'u:' + link.id;
     if (!okCache.has(k)) {
-      const member = await approvedMember(fs, g.id, link.id);
-      const current = member ? await fs.get(link.path) : null;
+      // approvedMember と同じ確かめ方(承認済み・退会処理中でない・家庭が削除中でない・同意が有効)
+      const group = cget('groups/' + g.id);
+      const m = cget('groups/' + g.id + '/members/' + link.id);
+      const status = m && (m.fields.status === undefined ? 'approved' : m.fields.status);
+      const consent = cget('consents/' + link.id);
+      const member = !!group && group.fields.deletionState !== 'deleting' && status === 'approved'
+        && !cget('accountClosures/' + link.id) && validConsent(consent && consent.fields);
+      const current = member ? cget(link.path) : null;
       okCache.set(k, !!current && current.fields.groupId === g.id && current.fields.lineUserId === to);
     }
     return okCache.get(k);
@@ -1015,17 +1031,21 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
       for (const y of items) { const p = plans.get(y.path); p.accepted++; p.eligible = true; }
       continue;
     }
-    // Recheck server state immediately before each external transmission.
+    // Recheck server state immediately before each external transmission (この人の分を1回でまとめて読む)
+    const itemSet = new Set(items);
+    const mine = pairs.filter((p) => itemSet.has(p.y));
+    for (const y of items) docCache.delete(y.path);   // 予定は送る直前の状態を読み直す
+    await prefetch([...mine.flatMap((p) => checkPaths(p.link, p.y)), ...items.map((y) => y.path)]);
     const okItems = [];
     for (const y of items) {
       let ok = false;
-      for (const p of pairs) if (p.y === y && await stillOk(p.link, y, to)) { ok = true; break; }
+      for (const p of mine) if (p.y === y && stillOk(p.link, y, to)) { ok = true; break; }
       if (ok) okItems.push(y);
     }
     if (!okItems.length) continue;
     const fresh = [];
     for (const y of okItems) {
-      const current = await fs.get(y.path);
+      const current = cget(y.path);
       if (!current || current.updateTime !== y.updateTime) { plans.get(y.path).complete = false; continue; }
       fresh.push(y);
     }
