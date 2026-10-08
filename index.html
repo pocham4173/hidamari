@@ -398,6 +398,9 @@ table.cal-rec td.pad{background:none;}
 .set-back{flex:0 0 auto;background:#fff;border:2px solid #D8CDBA;border-radius:12px;font-family:inherit;font-size:1rem;font-weight:700;color:var(--cha);padding:10px 14px;cursor:pointer;}
 .set-head .ttl{margin:0;flex:1;text-align:center;padding-right:76px;}
 .set-menu{border:1px solid #E2D9C8;border-radius:14px;margin-top:10px;background:#fff;overflow:hidden;}
+.guide-link{display:flex;align-items:center;gap:12px;margin:0 0 12px;padding:14px 16px;border-radius:14px;background:#FDF1E7;border:2px solid #F28A42;color:#7A3E12;font-weight:800;font-size:1.05rem;text-decoration:none;}
+.guide-link span{font-size:1.6rem;line-height:1;}
+.guide-link small{display:block;font-weight:500;font-size:.85rem;color:#8A6F4D;}
 .set-menu>summary{list-style:none;cursor:pointer;padding:15px 12px;font-weight:800;font-size:1.02rem;color:var(--cha);display:flex;justify-content:space-between;align-items:center;gap:8px;}
 .set-menu>summary::-webkit-details-marker{display:none;}
 .set-menu>summary::after{content:"▸";color:#B9A98D;flex:0 0 auto;}
@@ -555,6 +558,26 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .family-preview-link span{display:block;}
 .family-preview-link:focus-visible{outline:3px solid #315FAE;outline-offset:2px;}
 .family-jump{display:block;width:100%;min-height:48px;margin-top:10px;border:2px solid #4F7FD3;border-radius:11px;background:#fff;color:#315FAE;font:inherit;font-weight:900;cursor:pointer;}
+/* ホーム画面に追加のカード(2026-10-08) */
+.install-card{background:#EEF3FB;border:2px solid #315FAE;border-radius:16px;padding:14px;margin:0 0 14px;line-height:1.7;color:#22324A;}
+.install-card b{display:block;font-size:1.1rem;}
+.install-card p{margin:6px 0 8px;}
+.install-card .set-btn{display:block;width:100%;min-height:52px;font-weight:900;margin:6px 0 0;}
+.install-card .set-btn.install-go{background:#315FAE;color:#fff;border-color:#315FAE;}
+.install-card .set-btn.sub{background:#fff;}
+.set-btn.install-set{display:block;width:100%;min-height:52px;font-weight:900;margin:0 0 10px;}
+.set-btn.install-set[hidden]{display:none;}
+.install-card[hidden]{display:none;}
+/* 家庭につながっているスマホで受け取った招待(2026-10-07)・つながっている人 */
+.invite-switch-card{background:#FFF8EC;border:3px solid #E0732F;border-radius:18px;padding:16px;margin:0 0 14px;font-size:1.08rem;line-height:1.7;color:#3D2E1C;}
+.invite-switch-card b{display:block;font-size:1.2rem;margin-bottom:4px;}
+.invite-switch-card p{margin:6px 0 10px;}
+.invite-switch-card .set-btn{display:block;width:100%;min-height:56px;font-size:1.1rem;font-weight:900;margin:8px 0 0;}
+.invite-switch-card .set-btn.invite-move{background:#E0732F;color:#fff;border-color:#E0732F;}
+.invite-switch-card .set-btn.sub{background:#fff;}
+.connected-people{font-weight:700;color:#2F4A3A;background:#EEF5EF;border-radius:10px;padding:8px 12px;margin:6px 0 10px;line-height:1.6;}
+.connected-people:empty{display:none;}
+.invite-pending-note{background:#FFF8EC;border:2px solid #E0732F;border-radius:12px;padding:10px 12px;}
 .owner-transfer-card label,#owner-transfer-settings label{display:block;font-weight:700;margin:8px 0 4px;}
 .owner-transfer-card input[type=password],#owner-transfer-settings select{display:block;width:100%;box-sizing:border-box;min-height:48px;font:inherit;font-size:1.05rem;padding:8px 10px;border:2px solid #C9B79C;border-radius:10px;background:#fff;margin-bottom:6px;}
 .owner-transfer-card button[data-owner-transfer=accept]{background:#315FAE;color:#fff;border-color:#315FAE;}
@@ -885,7 +908,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       url+=(url.indexOf('?')<0?'?':'&')+'openExternalBrowser=1'+(invite?'&invite='+encodeURIComponent(invite):'');
       box.innerHTML=inLine
         ?'<b>LINEの中で開いています</b>すでにまいにこを使っている方は、ここで新しく始めず、ホーム画面の「まいにこ」アイコンから開いてください。<br>はじめて使う方は、下のボタンでいつものブラウザーに移ってから始めてください（LINEの中では、次に開いたとき続きから使えないことがあります）。<br><a href="'+url.replace(/"/g,'&quot;')+'">いつものブラウザーで開く</a>'
-        :'<b>すでに使っている方へ</b>ホーム画面に「まいにこ」を追加している方は、ここで新しく始めず、ホーム画面のアイコンから開いてください。';
+        :'<b>すでに使っている方へ</b>ホーム画面の「まいにこ」から開いてください。';
       box.hidden=false;
     }catch(e){}
   });
@@ -933,18 +956,18 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <div class="entry-sub">― 家族のつながり ―</div>
   <div class="entry-catch">不安を軽く、安心を深く、<br>上田でつなぐ。</div>
   <ul class="entry-promise">
-    <li>カメラも位置情報も使いません。ボタンで残した記録を、家族で見せ合うしくみです</li>
-    <li>いまは試験運用中です。勤務先の企業や市が、記録を見ることはありません</li>
-    <li>安否確認や119番の代わりではありません。毎日の連絡を軽くする道具です</li>
+    <li>カメラも位置情報も使いません</li>
+    <li>記録を見られるのは、家族だけです</li>
+    <li>119番や安否確認の代わりではありません</li>
   </ul>
   <div class="open-place-note" id="open-place-note" hidden></div>
   <div class="invite-note" id="invite-note" role="status" hidden></div>
-  <div class="q">どなたのスマホで使いますか？</div>
+  <div class="q" id="entry-question">どなたのスマホで使いますか？</div>
   <div id="entry-state" class="save-state" role="status" aria-live="polite"></div>
   <div id="select-box">
     <button class="entry-btn" onclick="pickMode('honnin')">本人が使う<small>ご本人のスマホ（ボタンを押して家族に伝える）</small></button>
     <button class="entry-btn" onclick="pickMode('kazoku')">本人と家族が使う<small>ご家族のスマホ（ご本人も別のスマホで使う家庭）</small></button>
-    <button class="entry-btn" onclick="pickMode('konly')">家族だけで使う<small>ご本人はスマホを使わず、家族が様子を残す</small></button>
+    <button class="entry-btn" onclick="pickMode('konly')">家族だけで使う<small>ご本人はスマホを使わず、家族が様子を残す（ほかの家族は招待QRで参加）</small></button>
     <button class="entry-btn" onclick="pickInvited()">招待された方<small>ご家族の方で、招待コードをお持ちの方</small></button>
   </div>
   <div class="entry-tools">
@@ -954,7 +977,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <a class="consent-back" href="help.html#locked-out" target="_blank" rel="noopener">家族の誰も入れなくなったとき（運営者への相談）</a>
     <button class="install-main" id="install-main" type="button" onclick="installApp()">ホーム画面に追加</button>
     <p class="note">本サービスは119番通報や安否確認、医療行為の代替ではありません。</p><a class="consent-back" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
-    <a class="consent-back" href="help.html" target="_blank" rel="noopener">使い方・困ったとき</a>
+    <a class="consent-back" href="guide/" target="_blank" rel="noopener">📷 写真つきの使い方</a>
+    <a class="consent-back" href="help.html#notifications" target="_blank" rel="noopener">使い方・困ったとき</a>
     <details style="margin:12px auto;text-align:left;"><summary>利用終了・データの整理</summary><p class="note">機種変更では削除しないでください。</p><button class="consent-back" type="button" onclick="openNotebookCleanup()">端末内の控えを削除</button><button class="consent-back" type="button" onclick="openAccountDeletion()">自分のログイン登録を削除する</button><a class="consent-back" href="help.html#end" target="_blank" rel="noopener">利用終了の手順を見る</a></details>
   </div>
 </div>
@@ -1159,18 +1183,18 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 <div class="page" id="connect-page" style="background:#fff;">
   <div class="setup-wrap">
     <div class="setup-ttl">家族とつながる</div>
-    <p class="setup-lead" id="connect-lead">はじめて使う場合は「新しくはじめる」を。すでにご家族が使っている場合は、招待コードを入力してください。</p>
+    <p class="setup-lead" id="connect-lead">はじめては「新しくはじめる」。招待された方は、QRかコードで参加します。</p>
     <div id="together-box" style="display:none;max-width:320px;margin:0 auto;">
       <label class="consent-item"><input type="checkbox" id="ck-together"> ご本人に、このアプリの利用と記録の共有を説明し、了解を得ています</label>
     </div>
     <button class="entry-btn" id="btn-newgroup" onclick="createGroup()">新しくはじめる</button>
     <div class="setup-or">─ または ─</div>
-    <button class="entry-btn sub qr-scan-btn" type="button" onclick="scanInviteQr()">📷 招待QRを読み取る<small>ご家族の画面に出ている招待QRを、このスマホで読みます</small></button>
+    <button class="entry-btn sub qr-scan-btn" type="button" onclick="scanInviteQr()">📷 招待QRを読み取る</button>
     <input type="text" id="in-code" class="setup-input" placeholder="招待コードを入力" autocapitalize="characters" autocomplete="off">
     <button class="entry-btn sub" onclick="joinByCode()">招待コードで参加</button>
     <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
     <a class="consent-back" href="help.html#locked-out" target="_blank" rel="noopener">家族の誰も入れなくなったとき（運営者への相談）</a>
-    <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、すでに利用中のご家族の画面の「設定」→「家族の管理」→「家族を追加する」で発行できます。コードで参加すると「承認待ち」になり、管理者が認めると利用できます。招待コードは一度使うと再び使えません。認められなかったときや申請を取り下げたときは、新しいコードを発行してもらってください。<br><br>この端末は一度つながると、モードを切り替えても同じご家族の記録を使います。</div>
+    <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、ご家族の「設定」→「家族の管理」で作れます。参加すると「承認待ち」になり、認められると使えます。</div>
     <button class="consent-back" onclick="showPage('entry')">← 入口に戻る</button>
   </div>
 </div>
@@ -1187,6 +1211,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <button class="set-btn" type="button" onclick="copyPendingHelp()">お願いする文をコピー</button>
       <p class="note" id="pending-copy-state" role="status"></p>
     </details>
+    <p class="note invite-pending-note" id="pending-invite-note" role="status" hidden>別の招待を受け取りました。今の申請はまだ残っています。受け取った招待で参加するときは、下の「申請を取り下げる」を押してください。入口に戻ると、受け取った招待で参加できます。</p>
     <button class="consent-back" id="pending-cancel" type="button" onclick="cancelJoinRequest()" disabled>申請を取り下げる</button>
     <p class="note">参加するのをやめるときだけ取り下げます。参加し直す場合は、新しい招待コードが必要です。</p>
   </div>
@@ -1200,6 +1225,10 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div class="h-time" id="h-time"></div>
   </div>
   <div class="h-body">
+    <div id="invite-switch" class="invite-switch" role="region" aria-label="受け取った招待" hidden></div>
+    <div id="h-approve"></div>
+    <div id="person-security-notices"></div>
+    <div class="install-card" data-install-card hidden><b>📲 ホーム画面に追加しましょう</b><p>次から、ホーム画面の「まいにこ」のアイコンですぐ開けます。ブラウザーで開いたままだと、つながりが分かれることがあります。</p><button class="set-btn install-go" type="button" onclick="installApp()">ホーム画面に追加する</button><button class="set-btn sub" type="button" onclick="dismissInstallCard()">あとで</button></div>
     <div class="h-today" id="speech-notice" style="display:none;">
       <div class="ht-lb">はじめにお知らせ</div>
       <div style="font-size:1.05rem;line-height:1.7;color:#4A3A24;padding:4px 0;">このアプリは、ボタンを押すと声でもお知らせします。音を出したくないときは消せます。</div>
@@ -1211,8 +1240,6 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div id="h-today-list"></div>
       <button class="ht-yomi" type="button" onclick="event.stopPropagation();speakToday()">🔊 音声で聞く</button>
     </div>
-    <div id="h-approve"></div>
-    <div id="person-security-notices"></div>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
     <div id="person-record-actions" hidden><button class="set-btn" id="person-record-correct" type="button" onclick="openCancel()">記録を確認・とりけす</button></div>
     <button class="aisatsu" id="btn-a" onclick="sendAisatsu()">
@@ -1291,18 +1318,21 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 
 <div class="modal" id="person-settings-modal"><div class="modal-box adult-font">
   <div class="ttl">その他の設定</div>
+  <a class="guide-link" href="guide/"><span>📷</span><div>使い方ガイド<small>写真つきで、手順を見られます</small></div></a>
+  <button class="set-btn install-set" type="button" data-install-button hidden onclick="installApp()">📲 ホーム画面に追加する</button>
   <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;"><h4>家族との連携</h4>
     <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
-    <p class="note">招待した家族の参加を管理者が承認すると、お願い・返事を送れるようになります。以前のやりとりはホームで確認できます。</p>
+    <p class="connected-people" data-connected-people aria-live="polite"></p>
     <button class="set-btn" data-owner-only hidden onclick="makeInvite('person-invite-area')">招待コードを作る</button>
     <div id="person-invite-area"></div>
+    <div id="person-settings-approve" class="settings-approve"></div>
     <button class="set-btn" onclick="closePersonSettings();openMembers()">参加している人を確認する</button>
     <details><summary>以前の家族からの伝言を見る</summary><p class="note">連携を解除しても、家庭に残っている伝言はここから確認できます。</p><button class="set-btn" onclick="closePersonSettings();openPersonHistory()">伝言の履歴を見る</button></details>
   </div>
   <div class="set-sec"><h4>LINEで予定のお知らせ</h4>
     <div id="person-line-area"></div>
   </div>
-  <div class="set-sec"><h4>LINEでログイン（いつもの画面に戻る方法）</h4>
+  <div class="set-sec" data-line-login-only hidden><h4>LINEでログイン（いつもの画面に戻る方法）</h4>
     <div id="person-line-login-area"></div>
   </div>
   <div class="set-sec" style="border-top:none;"><h4>声のお返事（読み上げ）</h4>
@@ -1312,16 +1342,17 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <p class="note" id="person-speech-status" role="status"></p>
   </div>
   <div class="set-sec"><h4>使い方・困ったとき</h4>
-    <div class="note">ボタンの押し方や、予定・やることリストの使い方を確認できます。</div>
-    <a class="set-btn" href="help.html#daily" target="_blank" rel="noopener">まいにこの使い方を見る</a>
-    <a class="set-btn" href="help.html#trouble" target="_blank" rel="noopener">動かない・保存できないとき</a>
-    <a class="set-btn" href="help.html#line" target="_blank" rel="noopener">LINEで予定のお知らせを受け取るには</a>
-    <a class="set-btn" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
+    <a class="set-btn" href="guide/">📷 写真つきの使い方を見る</a>
+    <a class="set-btn" href="help.html#notifications">くわしい説明を見る</a>
+    <a class="set-btn" href="guide/trouble.html">📷 困ったとき（写真つき）</a>
+    <a class="set-btn" href="contact.html">✉️ 問い合わせる</a>
+    <a class="set-btn" href="guide/line.html">LINEで予定のお知らせを受け取るには</a>
+    <a class="set-btn" href="privacy.html">プライバシーポリシー</a>
   </div>
   <div class="set-sec"><h4>このスマホのお薬手帳</h4>
     <div class="note">ここに保存した写真やPDFを見たり、拡大したりできます。家族への自動共有や、機種変更時の自動引継ぎはありません。</div>
     <button class="set-btn" type="button" onclick="openMedicineNotebook()">お薬手帳を開く・保存する</button>
-    <a class="set-btn" href="help.html#medicine" target="_blank" rel="noopener">保存・別のスマホへの移し方</a>
+    <a class="set-btn" href="help.html#medicine">保存・別のスマホへの移し方</a>
   </div>
   <div class="set-sec" id="person-hitokoe-sec" hidden><h4>ひと声のきっかけ</h4>
     <p class="note" id="person-hitokoe-state"></p>
@@ -1329,10 +1360,10 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   </div>
   <div class="set-sec"><h4>機種変更・スマホをなくしたとき</h4>
     <p class="note" data-recovery-status aria-live="polite"></p>
-    <div class="note">ご家族と一緒に設定しておくと、新しいスマホでも今までの記録に戻れます。ご本人のメールアドレスを使います。ご本人がパスワードを覚えておく必要はありません（ご家族が控えておいてください）。</div>
+    <div class="note">ご家族と一緒に設定すると、新しいスマホでも記録に戻れます。パスワードはご家族が控えておいてください。</div>
     <button class="set-btn" onclick="openRecovery()">復旧を設定する</button>
     <button class="set-btn" type="button" data-device-stop hidden onclick="openDeviceStop()">スマホをなくしたとき：ほかのスマホを止める</button>
-    <a class="set-btn" href="help.html#recovery" target="_blank" rel="noopener">機種変更・復旧の手順を見る</a>
+    <a class="set-btn" href="help.html#recovery">機種変更・復旧の手順を見る</a>
   </div>
   <details class="person-family-procs" id="person-family-procs" ontoggle="guardPersonFamilyProcs(this)">
     <summary>ご家族と一緒に行う手続き（利用方法の変更・利用の終了など）</summary>
@@ -1342,7 +1373,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <button class="set-btn" onclick="openBackConfirm()">利用方法を変更する</button>
   </div>
   <div class="set-sec"><h4>プライバシー・同意</h4>
-    <a class="set-btn" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
+    <a class="set-btn" href="privacy.html">プライバシーポリシー</a>
     <div class="note">同意の取り消しは、このアカウントでの記録の利用を止めます。家族との接続の解除や、これまでの記録の削除は行いません。実行前に確認画面が出ます。</div>
     <button class="set-btn warn" onclick="revokeConsent()">同意を取り消して利用をやめる</button>
   </div>
@@ -1573,6 +1604,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <p data-recovery-status></p>
       <button class="set-btn" type="button" onclick="openRecoveryMenu()">復旧を設定する</button>
     </div>
+    <a class="guide-link" href="guide/"><span>📷</span><div>使い方ガイド<small>写真つきで、手順を見られます</small></div></a>
+    <button class="set-btn install-set" type="button" data-install-button hidden onclick="installApp()">📲 ホーム画面に追加する</button>
 
     <details class="set-menu" id="menu-family">
       <summary>家族の管理</summary>
@@ -1580,15 +1613,16 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <div class="set-sec">
           <h4 id="settings-family-connection" tabindex="-1" style="scroll-margin-top:70px;">つながっている人</h4>
           <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
+          <p class="connected-people" data-connected-people aria-live="polite"></p>
           <div id="set-members"><div class="empty">読み込み中…</div></div>
-          <p class="note">解除・退出の影響は、実行前の確認画面に表示されます。</p>
-          <p class="note" data-communication-gate="person">本人の「おはよう」への返事のしかたは、<a href="help.html#reply" target="_blank" rel="noopener">使い方（返事のしかた）</a>で確認できます。</p>
+
         </div>
         <div class="set-sec" data-owner-only hidden>
           <h4>家族を追加する</h4>
-          <div class="note" style="margin-top:0;">① コードを作る → ② 家族に伝える（電話やメモ） → ③ 家族がまいにこを開き、入口の「招待された方」から案内に沿って進んで、QRを読み取るかコードを入力 → ④ あなたが「参加を認める」で完了。<br><span style="color:#8A6F4D;">コードは24時間・1回だけ使えます。</span>コードを渡しただけでは共有は始まりません。</div>
+          <div class="note" style="margin-top:0;">コードを作って家族に伝え、家族が入れたら「参加を認める」を押します。<span style="color:#8A6F4D;">コードは24時間・1回だけ使えます。</span></div>
           <button data-owner-only hidden class="set-btn" onclick="makeInvite('settings-invite-area')">招待コードを作る</button>
           <div id="settings-invite-area"></div>
+          <div id="settings-approve" class="settings-approve"></div>
         </div>
         <div class="set-sec" id="owner-transfer-sec">
           <h4>管理者を引き継ぐ</h4>
@@ -1603,7 +1637,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <div id="settings-line-area"></div>
         <div class="note" id="settings-line-quota" aria-live="polite"></div>
         <div class="note">ここは予定のお知らせの設定です。LINEからまいにこに入る設定は「LINEでログイン」にあり、ここでやめても変わりません。</div>
-        <a class="set-btn" href="help.html#line" target="_blank" rel="noopener">LINEの使い方（つなぎ方・お知らせの付け方・やめ方）</a>
+        <a class="set-btn" href="guide/line.html">LINEの使い方（つなぎ方・お知らせの付け方・やめ方）</a>
         <details class="ln-more line-log-box"><summary>家族のLINEの記録（だれが、いつつないだか）</summary><div id="settings-line-log"></div></details>
       </div>
     </details>
@@ -1616,7 +1650,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <details class="set-menu" id="menu-person-ui" ontoggle="if(this.open)renderPersonUiConfig()">
       <summary>ご本人の画面に出すもの</summary>
       <div class="set-menu-body">
-        <p class="note">ご本人の画面を、その方に合わせて短くできます。「おはよう」「ちょっとお願い」「今日の予定」はいつも出ます。お薬は、飲む時間だけ残せます。変更はご本人のスマホにも反映されます。</p>
+        <p class="note">ご本人の画面に出すボタンを減らせます。「おはよう」「ちょっとお願い」「今日の予定」はいつも出ます。</p>
         <div class="pui-checks" id="pui-checks">
           <label><input type="checkbox" value="kibun">今日の調子（体調を選ぶボタン）</label>
           <label><input type="checkbox" value="cal">カレンダーを見る</label>
@@ -1639,11 +1673,11 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       </div>
     </details>
 
-    <details class="set-menu" id="menu-line-login" ontoggle="if(this.open&&typeof renderLineLoginSettings==='function')renderLineLoginSettings('settings-line-login-area')">
+    <details class="set-menu" id="menu-line-login" data-line-login-only hidden ontoggle="if(this.open&&typeof renderLineLoginSettings==='function')renderLineLoginSettings('settings-line-login-area')">
       <summary>LINEでログイン<span class="set-menu-sub">いつもの画面に戻る方法</span></summary>
       <div class="set-menu-body">
         <div id="settings-line-login-area"></div>
-        <a class="set-btn" href="help.html#line-login" target="_blank" rel="noopener">LINEでログインの使い方</a>
+        <a class="set-btn" href="help.html#line-login">LINEでログインの使い方</a>
       </div>
     </details>
 
@@ -1655,8 +1689,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <button class="set-btn" onclick="openRecovery(true)">復旧設定済みのアカウントでログインする</button>
         <button class="set-btn" type="button" data-device-stop hidden onclick="openDeviceStop()">スマホをなくしたとき：ほかのスマホを止める</button>
         <button class="set-btn" type="button" id="reconnect-make" hidden onclick="openReconnectMaker()">ご本人の新しいスマホをつなぐ（再接続QR）</button>
-        <a class="set-btn" href="help.html#recovery" target="_blank" rel="noopener">機種変更・復旧の手順を見る</a>
-        <a class="set-btn" href="help.html#locked-out" target="_blank" rel="noopener">家族の誰も入れなくなったとき</a>
+        <a class="set-btn" href="help.html#recovery">機種変更・復旧の手順を見る</a>
+        <a class="set-btn" href="help.html#locked-out">家族の誰も入れなくなったとき</a>
         <div class="note">ご自身のメールアドレスを使います。家族は自分のアカウントで設定してください。ご本人のスマホは、「再接続QR」を使うと、メールやパスワードなしで新しいスマホにつなぎ直せます。</div>
       </div>
     </details>
@@ -1665,9 +1699,11 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <summary>使い方・困ったとき</summary>
       <div class="set-menu-body">
         <button class="set-btn" type="button" id="guide-replay-btn" onclick="replayFamilyGuide()">使い方の道案内をもう一度見る</button>
-        <a class="set-btn" href="help.html#daily" target="_blank" rel="noopener">まいにこの使い方を見る</a>
-        <a class="set-btn" href="help.html#reply" target="_blank" rel="noopener" data-communication-gate="person">本人の「おはよう」に返事するには</a>
-        <a class="set-btn" href="help.html#trouble" target="_blank" rel="noopener">動かない・保存できないとき</a>
+        <a class="set-btn" href="guide/">📷 写真つきの使い方を見る</a>
+        <a class="set-btn" href="help.html#notifications">くわしい説明を見る</a>
+        <a class="set-btn" href="help.html#reply" data-communication-gate="person">本人の「おはよう」に返事するには</a>
+        <a class="set-btn" href="guide/trouble.html">📷 困ったとき（写真つき）</a>
+    <a class="set-btn" href="contact.html">✉️ 問い合わせる</a>
         <div class="note">以前の伝言・お願いは「ふり返り」で確認できます。連携を解除しても記録は消えません。</div>
         <button class="set-btn" onclick="closeSettings();showTab('t-kiroku')">ふり返りを開く</button>
       </div>
@@ -1678,7 +1714,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div class="set-menu-body">
         <div class="note">保存した写真やPDFを見たり、拡大したりできます。家族への自動共有や、機種変更時の自動引継ぎはありません。</div>
         <button class="set-btn" type="button" onclick="openMedicineNotebook()">お薬手帳を開く・保存する</button>
-        <a class="set-btn" href="help.html#medicine" target="_blank" rel="noopener">保存・別のスマホへの移し方</a>
+        <a class="set-btn" href="help.html#medicine">保存・別のスマホへの移し方</a>
       </div>
     </details>
 
@@ -1686,8 +1722,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <summary>プライバシー・同意</summary>
       <div class="set-menu-body">
         <p class="note" id="consent-info">─</p>
-        <a class="set-btn" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシーを読む</a>
-        <a class="set-btn" href="help.html#notifications" target="_blank" rel="noopener">通知の制限・サービスの限界を読む</a>
+        <a class="set-btn" href="privacy.html">プライバシーポリシーを読む</a>
+        <a class="set-btn" href="help.html#notifications">通知の制限・サービスの限界を読む</a>
         <details style="margin-top:10px;"><summary style="cursor:pointer;padding:8px 0;">同意の記録（詳細）</summary><p class="note" id="consent-version">─</p></details>
         <div class="set-sec"><h4>同意の取り消し</h4>
           <div class="note">このアカウントでの記録の利用を止めます。家族との接続の解除や、これまでの記録の削除は行いません（「データの削除・利用の終了」から行えます）。実行前に確認画面が出ます。</div>
@@ -1716,7 +1752,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
           <div class="note">機種変更のためには削除しないでください。実行前に確認画面が出ます。</div>
           <button class="set-btn warn" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
         </div>
-        <a class="set-btn" href="help.html#end" target="_blank" rel="noopener">削除の範囲と手順を見る</a>
+        <a class="set-btn" href="help.html#end">削除の範囲と手順を見る</a>
       </div>
     </details>
 
@@ -1735,6 +1771,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <!-- ホーム -->
     <div class="ftab" id="t-home">
       <!-- 家族のホーム(2026-10-02 並べ直し): 1 いま見てほしいこと → 2 毎日のひと押し → 3 今日のこと → 4 家族のあいだのこと → もしもの備え -->
+      <p class="connected-people" data-connected-people aria-live="polite"></p>
       <div class="card tag-home" id="watch-tag-home" style="display:none;">
         <div class="tag-home-head"><span class="ic">🔔</span><span>おまもりタグからのお知らせ</span><span class="tag-unread-count" id="tag-unread-count" style="display:none;"></span></div>
         <div class="tag-home-status" id="home-watch-tag-status"></div>
@@ -1753,6 +1790,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       </div>
 
       <div id="card-pending"></div>
+      <div class="install-card" data-install-card hidden><b>📲 ホーム画面に追加しましょう</b><p>次から、ホーム画面の「まいにこ」のアイコンですぐ開けます。ブラウザーで開いたままだと、つながりが分かれることがあります。</p><button class="set-btn install-go" type="button" onclick="installApp()">ホーム画面に追加する</button><button class="set-btn sub" type="button" onclick="dismissInstallCard()">あとで</button></div>
       <!-- 家族へのお知らせ(2026-10-01): ひと声のきっかけ・ご本人のスマホの復旧・LINEの残り通数 -->
       <div id="owner-transfer-card"></div>
       <div id="hitokoe-card"></div>
@@ -1962,7 +2000,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
             <input type="datetime-local" id="yt-notify">
             <div class="ln-quick"><button type="button" onclick="MainicoLine.preset('yt-notify','yt-date','eve')">前日の夜7時</button><button type="button" onclick="MainicoLine.preset('yt-notify','yt-date','morning')">当日の朝7時</button><button type="button" onclick="document.getElementById('yt-notify').value=''">知らせない</button></div>
             <div class="ln-who" id="yt-notify-who"></div>
-            <div class="note">入れた日時に、選んだ人へLINEで届きます（15分ほど遅れることがあります）。同じ時刻の予定は、1人に1通にまとめて届きます（「前日の夜7時」がおすすめです）。登録や招待は「設定 → LINEで予定のお知らせ」から。</div>
+            <div class="note">入れた日時にLINEで届きます（15分ほど遅れることがあります）。</div>
           </div>
           <div class="yt-form-row">
             <label>絵文字<input type="text" id="yt-kind" value="📌" maxlength="8" placeholder="絵文字"></label>
@@ -1998,12 +2036,12 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div class="card dom-yotei">
         <h3>これからの予定</h3>
         <div id="yt-list"><div class="empty">まだ登録がありません</div></div>
-        <div class="note">「Googleカレンダーに追加」を押すと、Googleカレンダーの登録画面が開きます。内容を確かめて保存してください（まいにこから自動では書き込みません）。</div>
+        <div class="note">Googleカレンダーの画面が開きます。内容を確かめて保存してください。</div>
       </div>
       <details class="card dom-yotei" id="line-history-card">
         <summary class="fold-ttl">LINEでお知らせした履歴</summary>
         <div id="line-history"><div class="empty">読み込み中…</div></div>
-        <div class="note">「送信済み」はLINE側が受け付けた記録で、読んだことの確認ではありません。同じ予定で何度か送った場合は、その下にすべての送信記録を表示します（2026年9月29日以降の送信から）。お知らせの変更は、予定を登録した人だけができます。</div>
+        <div class="note">「送信済み」は、LINEが受け付けた記録です。読んだかどうかは分かりません。</div>
       </details>
     </div>
 
@@ -2016,7 +2054,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <div id="yr-list"><div class="empty">読み込み中…</div></div>
       </div>
       <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div id="rec-source-legend" class="note" style="margin:0 0 10px;">記録した人と時間を確認できます。</div><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
-      <details class="card dom-record"><summary class="fold-ttl" id="rec-sum-ttl">今月のまとめ</summary><div class="rec-sum" id="rec-sum"></div><div class="note">「今月の経過日数中に何件あり、何日に記録があったか」を同じ形でまとめています。良い・悪いや健康状態の判断はしていません。この記録は医療機関の診療記録ではありません。</div></details>
+      <details class="card dom-record"><summary class="fold-ttl" id="rec-sum-ttl">今月のまとめ</summary><div class="rec-sum" id="rec-sum"></div><div class="note">件数と日数のまとめです。良い・悪いの判断はしていません。医療の記録ではありません。</div></details>
       <details class="card dom-record"><summary class="fold-ttl">期間のグラフ</summary>
         <div class="rg-period">
           <button type="button" id="rg-p1" class="on" onclick="rgSelect(1)">1か月</button>
@@ -2230,6 +2268,7 @@ setTimeout(function(){
 <script src="security-notices.js?v=20261006"></script>
 <script src="family-guide.js?v=20261002"></script>
 <script src="owner-transfer.js?v=20261002"></script>
+<script src="invite-switch.js?v=20261007"></script>
 <script>
 const previewStorage={
   getItem:k=>localStorage.getItem(k),
@@ -2253,6 +2292,8 @@ if(window.MAINICO_RECAPTCHA_SITE_KEY){
 }
 const db = previewApp.firestore();
 window.db = db;
+/* LINEでログインは、送信役の場所が設定されるまで(準備中のあいだ)メニューに出さない */
+document.querySelectorAll('[data-line-login-only]').forEach(el=>{el.hidden=!window.MAINICO_LINE_AUTH_URL;});
 window.mainicoStartupStage='ログインの準備中';
 if('serviceWorker' in navigator){
   try{ navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('service worker',e); }); }
@@ -2682,8 +2723,10 @@ function addEvent(data){
 let familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};
 let familyConnectionUnsub=null,familyConnectionGeneration=0;
 let lastFamilyAudience=null;
+let connectedPeopleText='';
 function stopFamilyConnection(){
   familyConnectionGeneration++;
+  connectedPeopleText='';
   lastFamilyAudience=null;
   if(typeof resetCommunication==='function')resetCommunication();
   if(familyConnectionUnsub){familyConnectionUnsub();familyConnectionUnsub=null;}
@@ -2716,7 +2759,7 @@ function updateCommunicationAvailability(){
   const state=document.getElementById('person-contact-state');
   if(state)state.textContent=!canUseFamilyFeature('person')?(familyConnection.status==='unknown'?
     '通信を確認しています。返事は確認後に送れます。':
-    '返事ボタンは、ご本人が別のスマホ（別のアカウント）で「本人が使う」として参加すると表示されます。'):
+    'ご本人がスマホで参加すると、ここで返事ができます。'):
     familyHomeEventStatus==='cached'?'保存したやりとりを表示しています。最新の連絡は通信が戻ってから確認します。':
     familyHomeEventStatus==='error'?'やりとりを読み込めませんでした。通信状態を確認してください。':
     familyHomeEventStatus==='loading'?'やりとりを読み込んでいます…':'';
@@ -2762,9 +2805,11 @@ function renderFamilyConnection(){
   if(state.status!=='unknown')lastFamilyAudience=state;
   updateCommunicationAvailability();
   const text=state.status==='unknown'?'連携状況を確認できません。一人でも記録できます。':state.status==='solo'?
-    '今はほかの承認済み参加者はいません。招待せずに使えます。':
-    'ほかの承認済み参加者 '+state.others+'人と記録を共有しています。相手の確認・対応を示すものではありません。';
+    'ほかの家族はまだいません。':
+    'ほかの家族 '+state.others+'人と記録を共有しています。';
   document.querySelectorAll('[data-connection-state]').forEach(el=>el.textContent=text);
+  /* 「つながっている人：○○さん（ご本人）、△△さん（ご家族）」。2台が別の家庭になっていたら、見比べてすぐ分かる */
+  document.querySelectorAll('[data-connected-people]').forEach(el=>{el.textContent=connectedPeopleText;el.hidden=!connectedPeopleText;});
   document.querySelectorAll('[data-request-audience]').forEach(el=>el.textContent=requestAudienceText());
   document.querySelectorAll('[data-person-audience]').forEach(el=>el.textContent=state.status==='unknown'?
     '本人用の参加状況は確認できません。保存と相手の確認は別です。':!state.personOthers?
@@ -2799,8 +2844,11 @@ function startFamilyConnection(reset=true){
   const current=()=>generation===familyConnectionGeneration&&owner===uid()&&group===gid()&&boot===householdBootGeneration;
   familyConnectionUnsub=col('members').onSnapshot({includeMetadataChanges:true},snap=>{
     if(!current())return;
-    familyConnection=MainicoFamilyConnection.classify(snap,owner);renderFamilyConnection();
-  },()=>{if(current()){familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};renderFamilyConnection();}});
+    familyConnection=MainicoFamilyConnection.classify(snap,owner);
+    const people=[];try{snap.forEach(doc=>people.push({id:doc.id,data:doc.data()}));}catch(e){}
+    connectedPeopleText=familyConnection.status==='unknown'||typeof MainicoInviteSwitch==='undefined'?'':MainicoInviteSwitch.peopleLine(people,owner);
+    renderFamilyConnection();
+  },()=>{if(current()){familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};connectedPeopleText='';renderFamilyConnection();}});
 }
 let personTasksController=null;
 function openPersonTasks(){
@@ -2827,9 +2875,21 @@ let deferredPrompt=null;
 function isStandalone(){
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
 }
+/* ホーム画面に追加していない(ブラウザーで開いている)ときだけ、ホームのカードと設定のボタンを出す(2026-10-08)。
+   カードは「あとで」で7日間しまう。設定のボタンはいつでも出す */
+const INSTALL_CARD_KEY='mainicoInstallCardLater';
 function updateInstallButton(){
   const b=document.getElementById('install-main');
   if(b) b.style.display=isStandalone()?'none':'block';
+  const standalone=isStandalone();
+  let later=0;try{later=Number(localStorage.getItem(INSTALL_CARD_KEY)||0);}catch(e){}
+  const hideCard=standalone||Date.now()-later<7*86400000;
+  document.querySelectorAll('[data-install-card]').forEach(el=>{el.hidden=hideCard;});
+  document.querySelectorAll('[data-install-button]').forEach(el=>{el.hidden=standalone;});
+}
+function dismissInstallCard(){
+  try{localStorage.setItem(INSTALL_CARD_KEY,String(Date.now()));}catch(e){}
+  updateInstallButton();
 }
 window.addEventListener('beforeinstallprompt', e=>{
   e.preventDefault();
@@ -2943,7 +3003,31 @@ function showPage(id){
   if(id==='entry'&&typeof renderInviteNote==='function')renderInviteNote();
   if(id==='entry'){const lineBtn=document.getElementById('entry-line-login');if(lineBtn)lineBtn.hidden=!(typeof lineLoginEnabled==='function'&&lineLoginEnabled()&&!gid());}
   if((id==='entry'||id==='welcome')&&typeof reconnectOnEntry==='function')reconnectOnEntry();
+  if(id==='kazoku'||id==='honnin')reopenAfterDoc(id);
 }
+
+/* ===== 説明ページ(guide/・help.html・privacy.html)から戻ったとき =====
+   説明ページは同じ画面で開く(ホーム画面のまいにこでも、ログインしたまま戻れる)。
+   開く前に設定を見ていたら印を残し、戻ってきたら(読み込み直しになっても)その設定を開き直す。 */
+const DOC_RETURN_KEY='mainicoDocReturn';
+document.addEventListener('click',function(e){
+  const a=e.target&&e.target.closest?e.target.closest('a[href]'):null;
+  if(!a||a.target==='_blank'||!/^(guide\/|help\.html|privacy\.html|contact\.html)/.test(a.getAttribute('href')||''))return;
+  const open=function(id){const m=document.getElementById(id);return !!(m&&m.classList.contains('show'));};
+  const from=open('person-settings-modal')?'person-settings':(open('settings-modal')?'settings':'');
+  try{sessionStorage.setItem(DOC_RETURN_KEY,JSON.stringify({from:from,at:Date.now()}));}catch(err){}
+},true);
+function takeDocReturn(){
+  try{const v=JSON.parse(sessionStorage.getItem(DOC_RETURN_KEY)||'null');sessionStorage.removeItem(DOC_RETURN_KEY);if(v&&Date.now()-v.at<2*3600000)return v.from||'';}catch(e){}
+  return '';
+}
+function reopenAfterDoc(id){
+  const from=takeDocReturn();
+  if(from==='settings'&&id==='kazoku')setTimeout(function(){try{openSettings();}catch(e){}},0);
+  else if(from==='person-settings'&&id==='honnin')setTimeout(function(){try{openPersonSettings();}catch(e){}},0);
+}
+/* 前の画面がそのまま残っていた(戻る操作で読み込み直さなかった)ときは、設定も開いたままなので印だけ消す */
+window.addEventListener('pageshow',function(e){if(e.persisted){try{sessionStorage.removeItem(DOC_RETURN_KEY);}catch(err){}}});
 
 /* ===== モード選択→同意→名前→接続 ===== */
 let pendingMode=null;
@@ -2997,8 +3081,15 @@ function afterConsent(mode=pendingMode){
   previewStorage.setItem('mainicoPendingMode', pendingMode);
   if(pendingMode!=='honnin' && !previewStorage.getItem('mainicoName')){ showPage('name-page'); return; }
   if(gid())return finishSetup();
+  openConnectOrJoin();
+}
+/* 受け取った招待があれば、接続の画面でもう一度押させず、そのまま参加を申し込む(2026-10-07)。
+   コードが使えないときは、接続の画面に残ってお知らせを出す */
+function openConnectOrJoin(){
   setupConnectPage();
   showPage('connect-page');
+  const inv=readInvite();
+  if(inv&&!gid()){const box=document.getElementById('in-code');if(box)box.value=inv.code;joinByCode();}
 }
 function setupConnectPage(){
   /* QRで受け取った招待コードがあれば、入れておく(2026-10-01) */
@@ -3015,13 +3106,13 @@ function setupConnectPage(){
     return;
   }
   if(pendingMode==='honnin'){
-    lead.textContent='ご家族の画面の「設定」で発行した招待コードを入力してください。ご本人がはじめて使う場合は「新しくはじめる」も選べます。';
+    lead.textContent='ご家族からもらった招待コード（またはQR）で参加します。';
     btn.textContent='新しくはじめる'; tb.style.display='none';
   }else if(pendingMode==='kazoku'){
-    lead.textContent='はじめて使うご家庭は「ご本人と一緒に初期設定する」を。すでにご家族が使っている場合は、招待コードを入力してください。';
+    lead.textContent='はじめては「ご本人と一緒に初期設定する」。招待された方は、QRかコードで参加します。';
     btn.textContent='ご本人と一緒に初期設定する'; tb.style.display='block';
   }else{
-    lead.textContent='はじめて使う場合は「新しくはじめる」を。すでにご家族が使っている場合は、招待コードを入力してください。';
+    lead.textContent='家族だけで使うときは、まず1人が「新しくはじめる」を押して家庭を作ります。ほかの家族は、あとで「設定」→「家族の管理」→「家族を追加する」で出す招待QRを読んで参加します。ご本人のスマホはいりません。招待された方は、下の欄にコードを入れるか、QRを読み取ってください。';
     btn.textContent='新しくはじめる'; tb.style.display='none';
   }
 }
@@ -3041,8 +3132,7 @@ function saveName(){
   try{
     previewStorage.setItem('mainicoName',n);
     if(gid()){ finishSetup(); return; }
-    setupConnectPage();
-    showPage('connect-page');
+    openConnectOrJoin();
   }catch(error){alert('この端末に名前を保存できませんでした。保存情報は消さず、ブラウザーで開き直してください。');}
 }
 let groupCreating=false;
@@ -3155,9 +3245,14 @@ async function joinByCode(){
     assertSameAccount();
     if(await resumeOtherSetup('join',code,assertSameAccount))return;
     assertSameAccount();
-    const inv=await db.collection('invites').doc(code).get({source:'server'});
+    /* 使えない招待は、受け取った控えから消す(次に開くたびに同じお知らせが出ないように) */
+    const dropInvite=()=>{try{const kept=readInvite();if(kept&&kept.code===code){clearInvite();renderInviteNote();}}catch(e){}};
+    /* ない招待・終わった家庭の招待は、ルールで読み取り自体が断られる(permission-denied)。見つからないとして扱う */
+    let inv;
+    try{inv=await db.collection('invites').doc(code).get({source:'server'});}
+    catch(error){if(error&&error.code==='permission-denied')inv={exists:false};else throw error;}
     assertSameAccount();
-    if(!inv.exists){alert('招待コードが見つかりません。コードを確認してください。');return;}
+    if(!inv.exists){dropInvite();alert('招待コードが見つかりません。コードを確認してください。');return;}
     const v=inv.data();
     const key='mainico_join_pending_v1';
     const previous=JSON.parse(previewStorage.getItem(key)||'null');
@@ -3173,8 +3268,8 @@ async function joinByCode(){
       }
     }
     if(!alreadyJoined){
-      if(v.used){alert('この招待コードは使用済みです。新しいコードを発行してもらってください。');return;}
-      if(v.expiresAt && v.expiresAt.toMillis()<Date.now()){alert('この招待コードは期限切れです。新しいコードを発行してもらってください。');return;}
+      if(v.used){dropInvite();alert('この招待コードは使用済みです。新しいコードを発行してもらってください。');return;}
+      if(v.expiresAt && v.expiresAt.toMillis()<Date.now()){dropInvite();alert('この招待コードは期限切れです。新しいコードを発行してもらってください。');return;}
       previewStorage.setItem(key,JSON.stringify({uid:uid(),groupId:v.groupId,mode:pendingMode,code}));
       const batch=db.batch();
       batch.set(db.collection('groups').doc(v.groupId).collection('members').doc(uid()),{
@@ -3279,6 +3374,8 @@ function showPending(){
   const context={userId:uid(),groupId:gid(),boot:householdBootGeneration,generation:++pendingGeneration};
   pendingContext=context;
   showPage('pending-page');
+  const otherInvite=document.getElementById('pending-invite-note');
+  if(otherInvite)otherInvite.hidden=!(typeof readInvite==='function'&&readInvite());
   pendingState('unknown','参加の申請状況を確認しています。');
   if(!context.userId||!context.groupId){
     pendingState('unknown','この端末の申請状況を確認できません。','保存情報を消さず、通信を確認して「参加状況を確認」を押してください。');
@@ -3412,6 +3509,7 @@ function startMode(){
   else showPage('entry');
   applyHouseholdPermissions();
   openScheduleLink();
+  if(gid()&&typeof renderInviteSwitch==='function')setTimeout(()=>{try{renderInviteSwitch();}catch(e){}},0);
 }
 function resetMode(){ previewStorage.removeItem('mainicoMode'); location.reload(); }
 function openBackConfirm(){
@@ -3656,7 +3754,7 @@ function initHonnin(){
 
   if(memWatchUnsub) memWatchUnsub();
   memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
-    lastPendingSnap={id:'h-approve',snap};renderPendingCard('h-approve', snap);
+    lastPendingSnap={id:'h-approve',snap};renderPendingCard('h-approve', snap);renderPendingCard('person-settings-approve', snap);
   }, err=>console.warn('members', err));
   subscribePersonConversation();
   initPersonUiConfig();
@@ -3962,7 +4060,7 @@ function ownerTransferChanged(data){
   ownerSeen=owner;
 }
 function afterOwnerChanged(){
-  try{if(lastPendingSnap)renderPendingCard(lastPendingSnap.id,lastPendingSnap.snap);}catch(e){}
+  try{if(lastPendingSnap){renderPendingCard(lastPendingSnap.id,lastPendingSnap.snap);renderPendingCard(lastPendingSnap.id==='h-approve'?'person-settings-approve':'settings-approve',lastPendingSnap.snap);}}catch(e){}
   try{const m=document.getElementById('settings-modal');if(m&&m.classList.contains('show'))renderSetMembers();}catch(e){}
   try{if(document.getElementById('kazoku').classList.contains('active')&&typeof loadWatchTag==='function')loadWatchTag();}catch(e){}
 }
@@ -3970,6 +4068,8 @@ document.addEventListener('click',ev=>{
   const b=ev.target&&ev.target.closest&&ev.target.closest('[data-owner-transfer]');
   if(!b)return;const ctl=getOwnerTransfer();if(ctl)ctl.handle(b.getAttribute('data-owner-transfer'));
 });
+/* 「参加を待っています」は、ホームの一番上と、招待QRを出した設定の中(招待コードのすぐ下)の両方に出す。
+   QRを出したまま待っていても、設定を閉じずにその場で「参加を認める」を押せる(2026-10-08 理絵さんの実機確認) */
 function renderPendingCard(elId, snap){
   const el=document.getElementById(elId);
   if(!el) return;
@@ -3979,7 +4079,7 @@ function renderPendingCard(elId, snap){
     const v=doc.data();
     const id=rememberMember(doc.id, v.name);
     html+='<div style="background:#fff;border:3px solid var(--aomidori);border-radius:18px;padding:15px;margin-bottom:12px;">'+
-      '<div style="font-size:1.05rem;font-weight:900;line-height:1.6;margin-bottom:10px;">'+esc(v.name)+'さんを家族として参加させますか?</div>'+
+      '<div style="font-size:1.2rem;font-weight:900;line-height:1.6;margin-bottom:10px;">'+esc(typeof MainicoInviteSwitch!=='undefined'?MainicoInviteSwitch.displayName(v):(v.name||'家族')+'さん')+'が参加を待っています</div>'+
       '<div style="display:flex;gap:8px;">'+
       '<button style="flex:1;font-family:inherit;font-size:1rem;font-weight:900;padding:13px;border:none;border-radius:12px;background:#5F7D52;color:#fff;cursor:pointer;" onclick="approveMember(\''+id+'\')">参加を認める</button>'+
       '<button style="flex:1;font-family:inherit;font-size:1rem;font-weight:900;padding:13px;border:2px solid #C9B8A0;border-radius:12px;background:#fff;color:#7A5A34;cursor:pointer;" onclick="denyMember(\''+id+'\')">認めない</button>'+
@@ -4469,7 +4569,7 @@ function initKazoku(){
   scheduleFamilyGuide();
   if(memWatchUnsub) memWatchUnsub();
   memWatchUnsub=col('members').where('status','==','pending').onSnapshot(snap=>{
-    lastPendingSnap={id:'card-pending',snap};renderPendingCard('card-pending', snap);
+    lastPendingSnap={id:'card-pending',snap};renderPendingCard('card-pending', snap);renderPendingCard('settings-approve', snap);
   }, err=>console.warn('members', err));
   subscribeFamilyConversation();
   const daySession=communicationSession();
@@ -6625,11 +6725,12 @@ async function removeMember(mid, isMe){
    コードはこの端末の保存場所と、両方から見える控え(Cache)の両方に24時間だけ置く。 */
 const MAINICO_APP_URL='https://pocham4173.github.io/hidamari/';
 const INVITE_KEY='mainicoInviteCode',INVITE_TTL=24*60*60*1000;
-function inviteUrl(code){return MAINICO_APP_URL+'?invite='+encodeURIComponent(code);}
+/* 出した人がご本人なら from=h を付ける。受け取った側は、使い方を選ばずに「家族」として進む(名前は入れない) */
+function inviteUrl(code){return MAINICO_APP_URL+'?invite='+encodeURIComponent(code)+(previewStorage.getItem('mainicoMode')==='honnin'?'&from=h':'');}
 function inviteQrHtml(code){
   if(typeof qrcode!=='function')return '<div class="note">QRを表示できませんでした。上のコードを入力してもらうか、LINE・メールで送ってください。</div>';
   try{const qr=qrcode(0,'M');qr.addData(inviteUrl(code));qr.make();
-    return '<div class="invite-qr">'+qr.createImgTag(5,8,'まいにこ 招待QR')+'<div class="note">もう1台のスマホでまいにこを開き、入口の「招待された方」（ご本人は「本人が使う」）から進んで「招待QRを読み取る」を押し、このQRを映してください。スマホの「カメラ」アプリで読んでも、コードが入った状態でまいにこが開きます。</div></div>';
+    return '<div class="invite-qr">'+qr.createImgTag(5,8,'まいにこ 招待QR')+'<div class="note">もう1台のスマホの「カメラ」でこのQRを映し、出てきたリンクを押してください。まいにこが開いて、次にすることが出ます（コードは自動で入ります）。まいにこの入口の「📷 招待QRを読み取る」でも読めます。</div></div>';
   }catch(e){return '';}
 }
 function isIosDevice(){const ua=navigator.userAgent||'';return /iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
@@ -6637,9 +6738,10 @@ function captureInviteFromUrl(){
   try{
     const u=new URL(location.href),code=String(u.searchParams.get('invite')||'').trim().toUpperCase();
     if(!u.searchParams.has('invite'))return;
-    u.searchParams.delete('invite');history.replaceState(null,'',u.pathname+(u.search||'')+u.hash);
+    const from=u.searchParams.get('from')==='h'?'h':'';
+    u.searchParams.delete('invite');u.searchParams.delete('from');history.replaceState(null,'',u.pathname+(u.search||'')+u.hash);
     if(!/^[A-HJ-NP-Z2-9]{8}$/.test(code))return;
-    const v=JSON.stringify({code,at:Date.now()});
+    const v=JSON.stringify(from?{code,at:Date.now(),from}:{code,at:Date.now()});
     try{previewStorage.setItem(INVITE_KEY,v);}catch(e){}
     if(window.caches)caches.open('mainico-invite').then(c=>c.put('invite-code',new Response(v))).catch(()=>{});
   }catch(e){}
@@ -6664,21 +6766,152 @@ function clearInvite(){
   try{previewStorage.removeItem(INVITE_KEY);}catch(e){}
   if(window.caches)caches.open('mainico-invite').then(c=>c.delete('invite-code')).catch(()=>{});
 }
+/* ご本人からの招待のときは「ご家族として参加する」だけを出す(下の「本人が使う」などと押し間違えないように)。
+   招待を使わないときだけ、小さな「ほかの使い方を選ぶ」から元の選び方に戻れる */
+function showEntryChoices(on){
+  ['entry-question','select-box'].forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=!on;});
+}
+function skipInvite(){clearInvite();renderInviteNote();}
 function renderInviteNote(){
   const box=document.getElementById('invite-note');if(!box)return;
   const inv=gid()?null:readInvite();
+  showEntryChoices(true);
   if(!inv){box.hidden=true;box.textContent='';return;}
   box.hidden=false;
   if(isIosDevice()&&!isStandalone()){
     box.innerHTML='<b>招待コード <span class="code">'+esc(inv.code)+'</span> を受け取りました。</b><br>iPhoneの方は、<b>先にこの画面を「ホーム画面に追加」して、追加した「まいにこ」から開いてください。</b>招待コードは自動で入ります（入っていないときは、上のコードを入れてください）。'+
       '<button class="set-btn" type="button" onclick="installApp()">ホーム画面に追加する方法</button>';
   }else{
-    box.innerHTML='<b>招待コード <span class="code">'+esc(inv.code)+'</span> を受け取りました。</b><br>このスマホを使う人を選んでください。ご本人のスマホなら「本人が使う」、ご家族なら「招待された方」です。コードは自動で入ります。';
+    box.innerHTML=inv.from==='h'?
+      '<b>ご本人から招待（コード <span class="code">'+esc(inv.code)+'</span>）を受け取りました。</b><br>このスマホは、ご家族として参加します。下のボタンを押し、同意とお名前を入れると、そのまま参加を申し込みます。'+
+      '<button class="entry-btn" type="button" onclick="pickInvited()">ご家族として参加する</button>'+
+      '<button class="consent-back" type="button" onclick="skipInvite()">この招待を使わず、ほかの使い方を選ぶ</button>':
+      '<b>招待コード <span class="code">'+esc(inv.code)+'</span> を受け取りました。</b><br>このスマホを使う人を選んでください。ご本人のスマホなら「本人が使う」、ご家族なら「招待された方」です。同意とお名前を入れると、そのまま参加を申し込みます。';
+    if(inv.from==='h')showEntryChoices(false);
   }
+}
+/* ===== 家庭につながっているスマホで招待を受け取ったとき(2026-10-07) =====
+   招待を黙って捨てない。ホームの一番上にカードを出し、「招待された家族に移る」「今のままにする」を選んでもらう。
+   判断は invite-switch.js。移るときは確認1回で、今の家庭を消す(自分だけの家庭)か抜けて(参加メンバー)、参加申請まで続けて行う。 */
+let inviteSwitchBusy=false,inviteSwitchGeneration=0;
+function inviteSwitchBox(){
+  const box=document.getElementById('invite-switch');if(!box)return null;
+  const page=document.querySelector('#honnin.active,#kazoku.active');
+  const host=page?(page.id==='honnin'?page.querySelector('.h-body'):document.getElementById('t-home')):null;
+  if(host&&box.parentNode!==host)host.insertBefore(box,host.firstChild);
+  return page?box:null;
+}
+function inviteSwitchCard(box,html){box.innerHTML='<div class="invite-switch-card">'+html+'</div>';box.hidden=false;}
+async function inviteSwitchPlan(inv){
+  const group=gid(),me=uid();
+  let invite={exists:false};
+  try{
+    const snap=await db.collection('invites').doc(inv.code).get({source:'server'});
+    if(snap.exists){const d=snap.data();invite={exists:true,groupId:d.groupId,used:d.used===true,expiresAtMs:d.expiresAt&&typeof d.expiresAt.toMillis==='function'?d.expiresAt.toMillis():undefined};}
+  }catch(error){
+    // 招待が見つからない・家庭が終わっているときは、読み取り自体が断られる
+    if(!error||error.code!=='permission-denied')throw error;
+  }
+  const members=[];
+  (await col('members').get({source:'server'})).forEach(doc=>members.push({id:doc.id,data:doc.data()}));
+  if(group!==gid()||me!==uid())throw new Error('invite-switch/session-changed');
+  const plan=MainicoInviteSwitch.plan({invite,currentGroupId:group,members,ownUid:me,ownerUid:householdOwnerId,now:Date.now()});
+  return {plan,label:MainicoInviteSwitch.householdLabel(members,householdOwnerId)};
+}
+async function renderInviteSwitch(){
+  const box=inviteSwitchBox();
+  if(!box)return;
+  const inv=gid()?readInvite():null;
+  if(!inv){box.hidden=true;box.innerHTML='';return;}
+  if(inviteSwitchBusy)return;
+  const generation=++inviteSwitchGeneration;
+  // 出ているカードは、確かめ直す間も消さない(押そうとしたボタンが消えないように)
+  if(box.hidden)inviteSwitchCard(box,'<b>招待を受け取りました。</b><p>今の家族とのつながりを確認しています…</p>');
+  let result;
+  try{result=await inviteSwitchPlan(inv);}
+  catch(error){
+    if(generation!==inviteSwitchGeneration)return;
+    console.warn('invite switch',error);
+    inviteSwitchCard(box,'<b>招待を受け取りました。</b><p>招待を確認できませんでした。通信を確認して、もう一度確かめてください。</p>'+
+      '<button class="set-btn" type="button" onclick="renderInviteSwitch()">もう一度確かめる</button><button class="set-btn sub" type="button" onclick="keepCurrentFamily()">今のままにする</button>');
+    return;
+  }
+  if(generation!==inviteSwitchGeneration)return;
+  const {plan,label}=result;
+  if(plan.kind==='same'){clearInvite();box.hidden=true;box.innerHTML='';return;}
+  if(plan.kind==='unusable'){
+    inviteSwitchCard(box,'<b>招待を受け取りました。</b><p>'+esc(MainicoInviteSwitch.UNUSABLE_TEXT[plan.reason])+'</p><button class="set-btn" type="button" onclick="keepCurrentFamily()">閉じる</button>');
+    return;
+  }
+  inviteSwitchCard(box,'<b>招待を受け取りました。</b><p>このスマホは今、別の家族（'+esc(label)+'）につながっています。</p>'+
+    '<button class="set-btn invite-move" type="button" onclick="moveToInvitedFamily()">招待された家族に移る</button>'+
+    '<button class="set-btn sub" type="button" onclick="keepCurrentFamily()">今のままにする</button>'+
+    '<p class="note" id="invite-switch-state" role="status" aria-live="polite"></p>');
+}
+function keepCurrentFamily(){
+  inviteSwitchGeneration++;clearInvite();
+  const box=document.getElementById('invite-switch');if(box){box.hidden=true;box.innerHTML='';}
+}
+function openOwnerTransferSettings(){
+  if(typeof openSettings!=='function')return;
+  openSettings();
+  const sec=document.getElementById('owner-transfer-sec');if(!sec)return;
+  const menu=sec.closest('details');if(menu)menu.open=true;
+  try{sec.scrollIntoView({block:'start'});}catch(e){}
+}
+async function moveToInvitedFamily(){
+  if(inviteSwitchBusy)return;
+  const inv=readInvite();if(!inv||!gid())return renderInviteSwitch();
+  const state=t=>{const el=document.getElementById('invite-switch-state');if(el)el.textContent=t;};
+  state('確認しています…');
+  let result;
+  try{result=await inviteSwitchPlan(inv);}catch(error){state('今の家族とのつながりを確認できませんでした。通信を確認して、もう一度押してください。');return;}
+  const {plan,label}=result;
+  if(plan.kind==='same'||plan.kind==='unusable')return renderInviteSwitch();
+  if(plan.kind==='owner-blocked'){
+    await appNotice(MainicoInviteSwitch.blockedText(plan,label,document.getElementById('honnin').classList.contains('active')));
+    if(document.getElementById('kazoku').classList.contains('active'))openOwnerTransferSettings();
+    return;
+  }
+  const ask=typeof appConfirm==='function'?appConfirm:(t=>confirm(t));
+  if(!await ask(MainicoInviteSwitch.confirmText(plan,label),'移る'))return;
+  const curMode=previewStorage.getItem('mainicoMode')==='honnin'?'honnin':(isKOnly()?'konly':'kazoku');
+  const newMode=MainicoInviteSwitch.joinMode(inv.from,curMode);
+  const keepName=newMode==='honnin'?'本人':(curMode==='honnin'?'':(previewStorage.getItem('mainicoName')||''));
+  const scope={uid:uid(),groupId:gid()};
+  inviteSwitchBusy=true;
+  document.querySelectorAll('#invite-switch button').forEach(b=>b.disabled=true);
+  state(plan.kind==='delete-and-join'?'今の家庭を片付けています。画面を開いたままお待ちください…':'今の家族から抜けています。画面を開いたままお待ちください…');
+  try{
+    if(plan.kind==='delete-and-join'){
+      stopHouseholdSubscriptions();
+      await getDeletionService().run({groupId:scope.groupId,confirmation:MainicoDeletion.CONFIRMATION});
+      await clearNotebookForExit(scope);
+      clearMainicoDeviceData();
+    }else{
+      if(!await leaveHouseholdAccount())throw new Error('invite-switch/leave-refused');
+    }
+  }catch(error){
+    console.warn('invite switch move',error);
+    inviteSwitchBusy=false;
+    /* 家庭の削除が途中まで進んでいたら「そのまま」とは言わない。読み込み直すと、削除の続きの画面が出る */
+    let deleting=false;try{deleting=plan.kind==='delete-and-join'&&!!getDeletionService().getPending();}catch(e){}
+    await appNotice((deleting?'今の家庭の片付けが途中で止まりました。このあと出る画面で、片付けの続きをしてください。片付けが終わったら、もう一度招待を開いてください。':'移れませんでした。今の家族とのつながりは、そのままです。通信を確認して、もう一度お試しください。')+(/[ぁ-んァ-ヶ一-龥]/.test(error&&error.message||'')?'\n'+error.message:''));
+    location.reload();return;
+  }
+  // 今の家庭とのつながりは終わった。招待と名前だけ戻して、参加の申し込みまで続ける
+  householdOwnerId='';householdVerified=false;
+  try{previewStorage.setItem(INVITE_KEY,JSON.stringify(inv));if(keepName)previewStorage.setItem('mainicoName',keepName);}catch(e){}
+  inviteSwitchBusy=false;
+  const box=document.getElementById('invite-switch');if(box){box.hidden=true;box.innerHTML='';}
+  document.getElementById('loading').style.display='none';
+  pendingMode=newMode;previewStorage.setItem('mainicoPendingMode',newMode);
+  // 同意は使い方ごと。いまの同意が新しい使い方のものなら、そのまま申し込む。違えば同意の画面から
+  if(await ensureConsentForMode(newMode,()=>afterConsent(newMode)))afterConsent(newMode);
 }
 captureInviteFromUrl();
 if(window.MainicoFamilyGuide)MainicoFamilyGuide.captureReplay(location,previewStorage,history);
-loadInviteFromCache().then(()=>{try{renderInviteNote();}catch(e){}});
+loadInviteFromCache().then(()=>{try{renderInviteNote();}catch(e){}try{renderInviteSwitch();}catch(e){}});
 
 async function makeInvite(targetId){
   if(!requireHouseholdOwner())return;
@@ -6694,7 +6927,7 @@ async function makeInvite(targetId){
       used: false
     });
     if(area){
-      const msg='まいにこの招待コードです：'+code+'（24時間・1回有効）\nアプリ（開くとコードが入ります）：'+inviteUrl(code)+'\n開いて入口の「招待された方」を押し、案内に沿って進んでこのコードを入れてください。';
+      const msg='まいにこの招待コードです：'+code+'（24時間・1回有効）\nアプリ（開くとコードが入ります）：'+inviteUrl(code)+'\nリンクを開くと、まいにこが開いて、次にすることが出ます（コードは自動で入ります）。';
       area.innerHTML=
         '<div class="code-show">'+code+'</div>'+
         '<div class="code-exp">有効期限24時間・一度だけ使えます。</div>'+
@@ -7957,7 +8190,7 @@ function renderFamilyNotices(){
     const key='mainicoRecoveryNoticeSeen-'+gid()+'-'+u+'-'+mine.state;
     try{if(previewStorage.getItem(key))return;}catch(e){}
     const name=(memberInfoByUid[u]&&memberInfoByUid[u].name)||'ご本人';
-    parts.push('<div class="card notice-card" role="status"><p><b>'+esc(name)+'さんのスマホの復旧が未設定です。</b><br>機種変更やスマホをなくしたときに、記録に戻れなくなります。次に会ったときに、ご本人のスマホの「その他の設定」→「機種変更・スマホをなくしたとき」で一緒に設定してください。</p>'+
+    parts.push('<div class="card notice-card" role="status"><p><b>'+esc(name)+'さんのスマホの復旧が未設定です。</b><br>次に会ったとき、ご本人のスマホの「その他の設定」で一緒に設定してください。</p>'+
       '<button class="set-btn" type="button" onclick="dismissFamilyNotice(\''+jsArg(key)+'\')">わかりました</button></div>');
   });
   /* LINEの残りが少ないとき(まいにこ全体で共通) */

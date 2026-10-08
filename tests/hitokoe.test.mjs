@@ -71,7 +71,7 @@ const set = H.settingsHtml(H.latestConfig([cfg()]), members, [run({ consentRows:
 assert.match(set, /ご本人の了解待ちです/);
 assert.match(set, /安否確認・緊急通報ではありません/);
 assert.match(set, /LINEにも送る/);
-assert.match(set, /月90通まで/);
+assert.match(set, /LINEにも送る（1日1通・名前や様子は書きません）/);
 assert.match(set, /名前や様子は書きません/);
 assert.ok(!/data-hk="line" checked/.test(set), 'LINEにも送るは初め切ってある');
 assert.match(H.settingsHtml(H.latestConfig([cfg({ line: true })]), members, []), /data-hk="line" checked/);

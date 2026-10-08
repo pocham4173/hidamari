@@ -78,7 +78,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined', 'line-login-signin', 'device-reconnect']);
-const VERSION_TEXT = '版：2026-10-05 見回りの見直し・LINEでログイン';
+const VERSION_TEXT = '版：2026-10-08 LINEの案内をわかりやすく（2）';
 
 export default {
   async fetch(request, env, ctx) {
@@ -145,7 +145,8 @@ async function verifySignature(body, signature, secret) {
 
 const MSG_WELCOME =
   'まいにこ公式LINEです。友だち追加ありがとうございます。\n\n' +
-  '予定のお知らせを受け取るには、まいにこアプリの\n「設定」→「LINEで予定のお知らせ」→「LINEとつなぐ」\nを押してください。家族から招待が届いた方は、招待のリンクを開いて送信を押してください。';
+  '【次にすること】\nまいにこに戻って、「自分のLINEを登録する」を押してください。\n（まいにこの「設定」→「LINEで予定のお知らせ」にあります）\n\n' +
+  '家族から招待のリンクが届いた方は、そのリンクを開いて、送信を押してください。';
 const MSG_HELP =
   'このトークでは、つなぐためのコード・招待の受け付けと、予定のお知らせだけを行っています。\n' +
   'お返事や相談は届きません。急ぐときは電話などで連絡してください。\n\n' +
@@ -173,7 +174,7 @@ async function handleEvent(ev, env, fs) {
   if (text === '解除' || text === '連携解除') {
     const n = await removeLinksFor(fs, lineUserId, 'line') + await removeRecipientsFor(fs, lineUserId);
     return reply(env, ev.replyToken, n
-      ? '解除しました。このLINEには予定のお知らせが届かなくなります。\nまた受け取るときは、アプリの「LINEとつなぐ」か、家族からの新しい招待で登録してください。'
+      ? '解除しました。このLINEには予定のお知らせが届かなくなります。\nまた受け取るときは、アプリの「自分のLINEを登録する」か、家族からの新しい招待で登録してください。'
       : 'このLINEは、まいにこと連携していません。');
   }
   const invite = INVITE_RE.exec(text);
@@ -221,8 +222,10 @@ async function linkByCode(fs, code, lineUserId) {
   ]);
   if (!consumed) return NG;
   const name = typeof member.name === 'string' && member.name ? member.name + 'さん、' : '';
-  return name + 'LINE連携しました。\n\nまいにこで「LINEで知らせる日時」を入れた予定が、このLINEに届きます。\n' +
-    'やめるときは、アプリの設定で解除するか、「解除」と送ってください。';
+  return '✅ ' + name + 'LINE連携しました。登録できました。\n\n' +
+    'これから、まいにこの予定のお知らせが、このLINEに届きます。\n' +
+    '（届くのは、予定に「LINEで知らせる日時」を入れたものだけです）\n\n' +
+    'やめるときは、このトークに「解除」と送ってください。';
 }
 
 /* 家族が招待した送信先の登録(2026-10-04)。

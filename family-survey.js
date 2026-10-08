@@ -36,7 +36,7 @@
       : '<b>この1か月</b>で、親のことで仕事を休んだり早退したりしたのは何回ですか。';
     return '<div class="card survey-card" role="region" aria-label="試験運用のアンケート">' +
       '<h3>📝 試験運用のアンケート（任意・1分）</h3>' +
-      '<p class="note">まいにこが家族の役に立っているかを確かめるためのものです。答えは<b>ほかの家族には見えません</b>。運営者には、名前の分からない全体の数字だけが届きます。答えなくても、使い方は何も変わりません。</p>' +
+      '<p class="note">答えは<b>ほかの家族には見えません</b>。答えなくても、使い方は何も変わりません。</p>' +
       '<p class="survey-q">' + q1 + '</p>' + radios('survey-absences', ABSENCES) +
       (kind === 'monthly' ? '<p class="survey-q">まいにこを使って、親のようすを確かめる<b>負担</b>はどうですか。</p>' + radios('survey-burden', BURDEN) : '') +
       '<button class="big-btn family" type="button" data-survey-act="send">答える</button>' +

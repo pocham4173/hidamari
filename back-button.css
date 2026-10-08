@@ -1,0 +1,6 @@
+/* 説明ページ(guide/・help.html・privacy.html)の「← まいにこに戻る」。ご本人が押せる大きさ(高さ56px以上・横幅いっぱい・20px・太字) */
+a.mainico-back { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 100%; min-height: 60px; margin: 14px 0; padding: 10px 16px;
+  background: #243747; color: #fff !important; border-radius: 16px; font-size: 21px; font-weight: 700; line-height: 1.4; letter-spacing: .06em; text-decoration: none; text-align: center; }
+a.mainico-back:focus-visible { outline: 4px solid #db8c00; outline-offset: 3px; }
+a.mainico-back:active { transform: translateY(1px); }
+@media print { a.mainico-back { display: none !important; } }

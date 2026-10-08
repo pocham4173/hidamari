@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>まいにこ 困ったとき</title>
+<meta name="description" content="まいにこで困ったときの直し方を、画面の写真つきでまとめました。">
+<link rel="icon" href="../icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #243747; --orange: #e0732f; --orange-bg: #fdf1e7; --text: #2b2b2b; --muted: #6b7280;
+    --bg: #faf7f2; --card: #ffffff; --line: #e8e1d6; --green: #06c755; --blue: #2f5fb3;
+    --sand: #fbf3df; --sage: #ebf3ec; --rose: #fbeceb;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif; line-height: 1.85; letter-spacing: .03em; font-size: 17px; -webkit-text-size-adjust: 100%; }
+  a { color: var(--blue); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+
+  /* 上の帯 */
+  .bar { position: sticky; top: 0; z-index: 5; background: rgba(250,247,242,.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .bar .wrap { display: flex; align-items: center; gap: 10px; height: 56px; }
+  .bar img { width: 32px; height: 32px; border-radius: 9px; }
+  .bar b { color: var(--navy); letter-spacing: .2em; font-size: 17px; }
+  .bar a.open { margin-left: auto; text-decoration: none; background: var(--orange); color: #fff; font-size: 14px; font-weight: 700; padding: 8px 16px; border-radius: 999px; }
+
+  /* はじめ */
+  .hero { padding: 34px 0 10px; }
+  .eyebrow { color: var(--orange); font-weight: 700; font-size: 14px; letter-spacing: .2em; }
+  h1 { font-size: clamp(26px, 7vw, 36px); line-height: 1.4; color: var(--navy); margin: 6px 0 12px; letter-spacing: .08em; }
+  .lead { margin: 0 0 18px; }
+  .points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
+  .points li { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 6px; text-align: center; font-size: 14px; font-weight: 700; color: var(--navy); line-height: 1.5; }
+  .points li span { display: block; font-size: 26px; margin-bottom: 2px; }
+
+  /* もくじ */
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; padding: 0; list-style: none; }
+  .toc a { display: inline-block; text-decoration: none; background: var(--card); border: 1px solid var(--line); color: var(--navy); font-size: 14.5px; font-weight: 700; padding: 7px 13px; border-radius: 999px; }
+
+  /* 章 */
+  section.chapter { padding: 30px 0 6px; }
+  .chap-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .chap-no { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--orange); color: #fff; font-weight: 900; font-size: 18px; }
+  h2 { font-size: 23px; color: var(--navy); margin: 0; line-height: 1.4; letter-spacing: .06em; }
+  .chap-lead { margin: 6px 0 14px; }
+  .who { display: inline-block; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 1px 10px; margin-left: 4px; vertical-align: 3px; }
+  .who.fam { background: #e7eefb; color: var(--blue); }
+  .who.hon { background: var(--orange-bg); color: var(--orange); }
+
+  .step { display: grid; grid-template-columns: 1fr; gap: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; margin: 0 0 14px; }
+  .step h3 { margin: 0 0 6px; font-size: 18px; color: var(--navy); line-height: 1.5; }
+  .step h3 .n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 13px; margin-right: 8px; vertical-align: 2px; }
+  .step p { margin: 0 0 8px; }
+  .step ul, .step ol { margin: 4px 0 8px; padding-left: 1.3em; }
+  .step li { margin: 2px 0; }
+  .tip { background: var(--sand); border-radius: 12px; padding: 10px 12px; font-size: 15px; margin-top: 8px; }
+  .tip b { color: #7a5a14; }
+  .safe { background: var(--sage); }
+  .safe b { color: #2f6b3f; }
+  .btnlike { display: inline-block; font-weight: 700; color: var(--navy); background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 0 7px; font-size: .92em; white-space: nowrap; }
+  .btnlike.or { background: var(--orange); color: #fff; border-color: var(--orange); }
+
+  /* スマホの画面 */
+  .phones { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  figure.phone { margin: 0; width: min(240px, 46%); text-align: center; }
+  .frame { border: 6px solid #2b2b2b; border-radius: 26px; overflow: hidden; background: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+  .frame img { display: block; width: 100%; height: auto; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  @media (min-width: 640px) {
+    .step.with-pic { grid-template-columns: 1fr 230px; align-items: start; }
+    .step.with-pic .phones figure.phone { width: 100%; }
+  }
+
+  /* 注意事項 */
+  .caution { background: var(--rose); border: 2px solid #e5a5a0; border-radius: 18px; padding: 16px 18px; }
+  .caution h2 { font-size: 20px; color: #9b2c22; margin-bottom: 6px; }
+  .caution ul { margin: 0; padding-left: 1.3em; }
+  .caution li { margin: 6px 0; }
+
+  /* よくある質問 */
+  details.faq { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0 16px; margin: 0 0 10px; }
+  details.faq summary { cursor: pointer; font-weight: 700; color: var(--navy); padding: 14px 0; list-style: none; }
+  details.faq summary::before { content: "Q. "; color: var(--orange); }
+  details.faq[open] summary { border-bottom: 1px dashed var(--line); }
+  details.faq p { margin: 10px 0 14px; }
+
+  footer { margin: 34px 0 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+  footer a { margin-right: 14px; }
+  .back-top { display: block; text-align: right; font-size: 14px; margin: 4px 0 0; }
+</style>
+<link rel="stylesheet" href="print.css">
+<script src="print.js" defer></script>
+<link rel="stylesheet" href="../back-button.css">
+<script src="../back-button.js" defer></script>
+</head>
+<body>
+<div class="bar"><div class="wrap">
+  <img src="../icon-192.png" alt="">
+  <b>まいにこ</b>
+  <a class="open" href="../">アプリを開く</a>
+</div></div>
+
+<main class="wrap">
+  <a class="mainico-back" href="../" data-back>← まいにこに戻る</a>
+  <div class="hero">
+    <div class="eyebrow">困ったとき</div>
+    <h1>こまったときは、<br>ここを見てください。</h1>
+    <p class="lead">よくある困りごとと、直し方です。<br>使い方は<a href="./">使い方ガイド</a>にあります。</p>
+    <div class="caution" style="margin:0 0 16px;"><b>急ぐとき・命に関わるときは、119番・110番へ。</b>まいにこは緊急通報の代わりではありません。</div>
+    <ul class="toc"><li><a href="#mistake">押しまちがえた</a></li><li><a href="#pending">家族の記録が見えない（承認待ちのまま）</a></li><li><a href="#voice">声が聞こえない</a></li><li><a href="#line">LINEで予定のお知らせが届かない</a></li><li><a href="#offline">電波がないとき</a></li><li><a href="#newphone">スマホを替えた・なくした</a></li><li><a href="#stuck">保存・送信が進まない</a></li><li><a href="#home">ホーム画面に追加できない</a></li><li><a href="#nobody">家族の誰も入れなくなった</a></li></ul>
+    <div class="print-area"><button class="print-btn" type="button" data-print hidden>🖨 このページを印刷する</button><p class="print-note" id="print-note" hidden>LINEの中では印刷できないことがあります。右上の「…」などから「ブラウザで開く」を選んで、もう一度押してください。</p></div>
+  </div>
+
+  <section class="chapter">
+    <div id="mistake" class="step with-pic">
+      <div>
+        <h3><span class="n">1</span>押しまちがえた</h3>
+        <p>ご本人の画面の下にある <span class="btnlike">今日の記録を確認・とりけす</span> を押します。とりけしたい記録の <span class="btnlike">とりけす</span> を押せば消えます。</p>
+        <div class="tip"><b>ポイント</b>　とりけせるのは、自分が今日つけた記録だけです。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/t01-cancel.jpg" alt="今日の記録をとりけす" loading="lazy"></div><figcaption>今日の記録をとりけす</figcaption></figure></div>
+    </div>
+    <div id="pending" class="step with-pic">
+      <div>
+        <h3><span class="n">2</span>家族の記録が見えない（承認待ちのまま）</h3>
+        <p>参加したばかりの人は「承認待ち」です。招待した家族に、ホームの <span class="btnlike">参加を認める</span> を押してもらってください。</p>
+        <div class="tip"><b>ポイント</b>　招待コードは1回だけ使えます。取り下げたときは、新しいコードをもらってください。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/t03-pending.jpg" alt="承認待ちの画面" loading="lazy"></div><figcaption>承認待ちの画面</figcaption></figure></div>
+    </div>
+    <div id="voice" class="step with-pic">
+      <div>
+        <h3><span class="n">3</span>声が聞こえない</h3>
+        <p>スマホの音量を上げます。ご本人の <span class="btnlike">その他の設定</span> の「声のお返事」がオンかを確かめ、<span class="btnlike">声をためす</span> を押します。</p>
+        <div class="tip"><b>ポイント</b>　声が出なくても、記録は保存されています。結果は画面で確かめられます。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/t02-voice.jpg" alt="声のお返事" loading="lazy"></div><figcaption>声のお返事</figcaption></figure></div>
+    </div>
+    <div id="line" class="step with-pic">
+      <div>
+        <h3><span class="n">4</span>LINEで予定のお知らせが届かない</h3>
+        <ul>
+          <li>「設定」→「LINEで予定のお知らせ」で、<b>自分のLINEを登録</b>しているか</li>
+          <li>まいにこ公式LINEを<b>ブロックしていないか</b></li>
+          <li>予定に「LINEで知らせる日時」を入れているか</li>
+        </ul>
+        <div class="tip"><b>ポイント</b>　お知らせは15分ほど遅れることがあります。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/t04-line.jpg" alt="LINEで予定のお知らせ" loading="lazy"></div><figcaption>LINEで予定のお知らせ</figcaption></figure></div>
+    </div>
+    <div id="offline" class="step with-pic">
+      <div>
+        <h3><span class="n">5</span>電波がないとき</h3>
+        <p>電波がないと、まいにこは開けません。かわりに <b>「もしもの控え」</b> が開き、119番などの番号や、連絡先・予定・お薬を見られます。</p>
+        <div class="tip"><b>ポイント</b>　「おはよう」などは、電波が戻ってから押してください。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/t06-offline.jpg" alt="もしもの控え" loading="lazy"></div><figcaption>もしもの控え</figcaption></figure></div>
+    </div>
+    <div id="newphone" class="step with-pic">
+      <div>
+        <h3><span class="n">6</span>スマホを替えた・なくした</h3>
+        <p>新しいスマホでまいにこを開き、<span class="btnlike">以前のアカウントを復旧する</span> から、復旧で設定したメールとパスワードを入れます。</p>
+        <p>なくしたスマホは、「設定」→「機種変更・アカウントの復旧」→ <span class="btnlike">ほかのスマホを止める</span> で使えなくできます。</p>
+        <div class="tip"><b>ポイント</b>　復旧の設定をしていないと戻れません。いまのうちに設定してください（<a href="./#recovery">やり方</a>）。</div>
+      </div>
+      <div class="phones"><figure class="phone"><div class="frame"><img src="img/t05-recovery-login.jpg" alt="以前のアカウントに戻る" loading="lazy"></div><figcaption>以前のアカウントに戻る</figcaption></figure></div>
+    </div>
+    <div id="stuck" class="step">
+      <div>
+        <h3><span class="n">7</span>保存・送信が進まない</h3>
+        <ul>
+          <li>「送信しています」の間は、<b>続けて押さずに待ちます</b></li>
+          <li>電波のよいところで、開き直します</li>
+          <li><b>データの消去や、入れ直しはしないでください</b>（記録に戻れなくなることがあります）</li>
+        </ul>
+      </div>
+      
+    </div>
+    <div id="home" class="step">
+      <div>
+        <h3><span class="n">8</span>ホーム画面に追加できない</h3>
+        <ul>
+          <li><b>iPhone</b>：Safariで開き、下の共有ボタン（□に↑）→「ホーム画面に追加」</li>
+          <li><b>LINEの中で開いたとき</b>：右下のコンパスの印から、Safariで開き直します</li>
+        </ul>
+      </div>
+      
+    </div>
+    <div id="nobody" class="step">
+      <div>
+        <h3><span class="n">9</span>家族の誰も入れなくなった</h3>
+        <p>運営者に相談してください。同じ家庭の家族に確認してから対応します。<br>問い合わせ：<a href="mailto:pocham4173@gmail.com">pocham4173@gmail.com</a></p>
+      </div>
+      
+    </div>
+  </section>
+
+  <section class="chapter" id="contact">
+    <div class="chap-head"><div class="chap-no">?</div><h2>それでも直らないとき</h2></div>
+    <div class="step">
+      <div>
+        <p>どんな画面で、どのボタンを押したら、どうなったかを書いて、メールで送ってください。</p>
+        <p><a class="btnlike or" href="../contact.html">✉️ 問い合わせフォーム</a>（選んで書くだけで、メールができます）</p>
+        <p>問い合わせ：<a href="mailto:pocham4173@gmail.com">pocham4173@gmail.com</a>（お返事に数日かかることがあります）</p>
+        <div class="tip"><b>ポイント</b>　名前・パスワード・招待コード・病気のことは書かないでください。書き方の見本は<a href="../help.html#memo">状況メモ</a>にあります。</div>
+      </div>
+    </div>
+  </section>
+
+  <a class="mainico-back" href="../" data-back>← まいにこに戻る</a>
+
+  <footer>
+    <a href="../">アプリを開く</a><a href="./">使い方ガイド</a><a href="../help.html#notifications">詳しい説明</a><a href="../privacy.html">プライバシーポリシー</a>
+    <p>まいにこ ― 家族のつながり ／ 運営：川村 理絵 ／ 写真は試験用のデータです</p>
+    <p class="print-url"></p>
+    <a class="back-top" href="#">↑ 上へ</a>
+  </footer>
+</main>
+</body>
+</html>

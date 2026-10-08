@@ -94,6 +94,9 @@ jobs:
           node tests/qr-scan.test.mjs
           node tests/family-survey.test.mjs
           node tests/security-notices.test.mjs
+          node tests/guide.test.mjs
+          node tests/invite-switch.test.mjs
+          node tests/contact.test.mjs
           node tests/device-stop.test.mjs
           node tests/recovery-feedback.test.mjs
           node tests/family-only-records.test.mjs

@@ -134,7 +134,7 @@ assert.equal((await hook([], true)).status, 401);
 assert.equal((await hook([])).status, 200);
 // 3. 友だち追加 → 案内を返事
 await hook([{ type: 'follow', replyToken: 'r1', source: user('Uowner') }]);
-assert.match(replies.at(-1).messages[0].text, /LINEとつなぐ/);
+assert.match(replies.at(-1).messages[0].text, /「自分のLINEを登録する」/);
 // 4. 正しいコードで連携(全角・小文字・空白でも受け付ける)
 put('lineLinkCodes/ABCD2345', { uid: S('owner'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
 await hook([{ type: 'message', replyToken: 'r2', source: user('Uowner'), message: { type: 'text', text: 'ａｂｃｄ ２３４５' } }]);
