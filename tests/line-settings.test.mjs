@@ -205,3 +205,13 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   assert.ok(t.d.querySelector('[data-line-act="reload"]'));
 }
 console.log('LINEの設定画面: 4枚のカード・送信先の一覧・ボタンで登録・招待リンク・名前変更/再送/削除・予定ごとに知らせる人・送る前の同意・通信失敗 passed');
+
+{ // 予定の説明: 送る時刻を20分すぎても送れていなければ「まだ送れていません」(2026-10-09)
+  const t = setup();
+  const W = t.c.MainicoLine;
+  const at = (ms) => ({ toDate: () => new Date(Date.now() + ms) });
+  assert.match(W.describe({ notifyAt: at(3600000) }), /^🔔 LINEで知らせる：/);
+  assert.match(W.describe({ notifyAt: at(-10 * 60000) }), /^🔔 LINEで知らせる：/, '見回り(15分ごと)の前は、まだ予定どおり');
+  assert.match(W.describe({ notifyAt: at(-35 * 60000) }), /^⚠ LINEのお知らせ（.+）が、まだ送れていません$/);
+  console.log('LINEの予定の説明: 送れていないときの表示 passed');
+}

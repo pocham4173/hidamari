@@ -83,6 +83,8 @@
   /* 予定一覧に出す短い説明 */
   function describe(v){
     var d=toDate(v&&v.notifyAt);
+    /* 送る時刻を20分すぎても送れていないときは、そう書く(見回りは15分ごと。10/9 理絵さん「LINEが届かない」) */
+    if(d&&Date.now()-d.getTime()>20*60*1000) return '⚠ LINEのお知らせ（'+jpDateTime(d)+'）が、まだ送れていません';
     if(d) return '🔔 LINEで知らせる：'+jpDateTime(d);
     if(v&&v.notificationStatus==='expired') return '🔔 LINEのお知らせ期限が過ぎました（送信完了は未確認）';
     if(v&&v.notificationStatus==='limited') return '🔔 LINEで送れる数の上限のため、この予定は送りませんでした';

@@ -124,6 +124,8 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .yotei-card .lb{font-size:1.05rem;color:var(--usucha);font-weight:700;}
 .yotei-card .days{font-size:2.5rem;font-weight:900;color:var(--ao);line-height:1.2;}
 .yotei-card .pl{font-size:1.35rem;font-weight:900;line-height:1.5;color:var(--cha);}
+.yotei-card .y-line{margin-top:6px;font-size:1.05rem;font-weight:700;color:var(--usucha);line-height:1.5;}
+.yotei-card .y-line[hidden]{display:none;}
 .aisatsu{background:#fff;border:3px solid var(--hi);border-radius:26px;padding:24px 18px;font-family:inherit;cursor:pointer;box-shadow:0 8px 0 var(--hi-koi);text-align:center;transition:transform .08s;}
 .aisatsu .ic{font-size:3rem;line-height:1.1;}
 .aisatsu .tx{font-size:2rem;font-weight:900;color:var(--hi);margin-top:4px;}
@@ -1285,6 +1287,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div class="lb">予定</div>
       <div class="days" id="y-days">-</div>
       <div class="pl" id="y-label">これからの予定はありません</div>
+      <div class="y-line" id="y-line" hidden></div>
     </div>
     <button class="cal-open" id="h-open-cal" data-person-voice="カレンダーを ひらきました" onclick="openCal()">カレンダーを見る</button>
     <button class="cal-open" id="h-open-tasks" type="button" data-person-voice="自分のやることをひらきました。やることを追加し、終わったら、できたを押します。" onclick="openPersonTasks()">自分のやること</button>
@@ -3799,6 +3802,10 @@ function initHonnin(){
     const elD=document.getElementById('y-days');
     const elL=document.getElementById('y-label');
     const ycard=elD.closest('.yotei-card');
+    /* 次の予定の下に、LINEで知らせる日時(2026-10-09 理絵さん) */
+    const elLine=document.getElementById('y-line');
+    const lineText=n&&typeof MainicoLine!=='undefined'&&MainicoLine.describe?MainicoLine.describe(n):'';
+    if(elLine){elLine.textContent=lineText;elLine.hidden=!lineText;}
     if(!n){if(ycard)ycard.style.display='block';elD.textContent='-';elL.textContent='これからの予定はありません';return;}
     const showDate=n._nextDate||n.date;
     const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
