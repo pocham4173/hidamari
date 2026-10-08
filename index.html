@@ -3242,7 +3242,9 @@ async function joinByCode(){
     assertSameAccount();
     const inv=await db.collection('invites').doc(code).get({source:'server'});
     assertSameAccount();
-    if(!inv.exists){alert('招待コードが見つかりません。コードを確認してください。');return;}
+    /* 使えない招待は、受け取った控えから消す(次に開くたびに同じお知らせが出ないように) */
+    const dropInvite=()=>{try{const kept=readInvite();if(kept&&kept.code===code){clearInvite();renderInviteNote();}}catch(e){}};
+    if(!inv.exists){dropInvite();alert('招待コードが見つかりません。コードを確認してください。');return;}
     const v=inv.data();
     const key='mainico_join_pending_v1';
     const previous=JSON.parse(previewStorage.getItem(key)||'null');
@@ -3258,8 +3260,8 @@ async function joinByCode(){
       }
     }
     if(!alreadyJoined){
-      if(v.used){alert('この招待コードは使用済みです。新しいコードを発行してもらってください。');return;}
-      if(v.expiresAt && v.expiresAt.toMillis()<Date.now()){alert('この招待コードは期限切れです。新しいコードを発行してもらってください。');return;}
+      if(v.used){dropInvite();alert('この招待コードは使用済みです。新しいコードを発行してもらってください。');return;}
+      if(v.expiresAt && v.expiresAt.toMillis()<Date.now()){dropInvite();alert('この招待コードは期限切れです。新しいコードを発行してもらってください。');return;}
       previewStorage.setItem(key,JSON.stringify({uid:uid(),groupId:v.groupId,mode:pendingMode,code}));
       const batch=db.batch();
       batch.set(db.collection('groups').doc(v.groupId).collection('members').doc(uid()),{
@@ -6717,7 +6719,7 @@ function inviteUrl(code){return MAINICO_APP_URL+'?invite='+encodeURIComponent(co
 function inviteQrHtml(code){
   if(typeof qrcode!=='function')return '<div class="note">QRを表示できませんでした。上のコードを入力してもらうか、LINE・メールで送ってください。</div>';
   try{const qr=qrcode(0,'M');qr.addData(inviteUrl(code));qr.make();
-    return '<div class="invite-qr">'+qr.createImgTag(5,8,'まいにこ 招待QR')+'<div class="note">もう1台のスマホでまいにこを開き、入口の「招待された方」（ご本人は「本人が使う」）から進んで「招待QRを読み取る」を押し、このQRを映してください。スマホの「カメラ」アプリで読んでも、コードが入った状態でまいにこが開きます。</div></div>';
+    return '<div class="invite-qr">'+qr.createImgTag(5,8,'まいにこ 招待QR')+'<div class="note">もう1台のスマホの「カメラ」でこのQRを映し、出てきたリンクを押してください。まいにこが開いて、次にすることが出ます（コードは自動で入ります）。まいにこの入口の「📷 招待QRを読み取る」でも読めます。</div></div>';
   }catch(e){return '';}
 }
 function isIosDevice(){const ua=navigator.userAgent||'';return /iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
@@ -6912,7 +6914,7 @@ async function makeInvite(targetId){
       used: false
     });
     if(area){
-      const msg='まいにこの招待コードです：'+code+'（24時間・1回有効）\nアプリ（開くとコードが入ります）：'+inviteUrl(code)+'\n開いて入口の「招待された方」を押し、案内に沿って進んでこのコードを入れてください。';
+      const msg='まいにこの招待コードです：'+code+'（24時間・1回有効）\nアプリ（開くとコードが入ります）：'+inviteUrl(code)+'\nリンクを開くと、まいにこが開いて、次にすることが出ます（コードは自動で入ります）。';
       area.innerHTML=
         '<div class="code-show">'+code+'</div>'+
         '<div class="code-exp">有効期限24時間・一度だけ使えます。</div>'+
