@@ -80,11 +80,16 @@
     input.value=toInputValue(d);
     return true;
   }
+  /* 送る時刻を20分すぎても、送信役がまだ送った印を付けていない(見回りは15分ごと) */
+  function overdue(v){
+    var d=toDate(v&&v.notifyAt);
+    return !!d&&Date.now()-d.getTime()>20*60*1000;
+  }
   /* 予定一覧に出す短い説明 */
   function describe(v){
     var d=toDate(v&&v.notifyAt);
     /* 送る時刻を20分すぎても送れていないときは、そう書く(見回りは15分ごと。10/9 理絵さん「LINEが届かない」) */
-    if(d&&Date.now()-d.getTime()>20*60*1000) return '⚠ LINEのお知らせ（'+jpDateTime(d)+'）が、まだ送れていません';
+    if(overdue(v)) return '⚠ LINEのお知らせ（'+jpDateTime(d)+'）が、まだ送れていません';
     if(d) return '🔔 LINEで知らせる：'+jpDateTime(d);
     if(v&&v.notificationStatus==='expired') return '🔔 LINEのお知らせ期限が過ぎました（送信完了は未確認）';
     if(v&&v.notificationStatus==='limited') return '🔔 LINEで送れる数の上限のため、この予定は送りませんでした';
@@ -151,8 +156,13 @@
     if(seq!==renderSeq) return;
     var self;
     if(linked){
-      self='<p class="ln-status ok">✓ 自分のLINEを登録済み。予定の「知らせる人」で自分を選べます。</p>'+
-        '<a class="set-btn ln-soft" href="'+ADD_FRIEND_URL+'" target="_blank" rel="noopener noreferrer">まいにこを友だち追加</a>'+
+      /* 連携済みでも、友だち追加を確かめられていなければ「受け取れます」とは言わない(2026-10-09 審査の指摘) */
+      var fr=link.friend===true?'ok':link.friend===false?'ng':'unknown';
+      self=(fr==='ok'?'<p class="ln-status ok">✓ 自分のLINEを登録済み（友だち追加も確認済み）。予定の「知らせる人」で自分を選べます。</p>'
+          :fr==='ng'?'<p class="ln-status ng">⚠ LINEは登録済みですが、まいにこの<b>友だち追加</b>が確認できていません。友だち追加をしないと、お知らせは届きません。</p>'
+          :'<p class="ln-status">LINEは登録済みです。<b>友だち追加は確認できていません</b>（追加済みなら、このままで大丈夫です）。</p>')+
+        '<a class="set-btn '+(fr==='ok'?'ln-soft':'ln-line')+'" href="'+ADD_FRIEND_URL+'" target="_blank" rel="noopener noreferrer">まいにこを友だち追加</a>'+
+        (fr==='ok'?'':'<button class="set-btn" type="button" data-line-act="reload">友だち追加したら：もう一度確認する</button>')+
         '<button class="set-btn ln-ghost" type="button" data-line-act="unlink">つなぐのをやめる</button>';
     }else{
       self='<p class="ln-status">最初に1回、自分のLINEを登録してください。</p>'+
@@ -192,7 +202,7 @@
         '<a class="set-btn ln-soft" href="'+h(askUrl)+'" target="_blank" rel="noopener noreferrer">LINEで家族に頼む</a>')+
       '<details class="ln-more"><summary>LINEに届く内容</summary><p class="note">予定の日付・時刻・場所・予定名・登録した人の名前です。服薬・体調の記録や伝言は送りません。LINEヤフー株式会社のLINEを通じて届き、ロック画面に表示されることがあります。招待した人には、その人に知らせると選んだ予定だけが届きます（おまもりタグのお知らせは、アプリで登録した家族だけに届きます）。</p></details>';
     bind(area,areaId);
-    watchFamily(area,areaId,myUid,linked,seq);
+    watchFamily(area,areaId,myUid,linked?{friend:typeof link.friend==='boolean'?link.friend:null}:false,seq);
     if(!linked) watchLink(areaId,myUid,seq);
   }
   /* アプリを使わない人へ送る同意(この家族の中で、自分の同意)。読めないときは未同意として扱う */
@@ -224,21 +234,38 @@
   async function watchFamily(area,areaId,myUid,selfLinked,seq){
     var box=area.querySelector('[data-line-family]');
     if(!box||typeof global.col!=='function') return;
-    var members=[], latest={};
+    var members=[], latest={}, friendAt={};
     try{
       var ms_=await global.col('members').where('status','==','approved').get();
       ms_.forEach(function(d){ members.push({id:d.id,name:(d.data()||{}).name||''}); });
       var logs=await global.col('events').where('type','==','line-link-log').get();
       var rows=[]; logs.forEach(function(d){ rows.push(d.data()); });
       rows.sort(function(a,b){ return ms(b)-ms(a); });
-      rows.forEach(function(v){ if(v.uid&&!latest[v.uid]) latest[v.uid]=v; });
+      /* 連携・解除の最新と、友だち追加の確認の最新を分けて見る('friend'は友だち追加を確認した記録) */
+      rows.forEach(function(v){
+        if(!v.uid) return;
+        if(v.action==='friend'){ if(!(v.uid in friendAt)) friendAt[v.uid]=v; return; }
+        if(!latest[v.uid]) latest[v.uid]=v;
+      });
     }catch(e){
       if(seq===renderSeq) box.innerHTML='<p class="note">送信先を読み込めませんでした。通信を確認してください。</p>';
       return;
     }
     if(seq!==renderSeq) return;
     members.sort(function(a,b){ return (a.id===myUid?-1:0)-(b.id===myUid?-1:0); });
-    familyRows=members.map(function(m){ return {id:m.id,name:m.name,self:m.id===myUid,ok:m.id===myUid?selfLinked:!!(latest[m.id]&&latest[m.id].action==='linked')}; });
+    familyRows=members.map(function(m){
+      var self=m.id===myUid, l=latest[m.id];
+      var on=self?!!selfLinked:!!(l&&l.action==='linked');
+      var friend=null;
+      if(on){
+        if(self) friend=selfLinked&&typeof selfLinked==='object'?selfLinked.friend:null;
+        else if(l&&typeof l.friend==='boolean') friend=l.friend;
+        /* 連携のあとに友だち追加を確認した記録があれば、確認済み */
+        var f=friendAt[m.id];
+        if(!self&&f&&l&&ms(f)>=ms(l)) friend=true;
+      }
+      return {id:m.id,name:m.name,self:self,ok:on,friend:friend};
+    });
     var g=typeof global.gid==='function'?global.gid():'';
     var draw=function(){ if(seq===renderSeq){ box.innerHTML=familyHtml(); bindRows(box,areaId); } };
     try{
@@ -250,21 +277,29 @@
     }catch(e){ recipientRows=[]; draw(); }
     draw();
   }
+  /* LINEの状態の表示。つないだ(連携・登録)ことと、友だち追加の確認を分けて出す。
+     確かめられない状態を「受け取れます」と言い切らない(2026-10-09 審査の指摘) */
+  function lineStateHtml(on,friend){
+    if(!on) return '<small>LINE：まだつないでいません</small>';
+    if(friend===true) return '<small class="ln-ok">LINE：✓ つないであります（友だち追加 確認済み）</small>';
+    if(friend===false) return '<small class="ln-ng">LINE：⚠ 友だち追加が必要です（このままでは届きません）</small>';
+    return '<small>LINE：つないであります（友だち追加は未確認）</small>';
+  }
   /* 一覧は2つに分ける: アプリを使う家族 / アプリを使わずLINEだけで受け取る人(10/8 理絵さん「この見方がわかりづらい」) */
   function familyHtml(){
     var html='<p class="ln-group-title">まいにこアプリを使っている家族</p><ul class="ln-family">';
     familyRows.forEach(function(m){
       html+='<li><div class="ln-who-name"><b>'+h(m.self?'自分':(m.name||'家族'))+(m.self&&m.name?'（'+h(m.name)+'）':'')+'</b>'+
-        '<small class="'+(m.ok?'ln-ok':'')+'">'+(m.ok?'LINE：✓ 受け取れます':'LINE：まだつないでいません')+'</small></div>'+
+        lineStateHtml(m.ok,m.friend)+'</div>'+
         (typeof global.canRename==='function'&&global.canRename(m.id)?'<div class="ln-row-actions"><button type="button" class="ln-mini" data-fam-rename="'+h(m.id)+'">名前を変える</button></div>':'')+'</li>';
     });
     html+='</ul>';
-    if(familyRows.some(function(m){return !m.ok;})) html+='<p class="ln-sub">※9月29日より前にLINEをつないだ人は、受け取れても✓が出ないことがあります。</p>';
+    if(familyRows.some(function(m){return !m.ok;})) html+='<p class="ln-sub">※9月29日より前にLINEをつないだ人は、つないでいても「まだつないでいません」と出ることがあります。</p>';
     html+='<p class="ln-group-title">アプリを使わず、LINEだけで受け取る人</p>';
     if(!recipientRows.length) html+='<p class="ln-sub">まだいません。上の「LINEの送信先を追加」から招待できます。</p>';
     else html+='<ul class="ln-family">';
     recipientRows.forEach(function(r){
-      var st=r.status==='joined'?'<small class="ln-ok">LINE：✓ 受け取れます</small>':r.status==='stopped'?'<small class="ln-ng">LINE：受け取りを止めました</small>':'<small>LINE：まだ登録していません（招待の文を送ると登録されます）</small>';
+      var st=r.status==='joined'?lineStateHtml(true,typeof r.friend==='boolean'?r.friend:null):r.status==='stopped'?'<small class="ln-ng">LINE：受け取りを止めました</small>':'<small>LINE：まだ登録していません（招待の文を送ると登録されます）</small>';
       var hist=[];
       var c=toDate(r.createdAt), j=toDate(r.joinedAt), s=toDate(r.stoppedAt);
       if(c) hist.push('招待を作成：'+jpDateTime(c));
@@ -278,8 +313,11 @@
         '<button type="button" class="ln-mini" data-rec-act="delete" data-rid="'+h(r.id)+'">削除</button></div><div data-rec-box="'+h(r.id)+'"></div></li>';
     });
     if(recipientRows.length) html+='</ul>';
-    var on=familyRows.filter(function(m){return m.ok;}).length+recipientRows.filter(function(r){return r.status==='joined';}).length;
-    html+='<p class="ln-total">'+(on?'いまLINEで受け取れる人：合わせて'+on+'人':'まだLINEで受け取れる人はいません。')+'</p>';
+    var linkedRows=familyRows.filter(function(m){return m.ok;}).map(function(m){return m.friend;})
+      .concat(recipientRows.filter(function(r){return r.status==='joined';}).map(function(r){return typeof r.friend==='boolean'?r.friend:null;}));
+    var on=linkedRows.length, unsure=linkedRows.filter(function(f){return f!==true;}).length;
+    html+='<p class="ln-total">'+(on?'LINEをつないだ人：合わせて'+on+'人'+(unsure?'（うち'+unsure+'人は友だち追加を確認できていません）':''):'まだLINEをつないだ人はいません。')+'</p>';
+    html+='<p class="ln-sub">「送信済み」は、まいにこからLINEへ送った記録です。相手のスマホに届いたか・読んだかまでは分かりません。大事な予定は、電話などでも確かめてください。</p>';
     return html;
   }
   function bindRows(box,areaId){
@@ -447,7 +485,7 @@
 
   /* ===== 家族のLINE連携の記録(2026-09-29) =====
      連携・解除のたびに events へ type:'line-link-log' で残る(連携は送信役、アプリからの解除はアプリが書く)。 */
-  var VIA={code:'連携コードで',app:'アプリから',line:'LINEで「解除」と送って',block:'公式LINEをブロックして'};
+  var VIA={follow:'公式LINEを友だち追加して',code:'連携コードで',app:'アプリから',line:'LINEで「解除」と送って',block:'公式LINEをブロックして'};
   function ms(v){ var d=toDate(v&&v.at); return d?d.getTime():(Number(v&&v.clientAt)||0); }
   async function renderLog(boxId){
     var box=document.getElementById(boxId);
@@ -463,13 +501,14 @@
     var head='<p class="note">家族のだれが、いつLINEと連携・解除したかの記録です（2026年9月29日以降の分から残ります）。</p>';
     if(!rows.length){ box.innerHTML=head+'<p class="note">まだ記録はありません。</p>'; return; }
     var latest={}, order=[];
-    rows.forEach(function(v){ if(v.uid&&!latest[v.uid]){ latest[v.uid]=v; order.push(v.uid); } });
+    rows.forEach(function(v){ if(v.uid&&v.action!=='friend'&&!latest[v.uid]){ latest[v.uid]=v; order.push(v.uid); } });
     var now=order.filter(function(u){ return latest[u].action==='linked'; }).map(function(u){ return h(latest[u].name||'家族')+'さん'; });
-    var html=head+'<div class="line-log-now"><b>記録上、LINEで受け取っている人：</b>'+(now.length?now.join('、'):'いません')+'</div><ul class="line-log-list">';
+    var html=head+'<div class="line-log-now"><b>記録上、LINEをつないでいる人：</b>'+(now.length?now.join('、'):'いません')+'</div><ul class="line-log-list">';
     rows.slice(0,30).forEach(function(v){
       var d=new Date(ms(v));
       var who=h(v.name||'家族')+'さん';
-      var what=v.action==='linked'?'✅ 連携しました':'⏹ 解除しました';
+      var what=v.action==='linked'?(v.friend===false?'✅ 連携しました（友だち追加はまだ）':v.friend===null?'✅ 連携しました（友だち追加は未確認）':'✅ 連携しました')
+        :v.action==='friend'?'👋 友だち追加を確認しました':'⏹ 解除しました';
       var how=VIA[v.via]?'（'+VIA[v.via]+'）':'';
       html+='<li><span class="line-log-when">'+(ms(v)?h(jpDateTime(d)):'')+'</span>'+who+' '+what+'<small>'+h(how)+'</small></li>';
     });
@@ -504,7 +543,7 @@
     var list=Array.isArray(v&&v.notifyLog)?v.notifyLog:[];
     return list.map(function(e){
       var at=toDate(e&&e.at), sch=toDate(e&&e.scheduledAt);
-      if(e&&e.status==='accepted') return {ok:true,at:at,text:'✅ '+(at?jpDateTime(at):'')+' に送信済み'+(e.count?'（'+e.count+'人）':'')};
+      if(e&&e.status==='accepted') return {ok:true,at:at,text:'✅ '+(at?jpDateTime(at):'')+' にLINEへ送信済み'+(e.count?'（'+e.count+'人）':'')+'（届いたか・読んだかは分かりません）'};
       if(e&&e.status==='expired') return {ok:false,at:at,text:'⚠ '+(sch?jpDateTime(sch):'')+' の分は送れないまま期限が過ぎました'};
       if(e&&e.status==='limited') return {ok:false,at:at,text:'⚠ '+(sch?jpDateTime(sch):'')+' の分は、'+(e.reason==='household'?'今日この家族で送れる数（20通）に達したため':'今月のLINEの残りが少ないため（おまもりタグの分を残しています）')+'送りませんでした'};
       return null;
@@ -559,6 +598,6 @@
     readQuota:readQuota, quotaText:quotaText, renderQuota:renderQuota,
     LINE_ID:LINE_ID, ADD_FRIEND_URL:ADD_FRIEND_URL,
     render:render, preset:preset, readNotify:readNotify, renderWho:renderWho, readWho:readWho, inviteUrl:inviteUrl,
-    toInputValue:toInputValue, fromInputValue:fromInputValue, describe:describe, newCode:newCode
+    toInputValue:toInputValue, fromInputValue:fromInputValue, describe:describe, overdue:overdue, newCode:newCode
   };
 })(typeof window!=='undefined'?window:globalThis);
