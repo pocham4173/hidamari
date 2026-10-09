@@ -335,9 +335,11 @@ function showLineCodeElsewhere(code){
   lineAuthFlow=null;
   document.getElementById('line-auth-modal').classList.add('show');
 }
-function openLineLink(code){
+async function openLineLink(code){
   if(!lineLoginEnabled()){alert(MainicoLineLogin.message({code:'disabled'}));return;}
   if(!uid()||!gid()){alert('家族とつながってから、LINEとつないでください。');return;}
+  // 再接続QRで入ってから24時間は、LINEをつながない(送信役でも断る)
+  if(typeof reconnectLocked==='function'&&await reconnectLocked())return;
   const p=lineLoginService().pending('link');
   if(p&&p.uid!==uid())lineLoginService().clear(p.tx);
   openLineAuthModal('link',null,code);
@@ -363,8 +365,9 @@ async function renderLineLoginSettings(areaId){
     const again=lineEl('button','set-btn','もう一度確認する');again.type='button';again.addEventListener('click',()=>renderLineLoginSettings(areaId));area.appendChild(again);return;
   }
   // ほかのスマホを止めたときに解除できなかったら、解除できるまで案内を出し続ける
-  const pending=typeof lineUnlinkPending==='function'&&lineUnlinkPending();
-  if(!linked&&pending)lineUnlinkPending(false);
+  const pending=typeof lineUnlinkPending==='function'&&await lineUnlinkPending();
+  if(lineLoginRender[areaId]!==seq||uid()!==me)return;
+  if(!linked&&pending)await lineUnlinkPending(false);
   if(linked&&pending){
     const warn=lineEl('p','note err','⚠️ ほかのスマホを止めたとき、「LINEでログイン」のつながりを外せませんでした。なくしたスマホのLINEから入れるおそれがあります。下の「LINEでログインの連携を解除する」を押してください。');
     warn.setAttribute('role','alert');area.appendChild(warn);

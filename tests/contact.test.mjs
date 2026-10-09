@@ -13,6 +13,6 @@ assert.equal((html.match(/<a class="set-btn" href="contact\.html">✉️ 問い�
 assert.match(fs.readFileSync(new URL('../guide/trouble.html', import.meta.url), 'utf8'), /href="\.\.\/contact\.html">✉️ 問い合わせフォーム<\/a>/);
 assert.match(fs.readFileSync(new URL('../privacy.html', import.meta.url), 'utf8'), /Googleフォーム・Google LLC のサービスに保存されます/);
 const sw = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
-assert.match(sw, /'invite-switch\.js', 'contact\.html'\n\];/);
+assert.match(sw, /'invite-switch\.js', 'contact\.html'(, '[a-z-]+\.js')*\n\];/);
 assert.ok(!sw.includes('contact.js'));
 console.log('問い合わせ: Googleフォーム・つなぎ込み passed');

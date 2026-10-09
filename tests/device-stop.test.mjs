@@ -123,9 +123,10 @@ async function run(u, values, done) {
   assert.match(html, /afterChange:async\(reauthOk\)=>\{lineState=reauthOk\?await deviceStopLineLogin\(true\):'failed';\}/);
   assert.match(html, /async function deviceStopLineLogin\(second\)\{\n  if\(!window\.MAINICO_LINE_AUTH_URL/, 'LINEでログインが未設定なら何もしない');
   assert.match(html, /return second\?'failed':'retry';/);
-  assert.match(html, /if\(lineState==='failed'\)\{\n        lineUnlinkPending\(true\);/, '2回ともだめなら、解除できるまで設定に案内を出す');
+  assert.match(html, /if\(lineState==='failed'\)\{\n        await lineUnlinkPending\(true\);/, '2回ともだめなら、解除できるまで設定に案内を出す');
+  assert.match(html, /ref=db\.collection\('lineUnlinkPending'\)\.doc\(me\)/, '印はどの端末でも見えるよう Firestore に置く');
   const ui = fs.readFileSync(new URL('../line-login-ui.js', import.meta.url), 'utf8');
-  assert.match(ui, /if\(!linked&&pending\)lineUnlinkPending\(false\);/, '解除できたら案内を消す');
+  assert.match(ui, /if\(!linked&&pending\)await lineUnlinkPending\(false\);/, '解除できたら案内を消す');
   assert.match(ui, /if\(linked&&pending\)\{/);
 }
 console.log('ほかのスマホを止める: 入力の確かめ・本人確認と変更・違うパスワード・足りない入力・復旧なし・つなぎ込み・LINEでログインの解除の順番と再試行 7項目 passed');

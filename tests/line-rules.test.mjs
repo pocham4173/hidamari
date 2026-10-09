@@ -173,6 +173,13 @@ try {
   await check('50. 再接続QRを作った家族も、その記録は消せない', deleteDoc(doc(m1, 'groups', 'g1', 'events', 'sec1')), false);
   await check('51. LINEでログインで入った本人(のアカウント)も、その記録は消せない', deleteDoc(doc(m2, 'groups', 'g1', 'events', 'sec2')), false);
   await check('52. 自分のふつうの記録は今までどおり消せる', deleteDoc(doc(m1, 'groups', 'g1', 'events', 'own1')), true);
+  // LINEでログインの解除が残っている印(2026-10-06): 本人だけが置く・見る・消す
+  await check('53. 本人は「解除が残っている」印を置ける', setDoc(doc(m1, 'lineUnlinkPending', 'm1'), { at: serverTimestamp() }), true);
+  await check('54. 本人は印を見られる', getDoc(doc(m1, 'lineUnlinkPending', 'm1')), true);
+  await check('55. ほかの人は印を見られない', getDoc(doc(m2, 'lineUnlinkPending', 'm1')), false);
+  await check('56. ほかの人の印は置けない', setDoc(doc(m2, 'lineUnlinkPending', 'm1x'), { at: serverTimestamp() }), false);
+  await check('57. 決めた項目以外は入れられない', setDoc(doc(m2, 'lineUnlinkPending', 'm2'), { at: serverTimestamp(), x: 1 }), false);
+  await check('58. 本人は印を消せる', deleteDoc(doc(m1, 'lineUnlinkPending', 'm1')), true);
 
   console.log('\n===== 検査結果 =====');
   for (const [mark, name] of results) console.log(mark, name);

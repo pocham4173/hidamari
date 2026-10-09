@@ -28,6 +28,9 @@
  *     - 1回の見回りで知らせるタグの読み取りは TAGS_PER_RUN 件まで(残りは次の回)
  *     - 残り通数は lineStatus/quota に書き、家族が設定画面で見られる
  *     - ひと声のきっかけは、まいにこ全体で月 HITOKOE_MONTHLY_LIMIT 通まで(タグの分は必ず残す)
+ *  5. ご本人の新しいスマホを再接続QRでつなぐ(2026-10-05追加・/auth/reconnect・作り直し設計書 A2)
+ *     - 家族が出した1回限り・10分のQR(reconnectCodes)を、ご本人の新しいスマホで読むと、
+ *       ご本人と同じUIDでまいにこに入れる(カスタムトークン)。前のスマホのログインは無効にする。
  *  4. LINEでログイン(2026-10-01追加・/auth/line/〜)
  *     - 既存のまいにこアカウント(Firebase UID)に、LINEログイン用のつながりを本人確認のうえで結びつける
  *     - つないだLINEで本人確認できたら、同じUIDでまいにこに入れる(新しいUIDや家庭は作らない)
@@ -85,6 +88,9 @@ export default {
     }
     if (url.pathname.startsWith('/auth/line/')) {
       return handleLineAuth(request, env, url);
+    }
+    if (url.pathname === '/auth/reconnect') {
+      return handleReconnect(request, env);
     }
     // 試験環境だけ: 同じWorkerでアプリの画面も配る(本番には ASSETS がないので、ここは通らない)
     if (env.ASSETS && url.pathname !== '/line' && url.pathname !== '/__status') {
@@ -407,7 +413,7 @@ async function runNotifications(env) {
     catch (e) { if (e.message !== 'request-budget') console.error('usage', e.message); }
     finally { fs.softLimit = 0; }
     // 期限切れの記録(通知文の控えなど)を先に消す。プライバシーポリシーで約束している片付けなので、ほかの見直しより先
-    for (const collectionId of ['lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
+    for (const collectionId of ['reconnectCodes','reconnectLocks','lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
       const expired = await fs.query('', {from:[{collectionId}],
         where:{fieldFilter:{field:{fieldPath:'expiresAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},limit:3});
       for (const d of expired) await fs.delete(d.path);
@@ -1233,6 +1239,8 @@ async function lineStart(env, fs, request, body) {
   let uid = null;
   if (purpose === 'link') {
     uid = (await verifyFirebaseUser(env, fs, request)).uid;
+    // 再接続から24時間は、LINEをつながない(別の入り方を足して制限を抜けられないように)
+    if (await reconnectLockedNow(fs, uid)) throw new AuthProblem('reconnect-locked', 403);
     await requireHousehold(fs, uid);
   } else {
     await verifyAppCheck(env, fs, request);
@@ -1465,6 +1473,7 @@ function txDone(fs, t, status) {
 /* ---- つなぐ(元の認証済み画面で確定) ---- */
 async function lineConfirmLink(env, fs, request, body) {
   const user = await verifyFirebaseUser(env, fs, request);
+  if (await reconnectLockedNow(fs, user.uid)) throw new AuthProblem('reconnect-locked', 403);
   const t0 = await loadTx(fs, body, 'link');
   if (t0.fields.uid !== user.uid) throw new AuthProblem('wrong-account', 403);
   requireReady(t0);
@@ -1555,6 +1564,8 @@ async function lineUnlink(env, fs, request) {
   const writes = [{ delete: fs.root + '/' + acc.path, currentDocument: { updateTime: acc.updateTime } }];
   const link = typeof acc.fields.lineKey === 'string' ? await fs.get('lineLoginLinks/' + acc.fields.lineKey) : null;
   if (link && link.fields.uid === user.uid) writes.push({ delete: fs.root + '/' + link.path, currentDocument: { updateTime: link.updateTime } });
+  // 「解除が残っている」印も消す(ほかのスマホを止めたときに解除できなかった場合)
+  writes.push({ delete: fs.root + '/lineUnlinkPending/' + user.uid });
   if (!await fs.commit(writes)) throw new AuthProblem('retry', 409);
   return { unlinked: true };
 }
@@ -1598,6 +1609,137 @@ async function cleanupLoginLink(fs, now) {
     if (e.message === 'request-budget') throw e;
     console.error('login link cleanup', e && e.name);
   }
+}
+
+/* ================= ご本人の新しいスマホを再接続QRでつなぐ(2026-10-05) =================
+ * 家族(承認済み・ご本人ではない)が、アプリで reconnectCodes/{コード} を作る(ルールで、作る人と相手を確かめる)。
+ *   コードは16文字(約80ビット)・10分・1回だけ。QRには「まいにこのアドレス + ?reconnect=コード」だけを入れる。
+ * ご本人の新しいスマホがQRを読むと、ここ(/auth/reconnect)にコードを送る(App Check つき・まいにこの画面からだけ)。
+ * 次のすべてを1つのトランザクションで確かめ、コードを消して確定したときだけ、ご本人のUIDのカスタムトークンを返す。
+ *   - コードがあり、期限内
+ *   - 作った家族が、いまも承認済み・同意あり・ご本人ではない・終了手続き中でない
+ *   - 相手が、同じ家庭のご本人(承認済み・同意あり)で、終了手続き中でない。家庭は削除中でない
+ * 確定のあと、相手の前のログインを無効にする(validSince)。なくしたスマホ・古いスマホは遅くとも1時間で使えなくなる。 */
+const RECONNECT_RE = /^[A-HJ-NP-Z2-9]{16}$/;
+async function handleReconnect(request, env) {
+  if ((request.headers.get('origin') || '') !== appOrigin(env)) return new Response('forbidden', { status: 403 });
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(env) });
+  if (request.method !== 'POST') return apiJson({ error: 'method' }, 405, env);
+  try {
+    let body;
+    try { body = await request.json(); } catch (e) { body = null; }
+    if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.code !== 'string' || !RECONNECT_RE.test(body.code)) {
+      return apiJson({ error: 'bad-request' }, 400, env);
+    }
+    const fs = new Firestore(env);
+    await verifyAppCheck(env, fs, request);
+    return apiJson(await reconnectExchange(fs, body.code), 200, env);
+  } catch (e) {
+    if (e instanceof AuthProblem) return apiJson({ error: e.code }, e.status, env);
+    console.error('reconnect failed', e && e.name);
+    return apiJson({ error: 'server' }, 503, env);
+  }
+}
+function isHonninMember(m) { return !!m && (m.fields.role === 'honnin' || m.fields.mode === 'honnin'); }
+/* 再接続コードの文書の場所。コードそのものは保存しない(SHA-256 の16進64文字を文書IDにする) */
+async function reconnectPath(code) { return 'reconnectCodes/' + await sha256Hex('reconnect\n' + code); }
+async function reconnectExchange(fs, code) {
+  const path = await reconnectPath(code);
+  const first = await fs.get(path);
+  if (!first) throw new AuthProblem('used', 410);
+  const groupId = first.fields.groupId, target = first.fields.targetUid, creator = first.fields.createdBy;
+  if (!(first.fields.expiresAt instanceof Date) || first.fields.expiresAt.getTime() <= Date.now()) {
+    await fs.commit([{ delete: fs.root + '/' + path, currentDocument: { updateTime: first.updateTime } }]).catch(() => false);
+    throw new AuthProblem('expired', 410);
+  }
+  if (typeof groupId !== 'string' || !groupId || typeof target !== 'string' || !target || typeof creator !== 'string' || !creator || target === creator) {
+    throw new AuthProblem('used', 410);
+  }
+  // 同意・承認・終了手続き(accountClosures)は approvedMember で確かめる(作った家族も、相手も)
+  const famOk = await approvedMember(fs, groupId, creator);
+  const honOk = await approvedMember(fs, groupId, target);
+  if (!famOk || famOk.role === 'honnin' || famOk.mode === 'honnin') throw new AuthProblem('not-allowed', 403);
+  if (!honOk || !(honOk.role === 'honnin' || honOk.mode === 'honnin')) throw new AuthProblem('not-allowed', 403);
+  if (!await authUserState(fs, target)) throw new AuthProblem('account-unavailable', 403);
+  let lineLoginRemoved = false;
+  // 処理中(consumed)のコードは断る。同じQRを2台で同時に読んでも、鍵を受け取れるのは1台だけ
+  if (first.fields.state === 'consumed') throw new AuthProblem('used', 410);
+  if (first.fields.state === 'failed') {
+    // 1回目が、前のスマホを止める・鍵を出すところで、はっきり失敗したときだけ、期限内に1回だけやり直せる
+    if (first.fields.retried === true) throw new AuthProblem('used', 410);
+    if (!await fs.commit([{ update: { name: fs.root + '/' + path, fields: toFields({ retried: true, state: 'consumed' }) }, updateMask: { fieldPaths: ['retried', 'state'] },
+      currentDocument: { updateTime: first.updateTime } }])) throw new AuthProblem('used', 410);
+    lineLoginRemoved = first.fields.lineLoginRemoved === true;
+  } else {
+    // 確かめたあとに、コードの取り消し・名簿の変更・家庭の削除・終了手続き・同意の取り消しが先に確定したら、この確定は失敗する
+    const txn = await fs.beginTransaction();
+    let committed = false;
+    try {
+      const cur = await fs.get(path, txn);
+      const group = await fs.get('groups/' + groupId, txn);
+      const fam = await fs.get('groups/' + groupId + '/members/' + creator, txn);
+      const hon = await fs.get('groups/' + groupId + '/members/' + target, txn);
+      const closure = await fs.get('accountClosures/' + target, txn);
+      const famClosure = await fs.get('accountClosures/' + creator, txn);
+      const famConsent = await fs.get('consents/' + creator, txn);
+      const honConsent = await fs.get('consents/' + target, txn);
+      if (!cur || cur.updateTime !== first.updateTime || cur.fields.state === 'consumed') throw new AuthProblem('used', 410);
+      if (!group || group.fields.deletionState === 'deleting') throw new AuthProblem('not-allowed', 403);
+      const approved = (m) => m && (m.fields.status === undefined || m.fields.status === 'approved');
+      if (!approved(fam) || isHonninMember(fam) || !approved(hon) || !isHonninMember(hon)) throw new AuthProblem('not-allowed', 403);
+      if (!validConsent(famConsent && famConsent.fields) || !validConsent(honConsent && honConsent.fields)) throw new AuthProblem('not-allowed', 403);
+      if (closure || famClosure) throw new AuthProblem('account-unavailable', 403);
+      // なくしたスマホに残ったLINEから入り直せないよう、LINEでログインのつながりも同じ確定で外す
+      const acc = await fs.get('lineLoginAccounts/' + target, txn);
+      const link = acc && typeof acc.fields.lineKey === 'string' ? await fs.get('lineLoginLinks/' + acc.fields.lineKey, txn) : null;
+      lineLoginRemoved = !!acc;
+      // コードはすぐには消さず「使った」印を付ける(前のスマホを止める・鍵を出すのが済んでから消す)
+      const writes = [{ update: { name: fs.root + '/' + path, fields: toFields({ state: 'consumed', consumedAt: new Date(), lineLoginRemoved }) },
+        updateMask: { fieldPaths: ['state', 'consumedAt', 'lineLoginRemoved'] }, currentDocument: { updateTime: first.updateTime } }];
+      if (acc) writes.push({ delete: fs.root + '/' + acc.path, currentDocument: { updateTime: acc.updateTime } });
+      if (link && link.fields.uid === target) writes.push({ delete: fs.root + '/' + link.path, currentDocument: { updateTime: link.updateTime } });
+      // 家族全員とご本人の画面に「つなぎました」を残す(アプリからは作れない・消せない)
+      writes.push(securityEventWrite(fs, groupId, { type: 'device-reconnect', uid: creator, targetUid: target,
+        name: typeof fam.fields.name === 'string' ? fam.fields.name.slice(0, 80) : '' }));
+      // 24時間の制限の記録(ご本人のUIDごと)。ログインの入り直しでは外れない(firestore.rules の recentReconnect)
+      const until = new Date(Date.now() + RECONNECT_LOCK_MS);
+      writes.push({ update: { name: fs.root + '/reconnectLocks/' + target, fields: toFields({ until, expiresAt: until, groupId, createdBy: creator }) } });
+      committed = await fs.commit(writes, txn);
+    } finally {
+      if (!committed) await fs.rollback(txn);
+    }
+    if (!committed) throw new AuthProblem('used', 410);
+  }
+  // 前のスマホ(なくしたスマホ)のログインを無効にする。新しいスマホは、この後のカスタムトークンで入る。
+  // 再接続で入った鍵には via:'reconnect' を付け、24時間は取り消しにくい操作を止める(firestore.rules の recentReconnect)
+  let customToken;
+  try {
+    await revokeSessions(fs, target);
+    customToken = await mintCustomToken(fs, target, { via: 'reconnect' });
+  } catch (e) {
+    // はっきり失敗した: 処理中の印(consumed)を「失敗」に変えてから断る(やり直しはこの印のときだけ)
+    const cur = await fs.get(path).catch(() => null);
+    if (cur && cur.fields.state === 'consumed' && cur.fields.retried !== true) {
+      await fs.commit([{ update: { name: fs.root + '/' + path, fields: toFields({ state: 'failed' }) }, updateMask: { fieldPaths: ['state'] },
+        currentDocument: { updateTime: cur.updateTime } }]).catch(() => false);
+    }
+    throw e;
+  }
+  // 使い終わったコードは消す。消せなかったときも、やり直しには使えない印を付ける(もう一度鍵を出さない)
+  try { await fs.delete(path); }
+  catch (e) { await fs.commit([{ update: { name: fs.root + '/' + path, fields: toFields({ retried: true }) }, updateMask: { fieldPaths: ['retried'] } }]).catch(() => false); }
+  return { customToken, uid: target, lineLoginRemoved };
+}
+const RECONNECT_LOCK_MS = 24 * 3600 * 1000;
+/* 再接続から24時間の制限中なら true(LINEでログインをつなぐ手続きを止めるのに使う) */
+async function reconnectLockedNow(fs, uid) {
+  const lock = await fs.get('reconnectLocks/' + uid);
+  return !!lock && lock.fields.until instanceof Date && lock.fields.until.getTime() > Date.now();
+}
+async function revokeSessions(fs, uid) {
+  const res = await fs.call('POST', 'https://identitytoolkit.googleapis.com/v1/projects/' + fs.sa.project_id + '/accounts:update',
+    { localId: uid, validSince: String(Math.floor(Date.now() / 1000)) });
+  if (!res.ok) throw new Error('revoke ' + res.status);
 }
 
 /* ---- 確認の部品 ---- */
@@ -1714,11 +1856,12 @@ async function verifyJwt(fs, token, opt) {
   if (!ok) throw new Error('jwt signature');
   return claims;
 }
-async function mintCustomToken(fs, uid) {
+/* claims: 任意の追加の印(再接続のときだけ { via:'reconnect' })。LINEでログインには付けない */
+async function mintCustomToken(fs, uid, claims) {
   const now = Math.floor(Date.now() / 1000);
   return signServiceJwt(fs.sa, { alg: 'RS256', typ: 'JWT' }, { iss: fs.sa.client_email, sub: fs.sa.client_email,
     aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
-    iat: now, exp: now + CUSTOM_TOKEN_TTL_S, uid });
+    iat: now, exp: now + CUSTOM_TOKEN_TTL_S, uid, ...(claims ? { claims } : {}) });
 }
 
 function randomHex(bytes) {

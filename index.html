@@ -945,6 +945,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <button class="entry-btn" type="button" onclick="lineLoginStart()">LINEで続ける<small>LINEとつないだアカウントの、いつもの画面に入ります</small></button>
     <div id="welcome-code" hidden><button class="entry-btn sub" type="button" onclick="welcomeEnterCode()">LINEで表示された番号を入れる<small>LINEでの確認のあと、6けたの番号が出た方</small></button></div>
     <button class="entry-btn sub" type="button" onclick="openRecovery()">メールとパスワードで戻る<small>復旧を設定した方</small></button>
+    <button class="entry-btn sub" type="button" id="welcome-reconnect" hidden onclick="reconnectScan()">ご本人：ご家族の画面のQRで戻る<small>機種変更・スマホをなくしたとき（メールやパスワードはいりません）</small></button>
     <p class="note">LINEとまだつないでいない方は、いつも使っているまいにこ（ホーム画面のアイコンなど）を開き、設定の「LINEでログイン」からつないでください。ここで新しく登録すると、今までの記録とは別のアカウントになります。</p>
   </div>
   <div class="welcome-sec">
@@ -980,6 +981,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   </div>
   <div class="entry-tools">
     <button class="consent-back" id="entry-line-login" type="button" hidden onclick="lineLoginStart()">すでに使っている方：LINEで続ける</button>
+    <button class="consent-back" id="entry-reconnect" type="button" hidden onclick="reconnectScan()">ご本人：前のスマホの記録に戻る（ご家族の画面のQRを読む）</button>
     <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
     <a class="consent-back" href="help.html#locked-out" target="_blank" rel="noopener">家族の誰も入れなくなったとき（運営者への相談）</a>
     <button class="install-main" id="install-main" type="button" onclick="installApp()">ホーム画面に追加</button>
@@ -1702,9 +1704,10 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <button class="set-btn" onclick="openRecovery()">端末をなくす前に復旧を設定する</button>
     <button class="set-btn" onclick="openRecovery(true)">復旧設定済みのアカウントでログインする</button>
         <button class="set-btn" type="button" data-device-stop hidden onclick="openDeviceStop()">スマホをなくしたとき：ほかのスマホを止める</button>
+        <button class="set-btn" type="button" id="reconnect-make" hidden onclick="openReconnectMaker()">ご本人の新しいスマホをつなぐ（再接続QR）</button>
         <a class="set-btn" href="help.html#recovery">機種変更・復旧の手順を見る</a>
         <a class="set-btn" href="help.html#locked-out">家族の誰も入れなくなったとき</a>
-        <div class="note">ご自身のメールアドレスを使います。家族は自分のアカウントで設定してください。</div>
+        <div class="note">ご自身のメールアドレスを使います。家族は自分のアカウントで設定してください。ご本人のスマホは、「再接続QR」を使うと、メールやパスワードなしで新しいスマホにつなぎ直せます。</div>
       </div>
     </details>
 
@@ -2275,7 +2278,8 @@ setTimeout(function(){
 <script src="line-login.js?v=20261001"></script>
 <script src="line-login-ui.js?v=20261003"></script>
 <script src="hitokoe.js?v=20261004"></script>
-<script src="qr-scan.js?v=20261004"></script>
+<script src="qr-scan.js?v=20261005"></script>
+<script src="reconnect.js?v=20261006"></script>
 <script src="device-stop.js?v=20261005"></script>
 <script src="family-survey.js?v=20261005"></script>
 <script src="security-notices.js?v=20261006"></script>
@@ -3022,6 +3026,7 @@ function showPage(id){
   if(id==='honnin'&&typeof maybeShowSpeechNotice==='function')maybeShowSpeechNotice();
   if(id==='entry'&&typeof renderInviteNote==='function')renderInviteNote();
   if(id==='entry'){const lineBtn=document.getElementById('entry-line-login');if(lineBtn)lineBtn.hidden=!(typeof lineLoginEnabled==='function'&&lineLoginEnabled()&&!gid());}
+  if((id==='entry'||id==='welcome')&&typeof reconnectOnEntry==='function')reconnectOnEntry();
   if(id==='kazoku'||id==='honnin')reopenAfterDoc(id);
 }
 
@@ -4081,7 +4086,7 @@ function getOwnerTransfer(){
     group:()=>grp(),serverTimestamp:()=>firebase.firestore.FieldValue.serverTimestamp(),
     deleteField:()=>firebase.firestore.FieldValue.delete(),
     credential:(email,password)=>firebase.auth.EmailAuthProvider.credential(email,password),
-    ask:(text,ok)=>(typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(text,ok),
+    ask:async(text,ok)=>{if(await reconnectLocked())return false;return (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(text,ok);},
     openRecovery:()=>{if(typeof openSettings==='function')openSettings();if(typeof openRecoveryMenu==='function')openRecoveryMenu();}
   });
   return ownerTransferCtl;
@@ -4241,6 +4246,7 @@ async function openMembers(){
 async function honninRemove(mid, isMe){
   mid=memberRef(mid);
   isMe=mid===uid();
+  if(!isMe&&await reconnectLocked())return;
   if(mid===householdOwnerId){await appNotice('管理者は参加解除できません。家庭全体の利用を終える場合は共有データの削除を選んでください。');return;}
   if(!isMe && !requireHouseholdOwner())return;
   const msg=isMe
@@ -6716,6 +6722,7 @@ function refreshSetMembersIfOpen(){
 }
 async function approveMember(mid){
   if(!requireHouseholdOwner())return;
+  if(await reconnectLocked())return;
   try{
     const mname=memberNames[mid]||'新しい家族';
     mid=memberRef(mid);
@@ -6737,6 +6744,7 @@ async function denyMember(mid){
 async function removeMember(mid, isMe){
   mid=memberRef(mid);
   isMe=mid===uid();
+  if(!isMe&&await reconnectLocked())return;
   if(mid===householdOwnerId){await appNotice('管理者は参加解除できません。家庭全体の利用を終える場合は共有データの削除を選んでください。');return;}
   if(!isMe && !requireHouseholdOwner())return;
   if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(isMe?'この端末の接続を解除しますか？\n\n・解除すると、この家族の記録は見られなくなります':'この人の接続を解除しますか？\n\n・解除後、その人は共有サーバーの記録を新たに取得できなくなります\n・相手の端末に保存済みの写真・コピーは各端末で削除が必要です','解除する')) return;
@@ -7880,7 +7888,171 @@ function initMemberInfo(){
     const m={};snap.forEach(doc=>{m[doc.id]=doc.data();});memberInfoByUid=m;
     try{if(hitokoeCtl)hitokoeCtl.renderCard();renderFamilyNotices();if(surveyCtl)surveyCtl.render();}catch(e){}
     try{if(ownerTransferCtl){ownerTransferCtl.renderCard();ownerTransferCtl.renderSettings();}}catch(e){}
+    try{renderReconnectButtons();}catch(e){}
   },()=>{});
+}
+
+/* ===== ご本人の新しいスマホを再接続QRでつなぐ(2026-10-05)・詳しくは reconnect.js ===== */
+let reconnectSvc=null,reconnectPending='',reconnectBusy=false;
+function reconnectService(){
+  if(!reconnectSvc&&window.MainicoReconnect)reconnectSvc=MainicoReconnect.client({baseUrl:window.MAINICO_RECONNECT_URL||'',
+    fetch:(u,o)=>fetch(u,o),getAppCheckToken:async()=>{try{return (await previewApp.appCheck().getToken(false)).token||'';}catch(e){return '';}}});
+  return reconnectSvc;
+}
+function reconnectEnabled(){try{return !!reconnectService()&&reconnectService().enabled();}catch(e){return false;}}
+/* スマホの「カメラ」で読んだときのアドレス(#reconnect=コード。前の形の ?reconnect= も)は、読んだらすぐ消す */
+(function(){
+  try{
+    const u=new URL(location.href);
+    const inHash=/(^#|&)reconnect=/.test(u.hash);
+    if(!inHash&&!u.searchParams.has('reconnect'))return;
+    const code=window.MainicoReconnect&&MainicoReconnect.parse(location.href);
+    u.searchParams.delete('reconnect');
+    history.replaceState(null,'',u.pathname+(u.search||'')+(inHash?'':u.hash));
+    if(code)reconnectPending=code;
+  }catch(e){}
+})();
+function reconnectStateEl(){
+  const w=document.getElementById('welcome');
+  return document.getElementById(w&&w.classList.contains('active')?'welcome-state':'entry-state');
+}
+function reconnectOnEntry(){
+  const on=reconnectEnabled()&&!gid();
+  ['entry-reconnect','welcome-reconnect'].forEach(id=>{const b=document.getElementById(id);if(b)b.hidden=!on;});
+  if(on&&reconnectPending){
+    const code=reconnectPending;reconnectPending='';
+    // iPhoneの標準カメラで読むと Safari で開く。ホーム画面のまいにことは保存場所が別なので、ここではコードを使わず案内だけ
+    if(MainicoReconnect.needsHomeApp(navigator)){const s=reconnectStateEl();if(s)s.textContent=MainicoReconnect.message({code:'open-home-app'});return;}
+    reconnectConfirm(code);
+  }
+}
+function reconnectScan(){
+  if(!reconnectEnabled()||typeof MainicoQrScan==='undefined'){const s=reconnectStateEl();if(s)s.textContent=MainicoReconnect?MainicoReconnect.message({code:'disabled'}):'';return;}
+  MainicoQrScan.open({parse:MainicoReconnect.parse,title:'再接続QRを読み取る',
+    notMine:'まいにこの再接続QRではありません。ご家族の「ご本人の新しいスマホをつなぐ」で出したQRを映してください。',
+    note:'ご家族のスマホに出ている再接続QRを、四角の中に映してください。カメラの映像は保存も送信もしません。',
+    onCode:code=>reconnectConfirm(code)});
+}
+async function reconnectConfirm(code){
+  const ask=typeof appConfirm==='function'?appConfirm:(t=>Promise.resolve(confirm(t)));
+  const ok=await ask('このスマホを、ご本人の今までのまいにこにつなぎます。\n\n・今までの記録に戻れます\n・前のスマホ（なくしたスマホなど）は、遅くとも1時間で使えなくなります\n・つないだことは、家族全員とご本人の画面に記録されます\n・つないでから24時間は、家庭の削除・家族の承認や解除・復旧の設定などはできません（安全のため）','つなぐ','やめる',true);
+  if(ok)reconnectFinish(code);
+}
+async function reconnectFinish(code){
+  const state=reconnectStateEl();
+  if(reconnectBusy)return;reconnectBusy=true;
+  try{
+    // ホーム画面のまいにこ以外(iPhoneのSafariなど)では、コードを使わない(使うと、ホーム画面のまいにこからは入れないまま、前のスマホも止まる)
+    if(MainicoReconnect.needsHomeApp(navigator))throw Object.assign(new Error('open-home-app'),{code:'open-home-app'});
+    if(state)state.textContent='つないでいます…';
+    const before=typeof lineSessionSnapshot==='function'?lineSessionSnapshot():null;
+    const current=auth.currentUser;
+    // 記録のある画面を、別のアカウントに切り替えない
+    let inUse=!!(current&&gid());
+    if(current&&!inUse){
+      try{inUse=(await db.collection('accounts').doc(current.uid).get({source:'server'})).exists;}
+      catch(e){throw Object.assign(new Error('network'),{code:'network'});}
+    }
+    if(inUse)throw Object.assign(new Error('device-in-use'),{code:'device-in-use'});
+    const blocked=typeof lineSwitchBlocked==='function'?lineSwitchBlocked(current):'';
+    if(blocked)throw Object.assign(new Error(blocked),{code:blocked});
+    const result=await reconnectService().exchange(code);
+    if(before&&typeof lineSessionUnchanged==='function'&&!lineSessionUnchanged(before))throw Object.assign(new Error('session-changed'),{code:'session-changed'});
+    if(current&&typeof clearMainicoDeviceData==='function')clearMainicoDeviceData();
+    await auth.signInWithCustomToken(result.customToken);
+    if(state)state.textContent='つながりました。まいにこを開いています…';
+    if(result.lineLoginRemoved)alert('前のスマホから入り直せないよう、「LINEでログイン」のつながりも外しました。使う場合は、このスマホの設定から、もう一度つないでください。');
+    location.reload();
+  }catch(e){
+    if(state)state.textContent=MainicoReconnect.message(e);
+  }finally{reconnectBusy=false;}
+}
+/* 家族の設定: ご本人の新しいスマホをつなぐ(承認済みで、ご本人ではない家族だけ。ご本人がいる家庭だけ) */
+function reconnectTargets(){
+  return Object.keys(memberInfoByUid).filter(u=>memberIsHonnin(u)&&(memberInfoByUid[u].status===undefined||memberInfoByUid[u].status==='approved'));
+}
+function renderReconnectButtons(){
+  const b=document.getElementById('reconnect-make');if(!b)return;
+  const me=uid();
+  b.hidden=!(reconnectEnabled()&&gid()&&me&&memberInfoByUid[me]&&!memberIsHonnin(me)&&reconnectTargets().length);
+}
+let reconnectTimer=null;
+/* 再接続QRで入ってから24時間は、取り消しにくい操作を止める(firestore.rules の recentReconnect と同じ判定)。
+   止めているときは、使えるようになる時刻を返す */
+async function reconnectLockUntil(){
+  const u=auth.currentUser;
+  if(!u||typeof MainicoReconnect==='undefined')return null;
+  // サーバーの記録(reconnectLocks/{uid})で判定する。ログインの入り直しでは外れない。読めないときは鍵の印でも確かめる
+  try{
+    const snap=await db.collection('reconnectLocks').doc(u.uid).get({source:'server'});
+    const v=snap.exists?snap.data():null;
+    const until=MainicoReconnect.lockedUntilRecord(v&&v.until&&typeof v.until.toDate==='function'?v.until.toDate():null,new Date());
+    if(until)return until;
+  }catch(e){}
+  try{return MainicoReconnect.lockedUntil((await u.getIdTokenResult()).claims,new Date());}catch(e){return null;}
+}
+/* 止めているときは案内を出して true */
+async function reconnectLocked(){
+  const until=await reconnectLockUntil();
+  if(!until)return false;
+  await (typeof appNotice==='function'?appNotice(MainicoReconnect.lockMessage(until)):Promise.resolve(alert(MainicoReconnect.lockMessage(until))));
+  return true;
+}
+async function openReconnectMaker(){
+  if(await reconnectLocked())return;
+  const targets=reconnectTargets();
+  if(!targets.length||typeof MainicoReconnect==='undefined')return;
+  const wrap=document.createElement('div');
+  wrap.className='modal open reconnect-maker';wrap.setAttribute('role','dialog');wrap.setAttribute('aria-modal','true');wrap.setAttribute('aria-labelledby','reconnect-title');
+  wrap.innerHTML='<div class="modal-box adult-font"><h3 id="reconnect-title" style="margin-top:0;">ご本人の新しいスマホをつなぐ</h3>'+
+    '<p class="note">機種変更・スマホをなくしたときに使います。ご本人の新しいスマホで、まいにこを開き、入口の「ご本人：前のスマホの記録に戻る」を押して、このQRを映してください。メールやパスワードはいりません。</p>'+
+    '<div data-rc="pick"></div><div data-rc="qr" style="text-align:center;"></div>'+
+    '<div class="save-state" data-rc="state" role="status" aria-live="polite"></div>'+
+    '<p class="note">このQRは<b>10分・1回だけ</b>使えます。<b>ご本人のスマホ以外に見せないでください</b>（読んだスマホが、ご本人として入れます）。つないだあと、前のスマホは遅くとも1時間で使えなくなります。</p>'+
+    '<p class="note">つないだことは、<b>家族全員とご本人の画面に記録されます</b>（あなたの名前と日時）。つないでから24時間は、ご本人のアカウントでは家庭の削除・家族の承認や解除・アカウントの終了・復旧の設定などができません（安全のため。ログインし直しても同じです）。</p>'+
+    '<button class="set-btn warn" type="button" data-rc="cancel" hidden>QRを取り消す</button>'+
+    '<button class="modal-close" type="button" data-rc="close">とじる</button></div>';
+  document.body.appendChild(wrap);
+  const q=s=>wrap.querySelector('[data-rc="'+s+'"]');
+  const say=(t,err)=>{const e=q('state');e.textContent=t;e.classList.toggle('err',!!err);};
+  let code='',docId='';
+  const stop=()=>{if(reconnectTimer){clearInterval(reconnectTimer);reconnectTimer=null;}};
+  const close=async()=>{stop();wrap.remove();};
+  q('close').addEventListener('click',close);
+  q('cancel').addEventListener('click',async()=>{
+    if(!code)return;
+    try{await db.collection('reconnectCodes').doc(docId).delete();stop();q('qr').innerHTML='';q('cancel').hidden=true;say('QRを取り消しました。');code='';docId='';}
+    catch(e){say('取り消せませんでした。通信を確かめて、もう一度押してください。',true);}
+  });
+  const make=async target=>{
+    q('pick').innerHTML='';say('QRを作っています…');
+    code=MainicoReconnect.newCode(window.crypto);
+    const exp=Date.now()+MainicoReconnect.TTL_MS;
+    try{
+      // 保存するのはコードそのものではなく、コードから作った元に戻せない番号(送信役と同じ計算)
+      docId=await MainicoReconnect.docId(code,window.crypto.subtle);
+      await db.collection('reconnectCodes').doc(docId).set({groupId:gid(),targetUid:target,createdBy:uid(),
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),expiresAt:firebase.firestore.Timestamp.fromMillis(exp)});
+    }catch(e){code='';docId='';say('QRを作れませんでした。通信と、家庭への参加の状態を確かめてください。',true);return;}
+    if(typeof qrcode!=='function'){say('QRを表示できませんでした。通信を確かめてください。',true);return;}
+    const qr=qrcode(0,'M');qr.addData(MainicoReconnect.qrUrl(code));qr.make();
+    q('qr').innerHTML=qr.createImgTag(5,8,'再接続QR');
+    q('cancel').hidden=false;
+    const name=(memberInfoByUid[target]&&memberInfoByUid[target].name)||'ご本人';
+    const tick=async()=>{
+      const left=Math.max(0,Math.round((exp-Date.now())/1000));
+      if(left<=0){stop();q('qr').innerHTML='';q('cancel').hidden=true;say('時間切れです。必要なら、もう一度とじて開き直してください。');return;}
+      say(name+'さんのスマホで読んでください（あと'+Math.floor(left/60)+'分'+String(left%60).padStart(2,'0')+'秒）');
+      if(left%5===0){
+        try{const d=await db.collection('reconnectCodes').doc(docId).get({source:'server'});if(!d.exists)throw new Error('gone');}
+        catch(e){stop();q('qr').innerHTML='';q('cancel').hidden=true;say(name+'さんの新しいスマホがつながりました（またはQRが使われました）。');}
+      }
+    };
+    tick();reconnectTimer=setInterval(tick,1000);
+  };
+  if(targets.length===1){make(targets[0]);return;}
+  const pick=q('pick');pick.appendChild(Object.assign(document.createElement('p'),{className:'note',textContent:'どなたのスマホをつなぎますか？'}));
+  targets.forEach(t=>{const b=document.createElement('button');b.type='button';b.className='set-btn';b.textContent=(memberInfoByUid[t].name||'ご本人')+'さん';b.addEventListener('click',()=>make(t));pick.appendChild(b);});
 }
 function memberIsHonnin(u){ const i=memberInfoByUid[u]; return !!i&&(i.mode==='honnin'||i.role==='honnin'); }
 function whoRegistered(u){
@@ -7937,7 +8109,11 @@ function initHitokoePrompt(){
   if(typeof MainicoHitokoe==='undefined')return;
   hitokoePrompt=MainicoHitokoe.createPersonPrompt({col:col,addEvent:addEvent,uid:uid,members:()=>memberInfoByUid,
     day:()=>(typeof personDay==='function'?personDay():todayStr()),storage:previewStorage,speak:t=>speak(t),
-    ask:(t,yes,no)=>(typeof appConfirm==='function'?appConfirm(t,yes,no,true):Promise.resolve(confirm(t)))});
+    ask:async(t,yes,no)=>{
+      // 再接続QRで入ってから24時間は、ひと声の了解をたずねない(24時間たったら、あらためてたずねる)
+      if(await reconnectLockUntil())return null;
+      return typeof appConfirm==='function'?appConfirm(t,yes,no,true):confirm(t);
+    }});
   hitokoePrompt.start();
 }
 
@@ -7986,18 +8162,19 @@ function renderRecoveryBadges(){
   /* ほかのスマホを止める(2026-10-05): 復旧の設定が済んでいるときだけ */
   document.querySelectorAll('[data-device-stop]').forEach(el=>{el.hidden=level!=='ready';});
 }
-function openDeviceStop(){
+async function openDeviceStop(){
+  if(await reconnectLocked())return;
   if(typeof MainicoDeviceStop==='undefined'){alert('読み込みが終わっていません。通信を確認して、もう一度お試しください。');return;}
   let lineState='';
   MainicoDeviceStop.open({document:document,user:()=>auth.currentUser,
     credential:(email,password)=>firebase.auth.EmailAuthProvider.credential(email,password),
     beforeChange:async()=>{lineState=await deviceStopLineLogin(false);return lineState;},
     afterChange:async(reauthOk)=>{lineState=reauthOk?await deviceStopLineLogin(true):'failed';},
-    onDone:()=>{
+    onDone:async()=>{
       try{renderRecoveryBadges();}catch(e){}
       if(lineState==='done')alert('なくしたスマホのLINEから入り直せないよう、「LINEでログイン」のつながりも外しました。使う場合は、このスマホの設定から、もう一度つないでください。');
       if(lineState==='failed'){
-        lineUnlinkPending(true);
+        await lineUnlinkPending(true);
         alert('「LINEでログイン」のつながりを外せませんでした。なくしたスマホのLINEから入れないよう、設定の「LINEでログイン」の「連携を解除する」を押してください。解除できるまで、設定にこの案内を出します。');
         try{renderLineLoginSettings('settings-line-login-area');renderLineLoginSettings('person-line-login-area');}catch(e){}
       }
@@ -8012,19 +8189,25 @@ async function deviceStopLineLogin(second){
     const snap=await db.collection('lineLoginAccounts').doc(auth.currentUser.uid).get({source:'server'});
     if(!snap.exists)return '';
     await lineLoginService().unlink();
-    lineUnlinkPending(false);
+    await lineUnlinkPending(false);
     return 'done';
   }catch(e){
     return second?'failed':'retry';
   }
 }
 /* LINEでログインの解除が残っている印(この端末・この利用者だけ)。解除できるまで設定に案内を出す */
-function lineUnlinkPending(on){
-  const key='mainicoLineUnlinkPending-'+(auth.currentUser?auth.currentUser.uid:'');
-  try{
-    if(on===undefined)return localStorage.getItem(key)==='1';
-    if(on)localStorage.setItem(key,'1');else localStorage.removeItem(key);
-  }catch(e){}
+/* 印は Firestore の lineUnlinkPending/{uid}(本人だけが読み書き)に置き、どの端末で開いても案内が出るようにする。
+   通信できないときのために、この端末にも控えを置く */
+async function lineUnlinkPending(on){
+  const me=auth.currentUser?auth.currentUser.uid:'';
+  if(!me)return false;
+  const key='mainicoLineUnlinkPending-'+me, ref=db.collection('lineUnlinkPending').doc(me);
+  if(on===undefined){
+    let local=false;try{local=localStorage.getItem(key)==='1';}catch(e){}
+    try{return (await ref.get({source:'server'})).exists||local;}catch(e){return local;}
+  }
+  try{if(on)localStorage.setItem(key,'1');else localStorage.removeItem(key);}catch(e){}
+  try{if(on)await ref.set({at:firebase.firestore.FieldValue.serverTimestamp()});else await ref.delete();}catch(e){}
   return !!on;
 }
 /* ご本人のスマホは、復旧の設定状態を家族に知らせる(状態が変わったときだけ記録する) */
