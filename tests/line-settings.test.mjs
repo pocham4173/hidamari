@@ -13,16 +13,16 @@ async function waitFor(fn, label) {
   assert.fail('timeout: ' + label);
 }
 
-function setup({ linked = false, failLink = false, recipients = [], share = true, linkFriend, extraLogs = [], extraMembers = [] } = {}) {
+function setup({ linked = false, failLink = false, recipients = [], share = true, linkFriend, extraLogs = [], extraMembers = [], meMode = 'kazoku', meName = 'りえ', meFail = false, konly = false } = {}) {
   const dom = new JSDOM('<div id="area"></div><div id="settings-line-log"></div><div id="who"></div>', { url: 'https://pocham4173.github.io/hidamari/', runScripts: 'outside-only' });
   const c = dom.getInternalVMContext();
   const written = [], updated = [], deleted = [];
   let snapCb = null, recCb = null, autoId = 0;
   const linkDoc = { exists: linked, data: () => ({ groupId: 'g1', linkedAt: new Date('2026-10-01T01:00:00Z'), ...(linkFriend === undefined ? {} : { friend: linkFriend }) }) };
   const members = [
-    { id: 'mom', data: () => ({ name: 'お母さん', status: 'approved' }) },
-    { id: 'me', data: () => ({ name: 'りえ', status: 'approved' }) },
-    { id: 'bro', data: () => ({ name: '兄 <b>x</b>', status: 'approved' }) },
+    { id: 'mom', data: () => ({ name: 'お母さん', status: 'approved', mode: 'honnin' }) },
+    { id: 'me', data: () => ({ name: meName, status: 'approved', mode: meMode }) },
+    { id: 'bro', data: () => ({ name: '兄 <b>x</b>', status: 'approved', mode: 'kazoku' }) },
     ...extraMembers.map((m) => ({ id: m.id, data: () => ({ name: m.name, status: 'approved' }) })),
   ];
   const logs = [
@@ -35,7 +35,7 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   const snapOf = (rows) => ({ forEach: (f) => rows.forEach(f) });
   const q = (rows) => ({ get: async () => snapOf(rows) });
   Object.assign(c, {
-    uid: () => 'me', gid: () => 'g1', myName: () => 'りえ',
+    uid: () => 'me', gid: () => 'g1', myName: () => 'りえ', isKOnly: () => konly,
     firebase: { firestore: { FieldValue: { serverTimestamp: () => 'ts' }, Timestamp: { fromMillis: (n) => new Date(n) } } },
     db: { collection: (name) => ({
       doc: (id) => {
@@ -57,7 +57,10 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
     col: (name) => ({
       where: (f, op, v) => q(name === 'members' ? members.map((m) => ({ id: m.id, data: m.data })) : logs.map((l) => ({ id: l.uid, data: () => ({ ...l, type: v }) }))),
       doc: (id) => ({
-        get: async () => ({ exists: name === 'lineShareConsents' && share, data: () => ({ version: 'line-share-20261004', honninAgreed: true }) }),
+        get: async () => {
+          if (name === 'members') { if (meFail) throw new Error('offline'); const m = members.find((x) => x.id === id); return { exists: !!m, data: () => m && m.data() }; }
+          return { exists: name === 'lineShareConsents' && share, data: () => ({ version: 'line-share-20261004', honninAgreed: true }) };
+        },
         set: async (v) => { written.push({ name: 'group/' + name, id, v }); share = true; },
         delete: async () => { deleted.push({ name: 'group/' + name, id }); share = false; },
       }),
@@ -80,19 +83,22 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   await t.c.MainicoLine.render('area');
   const area = t.d.getElementById('area');
   const titles = [...area.querySelectorAll('.ln-card h4')].map((e) => e.textContent);
-  assert.deepEqual(titles, ['自分のLINEを登録する', 'LINEの送信先を追加', 'LINEの送信先', '家族に頼む']);
-  assert.match(area.textContent, /最初に1回、自分のLINEを登録してください/);
+  assert.deepEqual(titles, ['りえさん（家族）のLINE設定', 'ほかの人にも通知を届けたい', 'アプリを使わない人に、LINEだけで届ける', 'LINEをつないでいる人'], 'だれの設定かを最初に出す');
+  assert.match(area.textContent, /このスマホで開くLINEが、りえさん（家族）のLINEとして登録されます/);
+  assert.equal(area.querySelector('[data-line-act="code"]').textContent, '自分のLINEをつなぐ');
+  assert.match(area.textContent, /本人に登録案内を送る/);
+  assert.match(area.textContent, /ほかの家族に登録を頼む/);
   await waitFor(() => area.querySelectorAll('.ln-family li').length === 6, 'list');
   const rows = [...area.querySelectorAll('.ln-family li')].map((li) => li.textContent);
-  assert.match(rows[0], /^自分（りえ）LINE：まだつないでいません/, '自分が先頭・実際の連携状態');
-  assert.ok(rows.some((r) => /お母さんLINE：つないであります（友だち追加は未確認）/.test(r)), '友だち追加を確かめていない人を「受け取れます」と言い切らない');
+  assert.match(rows[0], /^自分（りえ・家族）LINE：まだつないでいません/, '自分が先頭・実際の連携状態');
+  assert.ok(rows.some((r) => /お母さん（本人）LINE：つないであります（友だち追加は未確認）/.test(r)), '友だち追加を確かめていない人を「受け取れます」と言い切らない');
   assert.ok(!/受け取れます/.test(area.textContent), '「受け取れます」とは表示しない');
-  assert.ok(rows.some((r) => /兄 <b>x<\/b>LINE：まだ/.test(r)), '名前は文字として表示');
+  assert.ok(rows.some((r) => /兄 <b>x<\/b>（家族）LINE：まだ/.test(r)), '名前は文字として表示');
   assert.ok(rows.some((r) => /おばあちゃんLINEの名前：おばあLINE：つないであります（友だち追加は未確認）招待の履歴/.test(r)));
   assert.ok(rows.some((r) => /おじ <i>y<\/i>LINE：まだ登録していません（招待の文を送ると登録されます）/.test(r)));
   assert.ok(rows.some((r) => /いとこLINE：受け取りを止めました/.test(r)));
   assert.equal(area.querySelector('.ln-family b i'), null);
-  assert.deepEqual([...area.querySelectorAll('.ln-group-title')].map((e) => e.textContent), ['まいにこアプリを使っている家族', 'アプリを使わず、LINEだけで受け取る人'], '2つに分けて見せる');
+  assert.deepEqual([...area.querySelectorAll('.ln-group-title')].map((e) => e.textContent), ['まいにこアプリを使っている人', 'アプリを使わず、LINEだけで受け取る人'], '2つに分けて見せる');
   assert.match(area.textContent, /LINEをつないだ人：合わせて2人（うち2人は友だち追加を確認できていません）/);
   assert.match(area.textContent, /相手のスマホに届いたか・読んだかまでは分かりません/, '送信と到着・既読を区別する');
   // 再送は承認待ちの人だけ
@@ -107,7 +113,7 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   // LINEで送信 → 自動で登録済み
   t.linkDoc.exists = true;
   t.fire({ exists: true, data: () => ({ groupId: 'g1' }) });
-  await waitFor(() => /LINEは登録済みです。友だち追加は確認できていません/.test(area.textContent), 'linked');
+  await waitFor(() => /つないであります。友だち追加は確認できていません/.test(area.textContent), 'linked');
   assert.ok(area.querySelector('[data-line-act="unlink"]'));
 }
 
@@ -125,24 +131,56 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
     ] });
   await t.c.MainicoLine.render('area');
   const area = t.d.getElementById('area');
-  assert.match(area.textContent, /⚠ LINEは登録済みですが、まいにこの友だち追加が確認できていません/, '自分: 友だち追加なし');
+  assert.match(area.textContent, /⚠ つないでありますが、まいにこの友だち追加が確認できていません/, '自分: 友だち追加なし');
   assert.ok(area.querySelector('[data-line-act="reload"]'), '友だち追加のあと確かめ直せる');
   await waitFor(() => area.querySelectorAll('.ln-family li').length === 7, 'list');
   const rows = [...area.querySelectorAll('.ln-family li')].map((li) => li.textContent);
-  assert.match(rows[0], /^自分（りえ）LINE：⚠ 友だち追加が必要です/);
-  assert.ok(rows.some((r) => /お母さんLINE：✓ つないであります（友だち追加 確認済み）/.test(r)), '後からの友だち追加の確認を反映');
-  assert.ok(rows.some((r) => /妹LINE：⚠ 友だち追加が必要です（このままでは届きません）/.test(r)));
-  assert.ok(rows.some((r) => /父LINE：✓ つないであります（友だち追加 確認済み）/.test(r)));
+  assert.match(rows[0], /^自分（りえ・家族）LINE：⚠ 友だち追加が必要です/);
+  assert.ok(rows.some((r) => /お母さん（本人）LINE：✓ つないであります（友だち追加 確認済み）/.test(r)), '後からの友だち追加の確認を反映');
+  assert.ok(rows.some((r) => /妹（家族）LINE：⚠ 友だち追加が必要です（このままでは届きません）/.test(r)));
+  assert.ok(rows.some((r) => /父（家族）LINE：✓ つないであります（友だち追加 確認済み）/.test(r)));
   assert.ok(rows.some((r) => /ヘルパーLINE：⚠ 友だち追加が必要です/.test(r)));
   assert.ok(rows.some((r) => /おばLINE：✓ つないであります（友だち追加 確認済み）/.test(r)));
   assert.match(area.textContent, /LINEをつないだ人：合わせて6人（うち3人は友だち追加を確認できていません）/);
   assert.ok(!/受け取れます/.test(area.textContent));
 }
+{ // 本人の画面: 自分の登録が中心。ほかの人のことはたたむ。本人への案内は出さない
+  const t = setup({ meMode: 'honnin', meName: '花子' });
+  await t.c.MainicoLine.render('area');
+  const area = t.d.getElementById('area');
+  assert.equal(area.querySelector('.ln-card h4').textContent, '花子さん（本人）のLINE設定');
+  assert.equal(area.querySelector('[data-line-act="code"]').textContent, '自分のLINEをつなぐ');
+  const others = area.querySelector('details.ln-others');
+  assert.ok(others && !others.open, 'ほかの人の設定はたたんでおく');
+  assert.ok(others.querySelector('[data-line-invite-name]'), 'LINEだけで届ける人の招待はたたんだ中に残る');
+  assert.doesNotMatch(area.textContent, /本人に登録案内を送る|ほかの家族に登録を頼む/);
+}
+{ // 本人の名前が「本人」のまま: 役割で呼ぶ
+  const t = setup({ meMode: 'honnin', meName: '本人' });
+  await t.c.MainicoLine.render('area');
+  assert.equal(t.d.querySelector('#area .ln-card h4').textContent, 'ご本人のLINE設定');
+}
+{ // 家族だけで使う: 本人の登録を求めない(本人への案内を出さない)
+  const t = setup({ konly: true });
+  await t.c.MainicoLine.render('area');
+  const area = t.d.getElementById('area');
+  assert.equal(area.querySelector('.ln-card h4').textContent, 'りえさん（家族）のLINE設定');
+  assert.doesNotMatch(area.textContent, /本人に登録案内を送る/);
+  assert.match(area.textContent, /ほかの家族に登録を頼む/);
+}
+{ // 自分の登録(名前・役割)を読めないときは、推測で登録を進めない
+  const t = setup({ meFail: true });
+  await t.c.MainicoLine.render('area');
+  const area = t.d.getElementById('area');
+  assert.match(area.textContent, /あなたの登録（名前と役割）を確認できませんでした/);
+  assert.equal(area.querySelector('[data-line-act="code"]'), null, 'つなぐボタンを出さない');
+  assert.ok(area.querySelector('[data-line-act="reload"]'));
+}
 { // 自分: 友だち追加も確認済み
   const t = setup({ linked: true, linkFriend: true });
   await t.c.MainicoLine.render('area');
   const area = t.d.getElementById('area');
-  assert.match(area.textContent, /✓ 自分のLINEを登録済み（友だち追加も確認済み）/);
+  assert.match(area.textContent, /✓ つないであります（友だち追加も確認済み）/);
   assert.equal(area.querySelector('[data-line-act="reload"]'), null);
 }
 { // 連携の記録: 友だち追加の確認も残り、「つないでいる人」の数には入れない
@@ -211,15 +249,19 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   assert.equal(W.readWho('who'), undefined, '読み込む前は値を変えない');
   await W.renderWho('who', null);
   const chips = () => [...t.d.querySelectorAll('#who .ln-chip')].map((b) => b.textContent);
-  assert.deepEqual(chips(), ['✓ 自分', '✓ お母さん', '✓ 兄 <b>x</b>', 'おばあちゃん'], '承認待ちの人は出ない');
-  assert.equal(W.readWho('who'), null, '家族全員=今までどおり');
+  assert.deepEqual(chips(), ['自分（家族） ・LINE未登録', '✓ お母さん（本人）', '兄 <b>x</b>（家族） ・LINE未登録', 'おばあちゃん（LINEだけ）'], '名前と役割・LINEの状態。承認待ちの人は出ない');
+  assert.ok(t.d.querySelector('#who .ln-chip.off').disabled, 'LINEをつないでいない人は選べない');
+  assert.match(t.d.getElementById('who').textContent, /おまもりタグのお知らせは、この選択とは別に/, '予定とタグの通知先を分けて伝える');
+  assert.equal(W.readWho('who'), null, 'つないだ家族全員=今までどおり');
+  t.d.querySelector('#who .ln-chip.off').click();
+  assert.equal(W.readWho('who'), null, '選べない人を押しても変わらない');
   t.d.querySelector('#who .ln-chip.ext').click();
-  assert.deepEqual(plain(W.readWho('who')), ['u:me', 'u:mom', 'u:bro', 'r:r1']);
+  assert.deepEqual(plain(W.readWho('who')), ['u:mom', 'r:r1']);
   t.d.querySelectorAll('#who .ln-chip')[1].click();
-  assert.deepEqual(plain(W.readWho('who')), ['u:me', 'u:bro', 'r:r1']);
+  assert.deepEqual(plain(W.readWho('who')), ['r:r1']);
   // 保存済みの選び方を開き直す
   await W.renderWho('who', ['r:r1', 'r:gone']);
-  assert.deepEqual(chips(), ['自分', 'お母さん', '兄 <b>x</b>', '✓ おばあちゃん']);
+  assert.deepEqual(chips(), ['自分（家族） ・LINE未登録', 'お母さん（本人）', '兄 <b>x</b>（家族） ・LINE未登録', '✓ おばあちゃん（LINEだけ）']);
   assert.deepEqual(plain(W.readWho('who')), ['r:r1'], '消えた送信先は保存し直さない');
 }
 
@@ -246,7 +288,7 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   assert.deepEqual(plain(t.deleted.at(-1)), { name: 'group/lineShareConsents', id: 'me' });
   // 同意していないと、予定の「知らせる人」に招待した人は出ない
   await t.c.MainicoLine.renderWho('who', ['r:r1']);
-  assert.deepEqual([...t.d.querySelectorAll('#who .ln-chip')].map((b) => b.textContent), ['自分', 'お母さん', '兄 <b>x</b>']);
+  assert.deepEqual([...t.d.querySelectorAll('#who .ln-chip')].map((b) => b.textContent), ['自分（家族） ・LINE未登録', 'お母さん（本人）', '兄 <b>x</b>（家族） ・LINE未登録']);
   assert.deepEqual(plain(t.c.MainicoLine.readWho('who')), [], '同意をやめた人の予定には、招待した人を残さない');
 }
 

@@ -75,7 +75,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined', 'line-login-signin', 'device-reconnect']);
-const VERSION_TEXT = '版：2026-10-09 友だち追加の確認結果を残す';
+const VERSION_TEXT = '版：2026-10-10 だれのLINE登録かを返事に出す・取り違え防止';
 
 export default {
   async fetch(request, env, ctx) {
@@ -139,7 +139,7 @@ async function verifySignature(body, signature, secret) {
 
 const MSG_WELCOME =
   'まいにこ公式LINEです。友だち追加ありがとうございます。\n\n' +
-  '【次にすること】\nまいにこに戻って、「自分のLINEを登録する」→「LINEを開いて送る」を押してください。\n（まいにこの「設定」（ご本人は「その他の設定」）→「LINEで予定のお知らせ」にあります）\n\n' +
+  '【次にすること】\nまいにこに戻って、「自分のLINEをつなぐ」→「LINEを開いて送る」を押してください。\n（まいにこの「設定」（ご本人は「その他の設定」）→「LINEで予定のお知らせ」にあります）\n\n' +
   '家族から招待のリンクが届いた方は、そのリンクを開いて、送信を押してください。';
 const MSG_HELP =
   'このトークでは、つなぐためのコード・招待の受け付けと、予定のお知らせだけを行っています。\n' +
@@ -170,7 +170,7 @@ async function handleEvent(ev, env, fs) {
   if (text === '解除' || text === '連携解除') {
     const n = await removeLinksFor(fs, lineUserId, 'line') + await removeRecipientsFor(fs, lineUserId);
     return reply(env, ev.replyToken, n
-      ? '解除しました。このLINEには予定のお知らせが届かなくなります。\nまた受け取るときは、アプリの「自分のLINEを登録する」か、家族からの新しい招待で登録してください。'
+      ? '解除しました。このLINEには予定のお知らせが届かなくなります。\nまた受け取るときは、アプリの「自分のLINEをつなぐ」か、家族からの新しい招待で登録してください。'
       : 'このLINEは、まいにこと連携していません。');
   }
   const invite = INVITE_RE.exec(text);
@@ -208,6 +208,19 @@ async function linkByCode(env, fs, code, lineUserId) {
     await fs.delete('lineLinkCodes/' + code).catch(() => {});
     return '家族への参加が承認されていないため、連携できませんでした。';
   }
+  // 別の人として登録済みのLINEを、黙ってこの人に付け替えない(2026-10-10)。
+  // 家族が自分のスマホで本人のコードを送ってしまう、などの取り違えを防ぐ
+  const used = await fs.query('', {from: [{collectionId: 'lineLinks'}], where: fieldEq('lineUserId', {stringValue: lineUserId})});
+  const other = used.find((d) => d.id !== uid);
+  if (other) {
+    await fs.delete('lineLinkCodes/' + code).catch(() => {});
+    // ほかの家庭の人の名前は出さない
+    const om = other.fields.groupId === groupId ? await fs.get('groups/' + groupId + '/members/' + other.id) : null;
+    const who = om && typeof om.fields.name === 'string' && om.fields.name ? clip(om.fields.name, 40) + 'さん（' + roleName(om.fields) + '）' : '別の人';
+    return '⚠️ このLINEは、すでに' + who + 'のLINEとして登録されています。登録は変えていません。\n\n' +
+      '・ご本人と家族は、それぞれ自分のスマホの、自分のLINEでつないでください。\n' +
+      '・このLINEを付け替えるときは、先に' + who + 'のまいにこで「つなぐのをやめる」を押すか、このトークで「解除」と送ってから、もう一度つないでください。';
+  }
   // 友だち追加の有無を、連携を保存する前に確かめ、結果(true=確認済み/false=未追加/null=確認できず)も一緒に残す。
   // アプリはこの結果で表示を分け、確かめられない状態を「受け取れます」と言い切らない(2026-10-09 審査の指摘)
   const {friend} = await checkFriend(env, fs, lineUserId);
@@ -220,15 +233,24 @@ async function linkByCode(env, fs, code, lineUserId) {
     linkLogWrite(fs, groupId, uid, member.name, 'linked', 'code', now, friend)
   ]);
   if (!consumed) return NG;
-  const name = typeof member.name === 'string' && member.name ? member.name + 'さん、' : '';
+  // だれのLINE登録かを、名前と役割で返す(2026-10-10)
+  const name = (typeof member.name === 'string' && member.name && member.name !== '本人' ? clip(member.name, 40) + 'さん' : roleName(member) === '本人' ? 'ご本人' : 'ご家族') +
+    '（' + roleName(member) + '）のLINE登録：';
   if (friend === false) return '⚠️ ' + name + 'LINE連携はできましたが、まだ、まいにこを友だち追加していないようです。\n\n' +
     '友だち追加をしないと、予定のお知らせは届きません。このトーク画面の上の「追加」を押して、友だち追加してください。';
   if (friend === null) return '⚠️ ' + name + 'LINE連携はできましたが、友だち追加の状態を確認できませんでした。\n\n' +
     'まだ友だち追加をしていない場合は、このトーク画面の上の「追加」を押してください。友だち追加をしないと、予定のお知らせは届きません。';
-  return '✅ ' + name + 'LINE連携しました。登録できました。\n\n' +
+  return '✅ ' + name + 'LINE連携しました。\n\n' +
     'これから、まいにこの予定のお知らせを、このLINEへ送ります。\n' +
     '（送るのは、予定に「LINEで知らせる日時」を入れたものだけです）\n\n' +
     'やめるときは、このトークに「解除」と送ってください。';
+}
+
+/* 役割の名前(アプリの roleOf と同じ: 今の利用方法 mode を優先し、ないときだけ登録時の role) */
+function roleName(m) {
+  m = m || {};
+  if (Object.prototype.hasOwnProperty.call(m, 'mode')) return m.mode === 'honnin' ? '本人' : '家族';
+  return m.role === 'honnin' ? '本人' : '家族';
 }
 
 /* 友だち追加の確認。LINEのプロフィール取得が 200 なら確認済み、404 なら未追加、それ以外(通信失敗など)は「確認できず」(null)。

@@ -138,11 +138,11 @@ assert.equal((await hook([], true)).status, 401);
 assert.equal((await hook([])).status, 200);
 // 3. 友だち追加 → 案内を返事
 await hook([{ type: 'follow', replyToken: 'r1', source: user('Uowner') }]);
-assert.match(replies.at(-1).messages[0].text, /「自分のLINEを登録する」/);
+assert.match(replies.at(-1).messages[0].text, /「自分のLINEをつなぐ」/);
 // 4. 正しいコードで連携(全角・小文字・空白でも受け付ける)
 put('lineLinkCodes/ABCD2345', { uid: S('owner'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
 await hook([{ type: 'message', replyToken: 'r2', source: user('Uowner'), message: { type: 'text', text: 'ａｂｃｄ ２３４５' } }]);
-assert.match(replies.at(-1).messages[0].text, /理絵さん、LINE連携しました/);
+assert.match(replies.at(-1).messages[0].text, /理絵さん（家族）のLINE登録：LINE連携しました/);
 assert.equal(db.get('lineLinks/owner').fields.lineUserId.stringValue, 'Uowner');
 assert.equal(db.has('lineLinkCodes/ABCD2345'), false, '使ったコードは消える');
 assert.equal(db.get('lineLinks/owner').fields.friend.booleanValue, true, '友だち追加を確かめた結果を連携に残す');
@@ -175,6 +175,34 @@ assert.equal(db.get('lineLinks/owner').fields.friend.booleanValue, true, '友だ
   }
   if (before) db.set('lineLinks/fam', before); else db.delete('lineLinks/fam');
   for (const [p, d] of [...db]) if (p.startsWith('groups/g1/events/') && d.fields.type?.stringValue === 'line-link-log' && d.fields.uid?.stringValue === 'fam' && d.fields.action?.stringValue === 'linked') db.delete(p);
+}
+// 4c. だれのLINE登録かを、名前と役割で返す。別の人として登録済みのLINEは、黙って付け替えない(2026-10-10)
+{
+  put('consents/hon', {...consent(), mode: S('honnin'), subjectBasis: S('self')});
+  put('groups/g1/members/hon', { name: S('花子'), status: S('approved'), mode: S('honnin') });
+  put('lineLinkCodes/HNNA2345', { uid: S('hon'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
+  await hook([{ type: 'message', replyToken: 'r4c1', source: user('Uhon'), message: { type: 'text', text: 'HNNA2345' } }]);
+  assert.match(replies.at(-1).messages[0].text, /^✅ 花子さん（本人）のLINE登録：LINE連携しました/);
+  // 家族(fam)が、すでに本人として登録されたLINEでコードを送る → 断り、どちらの登録も変えない
+  const famBefore = db.get('lineLinks/fam');
+  put('lineLinkCodes/DUPA2345', { uid: S('fam'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
+  await hook([{ type: 'message', replyToken: 'r4c2', source: user('Uhon'), message: { type: 'text', text: 'DUPA2345' } }]);
+  assert.match(replies.at(-1).messages[0].text, /すでに花子さん（本人）のLINEとして登録されています。登録は変えていません/);
+  assert.equal(db.get('lineLinks/hon').fields.lineUserId.stringValue, 'Uhon', '本人の登録はそのまま');
+  assert.equal(db.get('lineLinks/fam'), famBefore, '家族の登録も変えない');
+  assert.equal(db.has('lineLinkCodes/DUPA2345'), false, '使えなかったコードは消す');
+  // ほかの家庭の人として登録済みのLINEは、名前を出さずに断る
+  put('lineLinks/xother', { lineUserId: S('Uelse'), groupId: S('gX') });
+  put('lineLinkCodes/XTHA2345', { uid: S('hon'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
+  await hook([{ type: 'message', replyToken: 'r4c3', source: user('Uelse'), message: { type: 'text', text: 'XTHA2345' } }]);
+  assert.match(replies.at(-1).messages[0].text, /すでに別の人のLINEとして登録されています/);
+  assert.equal(db.get('lineLinks/hon').fields.lineUserId.stringValue, 'Uhon');
+  // 同じ人が、自分のLINEをつなぎ直す(機種変更など)のは今までどおりできる
+  put('lineLinkCodes/SAMA2345', { uid: S('hon'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
+  await hook([{ type: 'message', replyToken: 'r4c4', source: user('Uhon'), message: { type: 'text', text: 'SAMA2345' } }]);
+  assert.match(replies.at(-1).messages[0].text, /花子さん（本人）のLINE登録：LINE連携しました/);
+  for (const p of ['lineLinks/hon', 'lineLinks/xother', 'groups/g1/members/hon', 'consents/hon']) db.delete(p);
+  for (const [p, d] of [...db]) if (p.startsWith('groups/g1/events/') && d.fields.uid?.stringValue === 'hon') db.delete(p);
 }
 const linkLogs = (action) => [...db].filter(([p, d]) => p.startsWith('groups/g1/events/') && d.fields.type?.stringValue === 'line-link-log' && d.fields.action.stringValue === action).map(([, d]) => d.fields);
 assert.equal(linkLogs('linked').length, 1, '連携の記録が家庭に残る');
