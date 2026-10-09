@@ -62,6 +62,7 @@ jobs:
           node tests/pending-join.test.mjs
           node tests/exit-safety.test.mjs
           node tests/entry-mode.test.mjs
+          node tests/returning-guide.test.mjs
           node tests/handoff-summary.test.mjs
           node tests/person-button-feedback.test.mjs
           node tests/family-connection.test.mjs

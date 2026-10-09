@@ -13,21 +13,23 @@ async function waitFor(fn, label) {
   assert.fail('timeout: ' + label);
 }
 
-function setup({ linked = false, failLink = false, recipients = [], share = true } = {}) {
+function setup({ linked = false, failLink = false, recipients = [], share = true, linkFriend, extraLogs = [], extraMembers = [] } = {}) {
   const dom = new JSDOM('<div id="area"></div><div id="settings-line-log"></div><div id="who"></div>', { url: 'https://pocham4173.github.io/hidamari/', runScripts: 'outside-only' });
   const c = dom.getInternalVMContext();
   const written = [], updated = [], deleted = [];
   let snapCb = null, recCb = null, autoId = 0;
-  const linkDoc = { exists: linked, data: () => ({ groupId: 'g1', linkedAt: new Date('2026-10-01T01:00:00Z') }) };
+  const linkDoc = { exists: linked, data: () => ({ groupId: 'g1', linkedAt: new Date('2026-10-01T01:00:00Z'), ...(linkFriend === undefined ? {} : { friend: linkFriend }) }) };
   const members = [
     { id: 'mom', data: () => ({ name: 'お母さん', status: 'approved' }) },
     { id: 'me', data: () => ({ name: 'りえ', status: 'approved' }) },
     { id: 'bro', data: () => ({ name: '兄 <b>x</b>', status: 'approved' }) },
+    ...extraMembers.map((m) => ({ id: m.id, data: () => ({ name: m.name, status: 'approved' }) })),
   ];
   const logs = [
     { uid: 'mom', action: 'linked', clientAt: 2 },
     { uid: 'bro', action: 'linked', clientAt: 1 },
     { uid: 'bro', action: 'unlinked', clientAt: 3 },
+    ...extraLogs,
   ];
   const recDocs = () => recipients.map((r) => ({ id: r.id, data: () => r }));
   const snapOf = (rows) => ({ forEach: (f) => rows.forEach(f) });
@@ -83,14 +85,16 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   await waitFor(() => area.querySelectorAll('.ln-family li').length === 6, 'list');
   const rows = [...area.querySelectorAll('.ln-family li')].map((li) => li.textContent);
   assert.match(rows[0], /^自分（りえ）LINE：まだつないでいません/, '自分が先頭・実際の連携状態');
-  assert.ok(rows.some((r) => /お母さんLINE：✓ 受け取れます/.test(r)));
+  assert.ok(rows.some((r) => /お母さんLINE：つないであります（友だち追加は未確認）/.test(r)), '友だち追加を確かめていない人を「受け取れます」と言い切らない');
+  assert.ok(!/受け取れます/.test(area.textContent), '「受け取れます」とは表示しない');
   assert.ok(rows.some((r) => /兄 <b>x<\/b>LINE：まだ/.test(r)), '名前は文字として表示');
-  assert.ok(rows.some((r) => /おばあちゃんLINEの名前：おばあLINE：✓ 受け取れます招待の履歴/.test(r)));
+  assert.ok(rows.some((r) => /おばあちゃんLINEの名前：おばあLINE：つないであります（友だち追加は未確認）招待の履歴/.test(r)));
   assert.ok(rows.some((r) => /おじ <i>y<\/i>LINE：まだ登録していません（招待の文を送ると登録されます）/.test(r)));
   assert.ok(rows.some((r) => /いとこLINE：受け取りを止めました/.test(r)));
   assert.equal(area.querySelector('.ln-family b i'), null);
   assert.deepEqual([...area.querySelectorAll('.ln-group-title')].map((e) => e.textContent), ['まいにこアプリを使っている家族', 'アプリを使わず、LINEだけで受け取る人'], '2つに分けて見せる');
-  assert.match(area.textContent, /いまLINEで受け取れる人：合わせて2人/);
+  assert.match(area.textContent, /LINEをつないだ人：合わせて2人（うち2人は友だち追加を確認できていません）/);
+  assert.match(area.textContent, /相手のスマホに届いたか・読んだかまでは分かりません/, '送信と到着・既読を区別する');
   // 再送は承認待ちの人だけ
   assert.deepEqual([...area.querySelectorAll('[data-rec-act="resend"]')].map((b) => b.getAttribute('data-rid')), ['r2']);
   assert.ok(t.hasWatch(), '登録の途中は状態を見守る');
@@ -103,8 +107,56 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   // LINEで送信 → 自動で登録済み
   t.linkDoc.exists = true;
   t.fire({ exists: true, data: () => ({ groupId: 'g1' }) });
-  await waitFor(() => /✓ 自分のLINEを登録済み/.test(area.textContent), 'linked');
+  await waitFor(() => /LINEは登録済みです。友だち追加は確認できていません/.test(area.textContent), 'linked');
   assert.ok(area.querySelector('[data-line-act="unlink"]'));
+}
+
+{ // 友だち追加の確認結果で表示を分ける(2026-10-09 審査の指摘)
+  const t = setup({ linked: true, linkFriend: false,
+    extraMembers: [{ id: 'sis', name: '妹' }, { id: 'dad', name: '父' }],
+    extraLogs: [
+      { uid: 'mom', action: 'friend', via: 'follow', friend: true, clientAt: 4 },   // 連携のあとで友だち追加を確認
+      { uid: 'sis', action: 'linked', friend: false, clientAt: 5 },
+      { uid: 'dad', action: 'linked', friend: true, clientAt: 6 },
+    ],
+    recipients: [
+      { id: 'r1', groupId: 'g1', name: 'ヘルパー', status: 'joined', friend: false },
+      { id: 'r2', groupId: 'g1', name: 'おば', status: 'joined', friend: true },
+    ] });
+  await t.c.MainicoLine.render('area');
+  const area = t.d.getElementById('area');
+  assert.match(area.textContent, /⚠ LINEは登録済みですが、まいにこの友だち追加が確認できていません/, '自分: 友だち追加なし');
+  assert.ok(area.querySelector('[data-line-act="reload"]'), '友だち追加のあと確かめ直せる');
+  await waitFor(() => area.querySelectorAll('.ln-family li').length === 7, 'list');
+  const rows = [...area.querySelectorAll('.ln-family li')].map((li) => li.textContent);
+  assert.match(rows[0], /^自分（りえ）LINE：⚠ 友だち追加が必要です/);
+  assert.ok(rows.some((r) => /お母さんLINE：✓ つないであります（友だち追加 確認済み）/.test(r)), '後からの友だち追加の確認を反映');
+  assert.ok(rows.some((r) => /妹LINE：⚠ 友だち追加が必要です（このままでは届きません）/.test(r)));
+  assert.ok(rows.some((r) => /父LINE：✓ つないであります（友だち追加 確認済み）/.test(r)));
+  assert.ok(rows.some((r) => /ヘルパーLINE：⚠ 友だち追加が必要です/.test(r)));
+  assert.ok(rows.some((r) => /おばLINE：✓ つないであります（友だち追加 確認済み）/.test(r)));
+  assert.match(area.textContent, /LINEをつないだ人：合わせて6人（うち3人は友だち追加を確認できていません）/);
+  assert.ok(!/受け取れます/.test(area.textContent));
+}
+{ // 自分: 友だち追加も確認済み
+  const t = setup({ linked: true, linkFriend: true });
+  await t.c.MainicoLine.render('area');
+  const area = t.d.getElementById('area');
+  assert.match(area.textContent, /✓ 自分のLINEを登録済み（友だち追加も確認済み）/);
+  assert.equal(area.querySelector('[data-line-act="reload"]'), null);
+}
+{ // 連携の記録: 友だち追加の確認も残り、「つないでいる人」の数には入れない
+  const t = setup({ extraLogs: [{ uid: 'mom', name: 'お母さん', action: 'friend', via: 'follow', friend: true, clientAt: 4 }] });
+  await t.c.MainicoLine.renderLog('settings-line-log');
+  const box = t.d.getElementById('settings-line-log');
+  assert.match(box.textContent, /記録上、LINEをつないでいる人：/);
+  assert.match(box.textContent, /👋 友だち追加を確認しました（公式LINEを友だち追加して）/);
+  assert.match(box.textContent, /つないでいる人：家族さん1/, '友だち追加の確認の記録で、つないでいる人が増えたり減ったりしない');
+}
+{ // 送信の記録: 送信済みを「届いた・読んだ」と同じに扱わない
+  const t = setup();
+  const log = t.c.MainicoLine.sendLog({ notifyLog: [{ status: 'accepted', at: ts('2026-10-09T00:00:00Z'), count: 2 }] });
+  assert.match(log[0].text, /LINEへ送信済み（2人）（届いたか・読んだかは分かりません）/);
 }
 
 { // 送信先を追加: 名前を入れて招待リンクを作る → 承認待ちの送信先と7日間の招待コード
@@ -213,5 +265,17 @@ console.log('LINEの設定画面: 4枚のカード・送信先の一覧・ボタ
   assert.match(W.describe({ notifyAt: at(3600000) }), /^🔔 LINEで知らせる：/);
   assert.match(W.describe({ notifyAt: at(-10 * 60000) }), /^🔔 LINEで知らせる：/, '見回り(15分ごと)の前は、まだ予定どおり');
   assert.match(W.describe({ notifyAt: at(-35 * 60000) }), /^⚠ LINEのお知らせ（.+）が、まだ送れていません$/);
+  assert.equal(W.overdue({ notifyAt: at(-35 * 60000) }), true);
+  assert.equal(W.overdue({ notifyAt: at(-10 * 60000) }), false);
+  assert.equal(W.overdue({ notifyAt: null, notificationStatus: 'expired' }), false, '期限切れ・上限・送信済みは「まだ送れていません」にしない');
+  assert.match(W.describe({ notifyAt: null, notificationStatus: 'limited' }), /上限/);
+  assert.match(W.describe({ notifyAt: null, notificationStatus: 'expired' }), /期限が過ぎました/);
+  assert.match(W.describe({ notifyAt: null, notificationStatus: 'accepted', notifiedAt: at(-60000) }), /送信済み/);
+  // 送信履歴の一覧も同じ判断を使う(送る時刻を過ぎたものを「送ります」と書かない・上限を「期限切れ」と書かない)
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const hist = html.slice(html.indexOf('function renderLineHistory'), html.indexOf('async function copyStagingNotifyLink'));
+  assert.match(hist, /MainicoLine\.overdue/);
+  assert.match(hist, /まだ送れていません/);
+  assert.match(hist, /notificationStatus==='limited'/);
   console.log('LINEの予定の説明: 送れていないときの表示 passed');
 }

@@ -47,7 +47,11 @@ globalThis.fetch = async (url, opt = {}) => {
     return json({});
   }
   if (url === 'https://api.line.me/v2/bot/message/reply') { replies.push(body); return json({}); }
-  if (url.startsWith('https://api.line.me/v2/bot/profile/')) return url.endsWith('/Unf') ? json({}, 404) : json({ displayName: 'おばあ' });
+  if (url.startsWith('https://api.line.me/v2/bot/profile/')) {
+    if (url.endsWith('/Uerr')) return json({}, 500);           // LINE側の一時的な失敗
+    if (url.endsWith('/Unet')) throw new Error('network');     // 通信の失敗
+    return url.endsWith('/Unf') ? json({}, 404) : json({ displayName: 'おばあ' });
+  }
   const base = 'https://firestore.googleapis.com/v1/' + ROOT;
   assert.ok(url.startsWith(base), url);
   assert.equal(opt.headers.authorization, 'Bearer gtok');
@@ -141,6 +145,7 @@ await hook([{ type: 'message', replyToken: 'r2', source: user('Uowner'), message
 assert.match(replies.at(-1).messages[0].text, /理絵さん、LINE連携しました/);
 assert.equal(db.get('lineLinks/owner').fields.lineUserId.stringValue, 'Uowner');
 assert.equal(db.has('lineLinkCodes/ABCD2345'), false, '使ったコードは消える');
+assert.equal(db.get('lineLinks/owner').fields.friend.booleanValue, true, '友だち追加を確かめた結果を連携に残す');
 // 4b. 友だち追加をしていないLINEからの登録は、「登録できました」と言い切らず、友だち追加を頼む(2026-10-08)
 {
   const before = db.has('lineLinks/fam') ? db.get('lineLinks/fam') : null;
@@ -148,6 +153,26 @@ assert.equal(db.has('lineLinkCodes/ABCD2345'), false, '使ったコードは消�
   await hook([{ type: 'message', replyToken: 'r2b', source: user('Unf'), message: { type: 'text', text: 'NFRD2345' } }]);
   assert.match(replies.at(-1).messages[0].text, /まだ、まいにこを友だち追加していないようです/);
   assert.doesNotMatch(replies.at(-1).messages[0].text, /登録できました/);
+  assert.equal(db.get('lineLinks/fam').fields.friend.booleanValue, false, '友だちでないことを連携に残す(アプリが「受け取れます」と出さない)');
+  const log = [...db].filter(([p, d]) => p.startsWith('groups/g1/events/') && d.fields.type?.stringValue === 'line-link-log' && d.fields.uid?.stringValue === 'fam' && d.fields.action?.stringValue === 'linked').map(([, d]) => d.fields)[0];
+  assert.equal(log.friend.booleanValue, false, '家族が見る連携の記録にも残す');
+  // あとから友だち追加すると、連携と記録に「確認済み」が残る(再連携はいらない)
+  await hook([{ type: 'follow', replyToken: 'r2f', source: user('Unf') }]);
+  assert.match(replies.at(-1).messages[0].text, /友だち追加ありがとうございます/);
+  assert.equal(db.get('lineLinks/fam').fields.friend.booleanValue, true, '友だち追加で確認済みになる');
+  const friendLogs = [...db].filter(([p, d]) => p.startsWith('groups/g1/events/') && d.fields.action?.stringValue === 'friend' && d.fields.uid?.stringValue === 'fam');
+  assert.equal(friendLogs.length, 1, '友だち追加の確認を家族の記録に残す');
+  assert.ok(!JSON.stringify(friendLogs[0][1].fields).includes('Unf'), '記録にLINEの利用者識別子は入れない');
+  for (const [p] of friendLogs) db.delete(p);
+  // 友だち追加を確かめられない(LINE側の失敗・通信の失敗)ときは「登録できました・届きます」と言い切らず、確認できなかったと残す
+  for (const [who, code] of [['Uerr', 'ERRA2345'], ['Unet', 'NETA2345']]) {
+    put('lineLinkCodes/' + code, { uid: S('fam'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
+    await hook([{ type: 'message', replyToken: 'r2' + who, source: user(who), message: { type: 'text', text: code } }]);
+    assert.match(replies.at(-1).messages[0].text, /友だち追加の状態を確認できませんでした/, who);
+    assert.doesNotMatch(replies.at(-1).messages[0].text, /登録できました|届きます/, who);
+    assert.ok('nullValue' in db.get('lineLinks/fam').fields.friend, who + ': 確認できなかったことを残す');
+    assert.equal(db.get('lineLinks/fam').fields.lineUserId.stringValue, who, '再連携は新しい相手で上書きする');
+  }
   if (before) db.set('lineLinks/fam', before); else db.delete('lineLinks/fam');
   for (const [p, d] of [...db]) if (p.startsWith('groups/g1/events/') && d.fields.type?.stringValue === 'line-link-log' && d.fields.uid?.stringValue === 'fam' && d.fields.action?.stringValue === 'linked') db.delete(p);
 }
@@ -281,6 +306,10 @@ assert.match(replies.at(-1).messages[0].text, /お返事や相談は届きませ
   inv('FRND234567', 'r2', 60);
   await hook([{ type: 'message', replyToken: 'i5', source: user('Unf'), message: { type: 'text', text: '招待FRND234567' } }]);
   assert.match(replies.at(-1).messages[0].text, /友だち追加が必要/);
+  assert.equal(db.get('lineRecipients/r2').fields.friend.booleanValue, false, '送信先にも友だち追加の結果を残す(家族の一覧で警告)');
+  await hook([{ type: 'follow', replyToken: 'i5f', source: user('Unf') }]);
+  assert.equal(db.get('lineRecipients/r2').fields.friend.booleanValue, true, 'あとから友だち追加すると確認済みになる');
+  assert.equal(db.get('lineRecipients/r2').fields.status.stringValue, 'joined', '登録の状態は変えない');
   db.delete('lineRecipients/r2'); db.delete('lineRecipientIds/r2');
 
   // 送る相手: notifyTo なし=つないだ家族全員(送信先へは送らない)、'r:'=選んだ送信先、'u:'=選んだ家族
