@@ -301,3 +301,15 @@ console.log('✅ 最終処理では復旧先を読み直し、管理者が切り
   assert.equal(timeout.progress.at(-1).status, 'paused');
 }
 console.log('✅ サーバー削除と端末内の削除は区別し、応答が来ない処理を成功表示しない');
+/* 削除の確認画面に、消す家庭の人の名前を出す(2026-10-10 試験用の家庭といつもの家庭を取り違えないように) */
+{
+  const fsm = await import('node:fs');
+  const ui = fsm.readFileSync(new URL('../household-ui.js', import.meta.url), 'utf8');
+  const html = fsm.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const open = ui.slice(ui.indexOf('function openHouseholdDeletion('), ui.indexOf('function closeHouseholdDeletion('));
+  if (!/void showDeletionTarget\(\)/.test(open)) throw new Error('削除の確認で家庭の人の名前を出していない');
+  if (!/col\('members'\)\.where\('status','==','approved'\)/.test(open)) throw new Error('参加している人を読んでいない');
+  if (!/いつも使っている家庭の人の名前が並んでいたら、削除しないでください/.test(open)) throw new Error('取り違えの注意がない');
+  if (!/id="deletion-modal"[\s\S]{0,400}id="deletion-target"/.test(html)) throw new Error('確認画面の上に名前の欄がない');
+  console.log('削除の確認: 消す家庭の人の名前を出す passed');
+}

@@ -232,6 +232,25 @@ function openHouseholdDeletion(){
   document.getElementById('deletion-confirm').value='';
   document.getElementById('deletion-state').textContent=householdDeleting?'削除の途中です。同じ確認文字を入力して再開できます。':'削除は取り消せません。対象を確認してください。';
   document.getElementById('deletion-run').disabled=false;
+  void showDeletionTarget();
+}
+/* どの家庭を消すのかを、参加している人の名前で見せる(2026-10-10 実機確認の前に:
+   試験用の家庭と、いつも使っている家庭を取り違えて消さないように) */
+async function showDeletionTarget(){
+  const box=document.getElementById('deletion-target');if(!box)return;
+  const groupId=gid();
+  box.textContent='削除する家庭を確認しています…';
+  try{
+    const snap=await col('members').where('status','==','approved').get({source:'server'});
+    if(gid()!==groupId)return;
+    const names=[];snap.forEach(d=>{const v=d.data()||{};names.push((v.name||'名前なし')+'さん');});
+    box.innerHTML='';
+    const b=document.createElement('b');b.textContent='削除する家庭：'+names.join('・')+'（'+names.length+'人）';box.appendChild(b);
+    box.appendChild(document.createTextNode('いつも使っている家庭の人の名前が並んでいたら、削除しないでください。'));
+  }catch(error){
+    if(gid()!==groupId)return;
+    box.textContent='削除する家庭を確認できませんでした。いつも使っている家庭かもしれないときは、削除しないでください。';
+  }
 }
 function closeHouseholdDeletion(){
   if(deletionBusy)return;
