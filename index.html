@@ -579,6 +579,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .invite-switch-card .set-btn.sub{background:#fff;}
 .connected-people{font-weight:700;color:#2F4A3A;background:#EEF5EF;border-radius:10px;padding:8px 12px;margin:6px 0 10px;line-height:1.6;}
 .connected-people:empty{display:none;}
+.member-del.member-rename{border-color:#315FAE;color:#315FAE;margin-right:6px;}
 .next-invite{background:#FFF8EC;border:2px solid #E0732F;border-radius:16px;padding:14px;margin:0 0 14px;line-height:1.7;}
 .next-invite b{display:block;font-size:1.1rem;color:#7A3E12;}
 .next-invite p{margin:6px 0 8px;}
@@ -633,6 +634,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .ln-sub{margin:4px 0 8px;font-size:.88rem;color:var(--usucha);line-height:1.6;}
 .ln-status{margin:10px 0 4px;font-size:.98rem;color:var(--usucha);}
 .ln-status.ok{color:#197D46;font-weight:700;}
+.ln-status.ng{color:#A8422E;font-weight:700;}
 .ln-steps{margin:6px 0 4px;padding-left:1.3em;font-size:.9rem;line-height:1.6;color:var(--cha);}
 .set-btn.ln-line{background:#06C755;border-color:#06C755;color:#fff;min-height:52px;}
 .set-btn.ln-soft{background:#E8F8EE;border-color:#BFE8CC;color:#197D46;min-height:52px;}
@@ -674,6 +676,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .ln-chip{min-height:40px;padding:6px 12px;border-radius:999px;border:1px solid #D8CDBA;background:#fff;font-family:inherit;font-size:.92rem;color:var(--cha);}
 .ln-chip.on{background:#E8F8EE;border-color:#06C755;color:#197D46;font-weight:700;}
 .ln-chip.ext.on{background:#EEF3FB;border-color:#3D6FB4;color:#2B4F86;}
+.ln-chip.off{color:#8A8378;border-style:dashed;background:#F7F4EE;}
+.ln-others>summary{font-weight:700;margin:10px 0;}
 .line-log-box{margin-top:14px;padding-top:10px;border-top:1px dashed #D8CDBA;}
 .line-log-box h4{margin:0 0 4px;}
 .line-log-now{background:#F0FAF3;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:.9rem;}
@@ -970,6 +974,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   </ul>
   <div class="open-place-note" id="open-place-note" hidden></div>
   <div class="invite-note" id="invite-note" role="status" hidden></div>
+  <!-- 前に使っていた人が、まちがえて新しい家庭を作らないように、入口の最初に戻り方を出す(2026-10-09 審査の指摘) -->
+  <button class="entry-btn sub" type="button" id="entry-returning" onclick="openReturningGuide()">前に使っていた方<small>機種変更・入れ直し・スマホを替えたとき</small></button>
   <div class="q" id="entry-question">どなたのスマホで使いますか？</div>
   <div id="entry-state" class="save-state" role="status" aria-live="polite"></div>
   <div id="select-box">
@@ -1003,6 +1009,35 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div class="note" style="text-align:center;margin-top:12px;">追加後は、ホーム画面の「まいにこ」アイコンから開いてください。</div>
     <button class="modal-close" type="button" onclick="closeInstallGuide()">わかりました</button>
 </div>
+</div>
+
+<!-- 前に使っていた方への案内(2026-10-09): いま使える戻り方だけを出す。準備中の機能は出さない -->
+<div class="modal" id="returning-modal" role="dialog" aria-modal="true" aria-labelledby="returning-title">
+  <div class="modal-box adult-font">
+    <div class="ttl" id="returning-title">前に使っていた方へ</div>
+    <p class="note"><b>ここで「本人が使う」などから新しくはじめると、前の記録とは別の、新しい家庭になります。</b>前の家庭の記録は、新しくはじめても消えません。</p>
+    <div class="set-sec" id="returning-line" hidden>
+      <h4>LINEでログインをつないでいた方</h4>
+      <button class="set-btn" type="button" onclick="closeReturningGuide();lineLoginStart()">LINEで続ける</button>
+    </div>
+    <div class="set-sec">
+      <h4>復旧（メールとパスワード）を設定していた方</h4>
+      <p class="note">ご本人・ご家族のどちらも、同じアカウントに戻れます。記録・権限・同意もそのままです。</p>
+      <button class="set-btn" type="button" onclick="closeReturningGuide();openRecovery(true)">メールとパスワードで戻る</button>
+    </div>
+    <div class="set-sec">
+      <h4>ご家族の方で、復旧を設定していなかった方</h4>
+      <p class="note">元のアカウントには戻れません。家族の管理者に<b>新しい招待コード</b>を作ってもらい、「招待された方」から参加してください。承認されると、家庭の記録・予定を今までどおり見られます（新しい参加者として入ります）。</p>
+      <button class="set-btn" type="button" onclick="closeReturningGuide();pickInvited()">招待された方として参加する</button>
+    </div>
+    <div class="set-sec">
+      <h4>ご本人のスマホで、復旧を設定していなかった方</h4>
+      <p class="note">元のアカウントには戻れません。ご家族のスマホで記録が見られていれば、家庭の記録は残っています。新しくはじめる前に、ご家族と相談してください。</p>
+    </div>
+    <a class="consent-back" href="help.html#recovery" target="_blank" rel="noopener">機種変更・復旧の手順を見る</a>
+    <a class="consent-back" href="help.html#locked-out" target="_blank" rel="noopener">家族の誰も入れなくなったとき（運営者への相談）</a>
+    <button class="modal-close" type="button" onclick="closeReturningGuide()">閉じる</button>
+  </div>
 </div>
 
 <!-- おまもりタグ: 読み取った方に見える画面の見本(2026-09-21) -->
@@ -1337,6 +1372,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;"><h4>家族との連携</h4>
     <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
     <p class="connected-people" data-connected-people aria-live="polite"></p>
+    <button class="set-btn" type="button" onclick="openRename(uid())">自分の名前を変える</button>
     <button class="set-btn" data-owner-only hidden onclick="makeInvite('person-invite-area')">招待コードを作る</button>
     <div id="person-invite-area"></div>
     <div id="person-settings-approve" class="settings-approve"></div>
@@ -1774,6 +1810,16 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 </div>
 
 <!-- ===== 家族 ===== -->
+<!-- 名前を変える(2026-10-08) -->
+<div class="modal" id="rename-modal" role="dialog" aria-modal="true" aria-labelledby="rename-title"><div class="modal-box adult-font">
+  <div class="ttl" id="rename-title">名前を変える</div>
+  <p class="note" id="rename-lead"></p>
+  <input type="text" maxlength="40" id="rename-input" class="setup-input" autocomplete="off">
+  <p class="note" id="rename-state" role="status" aria-live="polite"></p>
+  <button class="set-btn" id="rename-save" type="button" onclick="saveRename()">この名前にする</button>
+  <button class="modal-close" type="button" onclick="closeRename()">やめる</button>
+</div></div>
+
 <div class="page" id="kazoku">
   <div class="f-head">
     <div class="lg" id="f-lg">まいにこ ─ ホーム</div>
@@ -2996,9 +3042,20 @@ function renderScheduleLink(ready,loading){
   else {openCal();box.style.display='block';box.replaceChildren(title,body);}
   body.textContent=[v.date,v.time,v.label,v.place].filter(Boolean).join('　');
 }
+function openReturningGuide(){
+  const line=document.getElementById('returning-line');
+  /* LINEでログインは、公開の設定で使えるときだけ出す(いまの本番では出さない) */
+  if(line)line.hidden=!(typeof lineLoginEnabled==='function'&&lineLoginEnabled());
+  document.getElementById('returning-modal').classList.add('show');
+}
+function closeReturningGuide(){document.getElementById('returning-modal').classList.remove('show');}
 if(scheduleLink){
   const note=document.createElement('p');note.className='note';
-  note.textContent='LINEのお知らせから開いています。ふだんホーム画面の「まいにこ」アイコンから使っている方は、ここでは新しく登録せず、LINEとつないでいれば「LINEで続ける」を、つないでいなければアイコンから開いて「予定」を確認してください。ログインが必要な場合は「以前のアカウントを復旧する」を選んでください。';
+  /* LINEでログインが使えない設定のときに「LINEで続ける」を案内しない(ボタンが出ないため) */
+  const lineOk=typeof lineLoginEnabled==='function'&&lineLoginEnabled();
+  note.textContent='LINEのお知らせから開いています。ふだんホーム画面の「まいにこ」アイコンから使っている方は、ここでは新しく登録せず、'+
+    (lineOk?'LINEとつないでいれば「LINEで続ける」を、つないでいなければ':'')+
+    'アイコンから開いて「予定」を確認してください。ログインが必要な場合は「前に使っていた方」を選んでください。';
   const entry=document.getElementById('entry');entry.insertBefore(note,entry.firstChild);
 }
 window.addEventListener('hashchange',()=>{
@@ -3022,6 +3079,8 @@ function showPage(id){
   if(id==='honnin'&&typeof maybeShowSpeechNotice==='function')maybeShowSpeechNotice();
   if(id==='entry'&&typeof renderInviteNote==='function')renderInviteNote();
   if(id==='entry'){const lineBtn=document.getElementById('entry-line-login');if(lineBtn)lineBtn.hidden=!(typeof lineLoginEnabled==='function'&&lineLoginEnabled()&&!gid());}
+  /* 家族と接続済みの端末(利用方法の選び直しなど)では、戻り方の案内は出さない */
+  if(id==='entry'){const back=document.getElementById('entry-returning');if(back)back.hidden=!!gid();}
   if(id==='kazoku'||id==='honnin')reopenAfterDoc(id);
 }
 
@@ -4231,6 +4290,7 @@ async function openMembers(){
         html+='<div class="member-row"><span>'+esc(v.name)+'（承認待ち）</span></div>';
       }else{
         html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?'（ご本人）':'')+(me?'（あなた）':'')+'</span>'+
+          (typeof canRename==='function'&&canRename(doc.id)?'<button class="member-del member-rename" onclick="openRename(\''+id+'\')">名前を変える</button>':'')+
           ((doc.id!==householdOwnerId&&(me||isHouseholdOwner()))?'<button class="member-del" onclick="honninRemove(\''+id+'\','+(me?'true':'false')+')">'+(me?'共有をやめる':'解除')+'</button>':'<small>'+(doc.id===householdOwnerId?'管理者':'参加メンバー')+'</small>')+'</div>';
       }
     });
@@ -6700,7 +6760,9 @@ async function renderSetMembers(){
       }else{
         const audience=MainicoFamilyConnection.recipient(v);
         const roleTag=audience==='honnin'?'（ご本人）':'';
-        html+='<div class="member-row"><span>'+esc(v.name)+roleTag+(me?'（あなた）':'')+'</span>'+
+        /* 名前を変える: 自分・ご本人。管理者は家族全員(2026-10-08) */
+        const rename=(typeof canRename==='function'&&canRename(id))?'<button class="member-del member-rename" onclick="openRename(\''+id+'\')">名前を変える</button>':'';
+        html+='<div class="member-row"><span>'+esc(v.name)+roleTag+(me?'（あなた）':'')+'</span>'+rename+
           ((!me&&doc.id!==householdOwnerId&&isHouseholdOwner())?'<button class="member-del" onclick="removeMember(\''+id+'\',false)">解除</button>':'<small>'+(doc.id===householdOwnerId?'管理者':(me?'':'参加メンバー'))+'</small>')+'</div>';
       }
     });
@@ -6713,6 +6775,58 @@ async function renderSetMembers(){
 function refreshSetMembersIfOpen(){
   const m=document.getElementById('settings-modal');
   if(m && m.classList.contains('show')) renderSetMembers();
+}
+/* ===== 名前を変える(2026-10-08) =====
+   自分の名前と、ご本人の名前を変えられる。管理者は、ほかのご家族の名前も変えられる(firestore.rules: 家族の名簿は name だけを書き換える)。
+   前に残した記録の名前は、そのときの名前のまま */
+let renameTarget='',renameBusy=false;
+function canRename(id){
+  const mid=memberRef(id);if(!mid)return false;
+  if(mid===uid())return true;
+  if(typeof isHouseholdOwner==='function'&&isHouseholdOwner())return true;
+  return MainicoFamilyConnection.recipient((typeof memberInfoByUid!=='undefined'&&memberInfoByUid[mid])||{})==='honnin';
+}
+window.canRename=canRename;window.openRename=openRename;
+function openRename(id){
+  const mid=memberRef(id);if(!mid||!canRename(mid))return;
+  renameTarget=mid;
+  const info=(typeof memberInfoByUid!=='undefined'&&memberInfoByUid[mid])||{};
+  const honnin=MainicoFamilyConnection.recipient(info)==='honnin';
+  const isMe=mid===uid();
+  const now=typeof info.name==='string'?info.name:(memberNames[id]||'');
+  document.getElementById('rename-title').textContent=isMe?'自分の名前を変える':honnin?'ご本人の名前を変える':'ご家族の名前を変える';
+  document.getElementById('rename-lead').textContent=(isMe?'あなたの名前です。':honnin?'ご本人の名前です。':'ご家族の名前です。')+'「つながっている人」や、これからの記録に出ます。'+(honnin?'例：花子（おばあちゃん）':'例：理絵');
+  const input=document.getElementById('rename-input');
+  input.value=now==='本人'?'':now;input.placeholder=honnin?'例：花子':'例：理絵';
+  document.getElementById('rename-state').textContent='';
+  document.getElementById('rename-save').disabled=false;
+  document.getElementById('rename-modal').classList.add('show');
+  setTimeout(()=>{try{input.focus();}catch(e){}},200);
+}
+function closeRename(){if(renameBusy)return;document.getElementById('rename-modal').classList.remove('show');}
+async function saveRename(){
+  if(renameBusy||!renameTarget)return;
+  const state=document.getElementById('rename-state');
+  const n=document.getElementById('rename-input').value.trim();
+  if(!n){state.textContent='名前を入れてください。';return;}
+  if(n.length>40){state.textContent='40文字までにしてください。';return;}
+  renameBusy=true;document.getElementById('rename-save').disabled=true;state.textContent='保存しています…';
+  const target=renameTarget,group=gid();
+  try{
+    await col('members').doc(target).update({name:n});
+    if(target===uid()&&group===gid())previewStorage.setItem('mainicoName',n);
+    renameBusy=false;closeRename();
+    refreshSetMembersIfOpen();
+    if(document.getElementById('members-modal')?.classList.contains('show'))openMembers();
+    if(window.MainicoLine){
+      if(document.getElementById('menu-line')?.open)MainicoLine.render('settings-line-area');
+      if(document.getElementById('person-settings-modal')?.classList.contains('show'))MainicoLine.render('person-line-area');
+    }
+    await appNotice('名前を「'+n+'」にしました。');
+  }catch(error){
+    console.warn('rename',error);renameBusy=false;document.getElementById('rename-save').disabled=false;
+    state.textContent=error&&error.code==='permission-denied'?'この名前は変えられませんでした。自分とご本人の名前は、だれでも変えられます。ほかのご家族の名前は、管理者が変えられます。':'保存できませんでした。通信を確認して、もう一度押してください。';
+  }
 }
 async function approveMember(mid){
   if(!requireHouseholdOwner())return;
@@ -7513,9 +7627,14 @@ function renderLineHistory(){
     (v.uid===uid()?'<span class="yt-links" style="margin-top:6px;"><button type="button" class="ln" onclick="openLineNotifyEdit(\''+jsArg(v._id)+'\')">🔔 お知らせを変更</button></span>':'')+
     (window.MAINICO_STAGING?'<span class="yt-links" style="margin-top:6px;"><button type="button" class="ln" onclick="copyStagingNotifyLink(\''+jsArg(v._id)+'\')">（試験用）LINE通知と同じリンクをコピー</button></span>':'')+'</div>';
   let html='<div class="lnh-sec">これから送る予定</div>';
-  html+=planned.length?planned.map(v=>row(v,'🔔 '+lnTime(v.notifyAt)+' に送ります')).join(''):'<div class="empty">送る予定のお知らせはありません</div>';
+  /* 送る時刻を過ぎても送った印がないものを「送ります」と書かない(2026-10-09 審査の指摘)。状態ごとに言葉を分ける */
+  const isOverdue=v=>typeof MainicoLine!=='undefined'&&MainicoLine.overdue&&MainicoLine.overdue(v);
+  html+=planned.length?planned.map(v=>isOverdue(v)?row(v,'⚠ '+lnTime(v.notifyAt)+' に送る予定でしたが、まだ送れていません','exp'):row(v,'🔔 '+lnTime(v.notifyAt)+' に送ります')).join(''):'<div class="empty">送る予定のお知らせはありません</div>';
   html+='<div class="lnh-sec">送ったお知らせ</div>';
-  html+=done.length?done.map(v=>sentMs(v)?row(v,'✅ '+lnTime(v.notifiedAt)+' に送信済み'):row(v,'⚠ 送れないまま期限が過ぎました','exp')).join(''):'<div class="empty">まだ送ったお知らせはありません</div>';
+  html+=done.length?done.map(v=>sentMs(v)?row(v,'✅ '+lnTime(v.notifiedAt)+' にLINEへ送信済み')
+    :v.notificationStatus==='limited'?row(v,'⚠ LINEで送れる数の上限のため、送りませんでした','exp')
+    :row(v,'⚠ 送れないまま期限が過ぎました','exp')).join(''):'<div class="empty">まだ送ったお知らせはありません</div>';
+  if(done.some(sentMs))html+='<p class="note">「送信済み」は、まいにこからLINEへ送った記録です。相手のスマホに届いたか・読んだかまでは分かりません。</p>';
   box.innerHTML=html;
 }
 /* 試験環境だけ: LINEの予定のお知らせと同じ形のリンクを作る(本番では出さない)。自分あてのLINEに貼って、通知からの表示を試す */
@@ -7605,7 +7724,10 @@ function openYoteiReview(id){
   if(slog.length) slog.forEach(e=>lines.push('🔔 LINE：'+e.text));
   else if(v.notifiedAt) lines.push('🔔 LINEで '+lnTime(v.notifiedAt)+' に送信済み（読んだかどうかは分かりません）');
   else if(v.notificationStatus==='expired'&&!slog.length) lines.push('🔔 LINEのお知らせは送れないまま期限が過ぎました');
-  if(v.notifyAt) lines.push('🔔 LINEで '+lnTime(v.notifyAt)+' に送る予定');
+  else if(v.notificationStatus==='limited'&&!slog.length) lines.push('🔔 LINEで送れる数の上限のため、送りませんでした');
+  if(v.notifyAt) lines.push(typeof MainicoLine!=='undefined'&&MainicoLine.overdue&&MainicoLine.overdue(v)
+    ?'⚠ LINEで '+lnTime(v.notifyAt)+' に送る予定でしたが、まだ送れていません'
+    :'🔔 LINEで '+lnTime(v.notifyAt)+' に送る予定');
   document.getElementById('yr-meta').innerHTML=lines.map(esc).join('<br>');
   const acts=document.getElementById('yr-actions');
   acts.innerHTML=(v.uid===uid()||!v.uid)

@@ -75,7 +75,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined', 'line-login-signin', 'device-reconnect']);
-const VERSION_TEXT = '版：2026-10-09 予定のお知らせが通信の上限で止まらないように';
+const VERSION_TEXT = '版：2026-10-10 だれのLINE登録かを返事に出す・取り違え防止';
 
 export default {
   async fetch(request, env, ctx) {
@@ -139,7 +139,7 @@ async function verifySignature(body, signature, secret) {
 
 const MSG_WELCOME =
   'まいにこ公式LINEです。友だち追加ありがとうございます。\n\n' +
-  '【次にすること】\nまいにこに戻って、「自分のLINEを登録する」→「LINEを開いて送る」を押してください。\n（まいにこの「設定」（ご本人は「その他の設定」）→「LINEで予定のお知らせ」にあります）\n\n' +
+  '【次にすること】\nまいにこに戻って、「自分のLINEをつなぐ」→「LINEを開いて送る」を押してください。\n（まいにこの「設定」（ご本人は「その他の設定」）→「LINEで予定のお知らせ」にあります）\n\n' +
   '家族から招待のリンクが届いた方は、そのリンクを開いて、送信を押してください。';
 const MSG_HELP =
   'このトークでは、つなぐためのコード・招待の受け付けと、予定のお知らせだけを行っています。\n' +
@@ -152,6 +152,8 @@ async function handleEvent(ev, env, fs) {
   const lineUserId = source.userId;
 
   if (ev.type === 'follow') {
+    // 連携・登録の後で友だち追加した人は、その印を残す。残せなくても案内の返事は送る
+    try { await markFriendFor(fs, lineUserId); } catch (e) { if (e.message === 'request-budget') console.error('follow mark budget'); else console.error('follow mark failed'); }
     return reply(env, ev.replyToken, MSG_WELCOME);
   }
   if (ev.type === 'unfollow') {
@@ -168,7 +170,7 @@ async function handleEvent(ev, env, fs) {
   if (text === '解除' || text === '連携解除') {
     const n = await removeLinksFor(fs, lineUserId, 'line') + await removeRecipientsFor(fs, lineUserId);
     return reply(env, ev.replyToken, n
-      ? '解除しました。このLINEには予定のお知らせが届かなくなります。\nまた受け取るときは、アプリの「自分のLINEを登録する」か、家族からの新しい招待で登録してください。'
+      ? '解除しました。このLINEには予定のお知らせが届かなくなります。\nまた受け取るときは、アプリの「自分のLINEをつなぐ」か、家族からの新しい招待で登録してください。'
       : 'このLINEは、まいにこと連携していません。');
   }
   const invite = INVITE_RE.exec(text);
@@ -206,30 +208,94 @@ async function linkByCode(env, fs, code, lineUserId) {
     await fs.delete('lineLinkCodes/' + code).catch(() => {});
     return '家族への参加が承認されていないため、連携できませんでした。';
   }
+  // 別の人として登録済みのLINEを、黙ってこの人に付け替えない(2026-10-10)。
+  // 家族が自分のスマホで本人のコードを送ってしまう、などの取り違えを防ぐ
+  const used = await fs.query('', {from: [{collectionId: 'lineLinks'}], where: fieldEq('lineUserId', {stringValue: lineUserId})});
+  const other = used.find((d) => d.id !== uid);
+  if (other) {
+    await fs.delete('lineLinkCodes/' + code).catch(() => {});
+    // ほかの家庭の人の名前は出さない
+    const om = other.fields.groupId === groupId ? await fs.get('groups/' + groupId + '/members/' + other.id) : null;
+    const who = om && typeof om.fields.name === 'string' && om.fields.name ? clip(om.fields.name, 40) + 'さん（' + roleName(om.fields) + '）' : '別の人';
+    return '⚠️ このLINEは、すでに' + who + 'のLINEとして登録されています。登録は変えていません。\n\n' +
+      '・ご本人と家族は、それぞれ自分のスマホの、自分のLINEでつないでください。\n' +
+      '・このLINEを付け替えるときは、先に' + who + 'のまいにこで「つなぐのをやめる」を押すか、このトークで「解除」と送ってから、もう一度つないでください。';
+  }
+  // 友だち追加の有無を、連携を保存する前に確かめ、結果(true=確認済み/false=未追加/null=確認できず)も一緒に残す。
+  // アプリはこの結果で表示を分け、確かめられない状態を「受け取れます」と言い切らない(2026-10-09 審査の指摘)
+  const {friend} = await checkFriend(env, fs, lineUserId);
   // Code consumption and link creation either both commit or neither does.
   const now = new Date();
   const consumed = await fs.commit([
     {delete: fs.root + '/lineLinkCodes/' + code, currentDocument: {updateTime: c.updateTime}},
     {update: {name: fs.root + '/lineLinks/' + uid,
-      fields: toFields({lineUserId, groupId, linkedAt: now})}},
-    linkLogWrite(fs, groupId, uid, member.name, 'linked', 'code', now)
+      fields: toFields({lineUserId, groupId, linkedAt: now, friend, friendCheckedAt: now})}},
+    linkLogWrite(fs, groupId, uid, member.name, 'linked', 'code', now, friend)
   ]);
   if (!consumed) return NG;
-  const name = typeof member.name === 'string' && member.name ? member.name + 'さん、' : '';
-  // 友だち追加がまだだと、お知らせは届かない。登録できたと言い切らず、先に友だち追加を頼む(2026-10-08 審査の指摘)
-  let friend = true;
+  // だれのLINE登録かを、名前と役割で返す(2026-10-10)
+  const name = (typeof member.name === 'string' && member.name && member.name !== '本人' ? clip(member.name, 40) + 'さん' : roleName(member) === '本人' ? 'ご本人' : 'ご家族') +
+    '（' + roleName(member) + '）のLINE登録：';
+  if (friend === false) return '⚠️ ' + name + 'LINE連携はできましたが、まだ、まいにこを友だち追加していないようです。\n\n' +
+    '友だち追加をしないと、予定のお知らせは届きません。このトーク画面の上の「追加」を押して、友だち追加してください。';
+  if (friend === null) return '⚠️ ' + name + 'LINE連携はできましたが、友だち追加の状態を確認できませんでした。\n\n' +
+    'まだ友だち追加をしていない場合は、このトーク画面の上の「追加」を押してください。友だち追加をしないと、予定のお知らせは届きません。';
+  return '✅ ' + name + 'LINE連携しました。\n\n' +
+    'これから、まいにこの予定のお知らせを、このLINEへ送ります。\n' +
+    '（送るのは、予定に「LINEで知らせる日時」を入れたものだけです）\n\n' +
+    'やめるときは、このトークに「解除」と送ってください。';
+}
+
+/* 役割の名前(アプリの roleOf と同じ: 今の利用方法 mode を優先し、ないときだけ登録時の role) */
+function roleName(m) {
+  m = m || {};
+  if (Object.prototype.hasOwnProperty.call(m, 'mode')) return m.mode === 'honnin' ? '本人' : '家族';
+  return m.role === 'honnin' ? '本人' : '家族';
+}
+
+/* 友だち追加の確認。LINEのプロフィール取得が 200 なら確認済み、404 なら未追加、それ以外(通信失敗など)は「確認できず」(null)。
+   確認できないときに「友だち」とみなさない。通信回数の上限だけは呼び出し元へ伝える */
+async function checkFriend(env, fs, lineUserId) {
   try {
     fs.reserve();
     const res = await fetch('https://api.line.me/v2/bot/profile/' + encodeURIComponent(lineUserId),
       { headers: { authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN } });
-    if (res.status === 404) friend = false;
-  } catch (e) { if (e.message === 'request-budget') throw e; }
-  if (!friend) return '⚠️ ' + name + 'LINE連携はできましたが、まだ、まいにこを友だち追加していないようです。\n\n' +
-    '友だち追加をしないと、予定のお知らせは届きません。このトーク画面の上の「追加」を押して、友だち追加してください。';
-  return '✅ ' + name + 'LINE連携しました。登録できました。\n\n' +
-    'これから、まいにこの予定のお知らせが、このLINEに届きます。\n' +
-    '（届くのは、予定に「LINEで知らせる日時」を入れたものだけです）\n\n' +
-    'やめるときは、このトークに「解除」と送ってください。';
+    if (res.ok) {
+      let name = '';
+      try { name = String((await res.json()).displayName || '').slice(0, 40); } catch (e) {}
+      return {friend: true, name};
+    }
+    if (res.status === 404) return {friend: false, name: ''};
+    return {friend: null, name: ''};
+  } catch (e) {
+    if (e.message === 'request-budget') throw e;
+    return {friend: null, name: ''};
+  }
+}
+
+/* 友だち追加(follow)を受けたら、このLINEの連携・送信先に「友だち追加を確認」を残す。
+   家族の一覧の表示が「友だち追加が必要」のまま残らないように(2026-10-09) */
+async function markFriendFor(fs, lineUserId) {
+  const now = new Date();
+  const links = await fs.query('', {from: [{collectionId: 'lineLinks'}], where: fieldEq('lineUserId', {stringValue: lineUserId})});
+  for (const d of links) {
+    if (d.fields.friend === true) continue;
+    const groupId = d.fields.groupId;
+    const writes = [{update: {name: fs.root + '/' + d.path, fields: toFields({friend: true, friendCheckedAt: now})},
+      updateMask: {fieldPaths: ['friend', 'friendCheckedAt']}, currentDocument: {updateTime: d.updateTime}}];
+    if (typeof groupId === 'string' && groupId) {
+      const m = await fs.get('groups/' + groupId + '/members/' + d.id);
+      writes.push(linkLogWrite(fs, groupId, d.id, m && m.fields.name, 'friend', 'follow', now, true));
+    }
+    await fs.commit(writes);
+  }
+  const ids = await fs.query('', {from: [{collectionId: 'lineRecipientIds'}], where: fieldEq('lineUserId', {stringValue: lineUserId})});
+  for (const d of ids) {
+    const rec = await fs.get('lineRecipients/' + d.id);
+    if (!rec || rec.fields.friend === true) continue;
+    await fs.commit([{update: {name: fs.root + '/lineRecipients/' + d.id, fields: toFields({friend: true, friendCheckedAt: now})},
+      updateMask: {fieldPaths: ['friend', 'friendCheckedAt']}, currentDocument: {updateTime: rec.updateTime}}]);
+  }
 }
 
 /* 家族が招待した送信先の登録(2026-10-04)。
@@ -254,30 +320,25 @@ async function acceptInvite(env, fs, code, lineUserId) {
     await fs.delete('lineInvites/' + code).catch(() => {});
     return rec.fields.status === 'joined' ? 'この招待は、もう登録が済んでいます。' : NG;
   }
-  // 表示名(家族の一覧に出す)と、友だち追加の有無。友だちでないと予定のお知らせは届かない
-  let lineName = '', friend = true;
-  try {
-    fs.reserve();
-    const res = await fetch('https://api.line.me/v2/bot/profile/' + encodeURIComponent(lineUserId),
-      { headers: { authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN } });
-    if (res.ok) lineName = String((await res.json()).displayName || '').slice(0, 40);
-    else if (res.status === 404) friend = false;
-  } catch (e) { if (e.message === 'request-budget') throw e; }
+  // 表示名(家族の一覧に出す)と、友だち追加の有無(true/false/null=確認できず)。友だちでないと予定のお知らせは届かない
+  const {friend, name: lineName} = await checkFriend(env, fs, lineUserId);
   const now = new Date();
   // 招待コードの使用・送信先の登録・送信役用の控えは、全部そろって確定する(どれか1つだけ残らない)
   const ok = await fs.commit([
     {delete: fs.root + '/lineInvites/' + code, currentDocument: {updateTime: inv.updateTime}},
-    {update: {name: fs.root + '/lineRecipients/' + rid, fields: toFields({status: 'joined', lineName, joinedAt: now})},
-      updateMask: {fieldPaths: ['status', 'lineName', 'joinedAt']}, currentDocument: {updateTime: rec.updateTime}},
+    {update: {name: fs.root + '/lineRecipients/' + rid, fields: toFields({status: 'joined', lineName, joinedAt: now, friend, friendCheckedAt: now})},
+      updateMask: {fieldPaths: ['status', 'lineName', 'joinedAt', 'friend', 'friendCheckedAt']}, currentDocument: {updateTime: rec.updateTime}},
     {update: {name: fs.root + '/lineRecipientIds/' + rid, fields: toFields({lineUserId, groupId, joinedAt: now})}}
   ]);
   if (!ok) return NG;
   const inviter = typeof rec.fields.createdBy === 'string' ? await fs.get('groups/' + groupId + '/members/' + rec.fields.createdBy) : null;
   const from = inviter && typeof inviter.fields.name === 'string' && inviter.fields.name ? clip(inviter.fields.name, 40) + 'さんの' : '';
   return from + 'まいにこの予定のお知らせを受け取る登録をしました。\n\n' +
-    '家族が「この人に知らせる」と選んだ予定だけが、このLINEに届きます。\n' +
+    '家族が「この人に知らせる」と選んだ予定だけを、このLINEへ送ります。\n' +
     'やめるときは「解除」と送ってください。' +
-    (friend ? '' : '\n\n※ お知らせを受け取るには、まいにこ公式LINEの友だち追加が必要です。\n' + ADD_FRIEND_URL);
+    (friend === true ? '' : friend === false
+      ? '\n\n※ お知らせを受け取るには、まいにこ公式LINEの友だち追加が必要です。\n' + ADD_FRIEND_URL
+      : '\n\n※ 友だち追加の状態を確認できませんでした。まだの場合は、友だち追加をしてください（しないとお知らせは届きません）。\n' + ADD_FRIEND_URL);
 }
 
 async function removeRecipientsFor(fs, lineUserId) {
@@ -320,11 +381,13 @@ async function removeLinksFor(fs, lineUserId, via) {
    LINEの利用者識別子は記録に入れない。 */
 function jstClock(d) { const j = new Date(d.getTime() + 9 * 3600000); return (j.getUTCMonth() + 1) + '月' + j.getUTCDate() + '日 ' + j.getUTCHours() + '時' + String(j.getUTCMinutes()).padStart(2, '0') + '分'; }
 function jstDateString(d) { return new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 10); }
-function linkLogWrite(fs, groupId, uid, name, action, via, at) {
+function linkLogWrite(fs, groupId, uid, name, action, via, at, friend) {
   const id = 'line' + crypto.randomUUID().replace(/-/g, '');
+  // friend: 友だち追加の確認結果(true/false/null)。連携('linked')と友だち追加の確認('friend')のときだけ残す
+  const extra = friend === undefined ? {} : {friend};
   return {update: {name: fs.root + '/groups/' + groupId + '/events/' + id,
     fields: toFields({type: 'line-link-log', action, via, uid, name: typeof name === 'string' ? name : '',
-      date: jstDateString(at), at, clientAt: at.getTime()})},
+      ...extra, date: jstDateString(at), at, clientAt: at.getTime()})},
     currentDocument: {exists: false}};
 }
 

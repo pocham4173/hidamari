@@ -209,7 +209,15 @@ service cloud.firestore {
           || (signedIn() && request.auth.uid == uid
             && isApproved(groupId) && writableGroup(groupId)
             && request.resource.data.mode in ['honnin', 'kazoku', 'konly']
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mode']));
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mode']))
+          // 名前を変える(2026-10-08): 自分の名前・ご本人の名前、管理者は家族全員の名前。name 以外は変えない
+          || (isApproved(groupId) && writableGroup(groupId) && hasConsent()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+            && request.resource.data.name is string
+            && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 80
+            && (request.auth.uid == uid
+              || isOwner(groupId)
+              || resource.data.get('mode', resource.data.get('role', '')) == 'honnin'));
 
         // 作成者は通常退会できない。全体削除は最後まで作成者を識別できる。
         allow delete: if deletingOwner(groupId)
