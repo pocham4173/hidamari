@@ -7,3 +7,6 @@ window.MAINICO_LINE_AUTH_URL = window.MAINICO_LINE_AUTH_URL || '';
    window.MAINICO_FIREBASE_CONFIG = { テスト用 Firebase プロジェクトのウェブ設定(公開してよい値) };
    window.MAINICO_STAGING = true;   // 試験用の表示を出す
    window.MAINICO_RECAPTCHA_SITE_KEY = '';   // 試験環境では App Check を使わない */
+/* ブラウザーの引っ越し(LINEの中 → Chrome/Safari)の受け付け(Cloudflare Worker)。秘密の値ではありません。
+   空にすると、引っ越しのボタンは出ず、これまでどおり「メールとパスワードで入り直す」案内になります。 */
+window.MAINICO_MOVE_URL = window.MAINICO_MOVE_URL === undefined ? 'https://mainiko-line.okm-co.workers.dev' : window.MAINICO_MOVE_URL;
