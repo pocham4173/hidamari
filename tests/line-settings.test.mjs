@@ -329,3 +329,22 @@ console.log('LINEの設定画面: 4枚のカード・送信先の一覧・ボタ
   assert.match(hist, /notificationStatus==='limited'/);
   console.log('LINEの予定の説明: 送れていないときの表示 passed');
 }
+/* 新しい予定を入れる欄を開いたら「LINEで知らせる人」を出す(2026-10-10 通し確認で発見: 出ていないと選べず、家族全員に届いていた) */
+{
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="yt-form-card" ontoggle="if\(this\.open\)ensureYoteiWho\(\)/);
+  const i = html.indexOf('function ensureYoteiWho(');
+  const fn = html.slice(i, html.indexOf('\n}\n', i));
+  assert.match(fn, /if\(editingYoteiId/);
+  assert.match(fn, /renderWho\('yt-notify-who',null\)/);
+  console.log('LINEで知らせる人: 新しい予定の欄を開いたときに出す passed');
+}
+/* 開いたままの画面でも、ほかの家族のLINE登録・解除をすぐ反映する(2026-10-10 通し確認で発見) */
+{
+  const i = src.indexOf('async function watchFamily(');
+  const fn = src.slice(i, src.indexOf('\n  }\n', i));
+  assert.match(fn, /familyWatch=global\.col\('events'\)\.where\('type','==','line-link-log'\)\.onSnapshot/);
+  assert.match(fn, /readLogs\(snap\); makeRows\(\); draw\(\);/);
+  assert.match(src, /if\(familyWatch\)\{ try\{ familyWatch\(\); \}catch\(e\)\{\} familyWatch=null; \}/);
+  console.log('つながっている家族: 開いたままでも登録をすぐ反映 passed');
+}

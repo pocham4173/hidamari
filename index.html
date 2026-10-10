@@ -2110,7 +2110,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <!-- 予定 -->
     <div class="ftab" id="t-yotei" style="display:none;">
       <div class="card dom-yotei" id="line-schedule-detail" style="display:none;" aria-live="polite"></div>
-      <details class="card dom-yotei schedule-form-card" id="yt-form-card" ontoggle="if(!this.open&&editingYoteiId)clearYoteiForm()">
+      <details class="card dom-yotei schedule-form-card" id="yt-form-card" ontoggle="if(this.open)ensureYoteiWho();else if(editingYoteiId)clearYoteiForm()">
         <summary class="yt-open">＋ 予定を入れる</summary>
         <h3 id="yt-form-title">予定を登録する</h3>
         <div class="yt-simple">
@@ -2403,7 +2403,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
-<script src="line-notify.js?v=20261010a"></script>
+<script src="line-notify.js?v=20261010b"></script>
 <script src="line-login.js?v=20261001"></script>
 <script src="line-login-ui.js?v=20261003"></script>
 <script src="hitokoe.js?v=20261004"></script>
@@ -6827,6 +6827,13 @@ function setYoteiSaveState(text,isError){
   const el=document.getElementById('yt-save-state');
   el.textContent=text||'';
   el.classList.toggle('err',!!isError);
+}
+/* 新しい予定の「LINEで知らせる人」を、入力欄を開いたときに出す(2026-10-10 最終レビューの通し確認で発見)。
+   出していないと選べず、保存するとLINEをつないだ家族全員に届いていた。修正中の予定は editYotei が出す */
+function ensureYoteiWho(){
+  if(editingYoteiId||typeof MainicoLine==='undefined'||!MainicoLine.renderWho)return;
+  const box=document.getElementById('yt-notify-who');
+  if(box&&!box.innerHTML.trim())MainicoLine.renderWho('yt-notify-who',null);
 }
 function clearYoteiForm(){
   editingYoteiId='';
