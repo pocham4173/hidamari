@@ -2,7 +2,7 @@
    - 通信できるときは常に最新を取りに行き、取れたものを端末に控えておく(ネット優先)。
    - 電波がないときは控えを使う。アプリの画面が開けないときは offline.html(もしもの控え)を出す。
    - 共有記録(Firestore)の通信は控えない。控えるのは画面の部品だけ。 */
-const CACHE = 'mainico-shell-v15';  /* 2026-10-10 LINEの中からの引っ越し */
+const CACHE = 'mainico-shell-v16';  /* 2026-10-10 最終レビュー(入口の文・LINEの説明) */
 const SHELL = [
   './', 'index.html', 'offline.html', 'help.html', 'privacy.html', 'manifest.json',
   'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
