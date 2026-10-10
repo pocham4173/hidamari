@@ -13,16 +13,17 @@ function source(start,end){
 }
 {
   const f=homeFixture(),entry=f.document.getElementById('entry');
+  // 入口は3つ(2026-10-10): はじめて使う／招待から参加する／使っていた記録に戻る。使い方はそのあとの質問で選ぶ
   const modes=[...entry.querySelectorAll('#select-box button')];
-  assert.equal(modes.length,4);
-  for(const [i,mode] of ['honnin','kazoku','konly'].entries()){
-    assert.equal(modes[i].getAttribute('onclick'),`pickMode('${mode}')`,'simplifying labels preserves mode choice');
-  }
-  assert.equal(modes[3].getAttribute('onclick'),'pickInvited()','招待された方の専用入口を用意する');
-  assert.match(modes[1].textContent,/本人と家族が使う/);
-  assert.match(modes[2].textContent,/家族だけで使う/);
+  assert.equal(modes.length,3);
+  assert.deepEqual(modes.map(b=>b.getAttribute('onclick')),['entryStart()','entryJoin()','openReturningGuide()']);
+  assert.deepEqual([...entry.querySelectorAll('#entry-who .entry-btn')].map(b=>b.getAttribute('onclick')),["entryWho('honnin')","entryWho('family')"],'このスマホで操作するのは？ 本人／家族');
+  const both=[...entry.querySelectorAll('#entry-both .entry-btn')];
+  assert.deepEqual(both.map(b=>b.getAttribute('onclick')),["pickMode('kazoku')","pickMode('konly')"],'答えは今までの使い方に対応させる');
+  assert.match(both[0].textContent,/使う/);
+  assert.match(both[1].textContent,/家族だけで使う/);
   assert.doesNotMatch(entry.textContent,/家族が記録する/);
-  const styles=modes.map(b=>f.dom.window.getComputedStyle(b));
+  const styles=modes.slice(0,2).map(b=>f.dom.window.getComputedStyle(b));   // 「使っていた記録に戻る」は控えめな形
   for(const style of styles){
     assert.equal(style.backgroundColor,styles[0].backgroundColor);
     assert.equal(style.boxShadow,styles[0].boxShadow);
@@ -138,7 +139,9 @@ for(const previous of ['honnin','kazoku','konly']){
     saved.setItem('mainicoMode',previous==='honnin'?'honnin':'kazoku');
     saved.setItem('kazokuOnly',previous==='konly'?'1':'');
     f.c.showPage('entry');
-    await f.click(f.document.querySelector(`[onclick="pickMode('${selected}')"]`));await finished;
+    const pick=f.document.querySelector(`[onclick="pickMode('${selected}')"]`);
+    if(pick){f.document.getElementById('entry-both').hidden=false;await f.click(pick);}else f.c.pickMode(selected);   // 「ご本人も使いますか？」の画面を開いた状態で押す   // 本人は「このスマホで操作するのは？」の答えから pickMode('honnin')
+    await finished;
     assert.equal(started,selected,`${previous} -> ${selected} opens chosen mode`);
     assert.equal(memberWrites[0].mode,selected);
     assert.equal(stopped,1,'previous screen subscriptions are retired');

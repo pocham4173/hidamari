@@ -64,7 +64,7 @@ assert.doesNotMatch(home,/data-connection-state|home-operator-note/);
 assert.match(html,/以前の伝言・お願いは「ふり返り」で確認できます/);assert.match(html,/ふり返りを開く/);assert.match(html,/以前の家族からの伝言を見る/);
 assert.match(html,/onclick="openPersonTasks\(\)"/);
 const entry=html.slice(html.indexOf('id="entry"'),html.indexOf('<!-- ホーム画面への追加案内 -->'));
-assert.match(entry,/onclick="pickMode\('honnin'\)"/,'一人で始める本人の入口は残す');
+assert.match(entry,/onclick="entryWho\('honnin'\)"/,'一人で始める本人の入口は残す(はじめて使う → 本人)');
 assert.match(html,/あとから参加を承認した家族には、これまでの予定・記録・やることも共有/);
 assert.doesNotMatch(html,/家族の画面に届けました|家族の画面に記録されました|家族へ伝言を共有しました/);
 assert.match(html,/function initHonnin\(\)\{\s*startFamilyConnection/);

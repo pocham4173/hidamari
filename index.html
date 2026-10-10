@@ -64,7 +64,8 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .install-main{display:block;width:100%;max-width:320px;min-height:44px;margin:8px auto;background:none;border:0;border-radius:8px;color:#566477;font-family:inherit;font-size:.92rem;font-weight:500;text-decoration:underline;cursor:pointer;box-shadow:none;}
 .install-main small{display:block;margin-top:2px;font-size:.78rem;font-weight:700;color:var(--usucha);}
 .install-main:active{transform:translateY(3px);box-shadow:0 1px 0 #C8D7EF;}
-#entry #select-box{width:100%;max-width:320px;}
+#entry #select-box,#entry .entry-step{width:100%;max-width:320px;}
+#entry .entry-step[hidden],#entry #select-box[hidden]{display:none;}
 #entry .entry-btn{min-height:64px;}
 #entry .entry-tools{width:100%;max-width:320px;margin-top:8px;border-top:1px solid #E7EBEF;padding-top:8px;}
 #entry .entry-tools .consent-back{min-height:44px;margin:0 auto;}
@@ -984,20 +985,29 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   </ul>
   <div class="open-place-note" id="open-place-note" hidden></div>
   <div class="invite-note" id="invite-note" role="status" hidden></div>
-  <!-- 前に使っていた人が、まちがえて新しい家庭を作らないように、入口の最初に戻り方を出す(2026-10-09 審査の指摘) -->
-  <button class="entry-btn sub" type="button" id="entry-returning" onclick="openReturningGuide()">前に使っていた方<small>機種変更・入れ直し・スマホを替えたとき</small></button>
-  <div class="q" id="entry-question">どなたのスマホで使いますか？</div>
+  <!-- 入口は3つだけ(2026-10-10 使いやすさの見直し)。役割と使い方を同時に選ばせない。
+       はじめて使う → 「このスマホで操作するのは？」本人／家族 → (家族だけ)「ご本人も、自分のスマホで使いますか？」
+       答えは今までのモード(honnin/kazoku/konly)に対応させる。管理者やデータの持ち主は変えない -->
+  <div class="q" id="entry-question">まいにこを</div>
   <div id="entry-state" class="save-state" role="status" aria-live="polite"></div>
   <div id="select-box">
-    <button class="entry-btn" onclick="pickMode('honnin')">本人が使う<small>ご本人のスマホ（ボタンを押して家族に伝える）</small></button>
-    <button class="entry-btn" onclick="pickMode('kazoku')">本人と家族が使う<small>ご家族のスマホ（ご本人も別のスマホで使う家庭）</small></button>
-    <button class="entry-btn" onclick="pickMode('konly')">家族だけで使う<small>ご本人はスマホを使わず、家族が様子を残す（ほかの家族は招待QRで参加）</small></button>
-    <button class="entry-btn" onclick="pickInvited()">招待された方<small>ご家族の方で、招待コードをお持ちの方</small></button>
+    <button class="entry-btn" type="button" id="entry-start" onclick="entryStart()">はじめて使う<small>家族の場所を、新しく作ります</small></button>
+    <button class="entry-btn" type="button" id="entry-join" onclick="entryJoin()">招待から参加する<small>家族から招待QR・招待コードをもらった方</small></button>
+    <button class="entry-btn sub" type="button" id="entry-returning" onclick="openReturningGuide()">使っていた記録に戻る<small>機種変更・入れ直し・別のスマホ・別のブラウザー</small></button>
+  </div>
+  <div id="entry-who" class="entry-step" hidden>
+    <div class="q">このスマホで操作するのは？</div>
+    <button class="entry-btn" type="button" onclick="entryWho('honnin')">本人<small>大きなボタンで、気持ちや様子を家族に伝えます</small></button>
+    <button class="entry-btn" type="button" onclick="entryWho('family')">家族<small>ご本人の様子を見たり、予定を入れたりします</small></button>
+    <button class="consent-back" type="button" onclick="entryBack()">← もどる</button>
+  </div>
+  <div id="entry-both" class="entry-step" hidden>
+    <div class="q">ご本人も、自分のスマホで使いますか？</div>
+    <button class="entry-btn" type="button" onclick="pickMode('kazoku')">使う<small>ご本人のスマホにも入れて、ボタンで伝えてもらいます（準備は家族が手伝えます）</small></button>
+    <button class="entry-btn" type="button" onclick="pickMode('konly')">家族だけで使う<small>ご本人のスマホや操作はいりません。家族が様子を残します</small></button>
+    <button class="consent-back" type="button" onclick="entryShow('entry-who')">← もどる</button>
   </div>
   <div class="entry-tools">
-    <button class="consent-back" id="entry-line-login" type="button" hidden onclick="lineLoginStart()">すでに使っている方：LINEで続ける</button>
-    <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
-    <a class="consent-back" href="help.html#locked-out" target="_blank" rel="noopener">家族の誰も入れなくなったとき（運営者への相談）</a>
     <button class="install-main" id="install-main" type="button" onclick="installApp()">ホーム画面に追加</button>
     <p class="note">本サービスは119番通報や安否確認、医療行為の代替ではありません。</p><a class="consent-back" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
     <a class="consent-back" href="guide/" target="_blank" rel="noopener">📷 写真つきの使い方</a>
@@ -1024,8 +1034,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 <!-- 前に使っていた方への案内(2026-10-09): いま使える戻り方だけを出す。準備中の機能は出さない -->
 <div class="modal" id="returning-modal" role="dialog" aria-modal="true" aria-labelledby="returning-title">
   <div class="modal-box adult-font">
-    <div class="ttl" id="returning-title">前に使っていた方へ</div>
-    <p class="note"><b>ここで「本人が使う」などから新しくはじめると、前の記録とは別の、新しい家庭になります。</b>前の家庭の記録は、新しくはじめても消えません。</p>
+    <div class="ttl" id="returning-title">使っていた記録に戻る</div>
+    <p class="note"><b>ここで「はじめて使う」から新しくはじめると、前の記録とは別の、新しい家庭になります。</b>前の家庭の記録は、新しくはじめても消えません。</p>
     <div class="set-sec" id="returning-line" hidden>
       <h4>LINEでログインをつないでいた方</h4>
       <button class="set-btn" type="button" onclick="closeReturningGuide();lineLoginStart()">LINEで続ける</button>
@@ -1037,8 +1047,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     </div>
     <div class="set-sec">
       <h4>ご家族の方で、復旧を設定していなかった方</h4>
-      <p class="note">元のアカウントには戻れません。家族の管理者に<b>新しい招待コード</b>を作ってもらい、「招待された方」から参加してください。承認されると、家庭の記録・予定を今までどおり見られます（新しい参加者として入ります）。</p>
-      <button class="set-btn" type="button" onclick="closeReturningGuide();pickInvited()">招待された方として参加する</button>
+      <p class="note">元のアカウントには戻れません。家族の管理者に<b>新しい招待コード</b>を作ってもらい、「招待から参加する」から参加してください。承認されると、家庭の記録・予定を今までどおり見られます（新しい参加者として入ります）。</p>
+      <button class="set-btn" type="button" onclick="closeReturningGuide();entryJoin()">招待から参加する</button>
     </div>
     <div class="set-sec">
       <h4>ご本人のスマホで、復旧を設定していなかった方</h4>
@@ -1244,15 +1254,16 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div id="together-box" style="display:none;max-width:320px;margin:0 auto;">
       <label class="consent-item"><input type="checkbox" id="ck-together"> ご本人に、このアプリの利用と記録の共有を説明し、了解を得ています</label>
     </div>
+    <!-- 入口で「はじめて使う」を選んだ人には作るボタンだけ、「招待から参加する」を選んだ人には参加の欄だけを出す(2026-10-10) -->
     <button class="entry-btn" id="btn-newgroup" onclick="createGroup()">新しくはじめる</button>
-    <div class="setup-or">─ または ─</div>
-    <button class="entry-btn sub qr-scan-btn" type="button" onclick="scanInviteQr()">📷 招待QRを読み取る</button>
-    <input type="text" id="in-code" class="setup-input" placeholder="招待コードを入力" autocapitalize="characters" autocomplete="off">
-    <button class="entry-btn sub" onclick="joinByCode()">招待コードで参加</button>
-    <button class="consent-back" onclick="openRecovery()">以前のアカウントを復旧する</button>
-    <a class="consent-back" href="help.html#locked-out" target="_blank" rel="noopener">家族の誰も入れなくなったとき（運営者への相談）</a>
-    <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、ご家族の「設定」→「家族の管理」で作れます。参加すると「承認待ち」になり、認められると使えます。</div>
-    <button class="consent-back" onclick="showPage('entry')">← 入口に戻る</button>
+    <div class="setup-or" id="connect-or">─ または ─</div>
+    <div id="join-box">
+      <button class="entry-btn sub qr-scan-btn" type="button" onclick="scanInviteQr()">📷 招待QRを読み取る</button>
+      <input type="text" id="in-code" class="setup-input" placeholder="招待コードを入力" autocapitalize="characters" autocomplete="off">
+      <button class="entry-btn sub" onclick="joinByCode()">招待コードで参加</button>
+      <div class="note" style="max-width:320px;margin:10px auto 0;text-align:left;">招待コードは、ご家族の「設定」→「家族の管理」で作れます。参加すると「承認待ち」になり、招待した人が認めると使えます。</div>
+    </div>
+    <button class="consent-back" onclick="entryRestart()">← 入口に戻る</button>
   </div>
 </div>
 
@@ -3146,7 +3157,6 @@ function showPage(id){
   else {try{window.scrollTo({top:0,left:0,behavior:'auto'});}catch(e){window.scrollTo(0,0);}}
   if(id==='honnin'&&typeof maybeShowSpeechNotice==='function')maybeShowSpeechNotice();
   if(id==='entry'&&typeof renderInviteNote==='function')renderInviteNote();
-  if(id==='entry'){const lineBtn=document.getElementById('entry-line-login');if(lineBtn)lineBtn.hidden=!(typeof lineLoginEnabled==='function'&&lineLoginEnabled()&&!gid());}
   /* 家族と接続済みの端末(利用方法の選び直しなど)では、戻り方の案内は出さない */
   if(id==='entry'){const back=document.getElementById('entry-returning');if(back)back.hidden=!!gid();}
   if(id==='kazoku'||id==='honnin')reopenAfterDoc(id);
@@ -3184,11 +3194,13 @@ function entryState(message){
 }
 /* 招待された方の専用入口: 家族用モードで進み、接続画面ではコード入力を案内する */
 function pickInvited(){
+  setEntryIntent('join');
   pickMode('kazoku');
   try{previewStorage.setItem('mainicoInvitedFlow','1');}catch(e){}
 }
 /* 家族だけで使う家庭から招待されたとき(from=k) */
 function pickInvitedKonly(){
+  setEntryIntent('join');
   pickMode('konly');
   try{previewStorage.setItem('mainicoInvitedFlow','1');}catch(e){}
 }
@@ -3250,6 +3262,26 @@ function setupConnectPage(){
   const tb=document.getElementById('together-box');
   let invited=false;
   try{invited=previewStorage.getItem('mainicoInvitedFlow')==='1';previewStorage.removeItem('mainicoInvitedFlow');}catch(e){}
+  /* 入口で選んだことに合わせて、作るボタンか参加の欄のどちらかだけを出す(2026-10-10)。
+     入口を通らずに来たとき(前の版から続きの人など)は、今までどおり両方を出す */
+  const intent=invited?'join':entryIntent();
+  const show=(id,on)=>{const el=document.getElementById(id);if(el)el.hidden=!on;};
+  show('btn-newgroup',intent!=='join');show('connect-or',!intent);show('join-box',intent!=='create');
+  if(intent==='join'){
+    lead.textContent='家族の画面に出ている招待QRを「📷 招待QRを読み取る」で読むか、招待コードを入れて「招待コードで参加」を押してください。';
+    tb.style.display='none';
+    setTimeout(()=>{const c=document.getElementById('in-code');if(c&&!c.value){try{c.focus();}catch(e){}}},300);
+    return;
+  }
+  if(intent==='create'){
+    const lt={honnin:'ご本人が、家族の場所を作ります。家族は、あとで招待できます。',
+      kazoku:'家族の場所を作ります。作ったあと、ご本人のスマホを招待します。',
+      konly:'家族だけで使う場所を作ります。ご本人のスマホはいりません。ほかの家族は、あとで招待できます。'}[pendingMode]||'';
+    lead.textContent=lt;
+    btn.textContent='家族の場所を作る';
+    tb.style.display=pendingMode==='kazoku'?'block':'none';
+    return;
+  }
   if(invited&&pendingMode==='kazoku'){
     lead.textContent='招待された方：「招待QRを読み取る」でご家族の画面のQRを読むか、下の欄に招待コードを入れて「招待コードで参加」を押してください。';
     btn.textContent='ご本人と一緒に初期設定する'; tb.style.display='block';
@@ -3341,8 +3373,9 @@ async function createGroup(){
   if(pendingMode==='kazoku' && !document.getElementById('ck-together').checked){
     alert('ご本人に説明し、了解を得てからチェックを入れてください');return;
   }
-  /* 前に使っていた人が、まちがえて新しい家庭を作らないように、作る前に1回だけ確かめる(2026-10-08 審査の指摘) */
-  if(!previewStorage.getItem('mainico_group_setup_v1')&&typeof appConfirm==='function'){
+  /* 前に使っていた人が、まちがえて新しい家庭を作らないように、作る前に1回だけ確かめる(2026-10-08 審査の指摘)。
+     入口で「はじめて使う」を選んで来た人には、同じことをもう一度聞かない(2026-10-10) */
+  if(!previewStorage.getItem('mainico_group_setup_v1')&&(typeof entryIntent==='function'?entryIntent():'')!=='create'&&typeof appConfirm==='function'){
     const fresh=await appConfirm('まいにこを使うのは、はじめてですか？\n\n前に使っていて、そのときの記録に戻りたいときは「以前のアカウントを復旧する」を押してください。ここで新しくはじめると、前の記録とは別の、新しい家庭になります。','はじめて使う','以前のアカウントを復旧する',true);
     if(fresh===false&&typeof openRecovery==='function'){openRecovery(true);return;}
     if(fresh!==true)return;
@@ -3482,6 +3515,7 @@ async function finishSetup(){
     previewStorage.setItem('kazokuOnly', m==='konly'?'1':'');
     previewStorage.setItem('mainicoMode', m==='honnin'?'honnin':'kazoku');
     previewStorage.setItem('mainicoModeChoiceV1',JSON.stringify([accountUid,groupId,m]));
+    if(typeof setEntryIntent==='function')setEntryIntent('');
     startMode();watchHouseholdAccess();
   }catch(error){if(error.message!=='setup-session-changed')showHouseholdBlocked('家族との接続・利用方法の保存を確認できませんでした。保存情報は消さず、通信を確認して再確認してください。');}
   finally{clearTimeout(slowTimer);modeSetupBusy=false;}
@@ -6986,12 +7020,46 @@ function clearInvite(){
    招待を使わないときだけ、小さな「ほかの使い方を選ぶ」から元の選び方に戻れる */
 function showEntryChoices(on){
   ['entry-question','select-box'].forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=!on;});
+  if(!on)['entry-who','entry-both'].forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=true;});
 }
+/* ===== 入口の3つと、そのあとの質問(2026-10-10 使いやすさの見直し) =====
+   はじめて使う(create) / 招待から参加する(join) / 使っていた記録に戻る(復旧の案内)。
+   選んだ入口は端末に覚えておき、途中で閉じても、つなぐ画面で同じことを選び直させない */
+const ENTRY_INTENT_KEY='mainicoEntryIntent';
+function entryIntent(){try{const v=previewStorage.getItem(ENTRY_INTENT_KEY);return v==='create'||v==='join'?v:'';}catch(e){return '';}}
+function setEntryIntent(v){try{if(v)previewStorage.setItem(ENTRY_INTENT_KEY,v);else previewStorage.removeItem(ENTRY_INTENT_KEY);}catch(e){}}
+function entryShow(step){
+  const steps=['entry-who','entry-both'];
+  const top=!step;
+  ['entry-question','select-box'].forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=!top;});
+  steps.forEach(id=>{const el=document.getElementById(id);if(el)el.hidden=id!==step;});
+  entryState('');
+  const first=document.querySelector(step?'#'+step+' .entry-btn':'#select-box .entry-btn');
+  if(first){try{first.focus({preventScroll:true});}catch(e){}}
+}
+function entryStart(){setEntryIntent('create');entryShow('entry-who');}
+function entryJoin(){
+  setEntryIntent('join');
+  /* 受け取った招待で、使う人が決まっているとき(ご本人からの招待・家族だけの家庭からの招待)は、そのまま参加へ */
+  const inv=readInvite();
+  if(inv&&inv.from==='h'){pickInvited();return;}
+  if(inv&&inv.from==='k'){pickInvitedKonly();return;}
+  showPage('entry');entryShow('entry-who');
+}
+function entryWho(who){
+  if(who==='honnin'){pickMode('honnin');return;}
+  if(entryIntent()==='join'){pickInvited();return;}
+  entryShow('entry-both');
+}
+function entryBack(){setEntryIntent('');entryShow('');renderInviteNote();}
+/* つなぐ画面から入口に戻る: 選び直せるように、入口の最初から */
+function entryRestart(){setEntryIntent('');showPage('entry');entryShow('');}
 function skipInvite(){clearInvite();renderInviteNote();}
 function renderInviteNote(){
   const box=document.getElementById('invite-note');if(!box)return;
   const inv=gid()?null:readInvite();
   showEntryChoices(true);
+  {const st=document.getElementById('entry-start');if(st)st.hidden=false;}
   if(!inv){box.hidden=true;box.textContent='';return;}
   box.hidden=false;
   if(isIosDevice()&&!isStandalone()){
@@ -7006,9 +7074,12 @@ function renderInviteNote(){
       '<b>ご家族から招待（コード <span class="code">'+esc(inv.code)+'</span>）を受け取りました。</b><br>この家庭は「家族だけで使う」家庭です。ご本人のスマホや操作はいりません。下のボタンを押し、同意とお名前を入れると、そのまま参加を申し込みます。'+
       '<button class="entry-btn" type="button" onclick="pickInvitedKonly()">家族として参加する</button>'+
       '<button class="consent-back" type="button" onclick="skipInvite()">この招待を使わず、ほかの使い方を選ぶ</button>':
-      '<b>招待コード <span class="code">'+esc(inv.code)+'</span> を受け取りました。</b><br>このスマホを使う人を選んでください。ご本人のスマホなら「本人が使う」、ご家族なら「招待された方」です。同意とお名前を入れると、そのまま参加を申し込みます。';
+      '<b>招待コード <span class="code">'+esc(inv.code)+'</span> を受け取りました。</b><br>下の「招待から参加する」を押してください。同意とお名前を入れると、そのまま参加を申し込みます。'+
+      '<button class="consent-back" type="button" onclick="skipInvite()">この招待を使わない</button>';
     if(inv.from==='h'||inv.from==='k')showEntryChoices(false);
   }
+  /* 招待を受け取っているあいだは、新しい家庭を作るほうへ迷い込ませない(2026-10-10) */
+  const st=document.getElementById('entry-start');if(st)st.hidden=true;
 }
 /* ===== 家庭につながっているスマホで招待を受け取ったとき(2026-10-07) =====
    招待を黙って捨てない。ホームの一番上にカードを出し、「招待された家族に移る」「今のままにする」を選んでもらう。

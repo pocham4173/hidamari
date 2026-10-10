@@ -26,7 +26,7 @@ function fixture(href, ua = 'Android', standalone = false) {
   assert.equal(f.replaced(), '/hidamari/#schedule=x', 'アドレスから招待コードを消す(ほかの印は残す)');
   assert.equal(f.ctx.readInvite().code, 'ABCD2345', '小文字でも受け取る');
   f.ctx.renderInviteNote();
-  assert.equal(f.box.hidden, false); assert.match(f.box.innerHTML, /ABCD2345/); assert.match(f.box.innerHTML, /本人が使う/);
+  assert.equal(f.box.hidden, false); assert.match(f.box.innerHTML, /ABCD2345/); assert.match(f.box.innerHTML, /招待から参加する/);
   f.ctx.clearInvite(); assert.equal(f.ctx.readInvite(), null, '参加したら消す');
 }
 {
