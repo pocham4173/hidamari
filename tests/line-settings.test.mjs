@@ -83,23 +83,29 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   await t.c.MainicoLine.render('area');
   const area = t.d.getElementById('area');
   const titles = [...area.querySelectorAll('.ln-card h4')].map((e) => e.textContent);
-  assert.deepEqual(titles, ['自分のLINEを登録する', 'LINEの送信先を追加', 'LINEの送信先', '家族に頼む'], 'ヒビルカと同じ並び');
+  assert.deepEqual(titles, ['自分のLINE', 'つながっている家族', 'LINEだけで予定を受け取る人'], '自分 → 家族 → LINEだけの人 の順(2026-10-10)');
+  assert.ok(!area.querySelector('.ln-add-recipient').open, 'LINEだけの人の説明・同意・追加は、使うときに開く');
   assert.match(area.textContent, /このスマホのLINEを、りえさん（家族）のLINEとして登録します/);
   assert.equal(area.querySelector('[data-line-act="code"]').textContent, '自分のLINEをつなぐ');
-  assert.match(area.textContent, /本人に登録案内を送る/);
-  assert.match(area.textContent, /ほかの家族に登録を頼む/);
   await waitFor(() => area.querySelectorAll('.ln-family li').length === 6, 'list');
   const rows = [...area.querySelectorAll('.ln-family li')].map((li) => li.textContent);
-  assert.match(rows[0], /^自分りえ・まいにこを使っている人（家族）まだ登録していません/, '自分が先頭・実際の連携状態');
-  assert.ok(rows.some((r) => /お母さんまいにこを使っている人（本人）✓ 登録済み/.test(r)), '登録済みは✓');
+  assert.match(rows[0], /^自分りえ・家族まだ登録していません/, '自分が先頭・実際の連携状態');
+  assert.ok(rows.some((r) => /お母さんご本人✓ 登録済み/.test(r)), '登録済みは✓');
   assert.ok(!/受け取れます/.test(area.textContent), '「受け取れます」とは表示しない');
-  assert.ok(rows.some((r) => /兄 <b>x<\/b>まいにこを使っている人（家族）まだ/.test(r)), '名前は文字として表示');
+  assert.ok(rows.some((r) => /兄 <b>x<\/b>家族まだ登録していませんLINEの登録を頼む/.test(r)), '名前は文字として表示');
   assert.ok(rows.some((r) => /おばあちゃんLINEだけで受け取る人・LINE名：おばあ✓ 登録済み招待の履歴/.test(r)));
   assert.ok(rows.some((r) => /おじ <i>y<\/i>LINEだけで受け取る人まだ登録していません（招待の文を送ると登録されます）/.test(r)));
   assert.ok(rows.some((r) => /いとこLINEだけで受け取る人受け取りを止めました/.test(r)));
   assert.equal(area.querySelector('.ln-family b i'), null);
-  assert.equal(area.querySelectorAll('.ln-family').length, 1, 'ヒビルカと同じく1つの一覧');
-  assert.match(area.textContent, /LINEを登録した人：2人/);
+  assert.equal(area.querySelectorAll('.ln-family').length, 2, '家族と、LINEだけの人は分ける');
+  assert.ok(area.querySelector('[data-line-recipients]').textContent.includes('おばあちゃん'), 'LINEだけの人は3番目のカード');
+  assert.ok(!area.querySelector('[data-line-family]').textContent.includes('おばあちゃん'));
+  assert.match(area.textContent, /LINEを登録した家族：1人/);
+  assert.match(area.textContent, /LINEで受け取る人：1人/);
+  // 登録がまだの家族には、その人への頼み方(自分の登録とは別)
+  const ask = [...area.querySelectorAll('[data-line-family] a.ln-ask')];
+  assert.equal(ask.length, 1, '登録がまだの家族(兄)だけ。自分には出さない');
+  assert.match(decodeURIComponent(ask[0].getAttribute('href')), /自分のLINEをつなぐ/);
   assert.match(area.textContent, /相手のスマホに届いたか・読んだかまでは分かりません/, '送信と到着・既読を区別する');
   // 再送は承認待ちの人だけ
   assert.deepEqual([...area.querySelectorAll('[data-rec-act="resend"]')].map((b) => b.getAttribute('data-rid')), ['r2']);
@@ -135,26 +141,26 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   assert.ok(area.querySelector('[data-line-act="reload"]'), '友だち追加のあと確かめ直せる');
   await waitFor(() => area.querySelectorAll('.ln-family li').length === 7, 'list');
   const rows = [...area.querySelectorAll('.ln-family li')].map((li) => li.textContent);
-  assert.match(rows[0], /^自分りえ・まいにこを使っている人（家族）⚠ 友だち追加がまだです/);
-  assert.ok(rows.some((r) => /お母さんまいにこを使っている人（本人）✓ 登録済み/.test(r)), '後からの友だち追加の確認を反映');
-  assert.ok(rows.some((r) => /妹まいにこを使っている人（家族）⚠ 友だち追加がまだです（このままでは届きません）/.test(r)));
-  assert.ok(rows.some((r) => /父まいにこを使っている人（家族）✓ 登録済み/.test(r)));
+  assert.match(rows[0], /^自分りえ・家族⚠ 友だち追加がまだです/);
+  assert.ok(rows.some((r) => /お母さんご本人✓ 登録済み/.test(r)), '後からの友だち追加の確認を反映');
+  assert.ok(rows.some((r) => /妹家族⚠ 友だち追加がまだです（このままでは届きません）/.test(r)));
+  assert.ok(rows.some((r) => /父家族✓ 登録済み/.test(r)));
   assert.ok(rows.some((r) => /ヘルパーLINEだけで受け取る人⚠ 友だち追加がまだです/.test(r)));
   assert.ok(rows.some((r) => /おばLINEだけで受け取る人✓ 登録済み/.test(r)));
-  assert.match(area.textContent, /LINEを登録した人：6人/);
+  assert.match(area.textContent, /LINEを登録した家族：4人/);
+  assert.match(area.textContent, /LINEで受け取る人：2人/);
   assert.ok(!/受け取れます/.test(area.textContent));
 }
 { // 本人の画面: 自分の登録が中心。ほかの人のことはたたむ。本人への案内は出さない
   const t = setup({ meMode: 'honnin', meName: '花子' });
   await t.c.MainicoLine.render('area');
   const area = t.d.getElementById('area');
-  assert.equal(area.querySelector('.ln-card h4').textContent, '自分のLINEを登録する');
+  assert.equal(area.querySelector('.ln-card h4').textContent, '自分のLINE');
   assert.equal(area.querySelector('.ln-card small').textContent, '花子さん（本人）', 'だれとして登録するかを出す');
   assert.equal(area.querySelector('[data-line-act="code"]').textContent, '自分のLINEをつなぐ');
   const others = area.querySelector('details.ln-others');
   assert.ok(others && !others.open, 'ほかの人の設定はたたんでおく');
   assert.ok(others.querySelector('[data-line-invite-name]'), 'LINEだけで届ける人の招待はたたんだ中に残る');
-  assert.doesNotMatch(area.textContent, /本人に登録案内を送る|ほかの家族に登録を頼む/);
 }
 { // 本人の名前が「本人」のまま: 役割で呼ぶ
   const t = setup({ meMode: 'honnin', meName: '本人' });
@@ -166,8 +172,9 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   await t.c.MainicoLine.render('area');
   const area = t.d.getElementById('area');
   assert.equal(area.querySelector('.ln-card small').textContent, 'りえさん（家族）');
-  assert.doesNotMatch(area.textContent, /本人に登録案内を送る/);
-  assert.match(area.textContent, /ほかの家族に登録を頼む/);
+  await waitFor(() => area.querySelectorAll('[data-line-family] li').length > 0, 'list');
+  const askNames = [...area.querySelectorAll('[data-line-family] li')].filter((li) => li.querySelector('a.ln-ask')).map((li) => li.querySelector('b').textContent);
+  assert.ok(!askNames.includes('お母さん'), '家族だけで使う家庭では、ご本人にLINEの登録を頼まない');
 }
 { // 自分の登録(名前・役割)を読めないときは、推測で登録を進めない
   const t = setup({ meFail: true });
