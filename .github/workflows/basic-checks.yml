@@ -90,6 +90,7 @@ jobs:
           node tests/calendar-navigation.test.mjs
           node tests/line-settings.test.mjs
           node tests/returning-guide.test.mjs
+          node tests/entry-flow.test.mjs
           node tests/hitokoe-settings.test.mjs
           node tests/qr-scan.test.mjs
           node tests/family-survey.test.mjs

@@ -410,17 +410,17 @@ for (const mode of ['honnin', 'kazoku', 'konly']) {
   await wait(20);
   a.dom.window.close();
 }
-// 2-10. 入口(記録のない画面)にも「すでに使っている方」を出す。記録のある画面では出さない
+// 2-10. 入口(記録のない画面)に「使っていた記録に戻る」を出す(LINEで続けるはその中)。記録のある画面では出さない
 {
   const page = html.slice(html.indexOf('function showPage(id){'), html.indexOf('/* ===== モード選択→同意→名前→接続 ===== */'));
   const a = app();
   a.w.scrollTo = () => {};
   vm.runInContext(page.replace('function resetFamilyScroll', 'function _unused'), a.c);
   a.c.showPage('entry');
-  assert.equal(a.doc.getElementById('entry-line-login').hidden, false);
+  assert.equal(a.doc.getElementById('entry-returning').hidden, false);
   a.w.localStorage.setItem('mainicoGid', 'g1');
   a.c.showPage('entry');
-  assert.equal(a.doc.getElementById('entry-line-login').hidden, true);
+  assert.equal(a.doc.getElementById('entry-returning').hidden, true);
   a.dom.window.close();
 }
 console.log('LINEでログインの画面: 未設定・入口の区別・同じ画面で戻る・別の画面の番号・切り替え防止・利用方法の復元・つなぐ・解除 passed');

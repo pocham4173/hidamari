@@ -33,7 +33,7 @@ function fixture(localMode,memberMode,acceptedMode){
 {
  const f=fixture('kazoku','honnin');await f.boot();
  assert.equal(f.active(),'entry','未選択の旧設定で同意画面やホームに直行しない');
- assert.deepEqual(f.opened,[]);assert.equal(f.c.document.querySelectorAll('#select-box button').length,4);
+ assert.deepEqual(f.opened,[]);assert.equal(f.c.document.querySelectorAll('#select-box button').length,3,'入口は3つ');
  await f.choose('konly');assert.deepEqual(f.opened,['konly']);f.close();
 }
 for(const oldMode of modes)for(const chosen of modes){
