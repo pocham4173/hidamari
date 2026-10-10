@@ -192,11 +192,23 @@ assert.equal(db.get('lineLinks/owner').fields.friend.booleanValue, true, '友だ
   assert.equal(db.get('lineLinks/fam'), famBefore, '家族の登録も変えない');
   assert.equal(db.has('lineLinkCodes/DUPA2345'), false, '使えなかったコードは消す');
   // ほかの家庭の人として登録済みのLINEは、名前を出さずに断る
+  put('groups/gX', { createdBy: S('xother') });
+  put('groups/gX/members/xother', { name: S('よその人'), status: S('approved'), mode: S('kazoku') });
+  put('consents/xother', consent());
   put('lineLinks/xother', { lineUserId: S('Uelse'), groupId: S('gX') });
   put('lineLinkCodes/XTHA2345', { uid: S('hon'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
   await hook([{ type: 'message', replyToken: 'r4c3', source: user('Uelse'), message: { type: 'text', text: 'XTHA2345' } }]);
   assert.match(replies.at(-1).messages[0].text, /すでに別の人のLINEとして登録されています/);
+  assert.doesNotMatch(replies.at(-1).messages[0].text, /よその人/, 'ほかの家庭の人の名前は出さない');
   assert.equal(db.get('lineLinks/hon').fields.lineUserId.stringValue, 'Uhon');
+  // 退会した人(家族の名簿にいない)の古い連携は、取り違えではない → 片付けて、つなげる(2026-10-10 見直し)
+  put('lineLinks/gone', { lineUserId: S('Ugone'), groupId: S('g1') });
+  put('lineLinkCodes/GNEA2345', { uid: S('hon'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
+  await hook([{ type: 'message', replyToken: 'r4c3b', source: user('Ugone'), message: { type: 'text', text: 'GNEA2345' } }]);
+  assert.match(replies.at(-1).messages[0].text, /^✅ 花子さん（本人）のLINE登録/);
+  assert.equal(db.has('lineLinks/gone'), false, '退会した人の古い連携は片付ける');
+  assert.equal(db.get('lineLinks/hon').fields.lineUserId.stringValue, 'Ugone');
+  put('lineLinks/hon', { lineUserId: S('Uhon'), groupId: S('g1'), friend: { booleanValue: true } });
   // 同じ人が、自分のLINEをつなぎ直す(機種変更など)のは今までどおりできる
   put('lineLinkCodes/SAMA2345', { uid: S('hon'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
   await hook([{ type: 'message', replyToken: 'r4c4', source: user('Uhon'), message: { type: 'text', text: 'SAMA2345' } }]);
@@ -765,7 +777,8 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   const RealDate = Date; let shift = 0;
   class ShiftedDate extends RealDate { constructor(...a) { if (a.length) super(...a); else super(RealDate.now() + shift); } static now() { return RealDate.now() + shift; } }
   globalThis.Date = ShiftedDate;
-  try { for (let i = 0; i < 16; i++) { shift = i * 900000; await tick(); } } finally { globalThis.Date = RealDate; }
+  // 後片付けは1回に1件で、ほかの片付けと通信回数を分け合うため、何回かかかる(8時間分まで見る)
+  try { for (let i = 0; i < 32; i++) { shift = i * 900000; await tick(); } } finally { globalThis.Date = RealDate; }
   const left = [...db.keys()].filter((k) => k.startsWith('surveyAnswers/')).map((k) => k.split('/')[1].split('_')[0]);
   assert.ok(left.length && left.every((u) => u === 'a7'), '参加中の人の答えだけが残る (' + left.join(',') + ')');
   console.log('家族のアンケートの集計(全体の数字だけ・新しい答え・数えない選択肢・名前なし・後片付け) passed');
@@ -844,4 +857,23 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.ok(!seen.some((x) => /^GET usageStats\//.test(x)), '集計の済んだ日は世帯ごとに読まない: ' + seen.filter((x) => x.includes('usageStats')).join(','));
   assert.ok(!db.has('lineLinkCodes/old'), '期限切れの記録は消える');
   console.log('見回りの通信の節約(集計の済んだ日・期限切れの片付けが先) passed');
+}
+/* 友だち追加の確認結果がない古い連携は、見回りで1件ずつ確かめて残す(2026-10-10 見直し) */
+{
+  for (const [id, u] of [['legacyFr', 'Ulegacy'], ['legacyNf', 'Unf'], ['legacyErr', 'Uerr']]) {
+    put('consents/' + id, consent());
+    put('groups/g1/members/' + id, { name: S(id), status: S('approved'), mode: S('kazoku') });
+    put('lineLinks/' + id, { lineUserId: S(u), groupId: S('g1') });
+  }
+  const RealDate = Date; let shift = 0;
+  class ShiftedDate extends RealDate { constructor(...a) { if (a.length) super(...a); else super(RealDate.now() + shift); } static now() { return RealDate.now() + shift; } }
+  globalThis.Date = ShiftedDate;
+  let n = 0;
+  try {
+    while ((db.get('lineLinks/legacyFr')?.fields.friend === undefined || db.get('lineLinks/legacyNf')?.fields.friend === undefined) && n < 40) { shift = n * 3600000 + 2 * 900000 - (RealDate.now() % 3600000); await tick(); n++; }
+  } finally { globalThis.Date = RealDate; }
+  assert.equal(db.get('lineLinks/legacyFr')?.fields.friend?.booleanValue, true, '友だちなら確認済み');
+  assert.equal(db.get('lineLinks/legacyNf')?.fields.friend?.booleanValue, false, '友だちでなければ未追加');
+  assert.equal(db.get('lineLinks/legacyErr')?.fields.friend, undefined, '確かめられないときは書かない');
+  console.log('古い連携の友だち追加の確認(' + n + '回) passed');
 }

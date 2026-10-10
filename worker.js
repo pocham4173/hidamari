@@ -75,7 +75,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined', 'line-login-signin', 'device-reconnect']);
-const VERSION_TEXT = '版：2026-10-10 だれのLINE登録かを返事に出す・取り違え防止';
+const VERSION_TEXT = '版：2026-10-10 見直し（古い連携の友だち確認・退会した人の連携を片付ける）';
 
 export default {
   async fetch(request, env, ctx) {
@@ -211,7 +211,12 @@ async function linkByCode(env, fs, code, lineUserId) {
   // 別の人として登録済みのLINEを、黙ってこの人に付け替えない(2026-10-10)。
   // 家族が自分のスマホで本人のコードを送ってしまう、などの取り違えを防ぐ
   const used = await fs.query('', {from: [{collectionId: 'lineLinks'}], where: fieldEq('lineUserId', {stringValue: lineUserId})});
-  const other = used.find((d) => d.id !== uid);
+  let other = used.find((d) => d.id !== uid);
+  // 退会した・家庭がなくなった人の古い連携は、取り違えではないので片付けて先へ進む(2026-10-10 見直し)
+  if (other && !await approvedMember(fs, other.fields.groupId, other.id)) {
+    await fs.delete(other.path).catch(() => {});
+    other = used.find((d) => d.id !== uid && d.id !== other.id);
+  }
   if (other) {
     await fs.delete('lineLinkCodes/' + code).catch(() => {});
     // ほかの家庭の人の名前は出さない
@@ -281,12 +286,13 @@ async function markFriendFor(fs, lineUserId) {
   for (const d of links) {
     if (d.fields.friend === true) continue;
     const groupId = d.fields.groupId;
+    // 家庭がない・削除中なら書かない(削除中の家庭に記録を作り直さない。2026-10-10 見直し)
+    const group = typeof groupId === 'string' && groupId ? await fs.get('groups/' + groupId) : null;
+    if (!group || group.fields.deletionState === 'deleting') continue;
     const writes = [{update: {name: fs.root + '/' + d.path, fields: toFields({friend: true, friendCheckedAt: now})},
       updateMask: {fieldPaths: ['friend', 'friendCheckedAt']}, currentDocument: {updateTime: d.updateTime}}];
-    if (typeof groupId === 'string' && groupId) {
-      const m = await fs.get('groups/' + groupId + '/members/' + d.id);
-      writes.push(linkLogWrite(fs, groupId, d.id, m && m.fields.name, 'friend', 'follow', now, true));
-    }
+    const m = await fs.get('groups/' + groupId + '/members/' + d.id);
+    writes.push(linkLogWrite(fs, groupId, d.id, m && m.fields.name, 'friend', 'follow', now, true));
     await fs.commit(writes);
   }
   const ids = await fs.query('', {from: [{collectionId: 'lineRecipientIds'}], where: fieldEq('lineUserId', {stringValue: lineUserId})});
@@ -476,7 +482,7 @@ async function runNotifications(env) {
       for (const d of expired) await fs.delete(d.path);
     }
     // Clean one verified orphan link per run without relying on a complete household list.
-    const cleanupLinks = await fs.list('lineLinks', ['groupId']);
+    const cleanupLinks = await fs.list('lineLinks', ['groupId', 'lineUserId', 'friend']);
     if (cleanupLinks.length) {
       const link = cleanupLinks[Math.floor(now.getTime()/900000)%cleanupLinks.length];
       if (!await approvedMember(fs, link.fields.groupId, link.id)) await fs.delete(link.path);
@@ -509,6 +515,18 @@ async function runNotifications(env) {
       const group = typeof gid === 'string' && gid ? await fs.get('groups/' + gid) : null;
       const member = group && group.fields.deletionState !== 'deleting' && typeof uid === 'string' && uid ? await fs.get('groups/' + gid + '/members/' + uid) : null;
       if (!member || await fs.get('accountClosures/' + uid)) await fs.delete(d.path);
+    }
+    // 友だち追加の確認結果がない古い連携(2026-10-09 より前につないだ分)を、1時間に1件だけ確かめて残す(2026-10-10 見直し)。
+    // 前から友だちの人は follow を送り直さないので、こうしないと「友だち追加は未確認」がずっと消えない。
+    // ほかの後片付けより後・1時間に1回にして、通信回数を取りすぎない
+    if (Math.floor(now.getTime() / 900000) % 4 === 2) {
+      const uncheckedAll = cleanupLinks.filter((d) => d.fields.friend === undefined && typeof d.fields.lineUserId === 'string' && d.fields.lineUserId);
+      // 確かめられない1件で止まらないように、回ごとに順番を回す
+      const unchecked = uncheckedAll.length ? uncheckedAll[Math.floor(now.getTime() / 3600000) % uncheckedAll.length] : null;
+      if (unchecked) {
+        const {friend} = await checkFriend(env, fs, unchecked.fields.lineUserId);
+        if (typeof friend === 'boolean') await fs.patch(unchecked.path, {friend, friendCheckedAt: now}, ['friend', 'friendCheckedAt']);
+      }
     }
   } catch (e) {
     if (e.message !== 'request-budget') throw e;
