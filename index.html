@@ -3101,11 +3101,18 @@ function installApp(){
       try{
         const code=await MainicoDeviceMove.start({base:window.MAINICO_MOVE_URL,auth,fetch:(u,o)=>fetch(u,o)});
         location.href=MainicoDeviceMove.targetUrl(location.origin+location.pathname,code,ua);
-      }catch(e){appNotice(MainicoDeviceMove.message(e));}
+      }catch(e){
+        /* 送信役がまだ引っ越しに対応していない(更新前)ときは、使えるように見せず、これまでの移り方を案内する */
+        if(e&&(e.code==='not-found'||e.code==='not-configured'||e.code==='network'||e.code==='server')){
+          appNotice('いまは、ボタン1つでの引っ越しが使えません。\n\n'+where+'で開き直すときは、先に「設定」→「機種変更・アカウントの復旧」でメールとパスワードを登録し、'+where+'で「使っていた記録に戻る」→「メールとパスワードで戻る」から入ってください。');
+          return;
+        }
+        appNotice(MainicoDeviceMove.message(e));
+      }
     });
     return;
   }
-  const move='\n\n※いつものブラウザーでは、いまのつながりは引き継がれません。先に「設定」→「機種変更・アカウントの復旧」でメールとパスワードを登録し、移った先で「以前のアカウントを復旧する」から入ってください。';
+  const move='\n\n※いつものブラウザーでは、いまのつながりは引き継がれません。先に「設定」→「機種変更・アカウントの復旧」でメールとパスワードを登録し、移った先で「使っていた記録に戻る」→「メールとパスワードで戻る」から入ってください。';
   if(inApp&&!ios){
     const url=new URL(location.pathname,location.origin);
     const intent='intent://'+url.host+url.pathname+'#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url='+encodeURIComponent(url.href)+';end';
@@ -3418,7 +3425,7 @@ async function createGroup(){
   /* 前に使っていた人が、まちがえて新しい家庭を作らないように、作る前に1回だけ確かめる(2026-10-08 審査の指摘)。
      入口で「はじめて使う」を選んで来た人には、同じことをもう一度聞かない(2026-10-10) */
   if(!previewStorage.getItem('mainico_group_setup_v1')&&(typeof entryIntent==='function'?entryIntent():'')!=='create'&&typeof appConfirm==='function'){
-    const fresh=await appConfirm('まいにこを使うのは、はじめてですか？\n\n前に使っていて、そのときの記録に戻りたいときは「以前のアカウントを復旧する」を押してください。ここで新しくはじめると、前の記録とは別の、新しい家庭になります。','はじめて使う','以前のアカウントを復旧する',true);
+    const fresh=await appConfirm('まいにこを使うのは、はじめてですか？\n\n前に使っていて、そのときの記録に戻りたいときは「使っていた記録に戻る」を押してください。ここで新しくはじめると、前の記録とは別の、新しい家庭になります。','はじめて使う','使っていた記録に戻る',true);
     if(fresh===false&&typeof openRecovery==='function'){openRecovery(true);return;}
     if(fresh!==true)return;
   }

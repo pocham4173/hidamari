@@ -450,3 +450,5 @@ assert.match(html, /onSnapshot\(\{includeMetadataChanges:true\},snap=>/);
  assert.equal(ids['family-note-input'].focused,true);assert.equal(ids['family-note-input'].value,'入力中の伝言');
  console.log('✅ 家族への伝言入口は一覧と入力欄を開き、入力内容を保持する');
 }
+// 2026-10-10: ホームの要点を #home-main にまとめたあと、t-home の直下を前提にした並べ替えは使わない(家族のホームが開けなくなった不具合の再発防止)
+assert.doesNotMatch(html, /getElementById\('t-home'\)\.insertBefore/);
