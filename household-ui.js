@@ -134,6 +134,9 @@ function applyRecoveryJournal(){
   previewStorage.setItem('mainicoMode',result.mode==='honnin'?'honnin':'kazoku');
   previewStorage.setItem('kazokuOnly',result.mode==='konly'?'1':'');
   if(result.modeNeedsConfirmation)previewStorage.removeItem('mainicoMode');
+  /* 使い方はサーバーに保存した本人の選択(member.mode)なので、新しいスマホでもそのまま開く(2026-10-10 通し確認で発見:
+     メールで復旧すると入口の「使い方を選んでから」に戻され、「はじめて使う」と迷っていた)。同意は起動時にサーバーで確かめる */
+  else previewStorage.setItem('mainicoModeChoiceV1',JSON.stringify([result.uid,result.groupId,result.mode]));
   localStorage.removeItem(RECOVERY_JOURNAL);
   return true;
 }
@@ -158,7 +161,7 @@ async function openRecovery(switchAccount=false){
   pw.value='';pw.setAttribute('autocomplete',newPassword?'new-password':'current-password');
   const pwLabel=document.getElementById('recovery-password-label');
   if(pwLabel)pwLabel.textContent=newPassword?'新しいパスワード（12文字以上・ほかで使っていないもの）':'登録したパスワード';
-  document.getElementById('recovery-title').textContent=registering?'復旧の設定（機種変更・なくしたときのため）':'以前のアカウントに戻す';
+  document.getElementById('recovery-title').textContent=registering?'復旧の設定（機種変更・なくしたときのため）':'使っていた記録に戻る';
   recoveryState(switchAccount?'復旧設定を済ませたメールアドレスとパスワードを入力してください。':gid()?'このアカウントに、復旧用のメールアドレスを登録します。確認メールのリンクを開いたあと「確認できたか調べる」を押してください。':'以前に登録・確認したメールアドレスで、家族との接続を復旧します。');
 }
 function closeRecovery(){

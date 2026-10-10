@@ -1223,7 +1223,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <p class="note">この端末で今開いている登録には復旧設定がありません。切り替えると今の登録に戻れなくなることがあります。今の記録やお薬手帳は、切り替え先には移りません。</p>
     <label style="display:block;padding:16px 0"><input type="checkbox" id="recovery-leave-confirm"> 今の登録に残したい記録・お薬手帳はありません</label>
   </div>
-  <button class="set-btn" id="recovery-login" onclick="runRecoveryAction('login')">以前のアカウントを復旧する</button>
+  <button class="set-btn" id="recovery-login" onclick="runRecoveryAction('login')">メールとパスワードで戻る</button>
   <button class="set-btn" onclick="runRecoveryAction('reset')">パスワードを忘れた方</button>
   <p class="note">写真・PDFのお薬手帳は、このログイン復旧では戻りません。機種変更後の旧端末で、参加解除やアカウント削除はしないでください。</p>
   <a class="consent-back" href="help.html#recovery" target="_blank" rel="noopener">状況に合う復旧・機種変更の手順を見る</a>
@@ -2396,7 +2396,7 @@ setTimeout(function(){
 /* 引っ越しの番号は、起動の最初にURLから取り出して消す(画面にも記録にも出さない) */
 window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 </script>
-<script src="household-ui.js?v=20261010"></script>
+<script src="household-ui.js?v=20261010b"></script>
 <script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>

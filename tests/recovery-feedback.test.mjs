@@ -37,7 +37,7 @@ await c.openRecovery(true);
 assert.equal(d.getElementById('recovery-login').hidden,false);
 // 復旧(ログイン)のときは、保存済みのパスワードを入れる欄・見出し
 assert.equal(password.getAttribute('autocomplete'),'current-password');assert.equal(password.value,'');
-assert.equal(d.getElementById('recovery-title').textContent,'以前のアカウントに戻す');
+assert.equal(d.getElementById('recovery-title').textContent,'使っていた記録に戻る');
 assert.equal(d.getElementById('recovery-password-label').textContent,'登録したパスワード');
 assert.equal(d.getElementById('recovery-register').hidden,true);
 assert.equal(d.getElementById('recovery-switch-warning').hidden,false);

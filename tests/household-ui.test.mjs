@@ -185,9 +185,11 @@ console.log('✅ 旧家庭の購読エラーや削除応答は新しい画面を
   assert.equal(env.storage.getItem('kusuri-2026-09-15-asa'), null);
   assert.equal(env.storage.getItem('unrelatedPreference'), 'keep');
   assert.equal(env.storage.getItem(JOURNAL), null);
+  assert.equal(env.storage.getItem('mainicoModeChoiceV1'), JSON.stringify(['recovered', 'new-family', 'konly']), 'サーバーに保存した使い方で開き、入口の「使い方を選んで」に戻さない');
   const legacy = harness({ [JOURNAL]: JSON.stringify({ uid: 'owner', groupId: 'legacy-family', mode: 'kazoku', name: '家族', modeNeedsConfirmation: true }) });
   assert.equal(legacy.ctx.applyRecoveryJournal(), true);
   assert.equal(legacy.storage.getItem('mainicoMode'), null, 'old ambiguous modes require the user to choose');
+  assert.equal(legacy.storage.getItem('mainicoModeChoiceV1'), null, 'あいまいな古い記録は選び直してもらう');
 }
 console.log('✅ 復旧ジャーナルはUID一致後だけ旧家庭の端末情報を整理し、名前・家庭・利用方法を復元する');
 
