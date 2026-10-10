@@ -192,6 +192,11 @@
         '<button class="set-btn ln-line" type="button" data-line-act="code">自分のLINEをつなぐ</button>'+
         '<div data-line-code></div>';
     }
+    /* 登録すると何が届くか・アプリの家族参加との違い(2026-10-10 最終レビュー「誰のLINEか・何が届くか・家族参加と何が違うか」) */
+    self+='<p class="ln-sub ln-what">'+(myRole==='本人'
+      ?'登録すると、家族が「LINEで知らせる人」にあなたを選んだ予定が、LINEに届きます。'
+      :'登録すると、「LINEで知らせる人」にあなたが選ばれた予定と、おまもりタグのお知らせが、LINEに届きます。ひと声のきっかけを「LINEにも送る」にしている家庭では、担当の日にそれも届きます。')+
+      '<br>LINEはお知らせを受け取るためのものです。記録を見る・書くのは、このアプリです。</p>';
     self+='<div class="save-state" data-line-state aria-live="polite"></div>';
     /* 並び(2026-10-10 使いやすさの見直し 優先3):
        1. 自分のLINE  2. つながっている家族(アプリを使う家族。登録が必要な人には、その人への頼み方)
