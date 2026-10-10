@@ -27,15 +27,21 @@ class Element {
 assert.match(html, /id="card-family-notes"[\s\S]*?<details class="family-compose" id="family-note-compose"/);
 assert.match(html, /id="card-family-tasks"[\s\S]*?<details class="family-compose" id="family-task-compose"/);
 assert.ok(!/insertBefore\([\s\S]{0,80}'card-care-quick'/.test(html), '家族だけの記録カードはやりとりのすぐ下に固定');
-assert.ok(html.indexOf('id="card-actions"')<html.indexOf('id="card-care-quick"'));
-assert.ok(html.indexOf('id="card-care-quick"')<html.indexOf('id="card-next-yotei"'));
-assert.ok(html.indexOf('id="card-family-tasks-preview"')<html.indexOf('id="card-family-notes-preview"'));
+// 家族のホーム(2026-10-10 使いやすさの見直し): ホームは要点、入力欄と一覧は「詳しい画面」に
+const homeMain=section('id="home-main"','id="home-detail-yosu"');
+for(const id of ['card-today-konly','card-actions','card-next-yotei','card-family-notes-preview','card-family-tasks-preview','card-record-actions'])assert.ok(homeMain.includes('id="'+id+'"'),id+' はホームに');
+for(const id of ['card-care-quick','card-memo','card-krec','card-person-compose','card-family-notes','card-family-tasks'])assert.ok(!homeMain.includes('id="'+id+'"'),id+' はホームに重ねない');
+assert.ok(html.indexOf('id="card-today-konly"')<html.indexOf('id="card-next-yotei"'),'今日の様子 → 直近の予定');
+assert.ok(html.indexOf('id="card-next-yotei"')<html.indexOf('id="card-family-notes-preview"'),'直近の予定 → 未確認の伝言');
+assert.ok(html.indexOf('id="card-family-notes-preview"')<html.indexOf('id="card-family-tasks-preview"'));
+assert.match(section('id="card-record-actions"','</div>'),/openHomeDetail\('yosu'\)[\s\S]*openYoteiForm\(\)[\s\S]*openWriteMessage\(\)/,'記録する: 様子・予定・伝言');
+assert.ok(section('id="home-detail-yosu"','id="home-detail-dengon"').includes('id="card-care-quick"'),'家族だけの「確認したことを記録する」は「様子を記録する」の中');
 assert.match(html, /id="home-to-anshin"[^>]*onclick="showTab\('t-soudan'\)"/);
 assert.match(html, /id="card-family-notes-preview"[\s\S]*?onclick="openFamilyNotes\(\)"/);
 assert.match(html, /id="card-next-yotei"[\s\S]*?id="family-today-tomorrow"[\s\S]*?onclick="showTab\('t-yotei'\)"/);
 assert.match(html, /id="card-family-tasks-preview"[\s\S]*?onclick="openFamilyTasks\(\)"/);
 assert.ok(html.indexOf('id="card-next-yotei"')<html.indexOf('id="card-family-tasks-preview"'));
-assert.match(html, /id="card-today-records"[\s\S]*?本人からの連絡/);
+assert.match(html, /id="card-today-records"[\s\S]*?最近のやりとり/);
 assert.match(section('id="card-actions"','id="card-family-notes-preview"'), /onclick="showTab\('t-kiroku'\)">前の日のやりとりを見る<\/button>/);
 assert.match(html, /id="watch-tag-history"/);
 assert.match(html, /この端末で確認しました/);

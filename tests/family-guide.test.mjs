@@ -11,7 +11,7 @@ class El {
   removeChild(c){ this.children=this.children.filter(x=>x!==c); c.parentNode=null; } scrollIntoView(){ this.scrolled++; }
 }
 function setup({ kOnly=false, tag=false, stored } = {}){
-  const els={}; for(const id of ['card-actions','card-care-quick','family-handoff-heading','nav-settings']) els[id]=new El(id);
+  const els={}; for(const id of ['card-record-actions','family-handoff-heading','nav-settings']) els[id]=new El(id);
   const body=new El('body'); const store=new Map(stored?[[G.DONE_KEY,stored]]:[]);
   const doc={ body, getElementById:id=>els[id]||null, createElement:()=>new El('') };
   const storage={ getItem:k=>store.get(k)??null, setItem:(k,v)=>store.set(k,v), removeItem:k=>store.delete(k) };
@@ -19,17 +19,17 @@ function setup({ kOnly=false, tag=false, stored } = {}){
   const click=(what)=>{ const box=body.children[0]; box.listeners.click({ target:{ getAttribute:()=>what } }); };
   return { g, els, body, store, click, box:()=>body.children[0] };
 }
-// 1. 初めての端末では出る。1つ目は「本人とのやりとり」を光らせる
+// 1. 初めての端末では出る。1つ目は「今日見ること」を光らせる(2026-10-10)
 let t=setup();
 assert.equal(t.g.start(), true);
 assert.match(t.box().innerHTML, /はじめての方へ（1\/3）/);
-assert.match(t.box().innerHTML, /本人とのやりとり/);
-assert.ok(t.els['card-actions'].classList.contains('guide-focus'));
-// 2. 次へ → 今日のこと → 設定。光る場所が移る
-t.click('next');
-assert.match(t.box().innerHTML, /今日のこと/);
-assert.ok(!t.els['card-actions'].classList.contains('guide-focus'));
+assert.match(t.box().innerHTML, /今日見ること/);
 assert.ok(t.els['family-handoff-heading'].classList.contains('guide-focus'));
+// 2. 次へ → 記録する → 設定。光る場所が移る
+t.click('next');
+assert.match(t.box().innerHTML, /記録する/);
+assert.ok(!t.els['family-handoff-heading'].classList.contains('guide-focus'));
+assert.ok(t.els['card-record-actions'].classList.contains('guide-focus'));
 t.click('next');
 assert.match(t.box().innerHTML, /ひと声のきっかけやLINEのお知らせは、ここから始められます/);assert.match(t.box().innerHTML, />もう大丈夫</); assert.match(t.box().innerHTML, />はじめる</);
 // 3. 最後で閉じると、見終わった印が残り、二度と自動では出ない
@@ -41,10 +41,10 @@ assert.equal(t.g.start(), false);
 t=setup(); t.g.start(); t.click('skip');
 assert.equal(t.store.get(G.DONE_KEY), '1');
 assert.equal(t.g.start({ force:true }), true);
-// 5. 家族だけで使う家庭は、1つ目が「確認したことを記録する」
+// 5. 家族だけで使う家庭は、本人のボタン操作を待つ説明をしない(家族が確認・記録したこと)
 t=setup({ kOnly:true }); t.g.start();
-assert.match(t.box().innerHTML, /確認したことを記録する/);
-assert.ok(t.els['card-care-quick'].classList.contains('guide-focus'));
+assert.match(t.box().innerHTML, /家族が確認・記録したこと/);
+assert.doesNotMatch(t.box().innerHTML, /ご本人が押したこと/);
 // 6. おまもりタグの未確認の知らせがあるときは出さない。途中で届いたら下げる（見終わった扱いにしない）
 t=setup({ tag:true }); assert.equal(t.g.start(), false);
 t=setup(); t.g.start(); t.g.interrupt();
