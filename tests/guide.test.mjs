@@ -13,7 +13,10 @@ for (const id of ['start', 'join', 'daily', 'family', 'yotei', 'kiroku', 'hitoko
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 // 家族の設定の一番上・ご本人の「その他の設定」の一番上に、すぐ見える形で置く
 assert.match(html, /<button class="set-btn" type="button" onclick="openRecoveryMenu\(\)">復旧を設定する<\/button>\n    <\/div>\n    <a class="guide-link" href="guide\/"/);
-assert.match(html, /<div class="ttl">その他の設定<\/div>\n  <a class="guide-link" href="guide\/"/);
+assert.match(html, /<div class="ttl">その他の設定<\/div>\n  <\/div>\n  <a class="guide-link" href="guide\/"/);
+// ご本人の「その他の設定」も、家族の設定と同じく全画面で開き、上に「← 戻る」(2026-10-11)
+assert.match(html, /#settings-modal,#person-settings-modal\{padding:0;align-items:stretch/);
+assert.match(html, /id="person-settings-modal"><div class="modal-box adult-font">[\s\S]{0,200}<button type="button" class="set-back" onclick="closePersonSettings\(\)">← 戻る<\/button>/);
 assert.match(html, /<a class="consent-back" href="guide\/" target="_blank" rel="noopener">📷 写真つきの使い方<\/a>/, '入口からも');
 // 準備中の「LINEでログイン」は、送信役の場所が設定されるまでメニューに出さない
 assert.match(html, /id="menu-line-login" data-line-login-only hidden/);
