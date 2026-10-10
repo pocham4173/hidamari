@@ -726,3 +726,50 @@ const callbackCancel = async (tx, c) => {
   assert.match(await (await worker.fetch(new Request('https://w.example/'), env, {})).text(), /LINE送信役/);
 }
 console.log('LINEでログイン: 設定・送り元・つなぐ・番号・上書き防止・ログイン・未連携・停止/削除・LINE確認の不正・取り消し・期限・同時送信・解除・片付け passed');
+
+/* ブラウザーの引っ越し(/auth/move/〜。2026-10-10): LINEの中 → Chrome。LINEでログインの設定がなくても使える */
+{
+  const mv = (route, body, headers = {}, origin = APP) => worker.fetch(new Request('https://w.example/auth/move/' + route, {
+    method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json', origin, ...headers } }), base, {});
+  // 他のサイトからは呼べない・ログインしていないと作れない・家庭に参加していないと作れない
+  assert.equal((await mv('start', {}, authH('fam'), 'https://evil.example')).status, 403);
+  assert.equal((await mv('start', {})).status, 401);
+  assert.equal((await mv('start', {}, authH('solo'))).status, 403);
+  // 作る → 番号そのものは保存しない(ハッシュだけ)
+  const r = await mv('start', {}, authH('fam'));
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('access-control-allow-origin'), APP);
+  const { code } = await r.json();
+  assert.match(code, /^[0-9a-f]{32}$/);
+  const stored = [...db.keys()].filter((k) => k.startsWith('moveCodes/'));
+  assert.equal(stored.length, 1);
+  assert.ok(!stored[0].includes(code) && !JSON.stringify(db.get(stored[0]).fields).includes(code), '番号そのものは残さない');
+  assert.equal(db.get(stored[0]).fields.uid.stringValue, 'fam');
+  // 形の違う番号・知らない番号は使えない
+  assert.equal((await mv('finish', { code: 'x' })).status, 400);
+  assert.equal((await mv('finish', { code: 'a'.repeat(32) })).status, 410);
+  // 移った先: 番号で、同じ人のカスタムトークンがもらえる
+  const f = await mv('finish', { code });
+  assert.equal(f.status, 200);
+  const { customToken } = await f.json();
+  const claims = JSON.parse(Buffer.from(customToken.split('.')[1], 'base64url').toString());
+  assert.equal(claims.uid, 'fam');
+  assert.ok(createVerify('RSA-SHA256').update(customToken.split('.').slice(0, 2).join('.')).verify(sa.publicKey, Buffer.from(customToken.split('.')[2], 'base64url')), '送信役の鍵で署名');
+  // 1回だけ
+  assert.equal((await mv('finish', { code })).status, 410);
+  assert.equal([...db.keys()].filter((k) => k.startsWith('moveCodes/')).length, 0);
+  // 期限切れは使えない
+  const r2 = await (await mv('start', {}, authH('fam'))).json();
+  const k2 = 'moveCodes/' + await sha(r2.code);
+  put(k2, { ...db.get(k2).fields, expiresAt: T(new Date(Date.now() - 1000)) });
+  const e2 = await mv('finish', { code: r2.code });
+  assert.equal(e2.status, 410);
+  assert.equal((await e2.json()).error, 'move-expired');
+  // 作ったあとで家族から外れた人は、引っ越せない
+  const r3 = await (await mv('start', {}, authH('fam'))).json();
+  const famMember = db.get('groups/g1/members/fam');
+  put('groups/g1/members/fam', { ...famMember.fields, status: S('removed') });
+  assert.equal((await mv('finish', { code: r3.code })).status, 403);
+  db.set('groups/g1/members/fam', famMember);
+  console.log('ブラウザーの引っ越し: 送り元・ログイン・家庭・ハッシュで保存・1回だけ・期限・外れた人 passed');
+}

@@ -2327,7 +2327,12 @@ setTimeout(function(){
 <script src="account-recovery.js?v=20260927-account-switch"></script>
 <script src="account-deletion.js?v=20260918-consent"></script>
 <script src="household-deletion.js"></script>
-<script src="household-ui.js?v=20261002"></script>
+<script src="device-move.js?v=20261010"></script>
+<script>
+/* 引っ越しの番号は、起動の最初にURLから取り出して消す(画面にも記録にも出さない) */
+window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
+</script>
+<script src="household-ui.js?v=20261010"></script>
 <script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
@@ -3000,6 +3005,26 @@ function closeTagPreview(){
   const m=document.getElementById('tag-preview-modal');
   if(m) m.classList.remove('show');
 }
+/* ===== ブラウザーの引っ越し(受け取る側。2026-10-10) ===== */
+let moveNotice='',moveDone=false;
+async function moveBeforeBoot(user){
+  const code=window.mainicoMoveCode;if(!code)return false;
+  window.mainicoMoveCode='';
+  // このブラウザーですでに家庭を使っているときは、切り替えない
+  if(user&&gid()){moveNotice=MainicoDeviceMove.message({code:'in-use'});return false;}
+  const l=document.getElementById('loading');if(l)l.textContent='引っ越しています…';
+  window.mainicoStartupStage='引っ越し中';
+  try{
+    await MainicoDeviceMove.finish({base:window.MAINICO_MOVE_URL,auth,fetch:(u,o)=>fetch(u,o)},code);
+    moveDone=true;return true;   // ログインが変わったので、起動をやり直す
+  }catch(e){moveNotice=MainicoDeviceMove.message(e);return false;}
+}
+function moveAfterBoot(){
+  if(moveNotice){const t=moveNotice;moveNotice='';appNotice(t);return;}
+  if(!moveDone||!gid())return;
+  moveDone=false;
+  appConfirm('引っ越しできました。これからは、このブラウザーで続きから使えます。\n\nつぎに、ホーム画面に追加しましょう。','ホーム画面に追加する','あとで',true).then(ok=>{if(ok)installApp();});
+}
 function installApp(){
   if(isStandalone()){
     alert('すでにホーム画面からアプリとして開いています');
@@ -3014,7 +3039,19 @@ function installApp(){
   const ios=/iPhone|iPad|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
   /* LINEなどのアプリの中のブラウザーでは、ホーム画面に追加できない(2026-10-10 ヒビルカと同じ案内)。
      Androidは Chrome で開き直すボタン、iPhoneは Safari で開く手順を出す */
-  const inApp=/ Line\/|FBAN|FBAV|Instagram/i.test(ua)||(/Android/i.test(ua)&&/; wv\)/.test(ua));
+  const inApp=MainicoDeviceMove.inAppBrowser(ua);
+  /* 家族に参加済みなら、ボタン1つで同じアカウントのまま引っ越す(2026-10-10) */
+  if(inApp&&window.MAINICO_MOVE_URL&&gid()&&auth.currentUser){
+    const where=ios?'Safari':'Chrome';
+    appConfirm('いまLINEの中で開いています。LINEの中では、ホーム画面に追加できません。\n\n'+where+'で開き直して、このまま続きから使えるようにします。開いたら、ホーム画面に追加してください。','Chromeで開く'.replace('Chrome',where),'あとで',true).then(async ok=>{
+      if(!ok)return;
+      try{
+        const code=await MainicoDeviceMove.start({base:window.MAINICO_MOVE_URL,auth,fetch:(u,o)=>fetch(u,o)});
+        location.href=MainicoDeviceMove.targetUrl(location.origin+location.pathname,code,ua);
+      }catch(e){appNotice(MainicoDeviceMove.message(e));}
+    });
+    return;
+  }
   const move='\n\n※いつものブラウザーでは、いまのつながりは引き継がれません。先に「設定」→「機種変更・アカウントの復旧」でメールとパスワードを登録し、移った先で「以前のアカウントを復旧する」から入ってください。';
   if(inApp&&!ios){
     const url=new URL(location.pathname,location.origin);

@@ -75,7 +75,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined', 'line-login-signin', 'device-reconnect']);
-const VERSION_TEXT = '版：2026-10-10 見直し（古い連携の友だち確認・退会した人の連携を片付ける）';
+const VERSION_TEXT = '版：2026-10-10 LINEの中からChromeへ引っ越し';
 
 export default {
   async fetch(request, env, ctx) {
@@ -85,6 +85,9 @@ export default {
     }
     if (url.pathname.startsWith('/auth/line/')) {
       return handleLineAuth(request, env, url);
+    }
+    if (url.pathname.startsWith('/auth/move/')) {
+      return handleMove(request, env, url);
     }
     // 試験環境だけ: 同じWorkerでアプリの画面も配る(本番には ASSETS がないので、ここは通らない)
     if (env.ASSETS && url.pathname !== '/line' && url.pathname !== '/__status') {
@@ -476,7 +479,7 @@ async function runNotifications(env) {
     catch (e) { if (e.message !== 'request-budget') console.error('usage', e.message); }
     finally { fs.softLimit = 0; }
     // 期限切れの記録(通知文の控えなど)を先に消す。プライバシーポリシーで約束している片付けなので、ほかの見直しより先
-    for (const collectionId of ['lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage']) {
+    for (const collectionId of ['lineLinkCodes','lineInvites','lineDeliveryReceipts','tagAlertReceipts','tagAlertCounters','lineUsage','moveCodes']) {
       const expired = await fs.query('', {from:[{collectionId}],
         where:{fieldFilter:{field:{fieldPath:'expiresAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},limit:3});
       for (const d of expired) await fs.delete(d.path);
@@ -1304,6 +1307,58 @@ async function handleLineAuth(request, env, url) {
       ? authPage(503, 'LINEでの確認', ['通信の確認ができませんでした。まいにこの記録や設定は変わっていません。時間をおいて、もう一度お試しください。'])
       : apiJson({ error: 'server' }, 503, env);
   }
+}
+
+/* ================= ブラウザーの引っ越し(2026-10-10) =================
+ * LINEの中のブラウザーで使い始めた人が、同じアカウントのまま Chrome/Safari(ホーム画面のアイコン)へ移る。
+ *  start : 今のブラウザーで、ログイン中の本人(IDトークン)が、使い捨ての引っ越し番号を作る(5分・1回だけ)
+ *  finish: 移った先のブラウザーが番号を出すと、同じアカウントに入るための鍵(カスタムトークン)を返す
+ * 番号はハッシュにして保存し、番号そのものは残さない。番号は端末の中で Chrome に渡すだけで、人に見せない */
+const MOVE_TTL_MS = 5 * 60 * 1000;
+const MOVE_CODE_RE = /^[0-9a-f]{32}$/;
+async function handleMove(request, env, url) {
+  const route = url.pathname.slice('/auth/move/'.length);
+  try {
+    if ((request.headers.get('origin') || '') !== appOrigin(env)) return new Response('forbidden', { status: 403 });
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(env) });
+    if (request.method !== 'POST') return apiJson({ error: 'method' }, 405, env);
+    if (!env.FIREBASE_SERVICE_ACCOUNT) return apiJson({ error: 'not-configured' }, 503, env);
+    let body;
+    try { body = await request.json(); } catch (e) { body = null; }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return apiJson({ error: 'bad-request' }, 400, env);
+    const fs = new Firestore(env);
+    if (route === 'start') return apiJson(await moveStart(env, fs, request), 200, env);
+    if (route === 'finish') return apiJson(await moveFinish(fs, body), 200, env);
+    return apiJson({ error: 'not-found' }, 404, env);
+  } catch (e) {
+    if (e instanceof AuthProblem) return apiJson({ error: e.code }, e.status, env);
+    console.error('move failed', route, e && e.name);
+    return apiJson({ error: 'server' }, 503, env);
+  }
+}
+async function moveStart(env, fs, request) {
+  const { uid } = await verifyFirebaseUser(env, fs, request);
+  await requireHousehold(fs, uid);   // 家庭に参加している人だけ
+  const code = randomHex(16);
+  const now = new Date();
+  const ok = await fs.commit([{ update: { name: fs.root + '/moveCodes/' + await sha256Hex(code),
+    fields: toFields({ uid, createdAt: now, expiresAt: new Date(now.getTime() + MOVE_TTL_MS) }) }, currentDocument: { exists: false } }]);
+  if (!ok) throw new Error('move code');
+  return { code, expiresInSec: MOVE_TTL_MS / 1000 };
+}
+async function moveFinish(fs, body) {
+  if (typeof body.code !== 'string' || !MOVE_CODE_RE.test(body.code)) throw new AuthProblem('bad-request');
+  const path = 'moveCodes/' + await sha256Hex(body.code);
+  const doc = await fs.get(path);
+  if (!doc) throw new AuthProblem('move-used', 410);
+  // 1回だけ: 読んだ時点から変わっていないときだけ消せる。消せたら使える
+  const used = await fs.commit([{ delete: fs.root + '/' + path, currentDocument: { updateTime: doc.updateTime } }]);
+  if (!used) throw new AuthProblem('move-used', 410);
+  const uid = doc.fields.uid;
+  if (!(doc.fields.expiresAt instanceof Date) || doc.fields.expiresAt.getTime() < Date.now()) throw new AuthProblem('move-expired', 410);
+  if (typeof uid !== 'string' || !await accountUsable(fs, uid)) throw new AuthProblem('account-unavailable', 403);
+  await requireHousehold(fs, uid);
+  return { customToken: await mintCustomToken(fs, uid) };
 }
 
 /* ---- 開始 ---- */

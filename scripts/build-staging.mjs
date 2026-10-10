@@ -37,7 +37,8 @@ fs.writeFileSync(path.join(out, 'mainico-config.js'),
   'window.MAINICO_STAGING = true;\n' +
   'window.MAINICO_FIREBASE_CONFIG = ' + JSON.stringify(web) + ';\n' +
   "window.MAINICO_RECAPTCHA_SITE_KEY = '';\n" +
-  'window.MAINICO_LINE_AUTH_URL = ' + JSON.stringify(origin) + ';\n');
+  'window.MAINICO_LINE_AUTH_URL = ' + JSON.stringify(origin) + ';\n' +
+  'window.MAINICO_MOVE_URL = ' + JSON.stringify(origin) + ';\n');
 // 試験環境だと一目で分かるようにする
 const idx = path.join(out, 'index.html');
 fs.writeFileSync(idx, fs.readFileSync(idx, 'utf8').replace('<body', '<body data-staging="1"').replace('</body>',

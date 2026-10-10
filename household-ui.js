@@ -279,6 +279,8 @@ async function bootHouseholdUser(user){
   householdVerified=false;
   if(!user){
     window.mainicoStartupStage='ログイン確認中';
+    // LINEの中から引っ越してきたところなら、同じアカウントに入る(新しいアカウントは作らない)
+    if(typeof moveBeforeBoot==='function' && await moveBeforeBoot(null))return;
     // LINEから戻ったところなら、つないだアカウントに入る(新しいアカウントは作らない)
     if(typeof lineAuthBeforeBoot==='function' && await lineAuthBeforeBoot(null))return;
     if(generation!==householdBootGeneration || auth.currentUser)return;
@@ -287,6 +289,7 @@ async function bootHouseholdUser(user){
     try{await auth.signInAnonymously();}catch(error){window.showStartupProblem('ログインできませんでした');}
     return;
   }
+  if(typeof moveBeforeBoot==='function' && await moveBeforeBoot(user))return;
   if(typeof lineAuthBeforeBoot==='function' && await lineAuthBeforeBoot(user))return;
   if(generation!==householdBootGeneration || uid()!==user.uid)return;
   let memberRead=null,memberGroup='',restoredFromServer=false;
@@ -400,6 +403,7 @@ async function bootHouseholdUser(user){
   window.mainicoStartupStage='準備完了';document.getElementById('loading').style.display='none';
   try{startMode();if(gid()){watchHouseholdAccess();void syncStartupRecoveryPointer();}}catch(error){showHouseholdBlocked('画面を開けませんでした。保存情報は消さず、再確認してください。');}
   if(typeof lineAuthAfterBoot==='function')lineAuthAfterBoot();
+  if(typeof moveAfterBoot==='function')moveAfterBoot();
 }
 function restoreServerMode(userId,member){
   const mode=member&&member.mode;
