@@ -181,6 +181,8 @@
     }else if(linked){
       self='<p class="ln-status ok">✓ 自分のLINEを登録済み（'+h(whose.short)+'）</p>'+
         '<p class="ln-sub">予定の「LINEで知らせる人」で、自分を選べます。</p>'+
+        /* まいにこ公式LINEへの入口(2026-10-10 理絵さん「公式アカウントに行くには？」) */
+        '<a class="set-btn ln-line" href="'+ADD_FRIEND_URL+'" target="_blank" rel="noopener noreferrer">まいにこのLINEを開く</a>'+
         '<button class="set-btn ln-ghost" type="button" data-line-act="unlink">つなぐのをやめる</button>';
     }else{
       self='<p class="ln-status">このスマホのLINEを、'+h(whose.short)+'のLINEとして登録します。</p>'+

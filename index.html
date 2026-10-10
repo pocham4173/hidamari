@@ -924,8 +924,13 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       if(!box||known||(standalone&&!inLine)||(invite&&!inLine))return;
       var url=location.href.split('#')[0];
       url+=(url.indexOf('?')<0?'?':'&')+'openExternalBrowser=1'+(invite?'&invite='+encodeURIComponent(invite):'');
+      /* Androidは Chrome を直接開く(LINEの openExternalBrowser が効かない機種があるため。ヒビルカと同じ) */
+      if(inLine&&/Android/i.test(ua)){
+        var u=new URL(url);
+        url='intent://'+u.host+u.pathname+u.search+'#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url='+encodeURIComponent(u.href)+';end';
+      }
       box.innerHTML=inLine
-        ?'<b>LINEの中で開いています</b>すでにまいにこを使っている方は、ここで新しく始めず、ホーム画面の「まいにこ」アイコンから開いてください。<br>はじめて使う方は、下のボタンでいつものブラウザーに移ってから始めてください（LINEの中では、次に開いたとき続きから使えないことがあります）。<br><a href="'+url.replace(/"/g,'&quot;')+'">いつものブラウザーで開く</a>'
+        ?'<b>まず、いつものブラウザーで開いてください</b>LINEの中で始めたり参加したりすると、次に開いたとき続きから使えないことがあります。ホーム画面にも追加できません。<br><a href="'+url.replace(/"/g,'&quot;')+'">'+(/Android/i.test(ua)?'Chromeで開く':'いつものブラウザーで開く')+'</a><br><small>すでにまいにこを使っている方は、ここで新しく始めず、ホーム画面の「まいにこ」アイコンから開いてください。</small>'
         :'<b>すでに使っている方へ</b>ホーム画面の「まいにこ」から開いてください。';
       box.hidden=false;
     }catch(e){}
@@ -3007,10 +3012,24 @@ function installApp(){
   }
   const ua=navigator.userAgent;
   const ios=/iPhone|iPad|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  /* LINEなどのアプリの中のブラウザーでは、ホーム画面に追加できない(2026-10-10 ヒビルカと同じ案内)。
+     Androidは Chrome で開き直すボタン、iPhoneは Safari で開く手順を出す */
+  const inApp=/ Line\/|FBAN|FBAV|Instagram/i.test(ua)||(/Android/i.test(ua)&&/; wv\)/.test(ua));
+  const move='\n\n※いつものブラウザーでは、いまのつながりは引き継がれません。先に「設定」→「機種変更・アカウントの復旧」でメールとパスワードを登録し、移った先で「以前のアカウントを復旧する」から入ってください。';
+  if(inApp&&!ios){
+    const url=new URL(location.pathname,location.origin);
+    const intent='intent://'+url.host+url.pathname+'#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url='+encodeURIComponent(url.href)+';end';
+    appConfirm('いまLINEの中で開いています。LINEの中では、ホーム画面に追加できません。\n\nChromeで開いて、Chromeの右上の︙から「ホーム画面に追加」を選んでください。'+move,'Chromeで開く','あとで',true).then(ok=>{if(ok)location.href=intent;});
+    return;
+  }
+  if(inApp&&ios){
+    alert('いまLINEの中で開いています。LINEの中では、ホーム画面に追加できません。\n\n1. 画面の右下（または右上）のメニューから「Safariで開く」を押す\n2. Safariの共有ボタン（□↑）から「ホーム画面に追加」を押す'+move);
+    return;
+  }
   if(ios){
     openInstallGuide();
   }else{
-    alert('ブラウザのメニュー（右上の︙など）から「ホーム画面に追加」または「アプリをインストール」を選んでください');
+    alert('Chromeの右上の︙を押して、「ホーム画面に追加」または「アプリをインストール」を選んでください。');
   }
 }
 updateInstallButton();
