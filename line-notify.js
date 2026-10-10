@@ -99,10 +99,12 @@
   }
 
   /* ===== 設定画面のLINE欄（2026-10-04 ヒビルカと同じ形） =====
-     カード1「自分のLINEを登録する」：ボタンを押すだけでつなぐ(LINEのトークにコードを入れた状態で開く)
-     カード2「LINEの送信先を追加」 ：名前を入れて招待を送る。相手がLINEで送信すると「登録済み」になる
-     カード3「LINEの送信先」       ：アプリを使う家族／LINEだけで受け取る人 の2つに分けた一覧。名前変更・招待の再送・削除
-     カード4「家族に頼む」         ：アプリを使う家族へ、つなぎ方をLINEで送る
+     (2026-10-10 だれの設定かを分ける)
+     カード1「○○さん（本人/家族）のLINE設定」：今ログインしている人の、自分のLINEだけをつなぐ
+     カード2「ほかの人にも通知を届けたい」     ：家族の画面だけ。本人への登録案内(家族のみでは出さない)・ほかの家族への依頼
+     カード3「アプリを使わない人に、LINEだけで届ける」：名前を入れて招待を送る(まいにこへの参加とは別)
+     カード4「LINEをつないでいる人」          ：アプリを使う人／LINEだけで受け取る人。名前と役割で表示
+     本人の画面では、カード2〜4を「ほかの人にも通知を届けたい」の中にたたむ
      招待した人(アプリを使わない人)には、予定ごとに「知らせる」と選んだ予定だけが届く。
      LINEの利用者識別子は画面に置かない(登録は送信役が、署名を確かめたLINEの受付から行う) */
   var renderSeq=0, linkWatch=null, recipientWatch=null, INVITE_DAYS=7;
@@ -152,31 +154,53 @@
       bind(area,areaId); return;
     }
     var linked=!!(link && link.groupId===(typeof global.gid==='function'?global.gid():''));
+    /* 「自分」がだれかを、サーバーの自分の登録から確かめる(2026-10-10)。
+       読めないときは、名前を推測して登録を進めない */
+    var me=null;
+    try{
+      var meSnap=typeof global.col==='function'?await global.col('members').doc(myUid).get({source:'server'}):null;
+      if(meSnap&&meSnap.exists) me=meSnap.data()||{};
+    }catch(e){ me=null; }
     var share=await readShareConsent(myUid);
     if(seq!==renderSeq) return;
+    if(!me){
+      area.innerHTML='<p class="note">あなたの登録（名前と役割）を確認できませんでした。通信を確認してください。</p>'+
+        '<button class="set-btn" type="button" data-line-act="reload">もう一度確認する</button>';
+      bind(area,areaId); return;
+    }
+    var myRole=roleOf(me);
+    var whose=whoLabel(me.name,myRole);
+    var konly=typeof global.isKOnly==='function'&&global.isKOnly();
     var self;
     if(linked){
       /* 連携済みでも、友だち追加を確かめられていなければ「受け取れます」とは言わない(2026-10-09 審査の指摘) */
       var fr=link.friend===true?'ok':link.friend===false?'ng':'unknown';
-      self=(fr==='ok'?'<p class="ln-status ok">✓ 自分のLINEを登録済み（友だち追加も確認済み）。予定の「知らせる人」で自分を選べます。</p>'
-          :fr==='ng'?'<p class="ln-status ng">⚠ LINEは登録済みですが、まいにこの<b>友だち追加</b>が確認できていません。友だち追加をしないと、お知らせは届きません。</p>'
-          :'<p class="ln-status">LINEは登録済みです。<b>友だち追加は確認できていません</b>（追加済みなら、このままで大丈夫です）。</p>')+
+      self=(fr==='ok'?'<p class="ln-status ok">✓ つないであります（友だち追加も確認済み）</p>'
+          :fr==='ng'?'<p class="ln-status ng">⚠ つないでありますが、まいにこの<b>友だち追加</b>が確認できていません。友だち追加をしないと、お知らせは届きません。</p>'
+          :'<p class="ln-status">つないであります。<b>友だち追加は確認できていません</b>（追加済みなら、このままで大丈夫です）。</p>')+
         '<a class="set-btn '+(fr==='ok'?'ln-soft':'ln-line')+'" href="'+ADD_FRIEND_URL+'" target="_blank" rel="noopener noreferrer">まいにこを友だち追加</a>'+
         (fr==='ok'?'':'<button class="set-btn" type="button" data-line-act="reload">友だち追加したら：もう一度確認する</button>')+
         '<button class="set-btn ln-ghost" type="button" data-line-act="unlink">つなぐのをやめる</button>';
     }else{
-      self='<p class="ln-status">最初に1回、自分のLINEを登録してください。</p>'+
-        '<ol class="ln-steps"><li>まいにこ公式LINEを友だち追加します（追加済みなら飛ばしてOK）</li><li>「自分のLINEを登録する」を押し、開いたLINEで<b>送信</b>を押せば完了です</li></ol>'+
+      self='<p class="ln-status">このスマホで開くLINEが、'+h(whose.short)+'のLINEとして登録されます。</p>'+
+        '<ol class="ln-steps"><li>まいにこ公式LINEを友だち追加します（追加済みなら飛ばしてOK）</li><li>「自分のLINEをつなぐ」を押し、開いたLINEで<b>送信</b>を押せば完了です</li></ol>'+
         '<a class="set-btn ln-soft" href="'+ADD_FRIEND_URL+'" target="_blank" rel="noopener noreferrer">まいにこを友だち追加</a>'+
-        '<button class="set-btn ln-line" type="button" data-line-act="code">自分のLINEを登録する</button>'+
+        '<button class="set-btn ln-line" type="button" data-line-act="code">自分のLINEをつなぐ</button>'+
         '<div data-line-code></div>';
     }
     self+='<div class="save-state" data-line-state aria-live="polite"></div>';
-    var askUrl='https://line.me/R/share?text='+encodeURIComponent('まいにこの予定のお知らせを、LINEで受け取れるようにしてね。\nまいにこを開いて「設定」→「LINEで予定のお知らせ」→「自分のLINEを登録する」を押すだけです。\n'+appUrl());
-    area.innerHTML=
-      card('me','me','自分のLINEを登録する','',self)+
-      card('add','add','LINEの送信先を追加','予定をLINEで送れる人を増やす',
-        '<p class="ln-sub">名前を入れて招待を送り、相手がLINEで<b>送信</b>を押したら登録完了です。ヘルパーさんやデイサービスなど、アプリを使わない人にも予定を伝えられます。</p>'+
+    /* ほかの人への案内(自分の登録とは分ける)。本人の登録は、本人のスマホで本人のLINEを使って行う */
+    var askFamilyUrl='https://line.me/R/share?text='+encodeURIComponent('まいにこの予定のお知らせを、LINEで受け取れるようにしてね。\nあなたのスマホでまいにこを開いて「設定」→「LINEで予定のお知らせ」→「自分のLINEをつなぐ」を押すだけです。\n'+appUrl());
+    var askHonninUrl='https://line.me/R/share?text='+encodeURIComponent('まいにこの予定のお知らせを、LINEで受け取れるようにしましょう。\nご本人のスマホでまいにこを開いて「その他の設定」→「LINEで予定のお知らせ」→「自分のLINEをつなぐ」を押してください。\n'+appUrl());
+    var others='';
+    if(myRole==='家族'){
+      if(!konly) others+='<a class="set-btn ln-soft" href="'+h(askHonninUrl)+'" target="_blank" rel="noopener noreferrer">本人に登録案内を送る</a>'+
+        '<p class="ln-sub">ご本人のスマホで、ご本人のLINEをつなぎます。手伝うときも、ご本人のスマホで進めてください。</p>';
+      others+='<a class="set-btn ln-soft" href="'+h(askFamilyUrl)+'" target="_blank" rel="noopener noreferrer">ほかの家族に登録を頼む</a>'+
+        '<p class="ln-sub">まいにこを使っている家族が、自分のスマホで自分のLINEをつなぎます。</p>';
+    }
+    var lineOnly=card('add','add','アプリを使わない人に、LINEだけで届ける','ヘルパーさんなど。まいにこへの参加とは別です',
+        '<p class="ln-sub">名前を入れて招待を送り、相手がLINEで<b>送信</b>を押したら登録完了です。</p>'+
         (share?
           '<label class="ln-label" for="'+h(areaId)+'-invite-name">通知する人の名前</label>'+
           '<input class="ln-input" id="'+h(areaId)+'-invite-name" maxlength="40" placeholder="例：お母さん、ヘルパーの山田さん" data-line-invite-name>'+
@@ -195,15 +219,28 @@
           '<label class="ln-check"><input type="checkbox" data-share-honnin> ご本人の予定を送るときは、ご本人の了解を得ます（ご本人が自分で使う場合は、自分で了解したことになります）</label>'+
           '<button class="set-btn ln-line" type="button" data-line-act="share-consent">同意して使い始める</button>'+
           '<div class="save-state" data-share-state aria-live="polite"></div></div>'
-        ))+
-      card('list','list','LINEの送信先','','<div data-line-family><p class="note">読み込んでいます…</p></div>')+
-      card('send','send','家族に頼む','アプリを使う家族へ、つなぎ方を送る',
-        '<p class="ln-sub">家族がアプリから自分のLINEを登録すると、「LINEの送信先」に✓が付きます。</p>'+
-        '<a class="set-btn ln-soft" href="'+h(askUrl)+'" target="_blank" rel="noopener noreferrer">LINEで家族に頼む</a>')+
+        ));
+    var list=card('list','list','LINEをつないでいる人','','<div data-line-family><p class="note">読み込んでいます…</p></div>');
+    var rest=(others?card('send','send','ほかの人にも通知を届けたい','',others):'')+lineOnly+list+
       '<details class="ln-more"><summary>LINEに届く内容</summary><p class="note">予定の日付・時刻・場所・予定名・登録した人の名前です。服薬・体調の記録や伝言は送りません。LINEヤフー株式会社のLINEを通じて届き、ロック画面に表示されることがあります。招待した人には、その人に知らせると選んだ予定だけが届きます（おまもりタグのお知らせは、アプリで登録した家族だけに届きます）。</p></details>';
+    /* 本人の画面は、自分の登録を中心にする。ほかの人のことは、開いたときだけ出す */
+    area.innerHTML=card('me','me',whose.title,'',self)+
+      (myRole==='本人'?'<details class="ln-more ln-others"><summary>ほかの人にも通知を届けたい・つないでいる人</summary>'+rest+'</details>':rest);
     bind(area,areaId);
     watchFamily(area,areaId,myUid,linked?{friend:typeof link.friend==='boolean'?link.friend:null}:false,seq);
     if(!linked) watchLink(areaId,myUid,seq);
+  }
+  /* 役割: 今の利用方法(mode)を優先し、mode のない古い記録だけ登録時の役割(role)を見る */
+  function roleOf(m){
+    m=m||{};
+    if(Object.prototype.hasOwnProperty.call(m,'mode')) return m.mode==='honnin'?'本人':'家族';
+    return m.role==='honnin'?'本人':'家族';
+  }
+  /* 「○○さん（家族）のLINE設定」。名前が未設定・「本人」だけのときは役割で呼ぶ */
+  function whoLabel(name,role){
+    var n=String(name||'').trim();
+    if(!n||n===role||n==='家族'&&role==='家族') return {title:(role==='本人'?'ご本人':'あなた（家族）')+'のLINE設定',short:role==='本人'?'ご本人':'あなた'};
+    return {title:n+'さん（'+role+'）のLINE設定',short:n+'さん（'+role+'）'};
   }
   /* アプリを使わない人へ送る同意(この家族の中で、自分の同意)。読めないときは未同意として扱う */
   var SHARE_VERSION='line-share-20261004';
@@ -237,7 +274,7 @@
     var members=[], latest={}, friendAt={};
     try{
       var ms_=await global.col('members').where('status','==','approved').get();
-      ms_.forEach(function(d){ members.push({id:d.id,name:(d.data()||{}).name||''}); });
+      ms_.forEach(function(d){ var v=d.data()||{}; members.push({id:d.id,name:v.name||'',role:roleOf(v)}); });
       var logs=await global.col('events').where('type','==','line-link-log').get();
       var rows=[]; logs.forEach(function(d){ rows.push(d.data()); });
       rows.sort(function(a,b){ return ms(b)-ms(a); });
@@ -264,7 +301,7 @@
         var f=friendAt[m.id];
         if(!self&&f&&l&&ms(f)>=ms(l)) friend=true;
       }
-      return {id:m.id,name:m.name,self:self,ok:on,friend:friend};
+      return {id:m.id,name:m.name,role:m.role,self:self,ok:on,friend:friend};
     });
     var g=typeof global.gid==='function'?global.gid():'';
     var draw=function(){ if(seq===renderSeq){ box.innerHTML=familyHtml(); bindRows(box,areaId); } };
@@ -287,16 +324,18 @@
   }
   /* 一覧は2つに分ける: アプリを使う家族 / アプリを使わずLINEだけで受け取る人(10/8 理絵さん「この見方がわかりづらい」) */
   function familyHtml(){
-    var html='<p class="ln-group-title">まいにこアプリを使っている家族</p><ul class="ln-family">';
+    var html='<p class="ln-group-title">まいにこアプリを使っている人</p><ul class="ln-family">';
     familyRows.forEach(function(m){
-      html+='<li><div class="ln-who-name"><b>'+h(m.self?'自分':(m.name||'家族'))+(m.self&&m.name?'（'+h(m.name)+'）':'')+'</b>'+
+      /* 名前と役割で、だれのLINEかを分かるようにする(同じ名前の人がいても見分けられる) */
+      var role=m.role?'・'+m.role:'';
+      html+='<li><div class="ln-who-name"><b>'+(m.self?'自分（'+h(m.name||'名前未設定')+h(role)+'）':h(m.name||'家族')+(m.role?'（'+h(m.role)+'）':''))+'</b>'+
         lineStateHtml(m.ok,m.friend)+'</div>'+
         (typeof global.canRename==='function'&&global.canRename(m.id)?'<div class="ln-row-actions"><button type="button" class="ln-mini" data-fam-rename="'+h(m.id)+'">名前を変える</button></div>':'')+'</li>';
     });
     html+='</ul>';
     if(familyRows.some(function(m){return !m.ok;})) html+='<p class="ln-sub">※9月29日より前にLINEをつないだ人は、つないでいても「まだつないでいません」と出ることがあります。</p>';
     html+='<p class="ln-group-title">アプリを使わず、LINEだけで受け取る人</p>';
-    if(!recipientRows.length) html+='<p class="ln-sub">まだいません。上の「LINEの送信先を追加」から招待できます。</p>';
+    if(!recipientRows.length) html+='<p class="ln-sub">まだいません。「アプリを使わない人に、LINEだけで届ける」から招待できます。</p>';
     else html+='<ul class="ln-family">';
     recipientRows.forEach(function(r){
       var st=r.status==='joined'?lineStateHtml(true,typeof r.friend==='boolean'?r.friend:null):r.status==='stopped'?'<small class="ln-ng">LINE：受け取りを止めました</small>':'<small>LINE：まだ登録していません（招待の文を送ると登録されます）</small>';
@@ -559,28 +598,48 @@
     delete whoState[id];
     box.innerHTML='<p class="note">知らせる人を読み込んでいます…</p>';
     var items=[], me=typeof global.uid==='function'?global.uid():'';
+    /* だれのLINEがつながっているか(2026-10-10)。分からないとき(読めない)は、選べなくしない */
+    var linkOf={}, known=false;
     try{
       var ms_=await global.col('members').where('status','==','approved').get();
-      ms_.forEach(function(d){ items.push({key:'u:'+d.id,label:d.id===me?'自分':((d.data()||{}).name||'家族'),family:true,self:d.id===me}); });
+      var members=[]; ms_.forEach(function(d){ members.push({id:d.id,v:d.data()||{}}); });
+      try{
+        var mine=await global.db.collection('lineLinks').doc(me).get();
+        linkOf[me]=!!(mine.exists&&(mine.data()||{}).groupId===global.gid());
+        var logs=await global.col('events').where('type','==','line-link-log').get();
+        var rows=[]; logs.forEach(function(d){ rows.push(d.data()); });
+        rows.sort(function(a,b){ return ms(b)-ms(a); });
+        rows.forEach(function(v){ if(v.uid&&v.uid!==me&&v.action!=='friend'&&!(v.uid in linkOf)) linkOf[v.uid]=v.action==='linked'; });
+        known=true;
+      }catch(ignore){ known=false; }
+      members.forEach(function(m){
+        var self=m.id===me, role=roleOf(m.v);
+        var label=(self?'自分':(m.v.name||'家族'))+'（'+role+'）';
+        var line=known?!!linkOf[m.id]:true;
+        items.push({key:'u:'+m.id,label:label,family:true,self:self,line:line});
+      });
       var shareOk=!!(await readShareConsent(me));
       if(shareOk){
         var rs=await global.db.collection('lineRecipients').where('groupId','==',global.gid()).get();
-        rs.forEach(function(d){ var v=d.data()||{}; if(v.status==='joined') items.push({key:'r:'+d.id,label:v.name||'送信先',family:false}); });
+        rs.forEach(function(d){ var v=d.data()||{}; if(v.status==='joined') items.push({key:'r:'+d.id,label:(v.name||'送信先')+'（LINEだけ）',family:false,line:true}); });
       }
     }catch(e){
-      box.innerHTML='<p class="note">知らせる人を読み込めませんでした。このまま保存すると、LINEを登録した家族全員に届きます。</p>';
+      box.innerHTML='<p class="note">知らせる人を読み込めませんでした。このまま保存すると、LINEをつないだ家族全員に届きます。</p>';
       return;
     }
     items.sort(function(a,b){ return (b.self?1:0)-(a.self?1:0); });
     var sel=Array.isArray(selected)?selected:null;
-    items.forEach(function(it){ it.on=sel?sel.indexOf(it.key)>=0:it.family; });
+    items.forEach(function(it){ it.on=sel?sel.indexOf(it.key)>=0:(it.family&&it.line); });
     whoState[id]={items:items};
     var draw=function(){
-      box.innerHTML='<div class="ln-ttl">知らせる人</div><div class="ln-chips">'+items.map(function(it,i){
-        return '<button type="button" class="ln-chip'+(it.on?' on':'')+(it.family?'':' ext')+'" aria-pressed="'+(it.on?'true':'false')+'" data-who="'+i+'">'+(it.on?'✓ ':'')+h(it.label)+'</button>';
-      }).join('')+'</div><p class="note">選んだ人にだけ届きます。LINEを登録していない人には届きません。'+(items.some(function(it){return !it.family;})?'':'ヘルパーさんなど、アプリを使わない人に届けるときは「設定 → LINEで予定のお知らせ」で同意して招待できます。')+'</p>';
+      box.innerHTML='<div class="ln-ttl">LINEで知らせる人</div><div class="ln-chips">'+items.map(function(it,i){
+        /* LINEをつないでいない人は選べない。名前のあとに状態を出す */
+        return '<button type="button" class="ln-chip'+(it.on?' on':'')+(it.family?'':' ext')+(it.line?'':' off')+'" aria-pressed="'+(it.on?'true':'false')+'"'+(it.line?'':' disabled')+' data-who="'+i+'">'+(it.on?'✓ ':'')+h(it.label)+(it.line?'':' ・LINE未登録')+'</button>';
+      }).join('')+'</div>'+
+      (items.some(function(it){return !it.line;})?'<p class="note">「LINE未登録」の人は、その人が自分のスマホで「設定 → LINEで予定のお知らせ」からLINEをつなぐと選べます。</p>':'')+
+      '<p class="note">選んだ人にだけ届きます。'+(items.some(function(it){return !it.family;})?'':'ヘルパーさんなど、アプリを使わない人に届けるときは「設定 → LINEで予定のお知らせ」で同意して招待できます。')+'おまもりタグのお知らせは、この選択とは別に、LINEをつないだ家族（ご本人以外）に届きます。</p>';
       box.querySelectorAll('[data-who]').forEach(function(b){
-        b.onclick=function(){ var it=items[+b.getAttribute('data-who')]; it.on=!it.on; draw(); };
+        b.onclick=function(){ var it=items[+b.getAttribute('data-who')]; if(!it.line) return; it.on=!it.on; draw(); };
       });
     };
     draw();
@@ -588,7 +647,8 @@
   function readWho(id){
     var st=whoState[id];
     if(!st) return undefined;
-    var fam=st.items.filter(function(i){return i.family;}), ext=st.items.filter(function(i){return !i.family;});
+    /* LINEをつないだ家族が全員選ばれていて、招待した人を選んでいないときは null(つないだ家族全員・今までどおり) */
+    var fam=st.items.filter(function(i){return i.family&&i.line;}), ext=st.items.filter(function(i){return !i.family;});
     if(fam.every(function(i){return i.on;}) && !ext.some(function(i){return i.on;})) return null;
     return st.items.filter(function(i){return i.on;}).map(function(i){return i.key;}).slice(0,20);
   }
