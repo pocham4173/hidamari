@@ -585,6 +585,11 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .next-invite p{margin:6px 0 8px;}
 .next-invite .set-btn{display:block;width:100%;min-height:52px;font-weight:900;background:#E0732F;color:#fff;border-color:#E0732F;}
 .next-invite[hidden]{display:none;}
+.pending-steps{background:#FFF8EC;border:2px solid #E0732F;border-radius:14px;padding:12px 14px;margin:14px 0;line-height:1.7;text-align:left;}
+.pending-steps>b{font-size:1.1rem;color:#7A3E12;}
+.pending-steps ol{margin:6px 0 4px;padding-left:1.3em;}
+.pending-steps li{margin:8px 0;}
+.pending-steps .set-btn{margin-top:6px;}
 .invite-pending-note{background:#FFF8EC;border:2px solid #E0732F;border-radius:12px;padding:10px 12px;}
 .owner-transfer-card label,#owner-transfer-settings label{display:block;font-weight:700;margin:8px 0 4px;}
 .owner-transfer-card input[type=password],#owner-transfer-settings select{display:block;width:100%;box-sizing:border-box;min-height:48px;font:inherit;font-size:1.05rem;padding:8px 10px;border:2px solid #C9B79C;border-radius:10px;background:#fff;margin-bottom:6px;}
@@ -1253,11 +1258,18 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <p class="setup-lead" id="pending-state" role="status" aria-live="polite">参加状況を確認しています…</p>
     <p class="note" id="pending-err" role="status" style="display:none;">今の参加状況を確認できません。保存情報は消さず、通信が戻ってから確認してください。</p>
     <button class="entry-btn" id="pending-retry" type="button" onclick="retryPendingStatus()">参加状況を確認する</button>
-    <details id="pending-help"><summary>招待した人へのお願いを見る</summary>
-      <p>招待した人に、まいにこを開いて「参加を認める」を押してもらってください。今連絡できなくても、申請を取り下げる必要はありません。</p>
-      <button class="set-btn" type="button" onclick="copyPendingHelp()">お願いする文をコピー</button>
-      <p class="note" id="pending-copy-state" role="status"></p>
-    </details>
+    <!-- つぎにすることを、たたまずに見せる(2026-10-10 理絵さん「登録してから次のページの行き方がわからない」) -->
+    <div id="pending-help" class="pending-steps">
+      <b>つぎにすること</b>
+      <ol>
+        <li>招待した人に「申し込んだよ」と伝えます。<br><a class="set-btn ln-line" id="pending-line" href="https://line.me/R/share?text=%E3%81%BE%E3%81%84%E3%81%AB%E3%81%93%E3%81%B8%E3%81%AE%E5%8F%82%E5%8A%A0%E3%82%92%E7%94%B3%E3%81%97%E8%BE%BC%E3%81%BF%E3%81%BE%E3%81%97%E3%81%9F%E3%80%82%E3%81%BE%E3%81%84%E3%81%AB%E3%81%93%E3%82%92%E9%96%8B%E3%81%84%E3%81%A6%E3%80%81%E3%83%9B%E3%83%BC%E3%83%A0%E3%81%AE%E3%80%8C%E5%8F%82%E5%8A%A0%E3%82%92%E8%AA%8D%E3%82%81%E3%82%8B%E3%80%8D%E3%82%92%E6%8A%BC%E3%81%97%E3%81%A6%E3%81%AD%E3%80%82" target="_blank" rel="noopener noreferrer">LINEで伝える</a>
+          <button class="set-btn" type="button" onclick="copyPendingHelp()">伝える文をコピー</button>
+          <span class="note" id="pending-copy-state" role="status"></span></li>
+        <li>招待した人が、自分のまいにこのホームで<b>「参加を認める」</b>を押します。</li>
+        <li>認められると、この画面が<b>自動でホームに変わります</b>。このまま待っていてください。変わらないときは、上の「参加状況を確認する」を押してください。</li>
+      </ol>
+      <p class="note">今連絡できなくても、申請を取り下げる必要はありません。あとでまいにこを開けば、続きから進みます。</p>
+    </div>
     <p class="note invite-pending-note" id="pending-invite-note" role="status" hidden>別の招待を受け取りました。今の申請はまだ残っています。受け取った招待で参加するときは、下の「申請を取り下げる」を押してください。入口に戻ると、受け取った招待で参加できます。</p>
     <button class="consent-back" id="pending-cancel" type="button" onclick="cancelJoinRequest()" disabled>申請を取り下げる</button>
     <p class="note">参加するのをやめるときだけ取り下げます。参加し直す場合は、新しい招待コードが必要です。</p>
@@ -3419,7 +3431,7 @@ async function finishSetup(){
   finally{clearTimeout(slowTimer);modeSetupBusy=false;}
 }
 async function copyPendingHelp(){
-  const text='まいにこへの参加を申請しました。アプリを開いて「参加を認める」を押してもらえますか。';
+  const text='まいにこへの参加を申し込みました。まいにこを開いて、ホームの「参加を認める」を押してね。';
   const state=document.getElementById('pending-copy-state');
   try{await navigator.clipboard.writeText(text);state.textContent='文をコピーしました。送信はしていません。ご自身で相手を確認して送ってください。';}
   catch(e){state.textContent='コピーできませんでした。次の文を選んでコピーしてください：'+text;}
