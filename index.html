@@ -44,9 +44,15 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 #entry{align-items:center;justify-content:flex-start;text-align:center;padding:24px 24px 32px;background:#FFFFFF;position:relative;}
 #entry .appicon{width:80px;height:80px;border-radius:20px;box-shadow:0 3px 10px rgba(29,78,158,.15);background:#FAF7F0;}
 #entry h1{font-size:2.1rem;font-weight:900;letter-spacing:.18em;color:#1D4E9E;margin-top:14px;}
-#entry .entry-catch{color:#1D4E9E;font-size:1.02rem;font-weight:900;margin-top:4px;}
+#entry .entry-catch{color:#1D4E9E;font-size:1.25rem;font-weight:900;margin-top:8px;}
+#entry .entry-catch-sub{color:#6B7684;font-size:.85rem;margin-top:2px;}
+#entry .entry-merits{list-style:none;margin:14px auto 6px;padding:0;max-width:420px;text-align:left;display:flex;flex-direction:column;gap:8px;}
+#entry .entry-merits li{display:grid;grid-template-columns:2.2em 1fr;column-gap:8px;align-items:center;background:#FFF8EF;border-radius:14px;padding:10px 12px;color:#4A3A2A;}
+#entry .entry-merits .em-ic{grid-row:span 2;font-size:1.6rem;text-align:center;}
+#entry .entry-merits b{font-size:1rem;}
+#entry .entry-merits small{font-size:.82rem;color:#7A6552;line-height:1.5;}
 #entry .entry-sub{color:#5A6573;font-size:1rem;font-weight:800;margin-top:-2px;letter-spacing:.08em;}
-#entry .entry-promise{list-style:none;margin:12px auto 4px;padding:10px 14px;max-width:420px;text-align:left;background:#F4F7FB;border-radius:12px;font-size:.9rem;line-height:1.6;color:#33404E;}
+#entry .entry-promise{list-style:none;margin:10px auto 4px;padding:8px 14px;max-width:420px;text-align:left;background:#F4F7FB;border-radius:12px;font-size:.8rem;line-height:1.6;color:#33404E;}
 #entry .entry-promise li{position:relative;padding-left:1.3em;margin:4px 0;}
 #entry .entry-promise li::before{content:'✓';position:absolute;left:0;color:#1D4E9E;font-weight:900;}
 #entry .entry-catch em{font-style:normal;color:#E8731A;}
@@ -983,11 +989,13 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <img class="appicon" src="icon-192.png" alt="まいにこ">
   <h1>まいにこ</h1>
   <div class="entry-sub">― 家族のつながり ―</div>
-  <div class="entry-catch">不安を軽く、安心を深く、<br>上田でつなぐ。</div>
-  <ul class="entry-promise">
-    <li>カメラも位置情報も使いません</li>
-    <li>記録を見られるのは、家族だけです</li>
-    <li>119番や安否確認の代わりではありません</li>
+  <!-- 何がうれしいかを先に見せる(2026-10-10 「まいにこは魅力が見えない」)。約束は下に小さく残す -->
+  <div class="entry-catch">「元気だよ」が、毎日とどく。</div>
+  <div class="entry-catch-sub">不安を軽く、安心を深く、上田でつなぐ。</div>
+  <ul class="entry-merits">
+    <li><span class="em-ic" aria-hidden="true">💪</span><b>ボタン1つで「きょうも元気」</b><small>ご本人が押すだけで、家族に伝わります</small></li>
+    <li><span class="em-ic" aria-hidden="true">📅</span><b>予定を忘れない</b><small>通院などの予定を、LINEでお知らせします</small></li>
+    <li><span class="em-ic" aria-hidden="true">🤝</span><b>困ったときは上田市へ</b><small>困りごとから、上田市の相談先がわかります</small></li>
   </ul>
   <div class="open-place-note" id="open-place-note" hidden></div>
   <div class="invite-note" id="invite-note" role="status" hidden></div>
@@ -1013,6 +1021,11 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <button class="entry-btn" type="button" onclick="pickMode('konly')">家族だけで使う<small>ご本人のスマホや操作はいりません。家族が様子を残します</small></button>
     <button class="consent-back" type="button" onclick="entryShow('entry-who')">← もどる</button>
   </div>
+  <ul class="entry-promise" aria-label="安心して使っていただくために">
+    <li>カメラも位置情報も使いません</li>
+    <li>記録を見られるのは、家族だけです</li>
+    <li>119番や安否確認の代わりではありません</li>
+  </ul>
   <div class="entry-tools">
     <button class="install-main" id="install-main" type="button" onclick="installApp()">ホーム画面に追加</button>
     <p class="note">本サービスは119番通報や安否確認、医療行為の代替ではありません。</p><a class="consent-back" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
