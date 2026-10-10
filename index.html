@@ -403,8 +403,8 @@ table.cal-rec td.pad{background:none;}
 .set-btn.warn{border-color:#C97A6A;color:#A8422E;}
 .set-btn:active{background:#F5EFE4;}
 /* 設定＝独立した全画面ページ(家族) */
-#settings-modal{padding:0;align-items:stretch;justify-content:stretch;}
-#settings-modal .modal-box{max-width:none;width:100%;max-height:none;height:100%;border-radius:0;padding:0 16px 28px;}
+#settings-modal,#person-settings-modal{padding:0;align-items:stretch;justify-content:stretch;}
+#settings-modal .modal-box,#person-settings-modal .modal-box{max-width:none;width:100%;max-height:none;height:100%;border-radius:0;padding:0 16px 28px;}
 .set-head{position:sticky;top:0;z-index:6;background:#fff;display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #E4EAF0;margin:0 -16px 10px;padding-left:10px;padding-right:16px;}
 .set-back{flex:0 0 auto;background:#fff;border:2px solid #D8CDBA;border-radius:12px;font-family:inherit;font-size:1rem;font-weight:700;color:var(--cha);padding:10px 14px;cursor:pointer;}
 .set-head .ttl{margin:0;flex:1;text-align:center;padding-right:76px;}
@@ -1416,7 +1416,11 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 </div></div>
 
 <div class="modal" id="person-settings-modal"><div class="modal-box adult-font">
-  <div class="ttl">その他の設定</div>
+  <!-- 家族の設定と同じく、ホームに重ねず画面いっぱいに開く(2026-10-10 「なんで設定画面はホーム画面の上になるの？」) -->
+  <div class="set-head">
+    <button type="button" class="set-back" onclick="closePersonSettings()">← 戻る</button>
+    <div class="ttl">その他の設定</div>
+  </div>
   <a class="guide-link" href="guide/"><span>📷</span><div>使い方ガイド<small>写真つきで、手順を見られます</small></div></a>
   <button class="set-btn install-set" type="button" data-install-button hidden onclick="installApp()">📲 ホーム画面に追加する</button>
   <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;"><h4>家族との連携</h4>
@@ -3779,7 +3783,7 @@ function openBackConfirm(){
   if(back) requestAnimationFrame(function(){ back.classList.add('show'); speak('利用方法を 変更しますか'); });
 }
 function closeBackConfirm(){ speak('変更を やめました'); document.getElementById('back-modal').classList.remove('show'); }
-function openPersonSettings(){ applyHouseholdPermissions(); if(typeof renderRecoveryBadges==='function')renderRecoveryBadges(); if(typeof renderPersonHitokoe==='function')renderPersonHitokoe(); if(typeof reportDeviceRecovery==='function')reportDeviceRecovery(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); if(window.MainicoLine) MainicoLine.render('person-line-area'); if(typeof renderLineLoginSettings==='function') renderLineLoginSettings('person-line-login-area'); }
+function openPersonSettings(){ applyHouseholdPermissions(); if(typeof renderRecoveryBadges==='function')renderRecoveryBadges(); if(typeof renderPersonHitokoe==='function')renderPersonHitokoe(); if(typeof reportDeviceRecovery==='function')reportDeviceRecovery(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); const psBox=document.querySelector('#person-settings-modal .modal-box'); if(psBox) psBox.scrollTop=0; if(window.MainicoLine) MainicoLine.render('person-line-area'); if(typeof renderLineLoginSettings==='function') renderLineLoginSettings('person-line-login-area'); }
 function closePersonSettings(){ speak('とじました'); const f=document.getElementById('person-family-procs');if(f)f.open=false; document.getElementById('person-settings-modal').classList.remove('show'); }
 /* 「ご家族と一緒に行う手続き」は、開く前に確認する(本人が迷い込まないように) */
 let personProcsConfirmed=false;
