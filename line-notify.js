@@ -615,7 +615,8 @@
       members.forEach(function(m){
         var self=m.id===me, role=roleOf(m.v);
         var label=(self?'自分':(m.v.name||'家族'))+'（'+role+'）';
-        var line=known?!!linkOf[m.id]:true;
+        /* 記録がない人(9/29より前につないだ人など)は、分からないので選べなくしない(2026-10-10 見直し) */
+        var line=known&&(m.id in linkOf)?!!linkOf[m.id]:true;
         items.push({key:'u:'+m.id,label:label,family:true,self:self,line:line});
       });
       var shareOk=!!(await readShareConsent(me));
