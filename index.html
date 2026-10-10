@@ -723,6 +723,12 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .yr-note small{display:block;color:var(--usucha);white-space:normal;}
 .yr-note button{margin-top:6px;}
 #yr-note-input{width:100%;min-height:90px;font:inherit;padding:10px;border:1px solid #D8CDBA;border-radius:8px;}
+.home-record-actions{display:grid;grid-template-columns:1fr;gap:10px;margin:0 0 16px;}
+.home-record-btn{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:12px 16px;border-radius:16px;border:2px solid #D9CDBB;background:#fff;font:inherit;font-size:1.1rem;font-weight:900;color:var(--cha);text-align:left;cursor:pointer;}
+.home-record-btn .ic{font-size:1.5rem;}
+.home-detail-back{display:inline-block;margin:4px 0 8px;padding:10px 14px;border-radius:12px;border:2px solid #D9CDBB;background:#fff;font:inherit;font-weight:900;color:var(--cha);cursor:pointer;}
+.home-detail-title{font-size:1.25rem;margin:4px 4px 12px;}
+.home-detail[hidden],#home-main[hidden]{display:none;}
 .care-today{margin-top:12px;padding:10px 12px;border-radius:11px;background:#F5FAF7;color:var(--cha);font-size:.83rem;line-height:1.6;}
 .care-today b{display:block;color:#33704D;}
 .medicine-info{margin-top:14px;padding-top:14px;border-top:1px solid #E4EAF0;}
@@ -882,7 +888,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .today-glance{font-size:1.02rem;font-weight:800;color:#4A3A24;background:#FFF6EA;border:1px solid #EFD9BC;border-radius:10px;padding:9px 11px;margin:0 0 10px;line-height:1.5;}
 /* 返事を送れないことが確定している間は、押せないボタンを並べず理由だけを示す */
 #card-actions.replies-unavailable .reply-row,
-#card-actions.replies-unavailable #family-conversation-compose{display:none!important;}
+#card-person-compose.replies-unavailable #family-conversation-compose{display:none!important;}
 /* おまもりタグ: 使い方3ステップと見本画面(2026-09-21) */
 .tag-steps{margin:10px 0 4px;display:flex;flex-direction:column;gap:8px;}
 .tag-step{display:flex;gap:10px;align-items:flex-start;background:#F2F8F7;border:1px solid #CFE3E0;border-radius:12px;padding:9px 11px;font-size:.92rem;line-height:1.55;}
@@ -1857,7 +1863,9 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 
     <!-- ホーム -->
     <div class="ftab" id="t-home">
-      <!-- 家族のホーム(2026-10-02 並べ直し): 1 いま見てほしいこと → 2 毎日のひと押し → 3 今日のこと → 4 家族のあいだのこと → もしもの備え -->
+      <!-- 家族のホーム(2026-10-10 使いやすさの見直し): いま必要なこと → 今日見ること(今日の様子・直近の予定・未確認の伝言) → 記録する。
+           一覧と入力欄はホームに重ねず、押すと開く「詳しい画面」(home-detail)に置く -->
+      <div id="home-main">
       <p class="connected-people" data-connected-people aria-live="polite"></p>
       <div class="next-invite" id="next-invite-f" data-next-invite hidden><b>次にすること：家族を招待する</b><p data-next-invite-text>まだ、ほかの家族がつながっていません。招待QRを出して、もう1台のスマホのカメラで読んでもらいます。</p><button class="set-btn" type="button" onclick="startInviteFromHome()">招待QRを出す</button></div>
       <div class="card tag-home" id="watch-tag-home" style="display:none;">
@@ -1886,8 +1894,16 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div id="security-notices"></div>
       <div id="survey-card"></div>
 
+      <div id="family-handoff-heading"><h2 style="font-size:1.2rem;margin:16px 4px 4px;">今日見ること</h2><p class="note" id="home-summary-description" style="margin:0 4px 12px;">予定と、残っている用事を確認できます。</p></div>
+
+      <!-- 家族だけで使う家庭の「今日の様子」: 家族が確認・記録した内容(本人のボタン操作は待たない) -->
+      <div class="card dom-record family-only-card" id="card-today-konly">
+        <h3>今日の様子</h3>
+          <div class="care-today" id="care-today">今日押した記録を読み込んでいます…</div>
+        <button class="family-jump" type="button" onclick="openHomeDetail('yosu')">様子を記録する</button>
+      </div>
       <div class="card dom-record" id="card-actions" data-communication-gate="person">
-        <h3>本人とのやりとり</h3>
+        <h3>今日の様子・ご本人とのやりとり</h3>
         <p class="today-glance" id="today-glance" hidden></p>
         <p class="communication-status" id="person-contact-state" aria-live="polite">読み込んでいます…</p>
         <button class="set-btn" id="family-conversation-retry" type="button" hidden onclick="retryHomeConversation('kazoku')">もう一度読み込む</button>
@@ -1895,34 +1911,42 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
           <h4 id="home-date-h3">最近のやりとり</h4>
           <div id="ev-list"><div class="empty" id="ev-empty">やりとりを読み込んでいます…</div></div>
         </div>
-        <details class="set-sec" id="family-conversation-compose"><summary>こちらから連絡する</summary>
-        <h4>あいさつを送る</h4>
-        <div class="ab-grid">
-          <button class="ab-btn" id="btn-ab-asa" data-send-audience="person" disabled onclick="sendAisatsuBack('asa')"><span class="ic">☀️</span><span class="tx">おはよう</span></button>
-          <button class="ab-btn" id="btn-ab-hiru" data-send-audience="person" disabled onclick="sendAisatsuBack('hiru')"><span class="ic">🌤</span><span class="tx">こんにちは</span></button>
-          <button class="ab-btn" id="btn-ab-yoru" data-send-audience="person" disabled onclick="sendAisatsuBack('yoru')"><span class="ic">🌙</span><span class="tx">おやすみ</span></button>
-        </div>
-        <div class="sent-note" id="note-aisatsu-back" style="display:none;"></div>
-        <div class="set-sec">
-          <label for="in-family-message"><strong>本人へメッセージを書く</strong></label>
-          <p class="note" id="family-message-target" hidden></p>
-          <button class="set-btn" id="family-message-reply-cancel" hidden onclick="cancelPersonContactReply()">返信先の指定をやめる</button>
-          <div class="in-row"><input type="text" id="in-family-message" maxlength="60" placeholder="例：おはよう。今日は暖かいね"></div>
-          <button class="big-btn family" id="family-message-btn" data-send-audience="person" disabled onclick="sendFamilyMessage()">メッセージを送る</button>
-          <div class="sent-note" id="family-message-state" aria-live="polite"></div>
-        </div>
-        </details>
-        <details class="set-sec"><summary>お薬の声かけ</summary>
-          <div class="medicine-check-grid">
-            <button class="ab-btn" id="btn-ask-asa" data-send-audience="person" disabled onclick="askKusuri('asa')"><span class="ic">🌅</span><span class="tx">朝の薬<br>飲んだ？</span></button>
-            <button class="ab-btn" id="btn-ask-hiru" data-send-audience="person" disabled onclick="askKusuri('hiru')"><span class="ic">☀️</span><span class="tx">昼の薬<br>飲んだ？</span></button>
-            <button class="ab-btn" id="btn-ask-yoru" data-send-audience="person" disabled onclick="askKusuri('yoru')"><span class="ic">🌙</span><span class="tx">夜の薬<br>飲んだ？</span></button>
-          </div>
-          <div class="sent-note" id="note-ask" style="display:none;"></div>
-        </details>
         <button class="family-jump" type="button" onclick="showTab('t-kiroku')">前の日のやりとりを見る</button>
       </div>
 
+      <div class="card dom-yotei" id="card-next-yotei" style="display:none;">
+        <h3>今日・明日の予定</h3>
+        <div id="family-today-tomorrow" class="family-day-plan" aria-live="polite">予定を読み込んでいます…</div>
+        <div class="family-upcoming">その後の予定：<span id="f-next-yotei">予定を読み込んでいます…</span></div>
+        <button class="family-jump" type="button" onclick="showTab('t-yotei')">カレンダー・予定一覧を見る</button>
+      </div>
+
+      <div class="card dom-record family-shared-card" id="card-family-notes-preview" data-share-gate="family" hidden>
+        <h3>家族からの伝言</h3>
+        <div class="family-preview" id="family-notes-preview" aria-live="polite">伝言を読み込んでいます…</div>
+        <button class="family-jump" type="button" onclick="openFamilyNotes()">伝言一覧を開く・返事する</button>
+      </div>
+
+      <div class="card dom-record family-shared-card" id="card-family-tasks-preview">
+        <h3>残っているやること</h3>
+        <div class="family-preview family-task-preview" id="family-tasks-preview" aria-live="polite">やることを読み込んでいます…</div>
+        <button class="family-jump" type="button" onclick="openFamilyTasks()">やること一覧を開く</button>
+        <button class="family-jump" type="button" onclick="openFamilyRequest()">＋ やることを追加</button>
+      </div>
+
+      <h2 class="family-section-heading" id="home-record-heading">記録する</h2>
+      <!-- 記録する操作は、ここにまとめる(2026-10-10 使いやすさの見直し 優先4)。押すと、その入力の画面を開く -->
+      <div class="home-record-actions" id="card-record-actions">
+        <button class="home-record-btn" type="button" onclick="openHomeDetail('yosu')"><span class="ic">📝</span>様子を記録する</button>
+        <button class="home-record-btn" type="button" onclick="openYoteiForm()"><span class="ic">📅</span>予定を入れる</button>
+        <button class="home-record-btn" type="button" onclick="openWriteMessage()"><span class="ic">💬</span>伝言を書く</button>
+      </div>
+      <button class="family-jump bousai-jump" id="home-to-anshin" type="button" onclick="showTab('t-soudan')">もしもの備え（おまもりタグ・災害QR・お薬手帳・相談先）→</button>
+
+      </div>
+      <section class="home-detail" id="home-detail-yosu" hidden aria-labelledby="home-detail-yosu-title">
+        <button class="home-detail-back" type="button" onclick="closeHomeDetail()">← ホームに戻る</button>
+        <h2 class="home-detail-title" id="home-detail-yosu-title">様子を記録する</h2>
       <div class="card dom-record family-only-card" id="card-care-quick">
         <h3>確認したことを記録する</h3>
         <div class="note" style="margin-top:0;">実際に確認したときだけ押してください。押した内容・家族の名前・時刻は「ふり返り」にも残ります。</div>
@@ -1936,7 +1960,6 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
           <div class="note">家族みんなの画面に同じボタンが表示されます（自由に作れるのは8個まで）。</div>
           <div class="save-state" id="care-add-state" aria-live="polite"></div>
         </details>
-        <div class="care-today" id="care-today">今日押した記録を読み込んでいます…</div>
         <details class="care-config" id="care-config-details">
           <summary style="font-weight:900;cursor:pointer;">ボタンを選び直す・消す</summary>
           <div class="care-checks" id="care-config-checks"></div>
@@ -1947,40 +1970,15 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         </details>
       </div>
 
-      <div id="family-handoff-heading"><h2 style="font-size:1.2rem;margin:16px 4px 4px;">今日のこと</h2><p class="note" id="home-summary-description" style="margin:0 4px 12px;">予定と、残っている用事を確認できます。</p></div>
-
-      <div class="card dom-yotei" id="card-next-yotei" style="display:none;">
-        <h3>今日・明日の予定</h3>
-        <div id="family-today-tomorrow" class="family-day-plan" aria-live="polite">予定を読み込んでいます…</div>
-        <div class="family-upcoming">その後の予定：<span id="f-next-yotei">予定を読み込んでいます…</span></div>
-        <button class="family-jump" type="button" onclick="showTab('t-yotei')">カレンダー・予定一覧を見る</button>
-      </div>
-
-      <div class="card dom-record family-shared-card" id="card-family-tasks-preview">
-        <h3>残っているやること</h3>
-        <div class="family-preview family-task-preview" id="family-tasks-preview" aria-live="polite">やることを読み込んでいます…</div>
-        <button class="family-jump" type="button" onclick="openFamilyTasks()">やること一覧を開く</button>
-        <button class="family-jump" type="button" onclick="openFamilyRequest()">＋ やることを追加</button>
-      </div>
-
-      <h2 class="family-section-heading" id="home-record-heading">家族のあいだのこと</h2>
-
-      <div class="card dom-record family-shared-card" id="card-family-notes-preview" data-share-gate="family" hidden>
-        <h3>家族からの伝言</h3>
-        <div class="family-preview" id="family-notes-preview" aria-live="polite">伝言を読み込んでいます…</div>
-        <button class="family-jump" type="button" onclick="openFamilyNotes()">伝言一覧を開く・返事する</button>
-        <button class="family-jump" type="button" onclick="composeFamilyNote()">＋ 家族に伝言を書く</button>
-      </div>
-
       <div class="card dom-record" id="card-memo">
-        <details class="family-compose"><summary>＋ 本人の様子を記録する</summary>
+        <details class="family-compose" open><summary>ひとことメモを残す</summary>
           <div class="in-row"><input type="text" id="in-memo" placeholder="例: 電話した。声が元気だった"></div>
           <button class="big-btn record" onclick="sendMemo()">メモを残す</button>
         </details>
       </div>
 
       <div class="card dom-record" id="card-krec" style="display:none;">
-        <details class="family-home-details" id="family-observation-details"><summary>本人の様子を詳しく記録する</summary><p class="note">家族が実際に確認した様子を、記録した人の名前で残します。</p>
+        <details class="family-home-details" id="family-observation-details" open><summary>本人の様子を詳しく記録する</summary><p class="note">家族が実際に確認した様子を、記録した人の名前で残します。</p>
         <h4 style="margin:2px 0 8px;font-size:.9rem;color:var(--usucha);">体調</h4>
         <div class="krec-grid" id="krec-kibun-grid">
           <button class="krec-btn" onclick="recKibun('よく眠れた')">よく眠れた</button>
@@ -2016,6 +2014,45 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         </details>
       </div>
 
+      </section>
+      <section class="home-detail" id="home-detail-dengon" hidden aria-labelledby="home-detail-dengon-title">
+        <button class="home-detail-back" type="button" onclick="closeHomeDetail()">← ホームに戻る</button>
+        <h2 class="home-detail-title" id="home-detail-dengon-title">伝言を書く</h2>
+      <div class="card dom-record" id="card-person-compose" data-communication-gate="person">
+        <details class="set-sec" id="family-conversation-compose" open><summary>ご本人へ送る</summary>
+        <h4>あいさつを送る</h4>
+        <div class="ab-grid">
+          <button class="ab-btn" id="btn-ab-asa" data-send-audience="person" disabled onclick="sendAisatsuBack('asa')"><span class="ic">☀️</span><span class="tx">おはよう</span></button>
+          <button class="ab-btn" id="btn-ab-hiru" data-send-audience="person" disabled onclick="sendAisatsuBack('hiru')"><span class="ic">🌤</span><span class="tx">こんにちは</span></button>
+          <button class="ab-btn" id="btn-ab-yoru" data-send-audience="person" disabled onclick="sendAisatsuBack('yoru')"><span class="ic">🌙</span><span class="tx">おやすみ</span></button>
+        </div>
+        <div class="sent-note" id="note-aisatsu-back" style="display:none;"></div>
+        <div class="set-sec">
+          <label for="in-family-message"><strong>本人へメッセージを書く</strong></label>
+          <p class="note" id="family-message-target" hidden></p>
+          <button class="set-btn" id="family-message-reply-cancel" hidden onclick="cancelPersonContactReply()">返信先の指定をやめる</button>
+          <div class="in-row"><input type="text" id="in-family-message" maxlength="60" placeholder="例：おはよう。今日は暖かいね"></div>
+          <button class="big-btn family" id="family-message-btn" data-send-audience="person" disabled onclick="sendFamilyMessage()">メッセージを送る</button>
+          <div class="sent-note" id="family-message-state" aria-live="polite"></div>
+        </div>
+        </details>
+        <details class="set-sec"><summary>お薬の声かけ</summary>
+          <div class="medicine-check-grid">
+            <button class="ab-btn" id="btn-ask-asa" data-send-audience="person" disabled onclick="askKusuri('asa')"><span class="ic">🌅</span><span class="tx">朝の薬<br>飲んだ？</span></button>
+            <button class="ab-btn" id="btn-ask-hiru" data-send-audience="person" disabled onclick="askKusuri('hiru')"><span class="ic">☀️</span><span class="tx">昼の薬<br>飲んだ？</span></button>
+            <button class="ab-btn" id="btn-ask-yoru" data-send-audience="person" disabled onclick="askKusuri('yoru')"><span class="ic">🌙</span><span class="tx">夜の薬<br>飲んだ？</span></button>
+          </div>
+          <div class="sent-note" id="note-ask" style="display:none;"></div>
+        </details>
+      </div>
+      <div class="card dom-record family-shared-card" id="card-family-write" data-share-gate="family" hidden>
+        <h3>家族へ伝言を書く</h3>
+        <button class="big-btn record" type="button" onclick="composeFamilyNote()">家族への伝言を書く</button>
+      </div>
+      </section>
+      <section class="home-detail" id="home-detail-notes" hidden aria-labelledby="home-detail-notes-title">
+        <button class="home-detail-back" type="button" onclick="closeHomeDetail()">← ホームに戻る</button>
+        <h2 class="home-detail-title" id="home-detail-notes-title">家族の伝言</h2>
       <div class="card dom-record family-shared-card" id="card-family-notes" data-share-gate="family" hidden>
         <details class="family-home-details" id="family-note-details"><summary id="family-note-summary">家族の伝言一覧・返事</summary>
         <div class="note" style="margin-top:0;">伝言は承認済みの家族に共有されます。確認した人だけを個別に表示し、全員が読んだとは扱いません。</div>
@@ -2028,6 +2065,10 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         </details>
       </div>
 
+      </section>
+      <section class="home-detail" id="home-detail-tasks" hidden aria-labelledby="home-detail-tasks-title">
+        <button class="home-detail-back" type="button" onclick="closeHomeDetail()">← ホームに戻る</button>
+        <h2 class="home-detail-title" id="home-detail-tasks-title">やること</h2>
       <div class="card dom-record family-shared-card" id="card-family-tasks">
         <details class="family-home-details" id="family-task-details"><summary id="family-task-summary">やること一覧・追加</summary>
         <div class="family-list-filter" id="family-task-filter" data-share-gate="family" hidden role="group" aria-label="表示するやること">
@@ -2050,8 +2091,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         </details>
       </div>
 
-      <button class="family-jump bousai-jump" id="home-to-anshin" type="button" onclick="showTab('t-soudan')">もしもの備え（おまもりタグ・災害QR・お薬手帳・相談先）→</button>
-
+      </section>
     </div>
 
     <!-- 予定 -->
@@ -2848,6 +2888,8 @@ function updateCommunicationAvailability(){
   });
   const personCard=document.getElementById('card-actions');
   if(personCard&&personCard.classList)personCard.classList.toggle('replies-unavailable',familyConnection.status!=='unknown'&&!canUseFamilyFeature('person'));
+  const personCompose=document.getElementById('card-person-compose');
+  if(personCompose&&personCompose.classList)personCompose.classList.toggle('replies-unavailable',familyConnection.status!=='unknown'&&!canUseFamilyFeature('person'));
   const state=document.getElementById('person-contact-state');
   if(state)state.textContent=!canUseFamilyFeature('person')?(familyConnection.status==='unknown'?
     '通信を確認しています。返事は確認後に送れます。':
@@ -2917,9 +2959,9 @@ function renderFamilyConnection(){
   document.querySelectorAll('[data-share-gate]').forEach(el=>{el.hidden=!canUseFamilyFeature(el.dataset.shareGate);});
   const connected=canUseFamilyFeature();
   const summary=document.getElementById('home-summary-description');
-  if(summary)summary.textContent=canUseFamilyFeature('person')?'本人からの連絡に返事を送り、予定や用事を確認できます。':connected?'家族の伝言、予定、残っている用事を確認できます。':'予定と、残っている用事を確認できます。';
+  if(summary)summary.textContent=canUseFamilyFeature('person')?'今日の様子（ご本人とのやりとり）、予定、伝言を確認できます。返事もここからできます。':connected?'今日の様子、予定、家族の伝言を確認できます。':'今日の様子と予定を確認できます。';
   const heading=document.getElementById('home-record-heading');
-  if(heading)heading.textContent='家族のあいだのこと';
+  if(heading)heading.textContent='記録する';
   const kind=document.getElementById('family-task-kind');
   const option=document.getElementById('family-task-kind-family');
   if(option){option.disabled=!connected;option.hidden=!connected&&(!kind||kind.value!=='family');}
@@ -3059,11 +3101,18 @@ function installApp(){
       try{
         const code=await MainicoDeviceMove.start({base:window.MAINICO_MOVE_URL,auth,fetch:(u,o)=>fetch(u,o)});
         location.href=MainicoDeviceMove.targetUrl(location.origin+location.pathname,code,ua);
-      }catch(e){appNotice(MainicoDeviceMove.message(e));}
+      }catch(e){
+        /* 送信役がまだ引っ越しに対応していない(更新前)ときは、使えるように見せず、これまでの移り方を案内する */
+        if(e&&(e.code==='not-found'||e.code==='not-configured'||e.code==='network'||e.code==='server')){
+          appNotice('いまは、ボタン1つでの引っ越しが使えません。\n\n'+where+'で開き直すときは、先に「設定」→「機種変更・アカウントの復旧」でメールとパスワードを登録し、'+where+'で「使っていた記録に戻る」→「メールとパスワードで戻る」から入ってください。');
+          return;
+        }
+        appNotice(MainicoDeviceMove.message(e));
+      }
     });
     return;
   }
-  const move='\n\n※いつものブラウザーでは、いまのつながりは引き継がれません。先に「設定」→「機種変更・アカウントの復旧」でメールとパスワードを登録し、移った先で「以前のアカウントを復旧する」から入ってください。';
+  const move='\n\n※いつものブラウザーでは、いまのつながりは引き継がれません。先に「設定」→「機種変更・アカウントの復旧」でメールとパスワードを登録し、移った先で「使っていた記録に戻る」→「メールとパスワードで戻る」から入ってください。';
   if(inApp&&!ios){
     const url=new URL(location.pathname,location.origin);
     const intent='intent://'+url.host+url.pathname+'#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url='+encodeURIComponent(url.href)+';end';
@@ -3376,7 +3425,7 @@ async function createGroup(){
   /* 前に使っていた人が、まちがえて新しい家庭を作らないように、作る前に1回だけ確かめる(2026-10-08 審査の指摘)。
      入口で「はじめて使う」を選んで来た人には、同じことをもう一度聞かない(2026-10-10) */
   if(!previewStorage.getItem('mainico_group_setup_v1')&&(typeof entryIntent==='function'?entryIntent():'')!=='create'&&typeof appConfirm==='function'){
-    const fresh=await appConfirm('まいにこを使うのは、はじめてですか？\n\n前に使っていて、そのときの記録に戻りたいときは「以前のアカウントを復旧する」を押してください。ここで新しくはじめると、前の記録とは別の、新しい家庭になります。','はじめて使う','以前のアカウントを復旧する',true);
+    const fresh=await appConfirm('まいにこを使うのは、はじめてですか？\n\n前に使っていて、そのときの記録に戻りたいときは「使っていた記録に戻る」を押してください。ここで新しくはじめると、前の記録とは別の、新しい家庭になります。','はじめて使う','使っていた記録に戻る',true);
     if(fresh===false&&typeof openRecovery==='function'){openRecovery(true);return;}
     if(fresh!==true)return;
   }
@@ -3697,6 +3746,7 @@ function startMode(){
   if(m==='honnin')previewStorage.setItem('kazokuOnly','');
   if(m==='honnin' && gid()){ showPage('honnin'); initHonnin(); }
   else if(m==='kazoku' && gid()){ showPage('kazoku'); initKazoku(); }
+  else if(!gid()&&typeof resumeEntrySetup==='function'&&resumeEntrySetup()){}
   else showPage('entry');
   applyHouseholdPermissions();
   openScheduleLink();
@@ -4532,6 +4582,7 @@ async function replyToPersonEvent(id){
 }
 function openPersonContactReply(id){
   const original=personReplyTarget(id);if(!original)return;
+  if(typeof openHomeDetail==='function')openHomeDetail('dengon');
   document.getElementById('family-conversation-compose').open=true;
   familyMessageReplyTarget=id;
   const title=document.getElementById('family-message-target');title.hidden=false;
@@ -4740,8 +4791,7 @@ function initKazoku(){
   document.getElementById('card-next-yotei').style.display='block';
   document.querySelectorAll('.family-only-card').forEach(function(el){ el.style.display=kOnly?'block':'none'; });
   /* おまもりタグの知らせを最優先に。並び順: ①おまもりタグ・未確認の知らせ ②やりとり（家族だけなら確認の記録） ③今日のこと ④家族のあいだのこと。 */
-  document.getElementById('t-home').insertBefore(
-    document.getElementById('watch-tag-home'),document.getElementById('card-pending'));
+  {const pending=document.getElementById('card-pending');if(pending&&pending.parentNode)pending.parentNode.insertBefore(document.getElementById('watch-tag-home'),pending);}
   familyYoteiStatus='loading';
   renderFamilySchedule();
   document.getElementById('yt-note').textContent=kOnly
@@ -4818,6 +4868,7 @@ function showTab(t){
   if(t==='t-kiroku') recOpen();
   if(t==='t-soudan') openAnshin('home');
   if(t==='t-home'){
+    if(typeof closeHomeDetail==='function'&&homeDetailOpen)closeHomeDetail();
     document.getElementById('home-date-h3').textContent='最近のやりとり';
     renderFamilySchedule();
     renderFamilyTasks();
@@ -6416,8 +6467,44 @@ function renderFamilyNotesPreview(ack){
     button.addEventListener('click',function(){openFamilyNotes(v._id);});box.appendChild(button);
   });
 }
+/* ===== ホームの「詳しい画面」(2026-10-10 使いやすさの見直し 優先4) =====
+   ホームには要点だけを置き、入力欄や一覧は押したときに開く。開いているあいだはホームの要点を隠し、「← ホームに戻る」で戻る */
+let homeDetailOpen='';
+const HOME_DETAILS=['yosu','dengon','notes','tasks'];
+function homeDetails(){return HOME_DETAILS.map(n=>document.getElementById('home-detail-'+n)).filter(Boolean);}
+function openHomeDetail(name){
+  const target=document.getElementById('home-detail-'+name);if(!target)return;
+  const home=document.getElementById('t-home');
+  if(home&&home.style.display==='none'&&typeof showTab==='function')showTab('t-home');
+  homeDetails().forEach(el=>{el.hidden=el!==target;});
+  const main=document.getElementById('home-main');if(main)main.hidden=true;
+  homeDetailOpen=name;
+  try{window.scrollTo({top:0,left:0,behavior:'auto'});}catch(e){}
+  const back=typeof target.querySelector==='function'?target.querySelector('.home-detail-back'):null;if(back){try{back.focus({preventScroll:true});}catch(e){}}
+}
+function closeHomeDetail(){
+  homeDetails().forEach(el=>{el.hidden=true;});
+  const main=document.getElementById('home-main');if(main)main.hidden=false;
+  homeDetailOpen='';
+  try{window.scrollTo({top:0,left:0,behavior:'auto'});}catch(e){}
+}
+/* 記録する: 予定を入れる → 予定の画面の入力欄を開く */
+function openYoteiForm(){
+  if(typeof showTab==='function')showTab('t-yotei');
+  const form=document.getElementById('yt-form-card');
+  if(form){form.open=true;form.scrollIntoView({behavior:'smooth',block:'start'});}
+  const label=document.getElementById('yt-label');if(label){try{label.focus({preventScroll:true});}catch(e){}}
+}
+/* 記録する: 伝言を書く → ご本人へ・家族へ。家族だけで使う家庭(本人に送れない)は、家族への伝言へ直接 */
+function openWriteMessage(){
+  const person=document.getElementById('card-person-compose');
+  const toPerson=person&&!person.hidden&&!(typeof isKOnly==='function'&&isKOnly());
+  if(!toPerson&&typeof canUseFamilyFeature==='function'&&canUseFamilyFeature('family')){composeFamilyNote();return;}
+  openHomeDetail('dengon');
+}
 function openFamilyNotes(id){
   if(!requireFamilyFeature('family'))return;
+  if(typeof openHomeDetail==='function')openHomeDetail('notes');
   const details=document.getElementById('family-note-details');if(details)details.open=true;
   const target=id&&document.getElementById('family-note-'+id);
   const card=document.getElementById('card-family-notes');
@@ -6630,6 +6717,7 @@ async function setFamilyRequestTemplate(text){
   input.value=text;input.focus();
 }
 function openFamilyTasks(){
+  if(typeof openHomeDetail==='function')openHomeDetail('tasks');
   const details=document.getElementById('family-task-details');if(details)details.open=true;
   const summary=document.getElementById('family-task-summary');if(summary)summary.focus({preventScroll:true});
   const card=document.getElementById('card-family-tasks');
@@ -7054,6 +7142,18 @@ function entryWho(who){
 function entryBack(){setEntryIntent('');entryShow('');renderInviteNote();}
 /* つなぐ画面から入口に戻る: 選び直せるように、入口の最初から */
 function entryRestart(){setEntryIntent('');showPage('entry');entryShow('');}
+/* 途中で閉じて開き直したとき(2026-10-10): 入口で選んだことと使い方が残っていれば、入口からやり直させず続きへ。
+   同意はサーバーに残っている分を確かめ(なければ同意の画面から)、名前が入っていれば「家族の場所を作る/参加」の画面へ */
+function resumeEntrySetup(){
+  const intent=entryIntent();
+  let m='';try{m=previewStorage.getItem('mainicoPendingMode')||'';}catch(e){}
+  if(!intent||!['honnin','kazoku','konly'].includes(m))return false;
+  pendingMode=m;
+  showPage('entry');entryShow('');
+  if(typeof ensureConsentForMode!=='function'){afterConsent(m);return true;}
+  ensureConsentForMode(m,()=>afterConsent(m)).then(ok=>{if(ok)afterConsent(m);});
+  return true;
+}
 function skipInvite(){clearInvite();renderInviteNote();}
 function renderInviteNote(){
   const box=document.getElementById('invite-note');if(!box)return;

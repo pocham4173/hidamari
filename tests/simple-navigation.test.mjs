@@ -147,8 +147,8 @@ for(const previous of ['honnin','kazoku','konly']){
     assert.equal(stopped,1,'previous screen subscriptions are retired');
     assert.equal(f.visible(f.document.getElementById('btn-a')),selected==='honnin');
     assert.equal(f.visible(f.document.getElementById('btn-k-asa')),selected==='honnin');
-    assert.equal(f.visible(f.document.getElementById('card-krec')),selected==='konly');
-    assert.equal(f.visible(f.document.getElementById('card-care-quick')),selected==='konly');
+    assert.equal(f.document.getElementById('card-krec').style.display==='block',selected==='konly','詳しい記録は家族だけのとき(「様子を記録する」の中)');
+    assert.equal(f.visible(f.document.getElementById('card-today-konly')),selected==='konly','家族だけのときは、家族の記録を「今日の様子」に');
     for(const status of ['unknown','solo','shared']){
       f.state({status,others:2,personOthers:1,familyOthers:1});
       f.c.testRows=[];vm.runInContext('familyHomeItems=testRows;renderFamilyConversation();',f.c);

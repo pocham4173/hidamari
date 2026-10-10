@@ -63,5 +63,7 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  f.events([reply,{...question,date:'2026-09-17'}]);assert.equal(f.document.getElementById('h-incoming-message').textContent,'','neither yesterday’s greeting nor its medication question stays on home');
  f.close();
 }
-assert.ok(html.indexOf('id="card-actions"')<html.indexOf('id="family-handoff-heading"'));
+// 家族のホーム(2026-10-10): 「今日見ること」の中に、今日の様子・やりとり → 「記録する」
+assert.ok(html.indexOf('id="family-handoff-heading"')<html.indexOf('id="card-actions"'));
+assert.ok(html.indexOf('id="card-actions"')<html.indexOf('id="home-record-heading"'));
 console.log('Production DOM: visible home conversations, latest reply first, inline continuation, today-only contact and previous-day history access, hidden ancestors, bounded home, retry and XSS passed');
