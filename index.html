@@ -1223,7 +1223,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <p class="note">この端末で今開いている登録には復旧設定がありません。切り替えると今の登録に戻れなくなることがあります。今の記録やお薬手帳は、切り替え先には移りません。</p>
     <label style="display:block;padding:16px 0"><input type="checkbox" id="recovery-leave-confirm"> 今の登録に残したい記録・お薬手帳はありません</label>
   </div>
-  <button class="set-btn" id="recovery-login" onclick="runRecoveryAction('login')">以前のアカウントを復旧する</button>
+  <button class="set-btn" id="recovery-login" onclick="runRecoveryAction('login')">メールとパスワードで戻る</button>
   <button class="set-btn" onclick="runRecoveryAction('reset')">パスワードを忘れた方</button>
   <p class="note">写真・PDFのお薬手帳は、このログイン復旧では戻りません。機種変更後の旧端末で、参加解除やアカウント削除はしないでください。</p>
   <a class="consent-back" href="help.html#recovery" target="_blank" rel="noopener">状況に合う復旧・機種変更の手順を見る</a>
@@ -2110,7 +2110,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <!-- 予定 -->
     <div class="ftab" id="t-yotei" style="display:none;">
       <div class="card dom-yotei" id="line-schedule-detail" style="display:none;" aria-live="polite"></div>
-      <details class="card dom-yotei schedule-form-card" id="yt-form-card" ontoggle="if(!this.open&&editingYoteiId)clearYoteiForm()">
+      <details class="card dom-yotei schedule-form-card" id="yt-form-card" ontoggle="if(this.open)ensureYoteiWho();else if(editingYoteiId)clearYoteiForm()">
         <summary class="yt-open">＋ 予定を入れる</summary>
         <h3 id="yt-form-title">予定を登録する</h3>
         <div class="yt-simple">
@@ -2396,14 +2396,14 @@ setTimeout(function(){
 /* 引っ越しの番号は、起動の最初にURLから取り出して消す(画面にも記録にも出さない) */
 window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 </script>
-<script src="household-ui.js?v=20261010"></script>
+<script src="household-ui.js?v=20261010b"></script>
 <script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
-<script src="line-notify.js?v=20261010a"></script>
+<script src="line-notify.js?v=20261010b"></script>
 <script src="line-login.js?v=20261001"></script>
 <script src="line-login-ui.js?v=20261003"></script>
 <script src="hitokoe.js?v=20261004"></script>
@@ -6827,6 +6827,13 @@ function setYoteiSaveState(text,isError){
   const el=document.getElementById('yt-save-state');
   el.textContent=text||'';
   el.classList.toggle('err',!!isError);
+}
+/* 新しい予定の「LINEで知らせる人」を、入力欄を開いたときに出す(2026-10-10 最終レビューの通し確認で発見)。
+   出していないと選べず、保存するとLINEをつないだ家族全員に届いていた。修正中の予定は editYotei が出す */
+function ensureYoteiWho(){
+  if(editingYoteiId||typeof MainicoLine==='undefined'||!MainicoLine.renderWho)return;
+  const box=document.getElementById('yt-notify-who');
+  if(box&&!box.innerHTML.trim())MainicoLine.renderWho('yt-notify-who',null);
 }
 function clearYoteiForm(){
   editingYoteiId='';

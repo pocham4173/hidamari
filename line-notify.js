@@ -106,10 +106,11 @@
      本人の画面では、カード2〜4を「LINEの送信先（ほかの人）」の中にたたむ
      招待した人(アプリを使わない人)には、予定ごとに「知らせる」と選んだ予定だけが届く。
      LINEの利用者識別子は画面に置かない(登録は送信役が、署名を確かめたLINEの受付から行う) */
-  var renderSeq=0, linkWatch=null, recipientWatch=null, INVITE_DAYS=7;
+  var renderSeq=0, linkWatch=null, recipientWatch=null, familyWatch=null, INVITE_DAYS=7;
   function stopWatch(){
     if(linkWatch){ try{ linkWatch(); }catch(e){} linkWatch=null; }
     if(recipientWatch){ try{ recipientWatch(); }catch(e){} recipientWatch=null; }
+    if(familyWatch){ try{ familyWatch(); }catch(e){} familyWatch=null; }
   }
   /* LINEのトーク画面を、文字を入れた状態で開くURL(送信を押すだけ) */
   function sendCodeUrl(code){ return 'https://line.me/R/oaMessage/'+encodeURIComponent(LINE_ID)+'/?'+encodeURIComponent(code); }
@@ -275,25 +276,28 @@
     var box=area.querySelector('[data-line-family]');
     if(!box||typeof global.col!=='function') return;
     var members=[], latest={}, friendAt={};
-    try{
-      var ms_=await global.col('members').where('status','==','approved').get();
-      ms_.forEach(function(d){ var v=d.data()||{}; members.push({id:d.id,name:v.name||'',role:roleOf(v)}); });
-      var logs=await global.col('events').where('type','==','line-link-log').get();
-      var rows=[]; logs.forEach(function(d){ rows.push(d.data()); });
+    /* 連携・解除の最新と、友だち追加の確認の最新を分けて見る('friend'は友だち追加を確認した記録) */
+    var readLogs=function(snap){
+      var rows=[]; snap.forEach(function(d){ rows.push(d.data()); });
       rows.sort(function(a,b){ return ms(b)-ms(a); });
-      /* 連携・解除の最新と、友だち追加の確認の最新を分けて見る('friend'は友だち追加を確認した記録) */
+      latest={}; friendAt={};
       rows.forEach(function(v){
         if(!v.uid) return;
         if(v.action==='friend'){ if(!(v.uid in friendAt)) friendAt[v.uid]=v; return; }
         if(!latest[v.uid]) latest[v.uid]=v;
       });
+    };
+    try{
+      var ms_=await global.col('members').where('status','==','approved').get();
+      ms_.forEach(function(d){ var v=d.data()||{}; members.push({id:d.id,name:v.name||'',role:roleOf(v)}); });
+      readLogs(await global.col('events').where('type','==','line-link-log').get());
     }catch(e){
       if(seq===renderSeq) box.innerHTML='<p class="note">送信先を読み込めませんでした。通信を確認してください。</p>';
       return;
     }
     if(seq!==renderSeq) return;
     members.sort(function(a,b){ return (a.id===myUid?-1:0)-(b.id===myUid?-1:0); });
-    familyRows=members.map(function(m){
+    var makeRows=function(){ familyRows=members.map(function(m){
       var self=m.id===myUid, l=latest[m.id];
       var on=self?!!selfLinked:!!(l&&l.action==='linked');
       var friend=null;
@@ -305,7 +309,8 @@
         if(!self&&f&&l&&ms(f)>=ms(l)) friend=true;
       }
       return {id:m.id,name:m.name,role:m.role,self:self,ok:on,friend:friend};
-    });
+    }); };
+    makeRows();
     var g=typeof global.gid==='function'?global.gid():'';
     var recBox=area.querySelector('[data-line-recipients]');
     var draw=function(){
@@ -321,6 +326,14 @@
         draw();
       },function(){ recipientRows=[]; draw(); });
     }catch(e){ recipientRows=[]; draw(); }
+    /* ほかの家族がLINEを登録・解除したら、開いたままの画面もすぐ変える(2026-10-10 通し確認で発見:
+       開いたままだと「まだ登録していません」「LINEの登録を頼む」が残っていた)。自分の行は watchLink が変える */
+    try{
+      familyWatch=global.col('events').where('type','==','line-link-log').onSnapshot(function(snap){
+        if(seq!==renderSeq) return;
+        readLogs(snap); makeRows(); draw();
+      },function(){});
+    }catch(e){}
     draw();
   }
   /* LINEの状態の表示(ヒビルカと同じ「✓ 登録済み」)。友だち追加が「ない」と分かったときだけ警告する */
