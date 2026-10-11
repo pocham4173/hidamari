@@ -624,6 +624,9 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .family-task-preview strong{color:var(--ha-koi);}
 #offline-bar{position:sticky;top:0;z-index:60;background:#FFF4E8;border-bottom:2px solid #E8731A;color:#5A3510;font-weight:800;font-size:.92rem;line-height:1.6;padding:10px 14px;text-align:center;}
 #offline-bar[hidden]{display:none;}
+#safari-bar{position:absolute;top:0;left:0;right:0;z-index:59;background:#EEF4FF;border-bottom:2px solid #1D4E9E;color:#1B2F4F;font-weight:800;font-size:.92rem;line-height:1.6;padding:10px 14px;padding-top:max(10px,env(safe-area-inset-top));text-align:left;}
+#safari-bar[hidden]{display:none;}
+#safari-bar button{display:inline-block;margin-top:6px;padding:8px 14px;border-radius:10px;border:2px solid #1D4E9E;background:#fff;color:#1D4E9E;font-weight:900;font-size:.92rem;}
 #offline-bar a{display:inline-block;margin-left:6px;color:#1D4E9E;font-weight:900;}
 .open-place-note{margin:0 0 14px;padding:12px 14px;border-radius:14px;background:#FFF4E8;border:2px solid #E8731A;color:#4A2E10;font-weight:800;line-height:1.65;text-align:left;}
 .open-place-note[hidden]{display:none;}
@@ -920,6 +923,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 </head>
 <body>
 <div id="offline-bar" role="status" aria-live="polite" hidden>電波が届いていません。送る操作は電波が戻るまでできません。<a href="offline.html">もしもの控えを見る</a></div>
+<div id="safari-bar" role="status" hidden><b>このSafariの記録は、ホーム画面の「まいにこ」アイコンとは別です。</b><br>いつもホーム画面のアイコンで使っている方は、Safariを閉じて、アイコンから開いてください。<br><button type="button" onclick="keepSafariUse()">このSafariで使う</button></div>
 <script>
 /* 電波の状態を表示する(2026-09-29)。Firebaseの部品が読めずアプリが始まらない時は「もしもの控え」へ案内する */
 (function(){
@@ -3036,6 +3040,26 @@ let deferredPrompt=null;
 function isStandalone(){
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
 }
+/* iPhoneは、Safariとホーム画面のアイコンで保存場所が別(2026-10-11)。
+   公式LINEのメニューなどからSafariで開いたとき、アイコンの家庭とは別の家庭を作ったり使ったりしないよう知らせる */
+function isIosSafariTab(){
+  const ua=navigator.userAgent||'';
+  const ios=/iPhone|iPad|iPod/i.test(ua)||(/Macintosh/i.test(ua)&&(navigator.maxTouchPoints||0)>1);
+  return ios&&!/ Line\//i.test(ua)&&!isStandalone();
+}
+const SAFARI_KEEP_KEY='mainicoSafariKeep';
+function safariKept(){try{return !!localStorage.getItem(SAFARI_KEEP_KEY);}catch(e){return false;}}
+function updateSafariBar(id){
+  const bar=document.getElementById('safari-bar');if(!bar)return;
+  bar.hidden=!((id==='kazoku'||id==='honnin')&&isIosSafariTab()&&!safariKept());
+  /* 画面のいちばん上に置き(下へ動かすと一緒に流れる)、その分だけ下げる。bodyは横並びのため、帯として差し込まない */
+  document.body.style.paddingTop=bar.hidden?'':bar.offsetHeight+'px';
+}
+function keepSafariUse(){
+  try{localStorage.setItem(SAFARI_KEEP_KEY,'1');}catch(e){}
+  const bar=document.getElementById('safari-bar');if(bar)bar.hidden=true;
+  document.body.style.paddingTop='';
+}
 /* ホーム画面に追加していない(ブラウザーで開いている)ときだけ、ホームのカードと設定のボタンを出す(2026-10-08)。
    カードは「あとで」で7日間しまう。設定のボタンはいつでも出す */
 const INSTALL_CARD_KEY='mainicoInstallCardLater';
@@ -3229,6 +3253,7 @@ function showPage(id){
   /* 家族と接続済みの端末(利用方法の選び直しなど)では、戻り方の案内は出さない */
   if(id==='entry'){const back=document.getElementById('entry-returning');if(back)back.hidden=!!gid();}
   if(id==='kazoku'||id==='honnin')reopenAfterDoc(id);
+  if(typeof updateSafariBar==='function')updateSafariBar(id);
 }
 
 /* ===== 説明ページ(guide/・help.html・privacy.html)から戻ったとき =====
@@ -7152,7 +7177,14 @@ function entryShow(step){
   const first=document.querySelector(step?'#'+step+' .entry-btn':'#select-box .entry-btn');
   if(first){try{first.focus({preventScroll:true});}catch(e){}}
 }
-function entryStart(){setEntryIntent('create');entryShow('entry-who');}
+async function entryStart(){
+  /* iPhoneのSafariで新しく始める前に、ホーム画面のアイコンで使っていないかを確かめる(2026-10-11) */
+  if(typeof isIosSafariTab==='function'&&isIosSafariTab()&&!safariKept()){
+    const go=await appConfirm('ホーム画面に「まいにこ」のアイコンがある方は、ここで始めずに、アイコンから開いてください。\n\nSafariとホーム画面のアイコンは、記録の保存場所が別です。ここで始めると、別の家庭になります。','アイコンはない・ここで始める','やめる',true);
+    if(!go)return;
+  }
+  setEntryIntent('create');entryShow('entry-who');
+}
 function entryJoin(){
   setEntryIntent('join');
   /* 受け取った招待で、使う人が決まっているとき(ご本人からの招待・家族だけの家庭からの招待)は、そのまま参加へ */
