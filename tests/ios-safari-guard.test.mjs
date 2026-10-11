@@ -75,8 +75,9 @@ for (const opt of [{ standalone: true }, { ua: ANDROID }, { ua: IPHONE_LINE }]) 
   e.api.updateSafariBar('kazoku'); assert.equal(e.bar.hidden, false);
   e.api.keepSafariUse(); assert.equal(e.bar.hidden, true);
 }
-// 画面の文言
-assert.match(html, /<div id="safari-bar"[^>]*hidden><b>このSafariの記録は、ホーム画面の「まいにこ」アイコンとは別です。<\/b>/);
+// 画面の文言。画面の上に固定する(下へ動かしても隠れない)
+assert.match(html, /#safari-bar\{position:fixed;top:0;/);
+assert.match(html, /<div id="safari-bar"[^>]*hidden><span>このSafariは、ホーム画面の「まいにこ」アイコンとは別の記録です。/);
 assert.match(html, /onclick="keepSafariUse\(\)">このSafariで使う<\/button>/);
 assert.match(html, /updateSafariBar==='function'\)updateSafariBar\(id\);\n\}/, '画面を切り替えるたびに確かめる');
 console.log('iPhoneのSafari: アイコンと別の家庭を作らない確認・家庭が開いたときの案内 passed');
