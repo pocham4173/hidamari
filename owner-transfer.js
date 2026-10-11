@@ -83,6 +83,7 @@
       }
       lastOwner = owner; lastData = data || null;
       renderCard(); renderSettings();
+      autoRequest();
     }
 
     function renderSettings() {
@@ -201,6 +202,32 @@
       } finally { busy = false; }
     }
 
+    /* ご本人が管理者のときは、家族へ自動で引き継ぎを頼む(2026-10-11 まいにこは家族が本人に勧めて始めるアプリ。管理者は家族)。
+       頼むだけで、管理者が替わるのは家族が自分で「受け取る」(パスワードの入れ直し)を押したときだけ。
+       相手は、いちばん先に参加した家族。期限(24時間)が過ぎたら頼み直す。
+       断られた・取り消したとき(依頼が消えたとき)は、同じ相手に二度は頼まない(この端末の控え) */
+    var autoBusy = false;
+    function joinedMs(id) { var m = names()[id] || {}; return ms(m.joinedAt) || Number.MAX_SAFE_INTEGER; }
+    async function autoRequest() {
+      if (autoBusy || busy || !lastData || lastData.createdBy !== me() || !ctx.isHonnin || !ctx.isHonnin()) return false;
+      var list = eligible(names(), me());
+      if (!list.length) return false;
+      var p = pendingOf(lastData, ctx.now());
+      if (p && !p.expired) return false;
+      list.sort(function (a, b) { return joinedMs(a.id) - joinedMs(b.id); });
+      var target = list[0].id, key = 'mainicoAutoOwnerAsked:' + me() + ':' + target;
+      var asked = false;
+      try { asked = !!(ctx.storage && ctx.storage.getItem(key)); } catch (e) {}
+      if (asked && !(p && p.expired && p.target === target)) return false;
+      autoBusy = true;
+      try {
+        await ctx.group().update({ pendingOwner: target, pendingOwnerAt: ctx.serverTimestamp() });
+        try { if (ctx.storage) ctx.storage.setItem(key, String(ctx.now())); } catch (e) {}
+        return true;
+      } catch (e) { return false; }
+      finally { autoBusy = false; }
+    }
+
     function handle(action) {
       if (action === 'request') return request();
       if (action === 'cancel') return clear('cancel');
@@ -213,7 +240,7 @@
 
     function reset() { lastOwner = null; lastData = null; notice = ''; busy = false; renderCard(); }
 
-    return { onGroup: onGroup, renderSettings: renderSettings, renderCard: renderCard, handle: handle, reset: reset,
+    return { onGroup: onGroup, renderSettings: renderSettings, renderCard: renderCard, handle: handle, reset: reset, autoRequest: autoRequest,
       request: request, accept: accept, clear: clear };
   }
 

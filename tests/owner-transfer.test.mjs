@@ -57,6 +57,41 @@ function setup(me,user){
   // 8. 管理者のホームには受け取りカードは出ない
   assert.equal(t.d.getElementById('owner-transfer-card').innerHTML,'');
 }
+// 5b. ご本人が管理者のときは、家族へ自動で引き継ぎを頼む(2026-10-11)。管理者が替わるのは家族が「受け取る」ときだけ
+{
+  const mem={per:{name:'花子',role:'honnin',mode:'honnin',status:'approved'},
+    late:{name:'後から',role:'kazoku',status:'approved',joinedAt:ts(NOW-1000)},
+    first:{name:'先に',role:'kazoku',status:'approved',joinedAt:ts(NOW-5000)}};
+  const make=(honnin,storage)=>{
+    const dom=new JSDOM('<div id="owner-transfer-card"></div><div id="owner-transfer-settings"></div>');
+    const updates=[],asked=[];
+    const ctx={doc:dom.window.document,uid:()=>'per',members:()=>mem,user:()=>null,now:()=>NOW,
+      group:()=>({update:async v=>{updates.push(v);}}),serverTimestamp:()=>'SERVER',deleteField:()=>'DELETE',
+      ask:async(t)=>{asked.push(t);return true;},isHonnin:()=>honnin,storage};
+    return {ctl:T.create(ctx),updates,asked};
+  };
+  const store=new Map(),storage={getItem:k=>store.has(k)?store.get(k):null,setItem:(k,v)=>store.set(k,String(v))};
+  const t=make(true,storage);
+  t.ctl.onGroup({createdBy:'per'});
+  await new Promise(r=>setTimeout(r,0));
+  assert.deepEqual(t.updates,[{pendingOwner:'first',pendingOwnerAt:'SERVER'}],'いちばん先に参加した家族に、確認なしで頼む');
+  assert.equal(t.asked.length,0,'ご本人に確認を出さない');
+  assert.equal(t.updates.some(u=>'createdBy' in u),false,'頼むだけ。管理者は替えない');
+  // 依頼中・同じ相手に断られた(依頼が消えた)ときは、もう頼まない
+  t.ctl.onGroup({createdBy:'per',pendingOwner:'first',pendingOwnerAt:ts(NOW)});
+  t.ctl.onGroup({createdBy:'per'});
+  await new Promise(r=>setTimeout(r,0));
+  assert.equal(t.updates.length,1,'断られたら二度は頼まない');
+  // 期限(24時間)が過ぎたら、頼み直す
+  t.ctl.onGroup({createdBy:'per',pendingOwner:'first',pendingOwnerAt:ts(NOW-T.DAY-1)});
+  await new Promise(r=>setTimeout(r,0));
+  assert.deepEqual(t.updates[1],{pendingOwner:'first',pendingOwnerAt:'SERVER'},'期限切れは頼み直す');
+  // 家族として使っている管理者には、自動では頼まない
+  const f=make(false,new Map());
+  f.ctl.onGroup({createdBy:'per'});
+  await new Promise(r=>setTimeout(r,0));
+  assert.equal(f.updates.length,0,'家族の管理者はそのまま');
+}
 // 9. 引継先: 匿名のままなら、先に復旧の設定へ案内（受け取るボタンは出さない）
 {
   const t=setup('heir',{uid:'heir',isAnonymous:true});
@@ -124,4 +159,4 @@ assert.match(html,/function afterOwnerChanged\(\)\{[\s\S]*renderPendingCard\(las
 assert.match(html,/id="menu-family"[\s\S]*<h4>管理者を引き継ぐ<\/h4>[\s\S]*id="owner-transfer-settings"[\s\S]*id="menu-line"/);
 assert.ok(html.indexOf('id="owner-transfer-card"')<html.indexOf('id="hitokoe-card"'),'受け取りカードは「いま見てほしいこと」に出る');
 assert.match(html,/<script src="owner-transfer\.js\?v=/);
-console.log('管理者の交代（画面）: 候補・期限・受け取れる状態・言葉・依頼・取り消し・期限切れ・断る・受け取り・開き直さずに切り替わる・組み込み 15項目 passed');
+console.log('管理者の交代（画面）: 候補・期限・受け取れる状態・言葉・依頼・取り消し・期限切れ・断る・受け取り・開き直さずに切り替わる・組み込み・ご本人からの自動の依頼 16項目 passed');
