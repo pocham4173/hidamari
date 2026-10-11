@@ -75,7 +75,7 @@ const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで�
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
 const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined', 'line-login-signin', 'device-reconnect']);
-const VERSION_TEXT = '版：2026-10-10 LINEの中からChromeへ引っ越し';
+const VERSION_TEXT = '版：2026-10-11 友だち追加のあいさつ';
 
 export default {
   async fetch(request, env, ctx) {
@@ -140,10 +140,13 @@ async function verifySignature(body, signature, secret) {
   return diff === 0;
 }
 
+/* 友だち追加のあいさつ(2026-10-11 公式LINEを利用開始の入口に)。友だち追加だけではLINE連携は完了しないことを書く */
 const MSG_WELCOME =
-  'まいにこ公式LINEです。友だち追加ありがとうございます。\n\n' +
-  '【次にすること】\nまいにこに戻って、「自分のLINEをつなぐ」→「LINEを開いて送る」を押してください。\n（まいにこの「設定」（ご本人は「その他の設定」）→「LINEで予定のお知らせ」にあります）\n\n' +
-  '家族から招待のリンクが届いた方は、そのリンクを開いて、送信を押してください。';
+  'まいにこへようこそ🌼\n\n' +
+  '今日の様子と予定を、家族でひとつに。\nできる日は本人が、難しい日は家族が使えます。\n\n' +
+  '下の『まいにこを開く』から始めてください。\n\n' +
+  '予定のお知らせをLINEで受け取るには、まいにこでLINE連携の設定が必要です。友だち追加だけでは設定は完了しません。\n\n' +
+  'ご家族から招待リンクが届いている方は、そのリンクから進んでください。';
 const MSG_HELP =
   'このトークでは、つなぐためのコード・招待の受け付けと、予定のお知らせだけを行っています。\n' +
   'お返事や相談は届きません。急ぐときは電話などで連絡してください。\n\n' +

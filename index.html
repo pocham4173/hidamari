@@ -946,7 +946,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       }
       box.innerHTML=inLine
         ?'<b>まず、いつものブラウザーで開いてください</b>LINEの中で始めたり参加したりすると、次に開いたとき続きから使えないことがあります。ホーム画面にも追加できません。<br><a href="'+url.replace(/"/g,'&quot;')+'">'+(/Android/i.test(ua)?'Chromeで開く':'いつものブラウザーで開く')+'</a><br><small>すでにまいにこを使っている方は、ここで新しく始めず、ホーム画面の「まいにこ」アイコンから開いてください。</small>'
-        :'<b>すでに使っている方へ</b>ホーム画面の「まいにこ」から開いてください。';
+        :'<b>すでに使っている方へ</b>ホーム画面の「まいにこ」から開いてください。ホーム画面に置いていないときや、記録が見つからないときは、新しく始めずに、下の「使っていた記録に戻る」を押してください。';
       box.hidden=false;
     }catch(e){}
   });
@@ -2410,7 +2410,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
-<script src="line-notify.js?v=20261011a"></script>
+<script src="line-notify.js?v=20261011b"></script>
 <script src="line-login.js?v=20261001"></script>
 <script src="line-login-ui.js?v=20261003"></script>
 <script src="hitokoe.js?v=20261004"></script>

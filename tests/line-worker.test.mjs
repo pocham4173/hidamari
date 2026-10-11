@@ -138,7 +138,7 @@ assert.equal((await hook([], true)).status, 401);
 assert.equal((await hook([])).status, 200);
 // 3. 友だち追加 → 案内を返事
 await hook([{ type: 'follow', replyToken: 'r1', source: user('Uowner') }]);
-assert.match(replies.at(-1).messages[0].text, /「自分のLINEをつなぐ」/);
+assert.match(replies.at(-1).messages[0].text, /まいにこでLINE連携の設定が必要です/);
 // 4. 正しいコードで連携(全角・小文字・空白でも受け付ける)
 put('lineLinkCodes/ABCD2345', { uid: S('owner'), groupId: S('g1'), expiresAt: T(new Date(Date.now() + 5 * 60000)) });
 await hook([{ type: 'message', replyToken: 'r2', source: user('Uowner'), message: { type: 'text', text: 'ａｂｃｄ ２３４５' } }]);
@@ -158,7 +158,9 @@ assert.equal(db.get('lineLinks/owner').fields.friend.booleanValue, true, '友だ
   assert.equal(log.friend.booleanValue, false, '家族が見る連携の記録にも残す');
   // あとから友だち追加すると、連携と記録に「確認済み」が残る(再連携はいらない)
   await hook([{ type: 'follow', replyToken: 'r2f', source: user('Unf') }]);
-  assert.match(replies.at(-1).messages[0].text, /友だち追加ありがとうございます/);
+  assert.match(replies.at(-1).messages[0].text, /^まいにこへようこそ🌼/);
+  assert.match(replies.at(-1).messages[0].text, /友だち追加だけでは設定は完了しません/, '友だち追加をLINE連携の完了として扱わない');
+  assert.match(replies.at(-1).messages[0].text, /下の『まいにこを開く』から始めてください/);
   assert.equal(db.get('lineLinks/fam').fields.friend.booleanValue, true, '友だち追加で確認済みになる');
   const friendLogs = [...db].filter(([p, d]) => p.startsWith('groups/g1/events/') && d.fields.action?.stringValue === 'friend' && d.fields.uid?.stringValue === 'fam');
   assert.equal(friendLogs.length, 1, '友だち追加の確認を家族の記録に残す');

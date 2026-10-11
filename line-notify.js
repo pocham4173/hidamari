@@ -201,8 +201,8 @@
     /* まいにこ公式LINEのQRコード(2026-10-11 「このQRコードは設定にいれないの？」)。
        このスマホでは上のボタンで友だち追加する。QRは、そばにいる人のスマホで読んでもらうとき・紙に印刷するとき用 */
     self+='<details class="ln-more ln-qr"><summary>まいにこ公式LINEのQRコード（そばの人に読んでもらう）</summary>'+
-      '<p class="note">このスマホで友だち追加するときは、上の「まいにこを友だち追加」を押してください。QRコードは、そばにいる家族のスマホのLINEで読んでもらうときに使います。</p>'+
-      '<img src="line-qr.png" alt="まいにこ公式LINE（'+h(LINE_ID)+'）の友だち追加QRコード" width="300" height="384" loading="lazy" style="display:block;width:100%;max-width:300px;height:auto;margin:8px auto;"></details>';
+      '<p class="note">このスマホで友だち追加するときは、上の「まいにこを友だち追加」を押してください。QRコードは、そばにいる家族のスマホのLINEで読んでもらうときに使います。<b>予定のお知らせを受け取るには、友だち追加後に、まいにこでLINE連携の設定が必要です。</b></p>'+
+      '<img src="line-qr.png" alt="まいにこ公式LINE（'+h(LINE_ID)+'）の友だち追加QRコード" width="300" height="434" loading="lazy" style="display:block;width:100%;max-width:300px;height:auto;margin:8px auto;"></details>';
     self+='<div class="save-state" data-line-state aria-live="polite"></div>';
     /* 並び(2026-10-10 使いやすさの見直し 優先3):
        1. 自分のLINE  2. つながっている家族(アプリを使う家族。登録が必要な人には、その人への頼み方)
