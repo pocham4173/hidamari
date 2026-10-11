@@ -133,6 +133,7 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   await waitFor(() => area.querySelector('[data-line-wait]'), 'waiting');
   assert.match(area.querySelector('[data-line-wait]').textContent, /^⏳ 確認中：LINEで送信されるのを待っています（\d\d:\d\dまで有効）。まだ登録は済んでいません。/);
   assert.ok(!/✓ 自分のLINEを登録済み/.test(area.textContent), 'LINEを開く前後で「登録済み」と出さない');
+  assert.ok(area.querySelector('[data-line-act="code-cancel"]'), 'つなぐ途中に「やめる」がある(戻れる)');
   // 送ったのに変わらない → まだ記録がない: コードは消さず、その場で「まだ」と言う
   area.querySelector('[data-line-act="check"]').click();
   await waitFor(() => /まだつながっていません。開いたLINEで「送信」を押したか/.test(area.querySelector('[data-line-wait]').textContent), 'not yet');
@@ -148,6 +149,17 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   area.querySelector('[data-line-act="check"]').click();
   await waitFor(() => /✓ 自分のLINEを登録済み/.test(area.textContent), 'linked after check');
   assert.equal(area.querySelector('[data-line-wait]'), null);
+}
+
+{ // つなぐ途中で「やめる」→ 最初の画面に戻る(2026-10-12)
+  const t = setup();
+  await t.c.MainicoLine.render('area');
+  const area = t.d.getElementById('area');
+  area.querySelector('[data-line-act="code"]').click();
+  await waitFor(() => area.querySelector('[data-line-wait]'), 'waiting');
+  area.querySelector('[data-line-act="code-cancel"]').click();
+  await waitFor(() => !area.querySelector('[data-line-wait]') && /状態：まだつながっていません/.test(area.textContent), 'back to start');
+  assert.equal(area.querySelector('[data-line-act="code"]').textContent, '自分のLINEをつなぐ');
 }
 
 { // 友だち追加の確認結果で表示を分ける(2026-10-09 審査の指摘)

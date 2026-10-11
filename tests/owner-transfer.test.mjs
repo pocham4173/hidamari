@@ -86,6 +86,11 @@ function setup(me,user){
   t.ctl.onGroup({createdBy:'per',pendingOwner:'first',pendingOwnerAt:ts(NOW-T.DAY-1)});
   await new Promise(r=>setTimeout(r,0));
   assert.deepEqual(t.updates[1],{pendingOwner:'first',pendingOwnerAt:'SERVER'},'期限切れは頼み直す');
+  // 頼んだ相手が外れた(解除された)ときは、今いる家族へ頼み直す
+  delete mem.first;
+  t.ctl.onGroup({createdBy:'per',pendingOwner:'first',pendingOwnerAt:ts(NOW)});
+  await new Promise(r=>setTimeout(r,0));
+  assert.deepEqual(t.updates[2],{pendingOwner:'late',pendingOwnerAt:'SERVER'},'外れた人への依頼は、今いる家族へ頼み直す');
   // 家族として使っている管理者には、自動では頼まない
   const f=make(false,new Map());
   f.ctl.onGroup({createdBy:'per'});
