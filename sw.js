@@ -2,14 +2,14 @@
    - 通信できるときは常に最新を取りに行き、取れたものを端末に控えておく(ネット優先)。
    - 電波がないときは控えを使う。アプリの画面が開けないときは offline.html(もしもの控え)を出す。
    - 共有記録(Firestore)の通信は控えない。控えるのは画面の部品だけ。 */
-const CACHE = 'mainico-shell-v19';  /* 2026-10-11 ご本人のその他の設定を全画面に */
+const CACHE = 'mainico-shell-v20';  /* 2026-10-11 LINE設定に公式LINEのQR */
 const SHELL = [
   './', 'index.html', 'offline.html', 'help.html', 'privacy.html', 'manifest.json',
   'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
   'ueda-centers.js', 'mainico-config.js', 'consent.js', 'consent-ui.js', 'account-recovery.js',
   'account-deletion.js', 'household-deletion.js', 'household-ui.js', 'medicine-notebook.js',
   'medicine-notebook.css', 'notebook-integration.js', 'person-speech.js', 'person-button-feedback.js',
-  'family-connection.js', 'person-tasks.js', 'line-notify.js', 'line-login.js', 'line-login-ui.js', 'hitokoe.js', 'family-guide.js', 'owner-transfer.js',
+  'family-connection.js', 'person-tasks.js', 'line-notify.js', 'line-qr.png', 'line-login.js', 'line-login-ui.js', 'hitokoe.js', 'family-guide.js', 'owner-transfer.js',
   'qr-scan.js', 'device-stop.js', 'family-survey.js', 'security-notices.js', 'back-button.js', 'back-button.css', 'device-move.js', 'invite-switch.js', 'contact.html'
 ];
 /* 他のサイトから読む部品のうち、控えてよいもの(Firebaseの部品とフォント) */
