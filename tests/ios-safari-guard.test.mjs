@@ -86,8 +86,8 @@ assert.doesNotMatch(html, /アイコンとは別の記録です/, '確かめら�
 // 使っていた記録に戻る: iPhoneのSafariでは、まずアイコンから開く(Safariのときだけ出す)
 assert.match(html, /id="returning-icon" hidden>[\s\S]*?Safariを閉じて、アイコンから開いてください。/);
 assert.match(html, /icon\.hidden=!\(typeof isIosSafariTab==='function'&&isIosSafariTab\(\)\)/);
-// ご本人のホームにも「つながっている人」
-assert.match(html, /<div id="person-security-notices"><\/div>\n    <p class="connected-people" data-connected-people/);
+// ご本人のホームには「つながっている人」を出さない(2026-10-11 利用者「ホーム画面のはいらない」)。設定の中にはある
+assert.doesNotMatch(html, /<div id="person-security-notices"><\/div>\n    <p class="connected-people"/);
 assert.match(html, /onclick="keepSafariUse\(\)">このSafariで使う<\/button>/);
 assert.match(html, /updateSafariBar==='function'\)updateSafariBar\(id\);\n\}/, '画面を切り替えるたびに確かめる');
 console.log('iPhoneのSafari: アイコンと別の家庭を作らない確認・家庭が開いたときの案内 passed');
