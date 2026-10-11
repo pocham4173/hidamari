@@ -4516,7 +4516,10 @@ async function openMembers(){
       if(v.status==='pending'){
         html+='<div class="member-row"><span>'+esc(v.name)+'（承認待ち）</span></div>';
       }else{
-        html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?'（ご本人）':'')+(me?'（あなた）':'')+'</span>'+
+        /* 同じ名前が並んでも見分けられるよう、参加した日を出す(家族の設定の一覧と同じ) */
+        const jd=v.joinedAt&&typeof v.joinedAt.toDate==='function'?v.joinedAt.toDate():null;
+        const joined=jd?'<small class="member-joined">'+(jd.getMonth()+1)+'月'+jd.getDate()+'日に参加</small>':'';
+        html+='<div class="member-row"><span>'+esc(v.name)+(v.role==='honnin'?'（ご本人）':'')+(me?'（あなた）':'')+joined+'</span>'+
           (typeof canRename==='function'&&canRename(doc.id)?'<button class="member-del member-rename" onclick="openRename(\''+id+'\')">名前を変える</button>':'')+
           ((doc.id!==householdOwnerId&&(me||isHouseholdOwner()))?'<button class="member-del" onclick="honninRemove(\''+id+'\','+(me?'true':'false')+')">'+(me?'共有をやめる':'解除')+'</button>':'<small>'+(doc.id===householdOwnerId?'管理者':'参加メンバー')+'</small>')+'</div>';
       }
