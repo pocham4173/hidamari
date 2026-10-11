@@ -188,7 +188,9 @@
         '<button class="set-btn ln-ghost" type="button" data-line-act="unlink">つなぐのをやめる</button>';
     }else{
       self='<p class="ln-status">このスマホのLINEを、'+h(whose.short)+'のLINEとして登録します。</p>'+
+        '<p class="ln-status">状態：<b>まだつながっていません</b></p>'+
         '<ol class="ln-steps"><li>まいにこ公式LINEを友だち追加します（追加済みなら飛ばしてOK）</li><li>「自分のLINEをつなぐ」を押し、開いたLINEで<b>送信</b>を押せば完了です</li></ol>'+
+        '<p class="ln-sub">友だち追加だけでは、まだつながっていません（お知らせは届きません）。2つめの「送信」まで済ませてください。</p>'+
         '<a class="set-btn ln-soft" href="'+ADD_FRIEND_URL+'" target="_blank" rel="noopener noreferrer">まいにこを友だち追加</a>'+
         '<button class="set-btn ln-line" type="button" data-line-act="code">自分のLINEをつなぐ</button>'+
         '<div data-line-code></div>';
@@ -474,13 +476,41 @@
     input.value='';
     await sendInvite({id:ref.id,groupId:g,name:name},box,null);
   }
+  /* つなぐ途中の状態(2026-10-11)。LINEを開いただけでは「登録済み」にしない。
+     確認中 → (送信役が lineLinks を書いたら)登録済み / 期限切れ・まだ届いていない は、その場で言う */
+  var pendingCode=null;
+  function waitText(area,text,kind){
+    var el=area&&area.querySelector('[data-line-wait]');
+    if(!el) return;
+    el.textContent=text;
+    el.className='ln-status'+(kind==='ng'?' ng':'');
+  }
+  function untilText(d){ return two(d.getHours())+':'+two(d.getMinutes()); }
+  async function checkLink(areaId,quiet){
+    var area=global.document&&global.document.getElementById(areaId);
+    if(!area) return;
+    var myUid=typeof global.uid==='function'?global.uid():'', g=typeof global.gid==='function'?global.gid():'';
+    var snap=null;
+    try{ snap=await global.db.collection('lineLinks').doc(myUid).get({source:'server'}); }
+    catch(e){ if(!quiet) waitText(area,'⚠ つながったかを確かめられませんでした。通信を確認して、もう一度押してください。','ng'); return; }
+    if(snap&&snap.exists&&(snap.data()||{}).groupId===g){ if(pendingCode&&pendingCode.timer) clearTimeout(pendingCode.timer); pendingCode=null; stopWatch(); render(areaId); if(typeof renderLog==='function') renderLog('settings-line-log'); return; }
+    if(!pendingCode||pendingCode.areaId!==areaId) return;
+    if(Date.now()>pendingCode.until.getTime()) waitText(area,'✖ つなげませんでした：コードの有効期限（'+untilText(pendingCode.until)+'）が過ぎました。「コードを作り直す」を押して、もう一度送ってください。','ng');
+    else if(!quiet) waitText(area,'⏳ まだつながっていません。開いたLINEで「送信」を押したか確かめてください。送った直後なら、少し待ってからもう一度押してください（'+untilText(pendingCode.until)+'まで有効）。');
+  }
+  /* LINEからアプリに戻ってきたら、その場で確かめる */
+  if(global.document&&typeof global.document.addEventListener==='function'){
+    global.document.addEventListener('visibilitychange',function(){
+      if(global.document.visibilityState==='visible'&&pendingCode) checkLink(pendingCode.areaId,true);
+    });
+  }
   /* つなぐ途中: LINEで送信したら、この画面が自動で「登録済み」に変わる */
   function watchLink(areaId,myUid,seq){
     try{
       linkWatch=global.db.collection('lineLinks').doc(myUid).onSnapshot(function(snap){
         if(seq!==renderSeq||!snap.exists) return;
         var g=typeof global.gid==='function'?global.gid():'';
-        if((snap.data()||{}).groupId===g){ stopWatch(); render(areaId); if(typeof renderLog==='function') renderLog('settings-line-log'); }
+        if((snap.data()||{}).groupId===g){ if(pendingCode&&pendingCode.timer) clearTimeout(pendingCode.timer); pendingCode=null; stopWatch(); render(areaId); if(typeof renderLog==='function') renderLog('settings-line-log'); }
       },function(){
         /* 見張れないときは黙らない: 自動で変わらないことを知らせる */
         if(seq!==renderSeq) return;
@@ -496,7 +526,7 @@
         if(act==='reload') render(areaId);
         if(act==='code') makeCode(area,areaId,btn);
         if(act==='unlink') unlink(area,areaId,btn);
-        if(act==='check') render(areaId);
+        if(act==='check') checkLink(areaId,false);
         if(act==='invite') createInvite(area);
         if(act==='share-consent') giveShareConsent(area,areaId);
         if(act==='share-withdraw') withdrawShareConsent(areaId);
@@ -535,7 +565,10 @@
     var box=area.querySelector('[data-line-code]');
     var until=new Date(Date.now()+CODE_MINUTES*60*1000);
     /* 友だち追加の前にLINEを開くと、トークが真っ暗のままになることがある(2026-10-08 理絵さんの実機確認) */
-    box.innerHTML='<p class="ln-sub"><b>先に「まいにこを友だち追加」を済ませてから</b>、下のボタンを押してください。</p>'+
+    if(pendingCode&&pendingCode.timer) clearTimeout(pendingCode.timer);
+    pendingCode={areaId:areaId,until:until,timer:setTimeout(function(){ checkLink(areaId,true); },CODE_MINUTES*60*1000+2000)};
+    box.innerHTML='<p class="ln-status" data-line-wait role="status">⏳ 確認中：LINEで送信されるのを待っています（'+h(untilText(until))+'まで有効）。まだ登録は済んでいません。</p>'+
+      '<p class="ln-sub"><b>先に「まいにこを友だち追加」を済ませてから</b>、下のボタンを押してください。</p>'+
       '<a class="set-btn ln-line" href="'+h(sendCodeUrl(code))+'" target="_blank" rel="noopener noreferrer">LINEを開いて送る</a>'+
       '<p class="ln-sub">開いたLINEのトークに、つなぐためのコードが入っています。そのまま<b>送信</b>を押してください。送ると、この画面が自動で「登録済み」に変わります（'+h(two(until.getHours())+':'+two(until.getMinutes()))+'まで有効）。</p>'+
       '<details class="ln-more"><summary>うまく開かないとき</summary><p class="note">LINEのトークが真っ暗のまま動かないときは、LINEを一度閉じて開き直してください。コードが入ったまま出てくるので、<b>送信</b>を押します。</p><p class="note">それでもだめなときは、まいにこ公式LINEのトークに、次のコードを送ってください。他の人には見せないでください。</p><div class="code-show">'+h(code)+'</div>'+

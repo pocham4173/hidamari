@@ -20,7 +20,7 @@ const ANDROID = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like
 function env({ ua = IPHONE, standalone = false, kept = false, confirmAnswer = true, storageThrows = false } = {}) {
   const store = new Map(kept ? [['mainicoSafariKeep', '1']] : []);
   const bar = { hidden: true };
-  const log = { confirms: [], shown: [] };
+  const log = { confirms: [], shown: [], notices: [] };
   const ctx = {
     navigator: { userAgent: ua, standalone, maxTouchPoints: 5 },
     window: { matchMedia: () => ({ matches: standalone }), navigator: { standalone } },
@@ -28,7 +28,8 @@ function env({ ua = IPHONE, standalone = false, kept = false, confirmAnswer = tr
       ? { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } }
       : { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) },
     document: { body: { style: {} }, getElementById: (id) => (id === 'safari-bar' ? bar : null) },
-    appConfirm: async (text, ok) => { log.confirms.push({ text, ok }); return confirmAnswer; },
+    appConfirm: async (text, ok, cancel) => { log.confirms.push({ text, ok, cancel }); return confirmAnswer; },
+    appNotice: async (text) => { log.notices.push(text); },
     setEntryIntent: (v) => log.shown.push('intent:' + v),
     entryShow: (v) => log.shown.push(v),
   };
@@ -42,7 +43,10 @@ function env({ ua = IPHONE, standalone = false, kept = false, confirmAnswer = tr
   await e.api.entryStart();
   assert.equal(e.log.confirms.length, 1);
   assert.match(e.log.confirms[0].text, /ホーム画面に「まいにこ」のアイコンがある方は、ここで始めずに、アイコンから開いてください/);
-  assert.deepEqual(e.log.shown, [], 'やめるを選ぶと、新しく始めない');
+  assert.deepEqual(e.log.shown, [], '「アイコンがある」を選ぶと、新しく始めない');
+  assert.equal(e.log.confirms[0].cancel, 'アイコンがある');
+  assert.equal(e.log.notices.length, 1, '次に押すものを1つだけ出す');
+  assert.match(e.log.notices[0], /^Safariを閉じて、ホーム画面の「まいにこ」アイコンを押してください。/);
 }
 {
   const e = env({ confirmAnswer: true });
@@ -77,7 +81,13 @@ for (const opt of [{ standalone: true }, { ua: ANDROID }, { ua: IPHONE_LINE }]) 
 }
 // 画面の文言。画面の上に固定する(下へ動かしても隠れない)
 assert.match(html, /#safari-bar\{position:fixed;top:0;/);
-assert.match(html, /<div id="safari-bar"[^>]*hidden><span>このSafariは、ホーム画面の「まいにこ」アイコンとは別の記録です。/);
+assert.match(html, /<div id="safari-bar"[^>]*hidden><span>Safariで開いています（アイコンとは保存場所が別）。下の「つながっている人」がいつもと違えば、アイコンから開いてください。/);
+assert.doesNotMatch(html, /アイコンとは別の記録です/, '確かめられないのに「別の記録」と言い切らない');
+// 使っていた記録に戻る: iPhoneのSafariでは、まずアイコンから開く(Safariのときだけ出す)
+assert.match(html, /id="returning-icon" hidden>[\s\S]*?Safariを閉じて、アイコンから開いてください。/);
+assert.match(html, /icon\.hidden=!\(typeof isIosSafariTab==='function'&&isIosSafariTab\(\)\)/);
+// ご本人のホームにも「つながっている人」
+assert.match(html, /<div id="person-security-notices"><\/div>\n    <p class="connected-people" data-connected-people/);
 assert.match(html, /onclick="keepSafariUse\(\)">このSafariで使う<\/button>/);
 assert.match(html, /updateSafariBar==='function'\)updateSafariBar\(id\);\n\}/, '画面を切り替えるたびに確かめる');
 console.log('iPhoneのSafari: アイコンと別の家庭を作らない確認・家庭が開いたときの案内 passed');

@@ -123,6 +123,33 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   assert.ok(area.querySelector('[data-line-act="unlink"]'));
 }
 
+{ // つなぐ途中の状態(2026-10-11): LINEを開いただけでは登録済みにしない。確認中・まだ・期限切れ・登録済みを実際の記録で出す
+  const t = setup();
+  await t.c.MainicoLine.render('area');
+  const area = t.d.getElementById('area');
+  assert.match(area.textContent, /状態：まだつながっていません/);
+  assert.match(area.textContent, /友だち追加だけでは、まだつながっていません（お知らせは届きません）/, '友だち追加と連携は別');
+  area.querySelector('[data-line-act="code"]').click();
+  await waitFor(() => area.querySelector('[data-line-wait]'), 'waiting');
+  assert.match(area.querySelector('[data-line-wait]').textContent, /^⏳ 確認中：LINEで送信されるのを待っています（\d\d:\d\dまで有効）。まだ登録は済んでいません。/);
+  assert.ok(!/✓ 自分のLINEを登録済み/.test(area.textContent), 'LINEを開く前後で「登録済み」と出さない');
+  // 送ったのに変わらない → まだ記録がない: コードは消さず、その場で「まだ」と言う
+  area.querySelector('[data-line-act="check"]').click();
+  await waitFor(() => /まだつながっていません。開いたLINEで「送信」を押したか/.test(area.querySelector('[data-line-wait]').textContent), 'not yet');
+  assert.ok(area.querySelector('[data-line-code] a'), 'つなぐためのコードは残る');
+  // 有効期限が過ぎた → 失敗と、次にすること
+  const realNow = t.c.Date.now; t.c.Date.now = () => realNow() + 11 * 60 * 1000;
+  area.querySelector('[data-line-act="check"]').click();
+  await waitFor(() => /^✖ つなげませんでした：コードの有効期限/.test(area.querySelector('[data-line-wait]').textContent), 'expired');
+  assert.match(area.querySelector('[data-line-wait]').textContent, /「コードを作り直す」を押して/);
+  t.c.Date.now = realNow;
+  // 送信役が登録を書いた → 確かめると登録済み
+  t.linkDoc.exists = true;
+  area.querySelector('[data-line-act="check"]').click();
+  await waitFor(() => /✓ 自分のLINEを登録済み/.test(area.textContent), 'linked after check');
+  assert.equal(area.querySelector('[data-line-wait]'), null);
+}
+
 { // 友だち追加の確認結果で表示を分ける(2026-10-09 審査の指摘)
   const t = setup({ linked: true, linkFriend: false,
     extraMembers: [{ id: 'sis', name: '妹' }, { id: 'dad', name: '父' }],

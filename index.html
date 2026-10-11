@@ -924,7 +924,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 </head>
 <body>
 <div id="offline-bar" role="status" aria-live="polite" hidden>電波が届いていません。送る操作は電波が戻るまでできません。<a href="offline.html">もしもの控えを見る</a></div>
-<div id="safari-bar" role="status" hidden><span>このSafariは、ホーム画面の「まいにこ」アイコンとは別の記録です。いつもはアイコンから開いてください。</span><button type="button" onclick="keepSafariUse()">このSafariで使う</button></div>
+<div id="safari-bar" role="status" hidden><span>Safariで開いています（アイコンとは保存場所が別）。下の「つながっている人」がいつもと違えば、アイコンから開いてください。</span><button type="button" onclick="keepSafariUse()">このSafariで使う</button></div>
 <script>
 /* 電波の状態を表示する(2026-09-29)。Firebaseの部品が読めずアプリが始まらない時は「もしもの控え」へ案内する */
 (function(){
@@ -1062,6 +1062,10 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <div class="modal-box adult-font">
     <div class="ttl" id="returning-title">使っていた記録に戻る</div>
     <p class="note"><b>ここで「はじめて使う」から新しくはじめると、前の記録とは別の、新しい家庭になります。</b>前の家庭の記録は、新しくはじめても消えません。</p>
+    <div class="set-sec" id="returning-icon" hidden>
+      <h4>このiPhoneのホーム画面に「まいにこ」アイコンがある方</h4>
+      <p class="note"><b>Safariを閉じて、アイコンから開いてください。</b>Safariとアイコンは保存場所が別のため、Safariには、アイコンで使っている記録が出ません。アイコンから開けば、いつもの記録が出ます。</p>
+    </div>
     <div class="set-sec" id="returning-line" hidden>
       <h4>LINEでログインをつないでいた方</h4>
       <button class="set-btn" type="button" onclick="closeReturningGuide();lineLoginStart()">LINEで続ける</button>
@@ -1300,6 +1304,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div class="setup-ttl">家族への参加</div>
     <p class="setup-lead" id="pending-state" role="status" aria-live="polite">参加状況を確認しています…</p>
     <p class="note" id="pending-err" role="status" style="display:none;">今の参加状況を確認できません。保存情報は消さず、通信が戻ってから確認してください。</p>
+    <p class="connected-people" id="pending-who" role="status" hidden></p>
     <button class="entry-btn" id="pending-retry" type="button" onclick="retryPendingStatus()">参加状況を確認する</button>
     <!-- つぎにすることを、たたまずに見せる(2026-10-10 理絵さん「登録してから次のページの行き方がわからない」) -->
     <div id="pending-help" class="pending-steps">
@@ -1330,6 +1335,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div id="invite-switch" class="invite-switch" role="region" aria-label="受け取った招待" hidden></div>
     <div id="h-approve"></div>
     <div id="person-security-notices"></div>
+    <p class="connected-people" data-connected-people aria-live="polite" hidden></p>
     <div class="next-invite" id="next-invite-h" data-next-invite hidden><b>次にすること：家族を招待する</b><p data-next-invite-text>まだ、ほかの家族がつながっていません。招待QRを出して、もう1台のスマホのカメラで読んでもらいます。</p><button class="set-btn" type="button" onclick="startInviteFromHome()">招待QRを出す</button></div>
     <div class="install-card" data-install-card hidden><b>📲 ホーム画面に追加しましょう</b><p>次から、ホーム画面の「まいにこ」のアイコンですぐ開けます。ブラウザーで開いたままだと、つながりが分かれることがあります。</p><button class="set-btn install-go" type="button" onclick="installApp()">ホーム画面に追加する</button><button class="set-btn sub" type="button" onclick="dismissInstallCard()">あとで</button></div>
     <div class="h-today" id="speech-notice" style="display:none;">
@@ -2378,6 +2384,9 @@ window.showStartupProblem=function(message){
 window.addEventListener('error',function(e){
   if(e.target && e.target.tagName==='SCRIPT'){
     if(e.target.dataset?.optional==='true')return;
+    /* Firebaseが自分で足す補助のファイル(ログイン画面の部品・reCAPTCHA)は、読めなくても起動は続く。
+       止まったときは15秒の案内か、それぞれの処理の失敗で知らせる(2026-10-11 起動待ちの調査) */
+    if(/^https:\/\/(apis\.google\.com|www\.google\.com\/recaptcha|www\.gstatic\.com\/recaptcha)\//.test(e.target.src||''))return;
     window.mainicoStartupStage='必要なファイルの読み込み中';
     window.showStartupProblem('外部ファイルを読み込めませんでした');
   }else if(e.target===window && document.getElementById('loading').style.display!=='none'){
@@ -2415,7 +2424,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
-<script src="line-notify.js?v=20261011b"></script>
+<script src="line-notify.js?v=20261011c"></script>
 <script src="line-login.js?v=20261001"></script>
 <script src="line-login-ui.js?v=20261003"></script>
 <script src="hitokoe.js?v=20261004"></script>
@@ -3220,6 +3229,9 @@ function openReturningGuide(){
   const line=document.getElementById('returning-line');
   /* LINEでログインは、公開の設定で使えるときだけ出す(いまの本番では出さない) */
   if(line)line.hidden=!(typeof lineLoginEnabled==='function'&&lineLoginEnabled());
+  /* iPhoneのSafari(公式LINEのメニューから開いたときなど)では、ホーム画面のアイコンから開くのが一番近い戻り方 */
+  const icon=document.getElementById('returning-icon');
+  if(icon)icon.hidden=!(typeof isIosSafariTab==='function'&&isIosSafariTab());
   document.getElementById('returning-modal').classList.add('show');
 }
 function closeReturningGuide(){document.getElementById('returning-modal').classList.remove('show');}
@@ -3229,7 +3241,7 @@ if(scheduleLink){
   const lineOk=typeof lineLoginEnabled==='function'&&lineLoginEnabled();
   note.textContent='LINEのお知らせから開いています。ふだんホーム画面の「まいにこ」アイコンから使っている方は、ここでは新しく登録せず、'+
     (lineOk?'LINEとつないでいれば「LINEで続ける」を、つないでいなければ':'')+
-    'アイコンから開いて「予定」を確認してください。ログインが必要な場合は「前に使っていた方」を選んでください。';
+    'アイコンから開いて「予定」を確認してください。アイコンがない・記録が見つからないときは、新しく始めずに「使っていた記録に戻る」を押してください。';
   const entry=document.getElementById('entry');entry.insertBefore(note,entry.firstChild);
 }
 window.addEventListener('hashchange',()=>{
@@ -3685,6 +3697,10 @@ function showPending(){
       finishSetup();
     }else if(doc.data().status==='pending'){
       pendingState('pending','参加の申請を受け付けました。招待した人の確認を待っています。');
+      /* 誰として申し込んだか(サーバーの申請の記録から)。家庭の中身は、認められるまで読まない */
+      const who=document.getElementById('pending-who'),d=doc.data(),honnin=d.mode==='honnin';
+      const name=typeof d.name==='string'&&d.name.trim()&&!(honnin&&d.name.trim()==='本人')?d.name.trim()+'さん':'';
+      if(who){who.textContent='申し込んだ内容：'+(honnin?(name?name+'（ご本人）':'ご本人'):(name||'あなた')+'（ご家族）')+'として参加';who.hidden=false;}
     }else{
       pendingState('unknown','現在の参加状況を確認できません。','保存情報を消さず、招待した人に確認してください。');
     }
@@ -7182,8 +7198,11 @@ function entryShow(step){
 async function entryStart(){
   /* iPhoneのSafariで新しく始める前に、ホーム画面のアイコンで使っていないかを確かめる(2026-10-11) */
   if(typeof isIosSafariTab==='function'&&isIosSafariTab()&&!safariKept()){
-    const go=await appConfirm('ホーム画面に「まいにこ」のアイコンがある方は、ここで始めずに、アイコンから開いてください。\n\nSafariとホーム画面のアイコンは、記録の保存場所が別です。ここで始めると、別の家庭になります。','アイコンはない・ここで始める','やめる',true);
-    if(!go)return;
+    const go=await appConfirm('ホーム画面に「まいにこ」のアイコンがある方は、ここで始めずに、アイコンから開いてください。\n\nSafariとホーム画面のアイコンは、記録の保存場所が別です。ここで始めると、別の家庭になります。','アイコンはない・ここで始める','アイコンがある',true);
+    if(!go){
+      await appNotice('Safariを閉じて、ホーム画面の「まいにこ」アイコンを押してください。いつもの記録は、アイコンから開くと出ます。\n\nアイコンから開いても記録が出ないときは、ここに戻って「使っていた記録に戻る」を押してください。');
+      return;
+    }
   }
   setEntryIntent('create');entryShow('entry-who');
 }
@@ -8328,6 +8347,12 @@ function initHitokoe(){
 }
 /* ===== 家族の1分アンケート(2026-10-05)・詳しくは family-survey.js ===== */
 let surveyCtl=null;
+/* この家庭に入った日(サーバーの joinedAt)は出さない(2026-10-11 初回は招待・ホーム画面への追加など、今することを優先する)。
+   入った日が分からないとき(古い登録)は、今までどおり出す */
+function surveyFirstDay(me){
+  const t=(memberInfoByUid[me]||{}).joinedAt,d=t&&typeof t.toDate==='function'?t.toDate():null;
+  return !!d&&d.toDateString()===new Date().toDateString();
+}
 function initSurvey(){
   if(surveyCtl){surveyCtl.stop();surveyCtl=null;}
   if(typeof MainicoSurvey==='undefined'||!uid()||!gid())return;
@@ -8335,7 +8360,7 @@ function initSurvey(){
   surveyCtl=MainicoSurvey.create({document:document,storage:previewStorage,cardId:'survey-card',
     uid:()=>me,groupId:gid,now:()=>new Date(),
     /* 家族として参加している人だけ(ご本人の画面には出さない) */
-    isFamily:()=>uid()===me&&!!memberInfoByUid[me]&&!memberIsHonnin(me),
+    isFamily:()=>uid()===me&&!!memberInfoByUid[me]&&!memberIsHonnin(me)&&!surveyFirstDay(me),
     watchMine:cb=>db.collection('surveyAnswers').where('uid','==',me).onSnapshot(snap=>{
       const rows=[];snap.forEach(d=>rows.push(d.data()));cb(rows);
     },()=>{}),
