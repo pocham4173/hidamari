@@ -56,4 +56,14 @@ const pick = (re) => { const m = html.match(re); assert.ok(m, 'not found: ' + re
   assert.deepEqual(moved, ['person', 'family'], 'ご本人の設定へ移し、家族の設定を開くと戻す');
   assert.equal(rendered, 3, '開くたびに今の状態で描き直す');
 }
+// 4. まちがえて作った招待コードは「使わない（このコードを消す）」で戻れる(2026-10-12)
+{
+  assert.match(html, /onclick="cancelInvite\(\\''\+targetId\+'\\',\\''\+code\+'\\'\)">使わない（このコードを消す）<\/button>/);
+  const area = { innerHTML: 'コード' }, deleted = [];
+  const ctx = { document: { getElementById: () => area }, db: { collection: () => ({ doc: (c) => ({ delete: async () => { deleted.push(c); } }) }) }, console };
+  vm.createContext(ctx); vm.runInContext(pick(/async function cancelInvite\(targetId,code\)\{[\s\S]*?\n\}/), ctx);
+  await ctx.cancelInvite('person-invite-area', 'RELJEDX3');
+  assert.equal(area.innerHTML, '', '欄を閉じる');
+  assert.deepEqual(deleted, ['RELJEDX3'], 'コードを消す(使えなくする)');
+}
 console.log('利用開始と開き直し: 初日のアンケート・起動待ちの案内・ご本人からの管理者の引き継ぎ passed');

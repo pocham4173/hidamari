@@ -2427,7 +2427,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
-<script src="line-notify.js?v=20261011c"></script>
+<script src="line-notify.js?v=20261012"></script>
 <script src="line-login.js?v=20261001"></script>
 <script src="line-login-ui.js?v=20261003"></script>
 <script src="hitokoe.js?v=20261004"></script>
@@ -2436,7 +2436,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="family-survey.js?v=20261005"></script>
 <script src="security-notices.js?v=20261006"></script>
 <script src="family-guide.js?v=20261002"></script>
-<script src="owner-transfer.js?v=20261011"></script>
+<script src="owner-transfer.js?v=20261012"></script>
 <script src="invite-switch.js?v=20261012"></script>
 <script>
 const previewStorage={
@@ -7430,9 +7430,18 @@ async function makeInvite(targetId){
         '<div class="inv-share">'+
         '<a class="inv-btn inv-line" href="https://line.me/R/share?text='+encodeURIComponent(msg)+'" target="_blank" rel="noopener noreferrer">LINEで送る</a>'+
         '<a class="inv-btn" href="mailto:?subject='+encodeURIComponent('まいにこの招待コード')+'&body='+encodeURIComponent(msg)+'">メールで送る</a>'+
-        '</div>';
+        '</div>'+
+        /* まちがえて作ったときに戻れるように(2026-10-12 利用者の実機確認) */
+        '<button class="set-btn" type="button" onclick="cancelInvite(\''+targetId+'\',\''+code+'\')">使わない（このコードを消す）</button>';
     }
   }catch(e){ console.warn('invite',e); alert('招待コードを発行できませんでした。通信を確認して、もう一度お試しください。'); }
+}
+
+/* 作った招待コードを使わないとき: コードを消して、欄を閉じる。消せなくても欄は閉じる(24時間で使えなくなり、参加には承認も要る) */
+async function cancelInvite(targetId,code){
+  const area=document.getElementById(targetId);
+  if(area)area.innerHTML='';
+  try{if(/^[A-HJ-NP-Z2-9]{8}$/.test(code))await db.collection('invites').doc(code).delete();}catch(e){console.warn('invite cancel',e);}
 }
 
 /* ===== QRおまもりタグ =====

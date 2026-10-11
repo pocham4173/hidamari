@@ -213,7 +213,8 @@
       var list = eligible(names(), me());
       if (!list.length) return false;
       var p = pendingOf(lastData, ctx.now());
-      if (p && !p.expired) return false;
+      /* 頼んだ相手が家庭から外れたとき(解除された)は、今いる家族へ頼み直す */
+      if (p && !p.expired && list.some(function (m) { return m.id === p.target; })) return false;
       list.sort(function (a, b) { return joinedMs(a.id) - joinedMs(b.id); });
       var target = list[0].id, key = 'mainicoAutoOwnerAsked:' + me() + ':' + target;
       var asked = false;

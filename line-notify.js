@@ -455,7 +455,10 @@
     box.innerHTML='<div class="ln-share"><p><b>'+h(r.name||'送信先')+'さんへの招待リンクができました</b></p>'+
       '<a class="set-btn ln-line" href="https://line.me/R/share?text='+h(encodeURIComponent(text))+'" target="_blank" rel="noopener noreferrer">LINEで招待を送る</a>'+
       '<button class="set-btn ln-soft" type="button" data-copy>リンクをコピーする</button>'+
-      '<p class="ln-sub">'+INVITE_DAYS+'日間・一度だけ使えます。相手が送信すると、一覧が「✓ 登録済み」に変わります。</p></div>';
+      '<p class="ln-sub">'+INVITE_DAYS+'日間・一度だけ使えます。相手が送信すると、一覧が「✓ 登録済み」に変わります。</p>'+
+      '<button class="set-btn ln-ghost" type="button" data-close>とじる</button></div>';
+    var close=box.querySelector('[data-close]');
+    if(close) close.onclick=function(){ box.innerHTML=''; };
     var copy=box.querySelector('[data-copy]');
     copy.onclick=async function(){
       try{ await global.navigator.clipboard.writeText(text); copy.textContent='コピーしました'; }
@@ -527,6 +530,7 @@
         if(act==='code') makeCode(area,areaId,btn);
         if(act==='unlink') unlink(area,areaId,btn);
         if(act==='check') checkLink(areaId,false);
+        if(act==='code-cancel'){ if(pendingCode&&pendingCode.timer) clearTimeout(pendingCode.timer); pendingCode=null; render(areaId); }
         if(act==='invite') createInvite(area);
         if(act==='share-consent') giveShareConsent(area,areaId);
         if(act==='share-withdraw') withdrawShareConsent(areaId);
@@ -573,7 +577,9 @@
       '<p class="ln-sub">開いたLINEのトークに、つなぐためのコードが入っています。そのまま<b>送信</b>を押してください。送ると、この画面が自動で「登録済み」に変わります（'+h(two(until.getHours())+':'+two(until.getMinutes()))+'まで有効）。</p>'+
       '<details class="ln-more"><summary>うまく開かないとき</summary><p class="note">LINEのトークが真っ暗のまま動かないときは、LINEを一度閉じて開き直してください。コードが入ったまま出てくるので、<b>送信</b>を押します。</p><p class="note">それでもだめなときは、まいにこ公式LINEのトークに、次のコードを送ってください。他の人には見せないでください。</p><div class="code-show">'+h(code)+'</div>'+
       '</details>'+
-      '<button class="set-btn" type="button" data-line-act="check">送ったのに変わらないとき：つながったか確かめる</button>';
+      '<button class="set-btn" type="button" data-line-act="check">送ったのに変わらないとき：つながったか確かめる</button>'+
+      /* やめるときに戻れるように(2026-10-12)。作ったコードは10分で使えなくなる */
+      '<button class="set-btn ln-ghost" type="button" data-line-act="code-cancel">やめる</button>';
     bind(area,areaId);
   }
   async function unlink(area,areaId,btn){
