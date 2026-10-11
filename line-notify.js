@@ -198,6 +198,11 @@
       ?'登録すると、家族が「LINEで知らせる人」にあなたを選んだ予定が、LINEに届きます。'
       :'登録すると、「LINEで知らせる人」にあなたが選ばれた予定と、おまもりタグのお知らせが、LINEに届きます。ひと声のきっかけを「LINEにも送る」にしている家庭では、担当の日にそれも届きます。')+
       '<br>LINEはお知らせを受け取るためのものです。記録を見る・書くのは、このアプリです。</p>';
+    /* まいにこ公式LINEのQRコード(2026-10-11 「このQRコードは設定にいれないの？」)。
+       このスマホでは上のボタンで友だち追加する。QRは、そばにいる人のスマホで読んでもらうとき・紙に印刷するとき用 */
+    self+='<details class="ln-more ln-qr"><summary>まいにこ公式LINEのQRコード（そばの人に読んでもらう）</summary>'+
+      '<p class="note">このスマホで友だち追加するときは、上の「まいにこを友だち追加」を押してください。QRコードは、そばにいる家族のスマホのLINEで読んでもらうときに使います。</p>'+
+      '<img src="line-qr.png" alt="まいにこ公式LINE（'+h(LINE_ID)+'）の友だち追加QRコード" width="300" height="384" loading="lazy" style="display:block;width:100%;max-width:300px;height:auto;margin:8px auto;"></details>';
     self+='<div class="save-state" data-line-state aria-live="polite"></div>';
     /* 並び(2026-10-10 使いやすさの見直し 優先3):
        1. 自分のLINE  2. つながっている家族(アプリを使う家族。登録が必要な人には、その人への頼み方)

@@ -348,3 +348,10 @@ console.log('LINEの設定画面: 4枚のカード・送信先の一覧・ボタ
   assert.match(src, /if\(familyWatch\)\{ try\{ familyWatch\(\); \}catch\(e\)\{\} familyWatch=null; \}/);
   console.log('つながっている家族: 開いたままでも登録をすぐ反映 passed');
 }
+/* 自分のLINEのカードに、まいにこ公式LINEのQRコード(そばの人に読んでもらう用)を出す(2026-10-11) */
+{
+  assert.match(src, /<details class="ln-more ln-qr"><summary>まいにこ公式LINEのQRコード/);
+  assert.match(src, /<img src="line-qr\.png"/);
+  assert.ok(fs.existsSync(new URL('../line-qr.png', import.meta.url)), 'QRの画像がある');
+  console.log('自分のLINE: 公式LINEのQRコードを出す passed');
+}
