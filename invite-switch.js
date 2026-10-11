@@ -32,7 +32,7 @@
     if (audience(member) === 'honnin' && (!name || name === '本人')) return 'ご本人';
     return (name || '家族') + 'さん';
   }
-  /* 「つながっている人：○○さん（ご本人）、△△さん（ご家族・あなた）」 */
+  /* 「つながっている人：○○さん（ご本人）、△△さん（あなた）」 */
   function peopleLine(members, ownUid) {
     const list = (members || []).filter((m) => m && approved(m.data));
     if (!list.length) return '';
@@ -40,9 +40,8 @@
     const parts = list.map((m) => {
       const kind = audience(m.data) === 'honnin' ? 'ご本人' : 'ご家族';
       const name = displayName(m.data);
-      const tags = [];
-      if (name !== 'ご本人') tags.push(kind);
-      if (m.id === ownUid) tags.push('あなた');
+      /* 自分は「（あなた）」だけ(2026-10-12 利用者「本人・あなたは重複」) */
+      const tags = m.id === ownUid ? ['あなた'] : name !== 'ご本人' ? [kind] : [];
       return name + (tags.length ? '（' + tags.join('・') + '）' : '');
     });
     return 'つながっている人：' + parts.join('、') + (list.length === 1 ? '　※ほかの人はまだつながっていません' : '');

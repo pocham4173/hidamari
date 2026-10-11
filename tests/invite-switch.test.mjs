@@ -43,10 +43,10 @@ assert.equal(S.joinMode('', 'konly'), 'konly');
 assert.equal(S.joinMode(undefined, 'honnin'), 'honnin');
 
 // 6. つながっている人の1行
-assert.equal(S.peopleLine([me, honnin], 'A'), 'つながっている人：ご本人、りえさん（ご家族・あなた）');
+assert.equal(S.peopleLine([me, honnin], 'A'), 'つながっている人：ご本人、りえさん（あなた）');
 assert.equal(S.peopleLine([honnin, me], 'H'), 'つながっている人：ご本人（あなた）、りえさん（ご家族）');
-assert.equal(S.peopleLine([{ id: 'H', data: { name: 'はな', mode: 'honnin' } }], 'H'), 'つながっている人：はなさん（ご本人・あなた）　※ほかの人はまだつながっていません');
-assert.equal(S.peopleLine([me, pendingOther], 'A'), 'つながっている人：りえさん（ご家族・あなた）　※ほかの人はまだつながっていません', '承認待ちは入れない');
+assert.equal(S.peopleLine([{ id: 'H', data: { name: 'はな', mode: 'honnin' } }], 'H'), 'つながっている人：はなさん（あなた）　※ほかの人はまだつながっていません');
+assert.equal(S.peopleLine([me, pendingOther], 'A'), 'つながっている人：りえさん（あなた）　※ほかの人はまだつながっていません', '承認待ちは入れない');
 assert.equal(S.displayName({ name: 'たろう', mode: 'kazoku' }), 'たろうさん');
 
 // 7. 画面へのつなぎ込み
