@@ -2436,7 +2436,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="family-survey.js?v=20261005"></script>
 <script src="security-notices.js?v=20261006"></script>
 <script src="family-guide.js?v=20261002"></script>
-<script src="owner-transfer.js?v=20261002"></script>
+<script src="owner-transfer.js?v=20261011"></script>
 <script src="invite-switch.js?v=20261007"></script>
 <script>
 const previewStorage={
@@ -4366,7 +4366,9 @@ function getOwnerTransfer(){
     deleteField:()=>firebase.firestore.FieldValue.delete(),
     credential:(email,password)=>firebase.auth.EmailAuthProvider.credential(email,password),
     ask:(text,ok)=>(typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(text,ok),
-    openRecovery:()=>{if(typeof openSettings==='function')openSettings();if(typeof openRecoveryMenu==='function')openRecoveryMenu();}
+    openRecovery:()=>{if(typeof openSettings==='function')openSettings();if(typeof openRecoveryMenu==='function')openRecoveryMenu();},
+    /* ご本人として使っている管理者なら、家族へ自動で引き継ぎを頼む */
+    isHonnin:()=>typeof memberIsHonnin==='function'&&memberIsHonnin(uid()),storage:previewStorage
   });
   return ownerTransferCtl;
 }
@@ -8331,7 +8333,7 @@ function initMemberInfo(){
   memberInfoUnsub=col('members').onSnapshot(snap=>{
     const m={};snap.forEach(doc=>{m[doc.id]=doc.data();});memberInfoByUid=m;
     try{if(hitokoeCtl)hitokoeCtl.renderCard();renderFamilyNotices();if(surveyCtl)surveyCtl.render();}catch(e){}
-    try{if(ownerTransferCtl){ownerTransferCtl.renderCard();ownerTransferCtl.renderSettings();}}catch(e){}
+    try{if(ownerTransferCtl){ownerTransferCtl.renderCard();ownerTransferCtl.renderSettings();ownerTransferCtl.autoRequest();}}catch(e){}
   },()=>{});
 }
 function memberIsHonnin(u){ const i=memberInfoByUid[u]; return !!i&&(i.mode==='honnin'||i.role==='honnin'); }
