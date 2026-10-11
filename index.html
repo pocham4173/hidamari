@@ -1442,6 +1442,9 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div id="person-invite-area"></div>
     <div id="person-settings-approve" class="settings-approve"></div>
     <button class="set-btn" onclick="closePersonSettings();openMembers()">参加している人を確認する</button>
+    <!-- ご本人が管理者のとき、家族へ管理者を引き継げるようにする(2026-10-11 まいにこは家族が準備を手伝うアプリ。管理者は家族がよい)。
+         中身は家族の設定と同じ「管理者を引き継ぐ」を、開いた画面へ移して使う -->
+    <div id="person-owner-transfer-slot" data-owner-only hidden></div>
     <details><summary>以前の家族からの伝言を見る</summary><p class="note">連携を解除しても、家庭に残っている伝言はここから確認できます。</p><button class="set-btn" onclick="closePersonSettings();openPersonHistory()">伝言の履歴を見る</button></details>
   </div>
   <div class="set-sec"><h4>LINEで予定のお知らせ</h4>
@@ -3826,7 +3829,14 @@ function openBackConfirm(){
   if(back) requestAnimationFrame(function(){ back.classList.add('show'); speak('利用方法を 変更しますか'); });
 }
 function closeBackConfirm(){ speak('変更を やめました'); document.getElementById('back-modal').classList.remove('show'); }
-function openPersonSettings(){ applyHouseholdPermissions(); if(typeof renderRecoveryBadges==='function')renderRecoveryBadges(); if(typeof renderPersonHitokoe==='function')renderPersonHitokoe(); if(typeof reportDeviceRecovery==='function')reportDeviceRecovery(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); const psBox=document.querySelector('#person-settings-modal .modal-box'); if(psBox) psBox.scrollTop=0; if(window.MainicoLine) MainicoLine.render('person-line-area'); if(typeof renderLineLoginSettings==='function') renderLineLoginSettings('person-line-login-area'); }
+/* 「管理者を引き継ぐ」は1つだけ置き、開いた設定画面へ移す(id を2つにしない) */
+function placeOwnerTransfer(person){
+  const sec=document.getElementById('owner-transfer-sec');if(!sec)return;
+  const slot=person?document.getElementById('person-owner-transfer-slot'):document.querySelector('#menu-family .set-menu-body');
+  if(slot&&sec.parentNode!==slot)slot.appendChild(sec);
+  try{const ctl=getOwnerTransfer();if(ctl)ctl.renderSettings();}catch(e){}
+}
+function openPersonSettings(){ applyHouseholdPermissions(); placeOwnerTransfer(true); if(typeof renderRecoveryBadges==='function')renderRecoveryBadges(); if(typeof renderPersonHitokoe==='function')renderPersonHitokoe(); if(typeof reportDeviceRecovery==='function')reportDeviceRecovery(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); const psBox=document.querySelector('#person-settings-modal .modal-box'); if(psBox) psBox.scrollTop=0; if(window.MainicoLine) MainicoLine.render('person-line-area'); if(typeof renderLineLoginSettings==='function') renderLineLoginSettings('person-line-login-area'); }
 function closePersonSettings(){ speak('とじました'); const f=document.getElementById('person-family-procs');if(f)f.open=false; document.getElementById('person-settings-modal').classList.remove('show'); }
 /* 「ご家族と一緒に行う手続き」は、開く前に確認する(本人が迷い込まないように) */
 let personProcsConfirmed=false;
@@ -6967,6 +6977,7 @@ function openSettings(){
   /* 道案内の3つ目(設定)で設定を開いたら、見終わった扱いで閉じる。途中なら下げるだけ */
   if(typeof familyGuide!=='undefined'&&familyGuide&&familyGuide.isOpen())familyGuide.close(familyGuide.step()===2);
   applyHouseholdPermissions();
+  placeOwnerTransfer(false);
   if(typeof renderRecoveryBadges==='function')renderRecoveryBadges();
   const pui=document.getElementById('menu-person-ui');if(pui)pui.hidden=isKOnly();
   /* 家族だけで使うときは、ご本人の了解が要る「ひと声のきっかけ」は出さない */

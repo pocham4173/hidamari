@@ -38,4 +38,22 @@ const pick = (re) => { const m = html.match(re); assert.ok(m, 'not found: ' + re
   // 15秒たっても進まないときは、もう一度読み込むボタンを出す(今までどおり)
   assert.match(html, /window\.showStartupProblem\(window\.mainicoStartupProblem\|\|'読み込みが進んでいません'\);\n\},15000\);/);
 }
-console.log('利用開始と開き直し: 初日のアンケート・起動待ちの案内 passed');
+// 3. ご本人が管理者のとき、ご本人の「その他の設定」から家族へ管理者を引き継げる(2026-10-11)。
+//    「管理者を引き継ぐ」は1つだけ置き、開いた設定画面へ移す
+{
+  assert.match(html, /<div id="person-owner-transfer-slot" data-owner-only hidden><\/div>/);
+  assert.equal((html.match(/id="owner-transfer-sec"/g) || []).length, 1, '同じ欄を2つ置かない');
+  assert.match(html, /function openPersonSettings\(\)\{ applyHouseholdPermissions\(\); placeOwnerTransfer\(true\);/);
+  assert.match(html, /applyHouseholdPermissions\(\);\n  placeOwnerTransfer\(false\);/);
+  const moved = [];
+  const sec = { parentNode: null };
+  const slots = { person: { appendChild: (n) => { n.parentNode = slots.person; moved.push('person'); } }, family: { appendChild: (n) => { n.parentNode = slots.family; moved.push('family'); } } };
+  let rendered = 0;
+  const ctx = { document: { getElementById: (id) => id === 'owner-transfer-sec' ? sec : id === 'person-owner-transfer-slot' ? slots.person : null, querySelector: () => slots.family },
+    getOwnerTransfer: () => ({ renderSettings: () => rendered++ }) };
+  vm.createContext(ctx); vm.runInContext(pick(/function placeOwnerTransfer\(person\)\{[\s\S]*?\n\}/), ctx);
+  ctx.placeOwnerTransfer(true); ctx.placeOwnerTransfer(true); ctx.placeOwnerTransfer(false);
+  assert.deepEqual(moved, ['person', 'family'], 'ご本人の設定へ移し、家族の設定を開くと戻す');
+  assert.equal(rendered, 3, '開くたびに今の状態で描き直す');
+}
+console.log('利用開始と開き直し: 初日のアンケート・起動待ちの案内・ご本人からの管理者の引き継ぎ passed');
