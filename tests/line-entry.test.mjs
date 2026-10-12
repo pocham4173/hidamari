@@ -24,4 +24,16 @@ assert.doesNotMatch(lineGuide, /LINEの送信先を追加|登録できました�
 assert.ok(read('line-notify.js').includes(NEED));
 // すでに使っている方への案内: 記録が見つからないときは新しく始めずに「使っていた記録に戻る」
 assert.match(read('index.html'), /記録が見つからないときは、新しく始めずに、下の「使っていた記録に戻る」を押してください/);
+// 設定に「まいにこを紹介する」: ご本人・家族の両方の設定で、公式LINEのQRコードとLINEで送るを出す(2026-10-12)
+{
+  const html = read('index.html');
+  const person = html.slice(html.indexOf('id="person-settings-modal"'), html.indexOf('id="person-settings-modal"') + 20000);
+  const family = html.slice(html.indexOf('id="settings-modal"'));
+  for (const [name, part] of [['ご本人', person], ['家族', family]]) {
+    assert.match(part, /まいにこを紹介する/, name + 'の設定に「まいにこを紹介する」');
+    assert.match(part, /<img src="line-qr\.png"/, name + 'の設定に公式LINEのQRコード');
+    assert.match(part, /LINEで紹介を送る/, name + 'の設定にLINEで送る');
+  }
+  assert.match(html, /紹介するだけでは、相手はあなたの家庭には入りません/, '紹介と招待の違い');
+}
 console.log('公式LINEの入口: はじめての方・使い方・QRの一文・すでに使っている方への案内 passed');
