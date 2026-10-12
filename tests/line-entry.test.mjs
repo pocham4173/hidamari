@@ -36,4 +36,6 @@ assert.match(read('index.html'), /記録が見つからないときは、新し�
   }
   assert.match(html, /紹介するだけでは、相手はあなたの家庭には入りません/, '紹介と招待の違い');
 }
+// ご本人の「その他の設定」のLINEは長いので、ふだん閉じておく(ボタンの形の開け閉め)
+assert.match(read('index.html'), /<details class="person-line-menu"><summary>LINEの設定を見る（登録・やめる）<\/summary>\s*<div id="person-line-area"><\/div>/);
 console.log('公式LINEの入口: はじめての方・使い方・QRの一文・すでに使っている方への案内 passed');

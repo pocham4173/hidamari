@@ -1453,8 +1453,11 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div id="person-owner-transfer-slot" data-owner-only hidden></div>
     <details><summary>以前の家族からの伝言を見る</summary><p class="note">連携を解除しても、家庭に残っている伝言はここから確認できます。</p><button class="set-btn" onclick="closePersonSettings();openPersonHistory()">伝言の履歴を見る</button></details>
   </div>
+  <!-- 長いので、ふだんは閉じておく(2026-10-12 利用者「どうしてLINEで予定のお知らせは開いたままなの？」) -->
   <div class="set-sec"><h4>LINEで予定のお知らせ</h4>
-    <div id="person-line-area"></div>
+    <details class="person-line-menu"><summary>LINEの設定を見る（登録・やめる）</summary>
+      <div id="person-line-area"></div>
+    </details>
   </div>
   <div class="set-sec" data-line-login-only hidden><h4>LINEでログイン（いつもの画面に戻る方法）</h4>
     <div id="person-line-login-area"></div>
