@@ -311,7 +311,8 @@
         var f=friendAt[m.id];
         if(!self&&f&&l&&ms(f)>=ms(l)) friend=true;
       }
-      return {id:m.id,name:m.name,role:m.role,self:self,ok:on,friend:friend};
+      /* 連携・解除の記録が1つもない人(9/29より前につないだ人など)は「まだ」と言い切らない(2026-10-12 実機で、登録済みのご本人が「まだ」と出た) */
+      return {id:m.id,name:m.name,role:m.role,self:self,ok:on,friend:friend,unknown:!self&&!l};
     }); };
     makeRows();
     var g=typeof global.gid==='function'?global.gid():'';
@@ -359,17 +360,17 @@
     var html='<ul class="ln-family">';
     familyRows.forEach(function(m){
       var acts=[];
-      if(!m.self&&!m.ok&&!(konlyNow&&m.role==='本人')) acts.push('<a class="ln-mini ln-ask" href="'+h(askUrl(m))+'" target="_blank" rel="noopener noreferrer">LINEの登録を頼む</a>');
+      if(!m.self&&!m.ok&&!m.unknown&&!(konlyNow&&m.role==='本人')) acts.push('<a class="ln-mini ln-ask" href="'+h(askUrl(m))+'" target="_blank" rel="noopener noreferrer">LINEの登録を頼む</a>');
       if(typeof global.canRename==='function'&&global.canRename(m.id)) acts.push('<button type="button" class="ln-mini" data-fam-rename="'+h(m.id)+'">名前変更</button>');
       html+='<li><div class="ln-who-name"><b>'+(m.self?'自分':h(m.name||'家族'))+'</b>'+
         '<small>'+(m.self?h(m.name||'名前未設定')+'・':'')+(m.role==='本人'?'ご本人':'家族')+'</small>'+
-        lineStateHtml(m.ok,m.friend)+'</div>'+
+        (m.unknown?'<small>このスマホからは確かめられません（その人のスマホの「LINEの設定」で確かめられます）</small>':lineStateHtml(m.ok,m.friend))+'</div>'+
         (acts.length?'<div class="ln-row-actions">'+acts.join('')+'</div>':'')+'</li>';
     });
     html+='</ul>';
     var on=familyRows.filter(function(m){return m.ok;}).length;
     html+='<p class="ln-total">'+(on?'LINEを登録した家族：'+on+'人':'まだLINEを登録した家族はいません。')+'</p>';
-    if(familyRows.some(function(m){return !m.ok;})) html+='<p class="ln-sub">登録は、その人が自分のスマホで行います。※9月29日より前に登録した人は、登録していても「まだ登録していません」と出ることがあります。</p>';
+    if(familyRows.some(function(m){return !m.ok;})) html+='<p class="ln-sub">登録は、その人が自分のスマホで行います。'+(familyRows.some(function(m){return m.unknown;})?'9月29日より前に登録した人は、ここでは確かめられません。':'')+'</p>';
     return html;
   }
   /* LINEだけで予定を受け取る人(アプリを使わない人) */
