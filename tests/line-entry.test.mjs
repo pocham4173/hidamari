@@ -20,8 +20,8 @@ assert.match(guide, /「今日見ること」/);
 assert.doesNotMatch(guide, /本人が使う<\/span>|ご本人と一緒に初期設定する/);
 assert.ok(lineGuide.includes('予定のお知らせを受け取るには、友だち追加後に、まいにこでLINE連携の設定が必要です。'));
 assert.doesNotMatch(lineGuide, /LINEの送信先を追加|登録できました。」/);
-// アプリの中のQRの欄にも同じ一文
-assert.ok(read('line-notify.js').includes(NEED));
+// アプリの「自分のLINE」でも、友だち追加だけでは連携しないことを言う(QRの画像 line-qr.png にも同じ一文が入っている)
+assert.ok(read('line-notify.js').includes('友だち追加だけでは、まだつながっていません'));
 // すでに使っている方への案内: 記録が見つからないときは新しく始めずに「使っていた記録に戻る」
 assert.match(read('index.html'), /記録が見つからないときは、新しく始めずに、下の「使っていた記録に戻る」を押してください/);
 // 設定に「まいにこを紹介する」: ご本人・家族の両方の設定で、公式LINEのQRコードとLINEで送るを出す(2026-10-12)
