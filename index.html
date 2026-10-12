@@ -660,6 +660,12 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .set-btn.ln-ghost{background:transparent;border-color:#D8CDBA;color:var(--usucha);font-weight:600;}
 .ln-more{margin-top:10px;font-size:.9rem;}
 .ln-more summary{cursor:pointer;color:var(--usucha);padding:6px 0;}
+/* 開け閉めする所は、はっきりしたボタンの形にする(2026-10-12 利用者「三角ボタンがわかりづらい・開きっぱなしにしてしまう」) */
+.ln-more>summary,#person-settings-modal details>summary{list-style:none;display:block;cursor:pointer;margin:8px 0;padding:12px 14px;border:2px solid #C9B79C;border-radius:12px;background:#fff;color:#33404E;font-weight:800;font-size:1rem;line-height:1.5;text-align:left;}
+.ln-more>summary::-webkit-details-marker,#person-settings-modal details>summary::-webkit-details-marker{display:none;}
+.ln-more>summary::after,#person-settings-modal details>summary::after{content:'▼ 押すと開きます';display:block;font-size:.82rem;font-weight:700;color:#7A6A55;margin-top:2px;}
+.ln-more[open]>summary::after,#person-settings-modal details[open]>summary::after{content:'▲ 押すとしまいます';}
+.details-close{margin-top:10px;}
 .ln-family{list-style:none;padding:0;margin:6px 0 0;}
 .ln-family li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid #F0EAE0;}
 .ln-family li:first-child{border-top:none;}
@@ -2436,7 +2442,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
-<script src="line-notify.js?v=20261012"></script>
+<script src="line-notify.js?v=20261012b"></script>
 <script src="line-login.js?v=20261001"></script>
 <script src="line-login-ui.js?v=20261003"></script>
 <script src="hitokoe.js?v=20261004"></script>
@@ -7446,6 +7452,15 @@ async function makeInvite(targetId){
   }catch(e){ console.warn('invite',e); alert('招待コードを発行できませんでした。通信を確認して、もう一度お試しください。'); }
 }
 
+/* 開いた欄のいちばん下にも「しまう」を置く(上まで戻らなくても閉じられる。2026-10-12) */
+document.addEventListener('toggle',function(e){
+  const d=e.target;
+  if(!d||d.tagName!=='DETAILS'||!d.open||!d.matches('.ln-more,#person-settings-modal details'))return;
+  if(d.querySelector(':scope>.details-close'))return;
+  const b=document.createElement('button');b.type='button';b.className='set-btn details-close';b.textContent='▲ しまう';
+  b.addEventListener('click',function(){d.open=false;const s=d.querySelector('summary');if(s&&s.scrollIntoView)try{s.scrollIntoView({block:'nearest'});}catch(err){}});
+  d.appendChild(b);
+},true);
 /* 作った招待コードを使わないとき: コードを消して、欄を閉じる。消せなくても欄は閉じる(24時間で使えなくなり、参加には承認も要る) */
 async function cancelInvite(targetId,code){
   const area=document.getElementById(targetId);
