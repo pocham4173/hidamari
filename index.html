@@ -219,12 +219,32 @@ td.today{background:var(--hi);color:#fff;}
 .schedule-month-nav{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;margin:10px 0 14px;}
 .schedule-month-nav button{min-height:48px;padding:8px;font:inherit;font-size:.95rem;font-weight:800;border:2px solid var(--ao);border-radius:12px;background:#fff;color:var(--ao-koi);cursor:pointer;}
 .schedule-month-nav button:active{background:var(--ao-usui);}
+table.schedule-cal{table-layout:fixed;}
 table.schedule-cal td{padding:0;background:none;}
 .schedule-day{width:100%;min-height:52px;padding:6px 0;font:inherit;font-weight:700;color:var(--cha);border:2px solid transparent;border-radius:12px;background:#FBF8F2;cursor:pointer;}
 .schedule-day.today{background:var(--hi);color:#fff;}
 .schedule-day[aria-pressed="true"]{border-color:var(--ao-koi);}
 .schedule-day:focus-visible,.schedule-month-nav button:focus-visible{outline:3px solid var(--ao-koi);outline-offset:2px;}
 #f-cal-day-detail{margin-top:14px;}
+/* 祝日・六曜・家族の仕事の休み(2026-10-12 ヒビルカのカレンダーから。文字を大きく、日曜・祝日は赤、土曜は青) */
+table.cal th.sat{color:#2F5FA8;}
+.schedule-day{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;min-height:66px;line-height:1.1;}
+.schedule-day .d-num{font-size:1.3rem;font-weight:900;}
+.schedule-day.sun .d-num{color:#C0333B;}
+.schedule-day.sat .d-num{color:#2F5FA8;}
+.schedule-day .d-hol{font-size:.66rem;font-weight:800;color:#C0333B;}
+.schedule-day .d-rk{font-size:.7rem;font-weight:700;color:#6B5A45;}
+.schedule-day .d-off{font-size:.66rem;font-weight:900;color:#A0304A;line-height:1.15;max-width:100%;overflow:hidden;word-break:break-all;}
+.schedule-day.off{background:#FBE6EE;border-color:#E6AFC2;}
+.schedule-day.mine{background:#F6C9D8;border-color:#A0304A;}
+.schedule-day.today{background:#fff;border:3px solid var(--cha);color:var(--cha);}
+.schedule-day.today.off{background:#FBE6EE;}
+.lg-off{color:#A0304A;}
+.dayoff-btn{margin-top:10px;}
+.dayoff-btn.on{background:#A0304A;color:#fff;border-color:#A0304A;}
+.dayoff-help{margin:4px 0 8px;padding:10px 12px;border-radius:12px;background:#FBE6EE;color:#7A2338;font-weight:800;line-height:1.6;}
+.cdd-koyomi{margin:2px 0 6px;font-weight:800;color:#6B5A45;}
+.cdd-off{margin:2px 0 6px;font-weight:800;color:#A0304A;}
 
 /* ===== 記録タブ(月間記録) ===== */
 .rec-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
@@ -1600,7 +1620,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     </div>
     <table class="cal schedule-cal" id="cal-table" aria-labelledby="cal-ttl"></table>
     <div id="cal-day-detail" style="display:none;"></div>
-    <div class="cal-legend"><span>絵文字と色は、登録した予定ごとに変わります</span></div>
+    <div class="cal-legend"><span>絵文字と色は、登録した予定ごとに変わります</span><span class="lg-off">休＝家族の仕事の休み</span></div>
     <button class="modal-close" onclick="closeCal()">とじる</button>
   </div>
 </div>
@@ -2213,7 +2233,11 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
           <button type="button" onclick="changeScheduleMonth(0,'family')">今月</button>
           <button type="button" onclick="changeScheduleMonth(1,'family')">次の月 ›</button>
         </div>
+        <div class="dayoff-help" id="dayoff-help" hidden>休みの日を押してください。もう一度押すと消えます。</div>
         <table class="cal schedule-cal" id="f-cal-table" aria-labelledby="f-cal-ttl"></table>
+        <div class="cal-legend"><span class="lg-off">休＝家族の仕事の休み</span><span>六曜・祝日つき</span></div>
+        <button type="button" class="set-btn dayoff-btn" id="dayoff-edit-btn" aria-pressed="false" onclick="toggleDayoffEdit()">🗓 自分の仕事の休みを入れる</button>
+        <div class="save-state" id="dayoff-state" aria-live="polite"></div>
         <div id="f-cal-day-detail" style="display:none;" aria-live="polite"></div>
       </div>
       <div class="card dom-yotei">
@@ -2431,17 +2455,18 @@ setTimeout(function(){
 <script src="mainico-config.js"></script>
 <script async data-optional="true" src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script src="ueda-centers.js?v=20260918"></script>
+<script src="calendar-marks.js?v=20261012"></script>
 <script src="consent.js?v=20261002"></script>
 <script src="consent-ui.js?v=20261002"></script>
 <script src="account-recovery.js?v=20261012"></script>
 <script src="account-deletion.js?v=20260918-consent"></script>
-<script src="household-deletion.js"></script>
+<script src="household-deletion.js?v=20261012"></script>
 <script src="device-move.js?v=20261010"></script>
 <script>
 /* 引っ越しの番号は、起動の最初にURLから取り出して消す(画面にも記録にも出さない) */
 window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 </script>
-<script src="household-ui.js?v=20261012"></script>
+<script src="household-ui.js?v=20261012b"></script>
 <script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
@@ -2489,15 +2514,9 @@ if('serviceWorker' in navigator){
   try{ navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('service worker',e); }); }
   catch(e){ console.warn('service worker',e); }
 }
-/* 六曜(2025〜2030年・旧暦計算に基づく)。0大安1赤口2先勝3友引4先負5仏滅 */
-const ROKUYO_EPOCH=Date.UTC(2025,0,1);
-const ROKUYO_NAMES=['大安','赤口','先勝','友引','先負','仏滅'];
-const ROKUYO_TABLE='2345012345012345012345012345234501234501234501234501234501345012345012345012345012345014501234501234501234501234501235012345012345012345012345012301234501234501234501234501234123450123450123450123450123450123450123450123450123450123452345012345012345012345012345013450123450123450123450123450145012345012345012345012345012350123450123450123450123450123401234501234501234501234501234512345012345012345012345012345234501234501234501234501234501345012345012345012345012345014501234501234501234501234501235012345012345012345012345012301234501234501234501234501234123450123450123450123450123450234501234501234501234501234503450123450123450123450123450145012345012345012345012345012350123450123450123450123450123401234501234501234501234501234512345012345012345012345012345234501234501234501234501234501345012345012345012345012345012450123450123450123450123450125012345012345012345012345012340123450123450123450123450123412345012345012345012345012345234501234501234501234501234501345012345012345012345012345014501234501234501234501234501250123450123450123450123450123401234501234501234501234501234512345012345012345012345012345234501234501234501234501234501345012345012345012345012345012450123450123450123450123450123501234501234501234501234501230123450123450123450123450123450123450123450123450123450123412345012345012345012345012345234501234501234501234501234501345012345012345012345012345014501234501234501234501234501250123450123450123450123450123401234501234501234501234501234512345012345012345012345012345234501234501234501234501234501345012345012345012345012345012450123450123450123450123450125012345012345012345012345012340123450123450123450123450123412345012345012345012345012345023450123450123450123450123450345012345012345012345012345012450123450123450123450123450125012345012345012345012345012301234501234501234501234501234512345012345012345012345012345023450123450123450123450123450345012345012345012345012345012450123450123450123450123450125012345012345012345012345012340123450123450123450123450123451234501234501234501234501234523450123450123450123450123450134501234501234501234501234501450123450123450123450123450123501234501234501234501234501230123450123450123450123450123451234501';
-function rokuyoOf(d){
-  const i=Math.floor((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-ROKUYO_EPOCH)/86400000);
-  if(i<0||i>=ROKUYO_TABLE.length) return '';
-  return ROKUYO_NAMES[Number(ROKUYO_TABLE[i])];
-}
+/* 六曜・祝日は calendar-marks.js(日本時間の旧暦計算。2026-10-12 1日ずれていた表を差し替え) */
+function rokuyoOf(d){ return typeof MainicoCalendarMarks!=='undefined'?MainicoCalendarMarks.rokuyoOf(d):''; }
+function holidayOf(d){ return typeof MainicoCalendarMarks!=='undefined'?MainicoCalendarMarks.holidayOf(d):''; }
 const auth = previewApp.auth();
 
 /* ===== ユーティリティ ===== */
@@ -4095,6 +4114,7 @@ function initHonnin(){
   subscribePersonConversation();
   initPersonUiConfig();
   initMemberInfo();
+  initDayoff();
   initYoteiNotes();
   initHitokoePrompt();
   initSecurityNotices('person-security-notices');
@@ -4283,6 +4303,63 @@ function sendOnegai(text, inputId){
 }
 
 /* カレンダー */
+/* ===== 家族の仕事の休み(2026-10-12 ヒビルカのカレンダーから) =====
+   groups/{gid}/dayoff/{uid}。自分の分だけ入れられ、家庭の全員(ご本人も)のカレンダーに出る。 */
+let dayoffByUid={},dayoffUnsub=null,dayoffStatus='loading',dayoffEditing=false;
+function dayoffPeople(ds){
+  return typeof MainicoCalendarMarks==='undefined'?[]:MainicoCalendarMarks.offPeople(dayoffByUid,memberInfoByUid,ds);
+}
+function refreshCalendars(){
+  try{if(document.getElementById('kazoku').classList.contains('active'))renderFamilyCal();}catch(e){}
+  try{const m=document.getElementById('cal-modal');if(m&&m.classList.contains('show')){renderScheduleMonth('person');renderSelectedScheduleDay('person');}}catch(e){}
+}
+function initDayoff(){
+  if(dayoffUnsub){try{dayoffUnsub();}catch(e){}}
+  dayoffByUid={};dayoffStatus='loading';dayoffEditing=false;renderDayoffBar();
+  dayoffUnsub=col('dayoff').onSnapshot(snap=>{
+    const m={};snap.forEach(doc=>{const v=doc.data();m[doc.id]=v&&v.days||{};});
+    dayoffByUid=m;dayoffStatus='ready';renderDayoffBar();refreshCalendars();
+  },err=>{console.warn('dayoff',err);dayoffStatus='error';dayoffEditing=false;renderDayoffBar();refreshCalendars();});
+}
+function renderDayoffBar(){
+  const btn=document.getElementById('dayoff-edit-btn'),help=document.getElementById('dayoff-help');
+  if(!btn)return;
+  btn.textContent=dayoffEditing?'✓ 入れ終わった':'🗓 自分の仕事の休みを入れる';
+  btn.classList.toggle('on',dayoffEditing);
+  btn.setAttribute('aria-pressed',String(dayoffEditing));
+  if(help)help.hidden=!dayoffEditing;
+}
+function setDayoffState(text,err){
+  const st=document.getElementById('dayoff-state');if(!st)return;
+  st.textContent=text;st.classList.toggle('err',!!err);
+}
+function toggleDayoffEdit(){
+  if(!dayoffEditing&&dayoffStatus!=='ready'){
+    setDayoffState(dayoffStatus==='error'?'今は休みを入れられません。少し時間をおいて、画面を開き直してください。':'読み込んでいます。少し待ってから、もう一度押してください。',true);
+    return;
+  }
+  dayoffEditing=!dayoffEditing;scheduleSelectedDay='';
+  setDayoffState(dayoffEditing?'':'入れた休みは、家族みんなとご本人のカレンダーに出ます。',false);
+  renderDayoffBar();renderFamilyCal();
+}
+async function toggleMyDayoff(ds){
+  const me=uid();if(!me)return;
+  const mine=MainicoCalendarMarks.cleanDays(dayoffByUid[me]);
+  const on=mine[ds]!=='off';
+  if(on&&Object.keys(mine).length>=MainicoCalendarMarks.MAX_DAYS){
+    setDayoffState('休みは'+MainicoCalendarMarks.MAX_DAYS+'日まで入れられます。前の休みを押して消してから入れてください。',true);return;
+  }
+  const FV=firebase.firestore.FieldValue,label=dateJp(dateOnly(ds));
+  setDayoffState(label+'を保存しています…',false);
+  try{
+    await col('dayoff').doc(me).set({days:{[ds]:on?'off':FV.delete()},updatedAt:FV.serverTimestamp()},{merge:true});
+    setDayoffState(label+(on?'を休みにしました':'の休みを消しました'),false);
+  }catch(e){
+    console.warn('dayoff save',e);
+    setDayoffState(label+'を保存できませんでした。通信を確認して、もう一度押してください。',true);
+  }
+}
+
 function dismissScheduleLink(){
   scheduleLinkDismissed=true;
   const box=document.getElementById('line-schedule-detail');
@@ -4312,11 +4389,22 @@ function renderScheduleMonth(mode){
   }
   const first=new Date(y,m,1).getDay();
   const last=new Date(y,m+1,0).getDate();
-  let html='<tr><th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr><tr>';
+  const editing=mode==='family'&&dayoffEditing;
+  let html='<tr><th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th class="sat">土</th></tr><tr>';
   for(let i=0;i<first;i++) html+='<td></td>';
   for(let day=1;day<=last;day++){
-    const ds=dateString(new Date(y,m,day)),isToday=ds===todayStr();
-    html+='<td><button type="button" class="schedule-day'+(isToday?' today':'')+'" aria-pressed="'+(ds===scheduleSelectedDay)+'"'+(isToday?' aria-current="date"':'')+' aria-label="'+y+'年'+(m+1)+'月'+day+'日'+(marks[day]?'、予定'+marks[day].length+'件':'')+'" onclick="selectScheduleDay(\''+mode+'\',\''+ds+'\')">'+day+(marks[day]?'<span class="mk" aria-hidden="true">'+marks[day].join('')+'</span>':'')+'</button></td>';
+    const ds=dateString(new Date(y,m,day)),isToday=ds===todayStr(),wd=(first+day-1)%7;
+    /* 祝日・六曜・家族の仕事の休み(2026-10-12 ヒビルカのカレンダーから) */
+    const hol=holidayOf(ds),rk=rokuyoOf(ds),off=dayoffPeople(ds),mine=off.some(p=>p.uid===uid());
+    const cls='schedule-day'+(isToday?' today':'')+(wd===0||hol?' sun':wd===6?' sat':'')+(off.length?' off':'')+(editing&&mine?' mine':'');
+    const offText=off.length>2?'休み'+off.length+'人':off.map(p=>esc(MainicoCalendarMarks.shortName(p.name))+'休').join('<br>');
+    const label=y+'年'+(m+1)+'月'+day+'日'+(hol?'、'+hol:'')+(rk?'、'+rk:'')+(off.length?'、'+off.map(p=>p.name+'さん').join('と')+'が仕事休み':'')+(marks[day]?'、予定'+marks[day].length+'件':'')+(editing?(mine?'。押すと休みを消します':'。押すと休みにします'):'');
+    html+='<td><button type="button" class="'+cls+'" aria-pressed="'+(editing?mine:ds===scheduleSelectedDay)+'"'+(isToday?' aria-current="date"':'')+' aria-label="'+esc(label)+'" onclick="selectScheduleDay(\''+mode+'\',\''+ds+'\')">'+
+      '<span class="d-num">'+day+'</span>'+
+      (hol?'<span class="d-hol" aria-hidden="true">祝日</span>':'')+
+      (rk?'<span class="d-rk" aria-hidden="true">'+rk+'</span>':'')+
+      (off.length?'<span class="d-off" aria-hidden="true">'+offText+'</span>':'')+
+      (marks[day]?'<span class="mk" aria-hidden="true">'+marks[day].join('')+'</span>':'')+'</button></td>';
     if((first+day)%7===0) html+='</tr><tr>';
   }
   html+='</tr>';
@@ -4334,12 +4422,14 @@ function speakCalDay(y,m,day){
   selectScheduleDay('person',dateString(new Date(y,m,day)));
 }
 function selectScheduleDay(mode,ds){
+  if(mode==='family'&&dayoffEditing){toggleMyDayoff(ds);return;}
   dismissScheduleLink();scheduleSelectedDay=ds;
   renderScheduleMonth(mode);renderSelectedScheduleDay(mode);
   if(mode!=='person')return;
   const items=yoteiCache.filter(v=>yoteiOccursOn(v,ds));
   const parts=items.map(v=>(v.time?timeYomi(v.time)+'に、':'')+(v.label||'よてい'));
-  speak(dateYomi(ds)+'の予定は、'+(parts.length?parts.join('。つぎに、')+'、です。':'ありません。'),true);
+  const off=dayoffPeople(ds).map(p=>p.name+'さん');
+  speak(dateYomi(ds)+'の予定は、'+(parts.length?parts.join('。つぎに、')+'、です。':'ありません。')+(off.length?off.join('と')+'は、仕事が お休みです。':''),true);
 }
 function renderSelectedScheduleDay(mode){
   const det=document.getElementById(mode==='person'?'cal-day-detail':'f-cal-day-detail');
@@ -4347,6 +4437,10 @@ function renderSelectedScheduleDay(mode){
   det.replaceChildren();det.style.display=scheduleSelectedDay?'block':'none';
   if(!scheduleSelectedDay)return;
   const title=document.createElement('h4');title.textContent=dateJp(dateOnly(scheduleSelectedDay))+'の予定';det.appendChild(title);
+  /* 祝日・六曜・家族の仕事の休み */
+  const hol=holidayOf(scheduleSelectedDay),rk=rokuyoOf(scheduleSelectedDay),off=dayoffPeople(scheduleSelectedDay);
+  if(hol||rk){const p=document.createElement('p');p.className='cdd-koyomi';p.textContent=[hol,rk].filter(Boolean).join('・');det.appendChild(p);}
+  off.forEach(o=>{const p=document.createElement('p');p.className='cdd-off';p.textContent='🏠 '+(o.uid===uid()?'あなた':o.name+'さん')+'：仕事が休み';det.appendChild(p);});
   const items=yoteiCache.filter(v=>yoteiOccursOn(v,scheduleSelectedDay));
   if(!items.length){
     const empty=document.createElement('p');
@@ -4906,6 +5000,7 @@ function initKazoku(){
   initYoteiNotes();
   initPersonUiConfig();
   initMemberInfo();
+  initDayoff();
   initHitokoe();
   initSurvey();
   initSecurityNotices('security-notices');
@@ -8379,6 +8474,7 @@ function initMemberInfo(){
   if(memberInfoUnsub){try{memberInfoUnsub();}catch(e){}}
   memberInfoUnsub=col('members').onSnapshot(snap=>{
     const m={};snap.forEach(doc=>{m[doc.id]=doc.data();});memberInfoByUid=m;
+    try{refreshCalendars();}catch(e){}
     try{if(hitokoeCtl)hitokoeCtl.renderCard();renderFamilyNotices();if(surveyCtl)surveyCtl.render();}catch(e){}
     try{if(ownerTransferCtl){ownerTransferCtl.renderCard();ownerTransferCtl.renderSettings();ownerTransferCtl.autoRequest();}}catch(e){}
   },()=>{});
