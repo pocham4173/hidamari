@@ -162,6 +162,17 @@ function setup({ linked = false, failLink = false, recipients = [], share = true
   assert.equal(area.querySelector('[data-line-act="code"]').textContent, '自分のLINEをつなぐ');
 }
 
+{ // 連携・解除の記録が1つもない家族は「まだ登録していません」と言い切らない(2026-10-12 実機)
+  const t = setup({ extraMembers: [{ id: 'old', name: '前から' }] });
+  await t.c.MainicoLine.render('area');
+  const area = t.d.getElementById('area');
+  await waitFor(() => /前から/.test(area.textContent), 'rows');
+  const row = [...area.querySelectorAll('.ln-family li')].map((li) => li.textContent).find((r) => /前から/.test(r));
+  assert.match(row, /このスマホからは確かめられません/);
+  assert.doesNotMatch(row, /まだ登録していません|LINEの登録を頼む/);
+  assert.match(area.textContent, /9月29日より前に登録した人は、ここでは確かめられません/);
+}
+
 { // 友だち追加の確認結果で表示を分ける(2026-10-09 審査の指摘)
   const t = setup({ linked: true, linkFriend: false,
     extraMembers: [{ id: 'sis', name: '妹' }, { id: 'dad', name: '父' }],
