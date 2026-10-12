@@ -1450,7 +1450,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <button class="set-btn" onclick="closePersonSettings();openMembers()">参加している人を確認する</button>
     <!-- ご本人が管理者のとき、家族へ管理者を引き継げるようにする(2026-10-11 まいにこは家族が準備を手伝うアプリ。管理者は家族がよい)。
          中身は家族の設定と同じ「管理者を引き継ぐ」を、開いた画面へ移して使う -->
-    <div id="person-owner-transfer-slot" data-owner-only hidden></div>
+    <!-- ほかのボタンと間違えないよう、開け閉めの中にしまう(2026-10-12 利用者「何かのボタンと間違えてしまう」) -->
+    <details id="person-owner-transfer-slot" class="person-owner-menu" data-owner-only hidden><summary>管理者の引き継ぎ（家族へ）</summary></details>
     <details><summary>以前の家族からの伝言を見る</summary><p class="note">連携を解除しても、家庭に残っている伝言はここから確認できます。</p><button class="set-btn" onclick="closePersonSettings();openPersonHistory()">伝言の履歴を見る</button></details>
   </div>
   <!-- 長いので、ふだんは閉じておく(2026-10-12 利用者「どうしてLINEで予定のお知らせは開いたままなの？」) -->
@@ -3851,7 +3852,8 @@ function closeBackConfirm(){ speak('変更を やめました'); document.getEle
 function placeOwnerTransfer(person){
   const sec=document.getElementById('owner-transfer-sec');if(!sec)return;
   const slot=person?document.getElementById('person-owner-transfer-slot'):document.querySelector('#menu-family .set-menu-body');
-  if(slot&&sec.parentNode!==slot)slot.appendChild(sec);
+  /* 開け閉めの中では「しまう」ボタンより上に置く */
+  if(slot&&sec.parentNode!==slot){const close=slot.querySelector(':scope>.details-close');if(close)slot.insertBefore(sec,close);else slot.appendChild(sec);}
   try{const ctl=getOwnerTransfer();if(ctl)ctl.renderSettings();}catch(e){}
 }
 function openPersonSettings(){ applyHouseholdPermissions(); placeOwnerTransfer(true); if(typeof renderRecoveryBadges==='function')renderRecoveryBadges(); if(typeof renderPersonHitokoe==='function')renderPersonHitokoe(); if(typeof reportDeviceRecovery==='function')reportDeviceRecovery(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); const psBox=document.querySelector('#person-settings-modal .modal-box'); if(psBox) psBox.scrollTop=0; if(window.MainicoLine) MainicoLine.render('person-line-area'); if(typeof renderLineLoginSettings==='function') renderLineLoginSettings('person-line-login-area'); }

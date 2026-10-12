@@ -41,13 +41,13 @@ const pick = (re) => { const m = html.match(re); assert.ok(m, 'not found: ' + re
 // 3. ご本人が管理者のとき、ご本人の「その他の設定」から家族へ管理者を引き継げる(2026-10-11)。
 //    「管理者を引き継ぐ」は1つだけ置き、開いた設定画面へ移す
 {
-  assert.match(html, /<div id="person-owner-transfer-slot" data-owner-only hidden><\/div>/);
+  assert.match(html, /<details id="person-owner-transfer-slot" class="person-owner-menu" data-owner-only hidden><summary>管理者の引き継ぎ（家族へ）<\/summary><\/details>/, 'ご本人の設定では、開け閉めの中にしまう');
   assert.equal((html.match(/id="owner-transfer-sec"/g) || []).length, 1, '同じ欄を2つ置かない');
   assert.match(html, /function openPersonSettings\(\)\{ applyHouseholdPermissions\(\); placeOwnerTransfer\(true\);/);
   assert.match(html, /applyHouseholdPermissions\(\);\n  placeOwnerTransfer\(false\);/);
   const moved = [];
   const sec = { parentNode: null };
-  const slots = { person: { appendChild: (n) => { n.parentNode = slots.person; moved.push('person'); } }, family: { appendChild: (n) => { n.parentNode = slots.family; moved.push('family'); } } };
+  const slots = { person: { querySelector: () => null, appendChild: (n) => { n.parentNode = slots.person; moved.push('person'); } }, family: { querySelector: () => null, appendChild: (n) => { n.parentNode = slots.family; moved.push('family'); } } };
   let rendered = 0;
   const ctx = { document: { getElementById: (id) => id === 'owner-transfer-sec' ? sec : id === 'person-owner-transfer-slot' ? slots.person : null, querySelector: () => slots.family },
     getOwnerTransfer: () => ({ renderSettings: () => rendered++ }) };
