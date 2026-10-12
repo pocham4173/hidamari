@@ -34,6 +34,8 @@ function stopHouseholdSubscriptions(){
   if(typeof resetRecordViews==='function')resetRecordViews();
   [householdUnsub,ownMemberUnsub,memWatchUnsub,honninUnsub,yoteiUnsub,evUnsub,ytListUnsub,watchTagUnsub,medicineInfoUnsub,personHistoryUnsub,pendingUnsub].forEach(fn=>{try{if(fn)fn();}catch(e){}});
   householdUnsub=ownMemberUnsub=null;
+  /* 家族の仕事の休み(2026-10-12)。家庭を出たら前の家庭の休みを見せない */
+  if(typeof dayoffUnsub!=='undefined'&&dayoffUnsub){try{dayoffUnsub();}catch(e){}dayoffUnsub=null;dayoffByUid={};dayoffEditing=false;}
   familyOnlyUnsubs.forEach(fn=>{try{fn();}catch(e){}}); familyOnlyUnsubs=[];
   if(clockTimer)clearInterval(clockTimer);
   try{speechSynthesis.cancel();}catch(e){}
@@ -448,6 +450,8 @@ async function leaveHouseholdAccount(){
     alert('管理者だけを参加解除すると家庭を管理できなくなるため、解除できません。家庭全体の利用を終了する場合は「共有データをすべて削除する」を選んでください。');return false;
   }
   const notebookScope={uid:uid(),groupId:gid()};
+  /* 仕事の休みの印(2026-10-12)も消す。ルールが古いままの家庭でも参加解除は止めない */
+  try{await col('dayoff').doc(uid()).delete();}catch(e){console.warn('dayoff leave',e);}
   const batch=db.batch();batch.delete(col('members').doc(uid()));batch.delete(db.collection('accounts').doc(uid()));await batch.commit();
   stopHouseholdSubscriptions();
   const notebookCleared=await clearNotebookForExit(notebookScope);

@@ -6,7 +6,7 @@
   const CHECKPOINT_KEY = 'mainico_deletion_pending_v1';
   const CONFIRMATION = '共有データを削除';
   const activeRuns = new Set();
-  const stages = new Set(['starting', 'invites', 'tags', 'events', 'yotei', 'settings', 'accounts', 'members', 'verifying', 'finalizing']);
+  const stages = new Set(['starting', 'invites', 'tags', 'events', 'yotei', 'dayoff', 'settings', 'accounts', 'members', 'verifying', 'finalizing']);
 
   function failure(code, message, cause) {
     const error = new Error(message);
@@ -120,6 +120,12 @@
           throw failure('data-remains', 'サーバーに未削除のデータがあります。グループ本体は残しています。同じ削除を再開してください。');
         }
       }
+      // 仕事の休み(dayoff, 2026-10-12)は新しいルールで加えた置き場。ルールが古いままの間は
+      // 誰も書けず読めもしないため、読めないことを「残りなし」として進む。ほかの置き場は従来どおり止める。
+      async function oldRulesEmpty(name, action) {
+        try { return await action(); }
+        catch (error) { if (name === 'dayoff' && error && error.code === 'permission-denied') return; throw error; }
+      }
       async function finish() {
         let localCheckpointCleared = true;
         try { storage.removeItem(CHECKPOINT_KEY); } catch (_) { localCheckpointCleared = false; }
@@ -169,9 +175,9 @@
           // alert の空確認が済んだタグだけ消す。中断時は親タグが残り再開可能。
           await deleteRefs(snapshot.docs.map(doc => doc.ref));
         }
-        for (const name of ['events', 'yotei']) {
+        for (const name of ['events', 'yotei', 'dayoff']) {
           checkpoint(name); notify('deleting');
-          await purgeQuery(groupRef.collection(name));
+          await oldRulesEmpty(name, () => purgeQuery(groupRef.collection(name)));
         }
         checkpoint('settings'); notify('deleting');
         const settingSnapshot = await serverRead(settings);
@@ -183,7 +189,7 @@
         await purgeQuery(groupRef.collection('members'));
 
         checkpoint('verifying'); notify('verifying');
-        for (const name of ['events', 'yotei', 'members']) await assertEmpty(groupRef.collection(name));
+        for (const name of ['events', 'yotei', 'dayoff', 'members']) await oldRulesEmpty(name, () => assertEmpty(groupRef.collection(name)));
         await assertEmpty(invites);
         await assertEmpty(tags);
         await assertEmpty(accounts, ownerUid);

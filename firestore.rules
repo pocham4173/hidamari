@@ -329,6 +329,20 @@ service cloud.firestore {
               || resource.data.get('uid', null) == request.auth.uid));
       }
 
+      // 家族の仕事の休み(2026-10-12 ヒビルカのカレンダーから)。
+      // 家庭の全員が見られる。書けるのは自分の分だけ。中身は {days:{"YYYY-MM-DD":"off"}} で、画面側でも日付と種類を検査する。
+      match /dayoff/{memberId} {
+        allow read: if (isApproved(groupId) && hasConsent()) || deletingOwner(groupId);
+        allow create, update: if isApproved(groupId) && hasConsent() && writableGroup(groupId)
+          && request.auth.uid == memberId
+          && request.resource.data.keys().hasOnly(['days', 'updatedAt'])
+          && request.resource.data.days is map
+          && request.resource.data.days.size() <= 400
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if deletingOwner(groupId)
+          || (usableAccount() && request.auth.uid == memberId);
+      }
+
       // QRおまもりタグの家族側設定
       match /settings/watchTag {
         allow get: if (isApproved(groupId) && hasConsent()) || deletingOwner(groupId);
