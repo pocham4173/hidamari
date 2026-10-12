@@ -17,6 +17,8 @@ function requireHouseholdOwner(){
 }
 function applyHouseholdPermissions(){
   document.querySelectorAll('[data-owner-only]').forEach(el=>el.hidden=!isHouseholdOwner() || householdDeleting);
+  /* メールとパスワードで戻れるアカウントのときだけ「ログインをやめる」を出す(戻れないアカウントでやめると、二度と入れない) */
+  document.querySelectorAll('[data-email-account-only]').forEach(el=>{const u=typeof auth!=='undefined'&&auth.currentUser;el.hidden=!(u&&!u.isAnonymous&&u.email);});
   document.querySelectorAll('[data-household-role]').forEach(el=>el.textContent=isHouseholdOwner()
     ?'あなたは管理者です。参加承認・招待・共有データの削除を管理します。'
     :'あなたは参加メンバーです。招待や参加承認は、管理者へ依頼してください。');
@@ -558,4 +560,15 @@ async function restartAfterAccountClosure(){
   try{await auth.signOut();localStorage.removeItem(ACCOUNT_CLOSED_KEY);accountClosureStopping=false;location.reload();}
   catch(e){showAccountClosed('再開できませんでした。通信とブラウザーの保存設定を確認してください。');}
 }
-
+/* このスマホでのログインをやめて、入口に戻る(2026-10-12)。家庭の記録・ほかのスマホ・アカウントはそのまま。
+   まちがえて別の人のアカウントに入ったときに、自分として入り直すため(実機: 家族のスマホがご本人のアカウントに入ってしまった) */
+async function signOutThisDevice(){
+  const u=auth.currentUser;
+  if(!u||u.isAnonymous||!u.email){await appNotice('このスマホの登録には復旧の設定（メールとパスワード）がないため、ログインをやめると戻れなくなります。');return;}
+  const ok=await appConfirm('このスマホでのログインをやめて、まいにこの入口に戻りますか？\n\n・家庭の記録や予定は消えません\n・ほかのスマホは、そのまま使えます\n・このアカウントには、あとでメールとパスワード（'+u.email+'）で戻れます','ログインをやめる','やめない',true);
+  if(!ok)return;
+  try{stopHouseholdSubscriptions();}catch(e){}
+  ['mainicoGid','mainicoMode','kazokuOnly','mainicoModeChoiceV1','mainicoName','mainicoPendingMode','mainico_join_pending_v1'].forEach(k=>{try{previewStorage.removeItem(k);}catch(e){}});
+  try{await auth.signOut();}catch(e){}
+  location.reload();
+}

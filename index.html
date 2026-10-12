@@ -1518,6 +1518,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <div class="set-sec"><h4>アカウントと家庭の管理</h4>
     <p class="note" data-household-role></p>
     <button class="set-btn" onclick="openRecovery(true)">復旧設定済みのアカウントでログインする</button>
+    <button class="set-btn" type="button" data-email-account-only hidden onclick="signOutThisDevice()">このスマホでのログインをやめる（記録は消えません）</button>
     <button class="set-btn warn" onclick="openAccountDeletion()">自分のログイン用アカウントを削除する</button>
     <button class="set-btn warn" data-owner-only hidden onclick="deleteAllData()">共有データをすべて削除する</button>
   </div>
@@ -1819,6 +1820,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <p class="note" data-recovery-status aria-live="polite"></p>
         <button class="set-btn" onclick="openRecovery()">端末をなくす前に復旧を設定する</button>
     <button class="set-btn" onclick="openRecovery(true)">復旧設定済みのアカウントでログインする</button>
+        <button class="set-btn" type="button" data-email-account-only hidden onclick="signOutThisDevice()">このスマホでのログインをやめる（記録は消えません）</button>
         <button class="set-btn" type="button" data-device-stop hidden onclick="openDeviceStop()">スマホをなくしたとき：ほかのスマホを止める</button>
         <a class="set-btn" href="help.html#recovery">機種変更・復旧の手順を見る</a>
         <a class="set-btn" href="help.html#locked-out">家族の誰も入れなくなったとき</a>
@@ -2439,7 +2441,7 @@ setTimeout(function(){
 /* 引っ越しの番号は、起動の最初にURLから取り出して消す(画面にも記録にも出さない) */
 window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 </script>
-<script src="household-ui.js?v=20261010c"></script>
+<script src="household-ui.js?v=20261012"></script>
 <script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
@@ -4386,7 +4388,8 @@ function getOwnerTransfer(){
     deleteField:()=>firebase.firestore.FieldValue.delete(),
     credential:(email,password)=>firebase.auth.EmailAuthProvider.credential(email,password),
     ask:(text,ok)=>(typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(text,ok),
-    openRecovery:()=>{if(typeof openSettings==='function')openSettings();if(typeof openRecoveryMenu==='function')openRecoveryMenu();},
+    /* 復旧の「設定」の画面をそのまま開く。設定の一覧には「ログインする」も並んでいて、押し間違えると別のアカウントに入ってしまう(2026-10-12 実機) */
+    openRecovery:()=>{if(typeof openRecovery==='function')openRecovery();},
     /* ご本人として使っている管理者なら、家族へ自動で引き継ぎを頼む */
     isHonnin:()=>typeof memberIsHonnin==='function'&&memberIsHonnin(uid()),storage:previewStorage
   });
