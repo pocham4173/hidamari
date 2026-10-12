@@ -66,4 +66,13 @@ const pick = (re) => { const m = html.match(re); assert.ok(m, 'not found: ' + re
   assert.equal(area.innerHTML, '', '欄を閉じる');
   assert.deepEqual(deleted, ['RELJEDX3'], 'コードを消す(使えなくする)');
 }
+// 5. 引き継ぎのカードの「復旧の設定を開く」は、設定の画面を直接開く(「ログインする」と並べない)。
+//    「このスマホでのログインをやめる」は、メールで戻れるアカウントのときだけ(2026-10-12 実機)
+{
+  assert.match(html, /openRecovery:\(\)=>\{if\(typeof openRecovery==='function'\)openRecovery\(\);\}/);
+  assert.equal((html.match(/data-email-account-only hidden onclick="signOutThisDevice\(\)">このスマホでのログインをやめる（記録は消えません）/g) || []).length, 2, 'ご本人と家族の設定の両方');
+  const ui = fs.readFileSync(new URL('../household-ui.js', import.meta.url), 'utf8');
+  assert.match(ui, /el\.hidden=!\(u&&!u\.isAnonymous&&u\.email\)/);
+  assert.match(ui, /async function signOutThisDevice\(\)\{[\s\S]*家庭の記録や予定は消えません[\s\S]*auth\.signOut\(\)/);
+}
 console.log('利用開始と開き直し: 初日のアンケート・起動待ちの案内・ご本人からの管理者の引き継ぎ passed');
