@@ -141,6 +141,18 @@ test('deletion can resume for the original owner even after the member document 
   await assert.rejects(g.service.recover(login),code('recovery/deleting'));assert.equal(count(g,'switch'),0);
 });
 
+test('a device in a household cannot switch to another member of the same household (2026-10-12)',async()=>{
+  const f=fixture({localGroupId:'g2'});
+  const leave={uid:'old',groupId:'g2',noRecordsToKeep:true};
+  await assert.rejects(f.service.recover({...login,leaveUnconfigured:leave}),code('recovery/same-household-other'));
+  assert.equal(count(f,'switch'),0);assert.equal(f.auth.currentUser.uid,'old');assert.equal(count(f,'dispose'),1);
+  assert.match(Recovery.message({code:'recovery/same-household-other'}),/同じ家庭のほかの人のアカウントです/);
+  // 別の家庭のアカウントへは、今までどおり戻れる(機種変更・入れ直し)
+  const g=fixture({localGroupId:'g1'});
+  const r=await g.service.recover({...login,leaveUnconfigured:{uid:'old',groupId:'g1',noRecordsToKeep:true}});
+  assert.equal(r.groupId,'g2');assert.equal(count(g,'switch'),1);
+});
+
 test('anonymous household access must be protected before any login attempt on that device',async()=>{
   const f=fixture({localGroupId:'g1'});
   await assert.rejects(f.service.recover(login),code('recovery/preserve-current'));assert.equal(count(f,'session'),0);

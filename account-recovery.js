@@ -37,6 +37,7 @@
       'recovery/verification-send-failed':'登録はできましたが、確認メールを送れませんでした。今の端末のデータを消さず「確認メールを再送する」をお試しください。',
       'recovery/unverified':'メール内のリンクでアドレス確認を済ませてから、もう一度お試しください。復旧はまだ完了していません。',
       'recovery/not-configured':'このアカウントには復旧用のメールとパスワードが設定されていません。',
+      'recovery/same-household-other':'このメールアドレスは、同じ家庭のほかの人のアカウントです。このスマホでは使えません（ほかの人として使うことになるため）。このスマホの人のメールアドレスとパスワードを入れてください。今の登録は変わっていません。',
       'recovery/no-pointer':'このアカウントの復旧先を確認できません。元の端末で復旧設定を確認してください。',
       'recovery/no-membership':'現在、この家族の記録を開く権限がありません。家族の管理者に確認してください。',
       'recovery/deleting':'この家族の記録は削除中です。管理者に確認してください。',
@@ -161,6 +162,9 @@
           if(!user.emailVerified)throw problem('recovery/unverified');
           await user.getIdToken(true);
           const context=await readPointer(session.db,user);
+          /* 同じ家庭のほかの人のアカウントには、このスマホを切り替えない(2026-10-12 実機: 家族のスマホがご本人のアカウントに入ってしまった)。
+             切り替える前に止めるので、今の登録はそのまま */
+          if(before&&localGroupId&&context.groupId===localGroupId&&user.uid!==expected)throw problem('recovery/same-household-other');
           if((auth.currentUser&&auth.currentUser.uid)!==expected || (getLocalGroupId&&getLocalGroupId()!==localGroupId))throw problem('recovery/session-changed');
           // The UI can persist a single recovery journal and stop old listeners here.
           // A failed journal write must leave the current Auth session unchanged.
