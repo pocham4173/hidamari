@@ -692,6 +692,11 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .ln-more{margin-top:10px;font-size:.9rem;}
 .ln-more summary{cursor:pointer;color:var(--usucha);padding:6px 0;}
 /* 開け閉めする所は、はっきりしたボタンの形にする(2026-10-12 利用者「三角ボタンがわかりづらい・開きっぱなしにしてしまう」) */
+/* 本人の設定の見出し(2026-10-13): 押すと開く大きな行。開いた中は少し下げて、どこまでが中身か分かるように */
+#person-settings-modal .p-group>summary{font-size:1.1rem;padding:14px 14px;}
+#person-settings-modal .p-group>summary small{display:block;font-size:.85rem;font-weight:700;color:#7A6A55;margin-top:2px;}
+#person-settings-modal .p-group[open]{border-left:4px solid #C9B79C;padding-left:10px;margin-bottom:12px;}
+#person-settings-modal .p-group[hidden]{display:none;}
 .ln-more>summary,#person-settings-modal details>summary{list-style:none;display:block;cursor:pointer;margin:8px 0;padding:12px 14px;border:2px solid #C9B79C;border-radius:12px;background:#fff;color:#33404E;font-weight:800;font-size:1rem;line-height:1.5;text-align:left;}
 .ln-more>summary::-webkit-details-marker,#person-settings-modal details>summary::-webkit-details-marker{display:none;}
 .ln-more>summary::after,#person-settings-modal details>summary::after{content:'▼ 押すと開きます';display:block;font-size:.82rem;font-weight:700;color:#7A6A55;margin-top:2px;}
@@ -1476,67 +1481,62 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   </div>
   <a class="guide-link" href="guide/"><span>📷</span><div>使い方ガイド<small>写真つきで、手順を見られます</small></div></a>
   <button class="set-btn install-set" type="button" data-install-button hidden onclick="installApp()">📲 ホーム画面に追加する</button>
-  <div class="set-sec" style="border-top:none;margin-top:0;padding-top:0;"><h4>家族との連携</h4>
-    <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
-    <p class="connected-people" data-connected-people aria-live="polite"></p>
+  <!-- 設定は、見出しだけを並べて押すと開く形にする。開くのは1つずつ(2026-10-13 利用者「こんな全部開いていて、みてわかると思う？」) -->
+  <p class="note" data-connection-state aria-live="polite">連携状況を確認しています。</p>
+  <p class="connected-people" data-connected-people aria-live="polite"></p>
+  <div class="p-groups">
+  <details class="p-group" id="pg-family"><summary>👪 家族とのつながり<small>名前・招待・参加している人</small></summary>
     <button class="set-btn" type="button" onclick="openRename(uid())">自分の名前を変える</button>
     <button class="set-btn" data-owner-only hidden onclick="makeInvite('person-invite-area')">招待コードを作る</button>
     <div id="person-invite-area"></div>
     <div id="person-settings-approve" class="settings-approve"></div>
     <button class="set-btn" onclick="closePersonSettings();openMembers()">参加している人を確認する</button>
-    <!-- ご本人が管理者のとき、家族へ管理者を引き継げるようにする(2026-10-11 まいにこは家族が準備を手伝うアプリ。管理者は家族がよい)。
-         中身は家族の設定と同じ「管理者を引き継ぐ」を、開いた画面へ移して使う -->
-    <!-- ほかのボタンと間違えないよう、開け閉めの中にしまう(2026-10-12 利用者「何かのボタンと間違えてしまう」) -->
+    <!-- ご本人が管理者のとき、家族へ管理者を引き継げるようにする(2026-10-11)。ほかのボタンと間違えないよう、開け閉めの中にしまう(2026-10-12) -->
     <details id="person-owner-transfer-slot" class="person-owner-menu" data-owner-only hidden><summary>管理者の引き継ぎ（家族へ）</summary></details>
-    <details><summary>以前の家族からの伝言を見る</summary><p class="note">連携を解除しても、家庭に残っている伝言はここから確認できます。</p><button class="set-btn" onclick="closePersonSettings();openPersonHistory()">伝言の履歴を見る</button></details>
-  </div>
-  <!-- 長いので、ふだんは閉じておく(2026-10-12 利用者「どうしてLINEで予定のお知らせは開いたままなの？」) -->
-  <div class="set-sec"><h4>LINEで予定のお知らせ</h4>
-    <details class="person-line-menu"><summary>LINEの設定を見る（登録・やめる）</summary>
-      <div id="person-line-area"></div>
-    </details>
-  </div>
-  <div class="set-sec" data-line-login-only hidden><h4>LINEでログイン（いつもの画面に戻る方法）</h4>
-    <div id="person-line-login-area"></div>
-  </div>
-  <!-- 声のお返事も、ほかと同じく押すと開く・しまう(2026-10-13 利用者「開いたままでしまうボタンがない」) -->
-  <div class="set-sec" style="border-top:none;"><h4>声のお返事（読み上げ）</h4>
-    <details class="person-speech-menu"><summary>声のお返事の設定（オン・オフ・ためす）</summary>
+    <p class="note">連携を解除しても、家庭に残っている伝言は、下のボタンから確認できます。</p>
+    <button class="set-btn" onclick="closePersonSettings();openPersonHistory()">以前の家族からの伝言を見る</button>
+  </details>
+  <details class="p-group" id="pg-line"><summary>💬 LINEで予定のお知らせ<small>登録・やめる</small></summary>
+    <div id="person-line-area"></div>
+    <div class="set-sec" data-line-login-only hidden><h4>LINEでログイン（いつもの画面に戻る方法）</h4>
+      <div id="person-line-login-area"></div>
+    </div>
+  </details>
+  <details class="p-group" id="pg-speech"><summary>🔊 声のお返事（読み上げ）<small>オン・オフ・ためす</small></summary>
     <div class="note">オンにすると、ボタンを押したあとに声でもお知らせします。</div>
     <button class="set-btn" id="speech-toggle" onclick="toggleSpeech()">声のお返事：オフ（押すとオン）</button>
     <button class="set-btn" type="button" onclick="speak('声は、この音量で聞こえます',true)">声をためす</button>
     <p class="note" id="person-speech-status" role="status"></p>
-    </details>
-  </div>
-  <!-- まいにこを人に紹介する(2026-10-12 利用者「友達に教えたいときにQRコードも必要」)。公式LINEのQRは、設定の上の方から見つけられるように -->
-  <div class="set-sec"><h4>まいにこを紹介する</h4>
-    <details class="ln-more share-qr"><summary>まいにこ公式LINEのQRコードを出す</summary><p class="note">友だちや知り合いに、まいにこを紹介するときに使います。相手のスマホのLINEで、このQRコードを読んでもらってください。</p><img src="line-qr.png" alt="まいにこ公式LINE（@187mrwbk）の友だち追加QRコード" width="300" height="434" loading="lazy" style="display:block;width:100%;max-width:300px;height:auto;margin:8px auto;"><a class="set-btn ln-line" href="https://line.me/R/share?text=%E3%81%BE%E3%81%84%E3%81%AB%E3%81%93%EF%BC%88%E5%AE%B6%E6%97%8F%E3%81%A7%E4%BD%BF%E3%81%86%E8%A6%8B%E5%AE%88%E3%82%8A%E3%82%A2%E3%83%97%E3%83%AA%EF%BC%89%E3%81%AE%E5%85%AC%E5%BC%8FLINE%E3%81%A7%E3%81%99%E3%80%82%E5%8F%8B%E3%81%A0%E3%81%A1%E8%BF%BD%E5%8A%A0%E3%81%99%E3%82%8B%E3%81%A8%E3%80%81%E3%83%A1%E3%83%8B%E3%83%A5%E3%83%BC%E3%81%AE%E3%80%8C%E3%81%AF%E3%81%98%E3%82%81%E3%81%A6%E3%81%AE%E6%96%B9%E3%80%8D%E3%81%8B%E3%82%89%E5%A7%8B%E3%82%81%E6%96%B9%E3%81%8C%E8%A6%8B%E3%82%89%E3%82%8C%E3%81%BE%E3%81%99%E3%80%82%0Ahttps%3A%2F%2Fline.me%2FR%2Fti%2Fp%2F%2540187mrwbk" target="_blank" rel="noopener noreferrer">LINEで紹介を送る</a><p class="note">紹介するだけでは、相手はあなたの家庭には入りません。家族として一緒に使うときは「招待コードを作る」を使います。</p></details>
-  </div>
-  <div class="set-sec"><h4>使い方・困ったとき</h4>
+  </details>
+  <details class="p-group" id="person-hitokoe-sec" hidden><summary>🔔 ひと声のきっかけ</summary>
+    <p class="note" id="person-hitokoe-state"></p>
+    <button class="set-btn" type="button" id="person-hitokoe-btn" onclick="togglePersonHitokoe()"></button>
+  </details>
+  <details class="p-group" id="pg-device"><summary>📱 機種変更・スマホをなくしたとき<small>復旧の設定</small></summary>
+    <p class="note" data-recovery-status aria-live="polite"></p>
+    <div class="note">ご家族と一緒に設定すると、新しいスマホでも記録に戻れます。パスワードはご家族が控えておいてください。</div>
+    <button class="set-btn" onclick="openRecovery()">復旧を設定する</button>
+    <button class="set-btn" type="button" data-device-stop hidden onclick="openDeviceStop()">スマホをなくしたとき：ほかのスマホを止める</button>
+    <a class="set-btn" href="help.html#recovery">機種変更・復旧の手順を見る</a>
+  </details>
+  <details class="p-group" id="pg-notebook"><summary>💊 このスマホのお薬手帳<small>写真・PDF</small></summary>
+    <div class="note">ここに保存した写真やPDFを見たり、拡大したりできます。家族への自動共有や、機種変更時の自動引継ぎはありません。</div>
+    <button class="set-btn" type="button" onclick="openMedicineNotebook()">お薬手帳を開く・保存する</button>
+    <a class="set-btn" href="help.html#medicine">保存・別のスマホへの移し方</a>
+  </details>
+  <details class="p-group" id="pg-share"><summary>🤝 まいにこを紹介する<small>公式LINEのQRコード</small></summary>
+    <p class="note">友だちや知り合いに、まいにこを紹介するときに使います。相手のスマホのLINEで、このQRコードを読んでもらってください。</p><img src="line-qr.png" alt="まいにこ公式LINE（@187mrwbk）の友だち追加QRコード" width="300" height="434" loading="lazy" style="display:block;width:100%;max-width:300px;height:auto;margin:8px auto;"><a class="set-btn ln-line" href="https://line.me/R/share?text=%E3%81%BE%E3%81%84%E3%81%AB%E3%81%93%EF%BC%88%E5%AE%B6%E6%97%8F%E3%81%A7%E4%BD%BF%E3%81%86%E8%A6%8B%E5%AE%88%E3%82%8A%E3%82%A2%E3%83%97%E3%83%AA%EF%BC%89%E3%81%AE%E5%85%AC%E5%BC%8FLINE%E3%81%A7%E3%81%99%E3%80%82%E5%8F%8B%E3%81%A0%E3%81%A1%E8%BF%BD%E5%8A%A0%E3%81%99%E3%82%8B%E3%81%A8%E3%80%81%E3%83%A1%E3%83%8B%E3%83%A5%E3%83%BC%E3%81%AE%E3%80%8C%E3%81%AF%E3%81%98%E3%82%81%E3%81%A6%E3%81%AE%E6%96%B9%E3%80%8D%E3%81%8B%E3%82%89%E5%A7%8B%E3%82%81%E6%96%B9%E3%81%8C%E8%A6%8B%E3%82%89%E3%82%8C%E3%81%BE%E3%81%99%E3%80%82%0Ahttps%3A%2F%2Fline.me%2FR%2Fti%2Fp%2F%2540187mrwbk" target="_blank" rel="noopener noreferrer">LINEで紹介を送る</a><p class="note">紹介するだけでは、相手はあなたの家庭には入りません。家族として一緒に使うときは「招待コードを作る」を使います。</p>
+  </details>
+  <details class="p-group" id="pg-help"><summary>❓ 使い方・困ったとき<small>説明・問い合わせ</small></summary>
     <a class="set-btn" href="guide/">📷 写真つきの使い方を見る</a>
     <a class="set-btn" href="help.html#notifications">くわしい説明を見る</a>
     <a class="set-btn" href="guide/trouble.html">📷 困ったとき（写真つき）</a>
     <a class="set-btn" href="contact.html">✉️ 問い合わせる</a>
     <a class="set-btn" href="guide/line.html">LINEで予定のお知らせを受け取るには</a>
     <a class="set-btn" href="privacy.html">プライバシーポリシー</a>
+  </details>
   </div>
-  <div class="set-sec"><h4>このスマホのお薬手帳</h4>
-    <div class="note">ここに保存した写真やPDFを見たり、拡大したりできます。家族への自動共有や、機種変更時の自動引継ぎはありません。</div>
-    <button class="set-btn" type="button" onclick="openMedicineNotebook()">お薬手帳を開く・保存する</button>
-    <a class="set-btn" href="help.html#medicine">保存・別のスマホへの移し方</a>
-  </div>
-  <div class="set-sec" id="person-hitokoe-sec" hidden><h4>ひと声のきっかけ</h4>
-    <p class="note" id="person-hitokoe-state"></p>
-    <button class="set-btn" type="button" id="person-hitokoe-btn" onclick="togglePersonHitokoe()"></button>
-  </div>
-  <div class="set-sec"><h4>機種変更・スマホをなくしたとき</h4>
-    <p class="note" data-recovery-status aria-live="polite"></p>
-    <div class="note">ご家族と一緒に設定すると、新しいスマホでも記録に戻れます。パスワードはご家族が控えておいてください。</div>
-    <button class="set-btn" onclick="openRecovery()">復旧を設定する</button>
-    <button class="set-btn" type="button" data-device-stop hidden onclick="openDeviceStop()">スマホをなくしたとき：ほかのスマホを止める</button>
-    <a class="set-btn" href="help.html#recovery">機種変更・復旧の手順を見る</a>
-  </div>
-  <details class="person-family-procs" id="person-family-procs" ontoggle="guardPersonFamilyProcs(this)">
+  <details class="person-family-procs p-group" id="person-family-procs" ontoggle="guardPersonFamilyProcs(this)">
     <summary>ご家族と一緒に行う手続き（利用方法の変更・利用の終了など）</summary>
     <p class="note">ここにある操作は、元に戻せないものがあります。ご家族と一緒に、画面をよく確かめてから操作してください。</p>
   <div class="set-sec"><h4>利用方法の変更</h4>
@@ -3916,7 +3916,7 @@ function placeOwnerTransfer(person){
   try{const ctl=getOwnerTransfer();if(ctl)ctl.renderSettings();}catch(e){}
 }
 function openPersonSettings(){ applyHouseholdPermissions(); placeOwnerTransfer(true); if(typeof renderRecoveryBadges==='function')renderRecoveryBadges(); if(typeof renderPersonHitokoe==='function')renderPersonHitokoe(); if(typeof reportDeviceRecovery==='function')reportDeviceRecovery(); speak('その他の設定を ひらきました'); updateSpeechToggle(); document.getElementById('person-settings-modal').classList.add('show'); const psBox=document.querySelector('#person-settings-modal .modal-box'); if(psBox) psBox.scrollTop=0; if(window.MainicoLine) MainicoLine.render('person-line-area'); if(typeof renderLineLoginSettings==='function') renderLineLoginSettings('person-line-login-area'); }
-function closePersonSettings(){ speak('とじました'); const f=document.getElementById('person-family-procs');if(f)f.open=false; document.getElementById('person-settings-modal').classList.remove('show'); }
+function closePersonSettings(){ speak('とじました'); const f=document.getElementById('person-family-procs');if(f)f.open=false; document.querySelectorAll('#person-settings-modal .p-group[open]').forEach(x=>{x.open=false;}); document.getElementById('person-settings-modal').classList.remove('show'); }
 /* 「ご家族と一緒に行う手続き」は、開く前に確認する(本人が迷い込まないように) */
 let personProcsConfirmed=false;
 async function guardPersonFamilyProcs(el){
@@ -7727,6 +7727,12 @@ async function makeInvite(targetId){
   }catch(e){ console.warn('invite',e); alert('招待コードを発行できませんでした。通信を確認して、もう一度お試しください。'); }
 }
 
+/* 本人の設定の見出しは、開くのを1つずつにする(全部開いたままにならないように) */
+document.addEventListener('toggle',function(e){
+  const d=e.target;
+  if(!d||!d.classList||!d.classList.contains('p-group')||!d.open)return;
+  document.querySelectorAll('#person-settings-modal .p-group[open]').forEach(x=>{if(x!==d)x.open=false;});
+},true);
 /* 開いた欄のいちばん下にも「しまう」を置く(上まで戻らなくても閉じられる。2026-10-12) */
 document.addEventListener('toggle',function(e){
   const d=e.target;
