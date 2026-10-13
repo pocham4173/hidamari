@@ -135,6 +135,12 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .yotei-card .pl{font-size:1.35rem;font-weight:900;line-height:1.5;color:var(--cha);}
 .yotei-card .y-line{margin-top:6px;font-size:1.05rem;font-weight:700;color:var(--usucha);line-height:1.5;}
 .yotei-card .y-line[hidden]{display:none;}
+.yotei-card .days{font-size:2.2rem;}
+.yotei-card .pl{font-size:1.6rem;}
+.yotei-card .y-sub{font-size:1.1rem;font-weight:800;color:var(--ao-koi);margin-top:2px;}
+.yotei-card .y-detail{margin-top:10px;padding:10px 12px;border-radius:14px;background:var(--ao-usui);text-align:left;font-size:1.15rem;font-weight:700;line-height:1.7;color:var(--cha);}
+.yotei-card .y-more{margin-top:6px;font-size:.95rem;font-weight:700;color:var(--usucha);}
+.yotei-card [hidden]{display:none;}
 .aisatsu{background:#fff;border:3px solid var(--hi);border-radius:26px;padding:24px 18px;font-family:inherit;cursor:pointer;box-shadow:0 8px 0 var(--hi-koi);text-align:center;transition:transform .08s;}
 .aisatsu .ic{font-size:3rem;line-height:1.1;}
 .aisatsu .tx{font-size:2rem;font-weight:900;color:var(--hi);margin-top:4px;}
@@ -243,6 +249,10 @@ table.cal th.sat{color:#2F5FA8;}
 .dayoff-btn{margin-top:10px;}
 .dayoff-btn.on{background:#A0304A;color:#fff;border-color:#A0304A;}
 .dayoff-help{margin:4px 0 8px;padding:10px 12px;border-radius:12px;background:#FBE6EE;color:#7A2338;font-weight:800;line-height:1.6;}
+.yt-repeat{margin-top:6px;}
+.yt-repeat select{width:100%;}
+.yt-repeat-preview{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--ao-usui);font-weight:700;line-height:1.6;font-size:.95rem;}
+.yt-repeat-preview:empty{display:none;}
 .cdd-koyomi{margin:2px 0 6px;font-weight:800;color:#6B5A45;}
 .cdd-off{margin:2px 0 6px;font-weight:800;color:#A0304A;}
 
@@ -512,6 +522,7 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .yt-simple{display:flex;flex-direction:column;gap:10px;}
 .yt-simple label{font-size:1rem;font-weight:900;color:var(--cha);}
 .yt-simple input{width:100%;min-height:44px;margin-top:5px;font-family:inherit;font-size:.98rem;padding:9px 10px;border:1px solid #CDD6E1;border-radius:9px;background:#F8FAFC;color:var(--cha);}
+.yt-simple select{width:100%;min-height:48px;margin-top:5px;font-family:inherit;font-size:1rem;font-weight:700;padding:9px 10px;border:1px solid #CDD6E1;border-radius:9px;background:#F8FAFC;color:var(--cha);}
 .schedule-form-card{padding:14px;}
 /* LINEで予定のお知らせ */
 .line-notify-field{border:2px solid #BFE8CF;border-radius:12px;background:#F3FBF6;padding:10px 12px;margin-top:10px;}
@@ -1405,12 +1416,17 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <button class="onegai-btn" data-share-gate="family" data-person-voice="おねがいの がめんを ひらきました" hidden onclick="openOnegai()">ちょっとお願い</button>
     <!-- 家族からの新しい連絡は、やりとりの欄が下にあっても見落とさないよう、ここ(上)に出す -->
     <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
-    <div class="yotei-card person-press-target" role="button" tabindex="0" aria-label="これからの予定を音声で聞く" onclick="speakNextYotei()" style="cursor:pointer;">
-      <div class="lb">予定</div>
-      <div class="days" id="y-days">-</div>
-      <div class="pl" id="y-label">これからの予定はありません</div>
+    <!-- 次の予定(2026-10-13 ヒビルカから): 「明日 9:00」「デイサービス 🚐」を大きく。押すと場所などが見られる -->
+    <div class="yotei-card person-press-target" id="y-card" role="button" tabindex="0" aria-expanded="false" aria-controls="y-detail" onclick="toggleNextYotei()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleNextYotei();}" style="cursor:pointer;">
+      <div class="lb">次の予定</div>
+      <div class="days" id="y-days">読み込み中…</div>
+      <div class="pl" id="y-label"></div>
+      <div class="y-sub" id="y-sub" hidden></div>
+      <div class="y-detail" id="y-detail" hidden></div>
       <div class="y-line" id="y-line" hidden></div>
+      <div class="y-more" id="y-more" aria-hidden="true">▼ 押すと、くわしく見られます</div>
     </div>
+    <button class="cal-open" id="y-others" type="button" hidden onclick="openNextYoteiDay()"></button>
     <button class="cal-open" id="h-open-cal" data-person-voice="カレンダーを ひらきました" onclick="openCal()">カレンダーを見る</button>
     <button class="cal-open" id="h-open-tasks" type="button" data-person-voice="自分のやることをひらきました。やることを追加し、終わったら、できたを押します。" onclick="openPersonTasks()">自分のやること</button>
     <button class="cal-open" id="h-open-yotei" data-person-voice="予定の 入力を ひらきました" onclick="openHYotei()">予定を入れる</button>
@@ -2194,9 +2210,27 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
             </details>
           </div>
           <div class="yt-form-row">
-            <label>日付<input type="date" id="yt-date"></label>
+            <label>日付<input type="date" id="yt-date" onchange="renderYoteiRepeat()"></label>
             <label>時間<input type="time" id="yt-time"></label>
           </div>
+          <!-- くり返し(2026-10-13 ヒビルカから)。1回ずつ別の予定として入るので、あとで「この日だけ」直せる -->
+          <div class="yt-repeat" id="yt-repeat-box">
+            <label>くり返し<select id="yt-repeat" onchange="renderYoteiRepeat()">
+              <option value="none">くり返さない（1回だけ）</option>
+              <option value="weekly">毎週（同じ曜日）</option>
+              <option value="monthly">毎月（同じ日）</option>
+            </select></label>
+            <div id="yt-repeat-more" hidden>
+              <div class="yt-form-row">
+                <label>終わり方<select id="yt-repeat-end" onchange="renderYoteiRepeat()"><option value="count">回数で決める</option><option value="until">終わる日で決める</option></select></label>
+                <label id="yt-repeat-count-wrap">回数<input type="number" id="yt-repeat-count" min="2" max="60" value="4" inputmode="numeric" oninput="renderYoteiRepeat()"></label>
+                <label id="yt-repeat-until-wrap" hidden>終わる日<input type="date" id="yt-repeat-until" onchange="renderYoteiRepeat()"></label>
+              </div>
+              <label id="yt-repeat-short-wrap" hidden>その月にない日（31日など）は<select id="yt-repeat-short" onchange="renderYoteiRepeat()"><option value="last">その月の最後の日に入れる</option><option value="skip">その月は入れない</option></select></label>
+              <div class="yt-repeat-preview" id="yt-repeat-preview" aria-live="polite"></div>
+            </div>
+          </div>
+          <div class="note" id="yt-series-note" hidden>まとめて入れた予定のうち、この日だけを直します。ほかの日は変わりません。</div>
           <label>場所（任意）<input type="text" id="yt-place" maxlength="60" placeholder="例：上田市サントミューゼ"></label>
           <div class="line-notify-field">
             <label class="ln-ttl" for="yt-notify">LINEで知らせる日時（任意）</label>
@@ -2456,6 +2490,7 @@ setTimeout(function(){
 <script async data-optional="true" src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script src="ueda-centers.js?v=20260918"></script>
 <script src="calendar-marks.js?v=20261012"></script>
+<script src="schedule-plan.js?v=20261013"></script>
 <script src="consent.js?v=20261002"></script>
 <script src="consent-ui.js?v=20261002"></script>
 <script src="account-recovery.js?v=20261012"></script>
@@ -3906,6 +3941,8 @@ function subscribeYotei(cb){
     renderScheduleLink(!snap.metadata.fromCache);
   }, err=>{
     console.warn('yotei', err);
+    personYoteiStatus='error';
+    try{renderNextYotei();}catch(e){}
     if(document.getElementById('kazoku').classList.contains('active')){
       familyYoteiStatus='error';renderFamilySchedule();
       const msg='<div class="empty">予定を読み込めませんでした。通信を確認して、画面を開き直してください。</div>';
@@ -3948,12 +3985,9 @@ function yoteiNextDate(v,from){
   }
   return '';
 }
-function nextYotei(){
-  const t=todayStr();
-  const list=yoteiCache.map(v=>Object.assign({},v,{_nextDate:yoteiNextDate(v,t)})).filter(v=>v._nextDate);
-  list.sort((a,b)=>a._nextDate<b._nextDate?-1:1);
-  return list[0]||null;
-}
+/* 次の予定(日本時間。時間が過ぎた今日の予定は「次」にしないが、終わったとは扱わない) */
+function nextYoteiInfo(){ return typeof MainicoSchedule!=='undefined'?MainicoSchedule.nextUp(yoteiCache,yoteiNextDate):null; }
+function nextYotei(){ const n=nextYoteiInfo(); return n?Object.assign({},n.item,{_nextDate:n.date}):null; }
 function yoteiDetail(v){
   const parts=[];
   if(v.time) parts.push(v.time);
@@ -4121,26 +4155,63 @@ function initHonnin(){
   reportDeviceRecovery();
 
   if(yoteiUnsub) yoteiUnsub();
-  yoteiUnsub=subscribeYotei(()=>{
+  personYoteiStatus='loading';nextYoteiOpen=false;renderNextYotei();
+  yoteiUnsub=subscribeYotei((list,metadata)=>{
+    personYoteiStatus=metadata&&metadata.fromCache?'cached':'ready';
     renderHToday();
     morningGreet();
-    const n=nextYotei();
-    const elD=document.getElementById('y-days');
-    const elL=document.getElementById('y-label');
-    const ycard=elD.closest('.yotei-card');
-    /* 次の予定の下に、LINEで知らせる日時(2026-10-09 理絵さん) */
-    const elLine=document.getElementById('y-line');
-    const lineText=n&&typeof MainicoLine!=='undefined'&&MainicoLine.describe?MainicoLine.describe(n):'';
-    if(elLine){elLine.textContent=lineText;elLine.hidden=!lineText;}
-    if(!n){if(ycard)ycard.style.display='block';elD.textContent='-';elL.textContent='これからの予定はありません';return;}
-    const showDate=n._nextDate||n.date;
-    const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
-    if(diff===0){ if(ycard)ycard.style.display='none'; return; }  /* 今日の分は上の「今日の予定」に任せる */
-    if(ycard)ycard.style.display='block';
-    elD.textContent='あと '+diff+'日';
-    const dd=new Date(showDate+'T00:00:00');
-    elL.textContent=(n.kind||'')+' '+dateJp(dd)+' '+(n.label||'')+(yoteiDetail(n)?' '+yoteiDetail(n):'');
+    renderNextYotei();
   });
+}
+let personYoteiStatus='loading',nextYoteiOpen=false;
+function renderNextYotei(){
+  const elD=document.getElementById('y-days'),elL=document.getElementById('y-label');
+  if(!elD||!elL)return;
+  const sub=document.getElementById('y-sub'),det=document.getElementById('y-detail'),more=document.getElementById('y-more');
+  const others=document.getElementById('y-others'),elLine=document.getElementById('y-line'),card=document.getElementById('y-card');
+  const show=(el,text)=>{if(el){el.textContent=text||'';el.hidden=!text;}};
+  [sub,det,elLine].forEach(el=>show(el,''));if(others)others.hidden=true;if(more)more.hidden=true;
+  if(card)card.setAttribute('aria-expanded','false');
+  /* 読み込み中・通信失敗・予定なしを分ける */
+  if(personYoteiStatus==='loading'){elD.textContent='読み込み中…';elL.textContent='';return;}
+  if(personYoteiStatus==='error'){elD.textContent='確認できません';elL.textContent='予定を読み込めませんでした。通信を確認して、アプリを開き直してください';return;}
+  const n=nextYoteiInfo();
+  const cached=personYoteiStatus==='cached'?'通信の確認待ち（この端末に保存された予定です）':'';
+  if(!n){elD.textContent='ありません';elL.textContent='これからの予定はありません';show(sub,cached);return;}
+  const v=n.item;
+  elD.textContent=n.when+(v.time?'　'+v.time:'');
+  elL.textContent=(v.label||'予定')+(v.kind?' '+v.kind:'');
+  show(sub,[n.days>=2?'あと'+n.days+'日':'',cached].filter(Boolean).join('　'));
+  /* 次の予定の下に、LINEで知らせる日時(2026-10-09 理絵さん) */
+  show(elLine,typeof MainicoLine!=='undefined'&&MainicoLine.describe?MainicoLine.describe(v):'');
+  if(others&&n.others.length){others.textContent='この日は、ほか'+n.others.length+'件（押して見る）';others.hidden=false;}
+  if(more){more.hidden=false;more.textContent=nextYoteiOpen?'▲ 押すと、しまいます':'▼ 押すと、くわしく見られます';}
+  if(nextYoteiOpen&&det){
+    const notes=(typeof yoteiNotes!=='undefined'?yoteiNotes:[]).filter(x=>x.yoteiId===v._id).slice(-3);
+    det.textContent=[
+      '🕘 '+(v.time?v.time:'時間は決まっていません'),
+      v.place?'📍 '+v.place:'',
+      v.category?'🏷 '+v.category:'',
+      ...notes.map(x=>'📝 '+(x.text||''))
+    ].filter(Boolean).join('\n');
+    det.style.whiteSpace='pre-line';det.hidden=false;
+    if(card)card.setAttribute('aria-expanded','true');
+  }
+  /* 今日の予定が次の予定と同じ1件だけなら、上の「今日の予定」は出さない(同じものを2つ並べない) */
+  const today=document.getElementById('h-today');
+  if(today&&hTodayItems.length===1&&hTodayItems[0]._id===v._id&&n.days===0)today.style.display='none';
+}
+function toggleNextYotei(){
+  feedback();
+  if(personYoteiStatus==='ready'||personYoteiStatus==='cached'){nextYoteiOpen=!nextYoteiOpen&&!!nextYoteiInfo();renderNextYotei();}
+  speakNextYotei();
+}
+/* 「ほか○件」: その日を選んだカレンダーを開く */
+function openNextYoteiDay(){
+  const n=nextYoteiInfo();if(!n)return;
+  const d=dateOnly(n.date);
+  scheduleCalendarDate=new Date(d.getFullYear(),d.getMonth(),1);scheduleSelectedDay=n.date;
+  openCal();
 }
 function markAisatsuDone(){
   document.getElementById('btn-a').classList.add('done');
@@ -4459,11 +4530,20 @@ function renderSelectedScheduleDay(mode){
       const status=document.createElement('small');status.textContent=MainicoLine.describe(v);item.appendChild(status);
     }
     if(v.uid===uid()||(mode==='family'&&!v.uid)){
-      const edit=document.createElement('button');edit.type='button';edit.className='set-btn';edit.textContent=mode==='person'?'この予定を変更・削除する':'この予定を修正する';
+      /* まとめて入れた予定は「この日だけ」と「この日から後」を分けて出す(2026-10-13) */
+      const series=typeof MainicoSchedule!=='undefined'?MainicoSchedule.seriesOf(v._id):'';
+      if(series){const tag=document.createElement('small');tag.textContent='🔁 くり返しの予定（1回ずつ別に直せます）';item.appendChild(tag);}
+      const edit=document.createElement('button');edit.type='button';edit.className='set-btn';
+      edit.textContent=mode==='person'?(series?'この日だけ変更・中止する':'この予定を変更・削除する'):(series?'この日だけ時間などを変える':'この予定を修正する');
       edit.addEventListener('click',()=>{if(mode==='person')openHYotei(v._id);else editYotei(v._id);});item.appendChild(edit);
       if(mode==='family'){
-        const remove=document.createElement('button');remove.type='button';remove.className='set-btn warn';remove.textContent='この予定を削除する';
+        const remove=document.createElement('button');remove.type='button';remove.className='set-btn warn';remove.textContent=series?'この日だけ中止する（この日の予定を消す）':'この予定を削除する';
         remove.addEventListener('click',()=>delYotei(v._id));item.appendChild(remove);
+        const later=series?yoteiCache.filter(x=>MainicoSchedule.seriesOf(x._id)===series&&x.uid===uid()&&x.date>=v.date):[];
+        if(later.length>1){
+          const stop=document.createElement('button');stop.type='button';stop.className='set-btn warn';stop.textContent='この日から後を、まとめて中止する（'+later.length+'件）';
+          stop.addEventListener('click',()=>cancelSeriesFrom(v._id));item.appendChild(stop);
+        }
       }
     }
     det.appendChild(item);
@@ -4991,7 +5071,7 @@ function initKazoku(){
   renderFamilySchedule();
   document.getElementById('yt-note').textContent=kOnly
     ?'登録した予定は、ホームとカレンダーに表示されます。'
-    :'本人の画面に「予定: あと何日」と、カレンダーの印で表示されます。';
+    :'本人のホームの「次の予定」と、カレンダーに表示されます。';
   familyOnlyLoad={notes:'loading',noteAcks:'loading',noteReplies:'loading',tasks:'loading',taskDone:'loading',taskHelpers:'loading',config:'loading',contacts:'loading'};
   showTab('t-home');
   initFamilyOnlyTools();
@@ -7025,10 +7105,40 @@ function clearYoteiForm(){
   setYoteiCategory('');
   document.getElementById('yt-kind').value='📌';
   setYoteiColor('#4F7FD3');
+  const sn=document.getElementById('yt-series-note');if(sn)sn.hidden=true;
   document.getElementById('yt-form-title').textContent='予定を登録する';
   document.getElementById('yt-save-btn').textContent='保存する';
   document.getElementById('yt-cancel-edit').style.display='none';
+  const rp=document.getElementById('yt-repeat');if(rp){rp.value='none';document.getElementById('yt-repeat-count').value='4';document.getElementById('yt-repeat-until').value='';document.getElementById('yt-repeat-end').value='count';document.getElementById('yt-repeat-short').value='last';}
+  yoteiSaveSeries='';renderYoteiRepeat();
   setYoteiSaveState('');
+}
+/* ===== くり返し(2026-10-13) ===== */
+let yoteiSaveSeries='',yoteiSaving=false;
+function yoteiRepeatPlan(){
+  const date=document.getElementById('yt-date').value,kind=(document.getElementById('yt-repeat')||{}).value||'none';
+  if(editingYoteiId||kind==='none')return {ok:true,dates:date?[date]:[],kind:'none'};
+  const byCount=document.getElementById('yt-repeat-end').value==='count';
+  const r=MainicoSchedule.repeatDates(date,kind,byCount?{count:Number(document.getElementById('yt-repeat-count').value)}:{until:document.getElementById('yt-repeat-until').value},document.getElementById('yt-repeat-short').value);
+  return Object.assign({kind},r);
+}
+function renderYoteiRepeat(){
+  const box=document.getElementById('yt-repeat-box');if(!box||typeof MainicoSchedule==='undefined')return;
+  box.hidden=!!editingYoteiId;
+  const kind=document.getElementById('yt-repeat').value,more=document.getElementById('yt-repeat-more');
+  more.hidden=kind==='none';
+  const byCount=document.getElementById('yt-repeat-end').value==='count';
+  document.getElementById('yt-repeat-count-wrap').hidden=!byCount;
+  document.getElementById('yt-repeat-until-wrap').hidden=byCount;
+  const date=document.getElementById('yt-date').value;
+  document.getElementById('yt-repeat-short-wrap').hidden=!MainicoSchedule.needsShortRule(date,kind);
+  const pv=document.getElementById('yt-repeat-preview');
+  if(kind==='none'){pv.textContent='';return;}
+  if(!date){pv.textContent='先に日付を選んでください';return;}
+  const r=yoteiRepeatPlan();
+  if(!r.ok){pv.textContent=r.message;return;}
+  const list=r.dates.map(MainicoSchedule.shortDate);
+  pv.textContent='全'+r.dates.length+'回：'+(list.length>8?list.slice(0,6).join('、')+' … '+list[list.length-1]:list.join('、'))+'。1回ずつ別の予定として入るので、あとで「この日だけ」変更・中止できます。';
 }
 function editYotei(id){
   const v=yoteiCache.find(x=>x._id===id);
@@ -7043,7 +7153,9 @@ function editYotei(id){
   if(typeof MainicoLine!=='undefined'&&MainicoLine.renderWho) MainicoLine.renderWho('yt-notify-who',v.notifyTo);
   setYoteiCategory(v.category||'');
   setYoteiColor(yoteiColor(v));
-  document.getElementById('yt-form-title').textContent='予定を修正する';
+  const sn=document.getElementById('yt-series-note');if(sn)sn.hidden=!(typeof MainicoSchedule!=='undefined'&&MainicoSchedule.seriesOf(id));
+  renderYoteiRepeat();
+  document.getElementById('yt-form-title').textContent=sn&&!sn.hidden?'この日の予定だけを修正する':'予定を修正する';
   document.getElementById('yt-save-btn').textContent='修正を保存する';
   document.getElementById('yt-cancel-edit').style.display='block';
   setYoteiSaveState('修正する内容を確認してください');
@@ -7051,6 +7163,7 @@ function editYotei(id){
   document.getElementById('yt-form-title').scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function saveYotei(){
+  if(yoteiSaving)return;
   const kind=document.getElementById('yt-kind').value.trim()||'📌';
   const date=document.getElementById('yt-date').value;
   const time=document.getElementById('yt-time').value;
@@ -7068,16 +7181,54 @@ async function saveYotei(){
   const category=document.getElementById('yt-category').value.slice(0,20);
   if(category||(origin&&origin.category)) data.category=category;
   const btn=document.getElementById('yt-save-btn');
-  btn.disabled=true;
-  setYoteiSaveState('保存中…');
-  try{
-    if(editingYoteiId) await col('yotei').doc(editingYoteiId).update(data);
-    else await col('yotei').add({...data,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  if(editingYoteiId){
+    yoteiSaving=true;btn.disabled=true;setYoteiSaveState('保存中…');
+    try{
+      await col('yotei').doc(editingYoteiId).update(data);
+      clearYoteiForm();
+      setYoteiSaveState('クラウドに保存しました');
+    }catch(e){
+      setYoteiSaveState('保存できませんでした。通信状態を確認して、もう一度押してください',true);
+    }finally{ yoteiSaving=false;btn.disabled=false; }
+    return;
+  }
+  /* 新しく入れる: くり返しなら日付ごとに1件ずつ。
+     同じ日・同じ時間・同じ名前の予定がもうあれば入れない(押し直し・再読み込み・通信失敗のあとで二重にしない) */
+  const plan=yoteiRepeatPlan();
+  if(!plan.ok){setYoteiSaveState(plan.message,true);return;}
+  const same=d=>yoteiCache.some(v=>v.date===d&&(v.time||'')===time&&(v.label||'')===label&&(!v.repeat||v.repeat==='none'));
+  const dates=plan.dates.filter(d=>!same(d)),skipped=plan.dates.length-dates.length;
+  if(!dates.length){setYoteiSaveState(plan.dates.length>1?'この予定は、どの日にももう入っています':'同じ日・同じ時間の同じ予定が、もう入っています',true);return;}
+  if(skipped&&!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(skipped+'日分は同じ予定がもう入っているので、とばします。残りの'+dates.length+'日分を入れますか？','入れる'))return;
+  /* LINEのお知らせは、入れたときだけ。日ごとに、最初の日と同じだけ前にずらす */
+  const base=data.notifyAt&&typeof data.notifyAt.toDate==='function'?data.notifyAt.toDate():null;
+  /* 同じ予定をまとめて入れた続き(再読み込み後に足りない日を足すなど)なら、同じくり返しの仲間にする */
+  if(!yoteiSaveSeries){
+    const prev=yoteiCache.find(v=>plan.dates.includes(v.date)&&same(v.date)&&v.uid===uid()&&MainicoSchedule.seriesOf(v._id));
+    yoteiSaveSeries=prev?MainicoSchedule.seriesOf(prev._id):MainicoSchedule.newSeries();
+  }
+  const series=yoteiSaveSeries;
+  const rows=dates.map(d=>{
+    const row={...data,date:d,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+    if(base){const t=new Date(base);t.setDate(t.getDate()+MainicoSchedule.daysUntil(d,date));row.notifyAt=firebase.firestore.Timestamp.fromDate(t);}
+    return {id:MainicoSchedule.docId(series,d),row};
+  });
+  yoteiSaving=true;btn.disabled=true;
+  setYoteiSaveState(rows.length>1?rows.length+'件を保存中…':'保存中…');
+  const slow=setTimeout(()=>setYoteiSaveState('通信を待っています。保存が確かめられたら、ここに出ます'),15000);
+  /* 1件ずつ保存する(ルールの確認回数の上限に当たらないように)。保存できた件数だけを出す */
+  const results=await Promise.allSettled(rows.map(r=>col('yotei').doc(r.id).set(r.row)));
+  clearTimeout(slow);
+  const ok=results.filter(r=>r.status==='fulfilled').length,ng=rows.length-ok;
+  yoteiSaving=false;btn.disabled=false;
+  if(!ng){
     clearYoteiForm();
-    setYoteiSaveState('クラウドに保存しました');
-  }catch(e){
+    setYoteiSaveState(rows.length>1?rows.length+'件をクラウドに保存しました'+(skipped?'（'+skipped+'件はもう入っていたので、とばしました）':''):'クラウドに保存しました');
+  }else if(ok){
+    setYoteiSaveState(ok+'件は保存しました。'+ng+'件は保存できませんでした。通信を確認して、もう一度「保存する」を押すと、残りだけを入れます',true);
+  }else{
     setYoteiSaveState('保存できませんでした。通信状態を確認して、もう一度押してください',true);
-  }finally{ btn.disabled=false; }
+  }
 }
 function setYoteiColor(color){
   document.getElementById('yt-color').value=color;
@@ -7085,7 +7236,8 @@ function setYoteiColor(color){
 }
 function chooseYoteiColor(button){ setYoteiColor(button.dataset.color); }
 async function delYotei(id){
-  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('この予定を削除しますか？','削除する')) return false;
+  const series=typeof MainicoSchedule!=='undefined'&&MainicoSchedule.seriesOf(id);
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))(series?'この日の予定だけを中止しますか？（ほかの日は残ります）':'この予定を削除しますか？',series?'この日だけ中止する':'削除する')) return false;
   setYoteiSaveState('削除中…');
   try{
     await col('yotei').doc(id).delete();
@@ -7093,6 +7245,21 @@ async function delYotei(id){
     setYoteiSaveState('削除しました');
     return true;
   }catch(e){ setYoteiSaveState('削除できませんでした',true); alert('削除できませんでした。通信状態を確認してください'); return false; }
+}
+
+/* まとめて入れた予定を、この日から後だけ中止する(前の日は残す)。自分が入れた分だけ */
+async function cancelSeriesFrom(id){
+  const v=yoteiCache.find(x=>x._id===id),series=v&&MainicoSchedule.seriesOf(id);
+  if(!series||v.uid!==uid())return;
+  const later=yoteiCache.filter(x=>MainicoSchedule.seriesOf(x._id)===series&&x.uid===uid()&&x.date>=v.date).sort((a,b)=>a.date<b.date?-1:1);
+  const last=later[later.length-1];
+  if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('「'+(v.label||'予定')+'」の'+MainicoSchedule.shortDate(v.date)+'〜'+MainicoSchedule.shortDate(last.date)+'の'+later.length+'件を中止します（消します）。それより前の日は残ります。LINEのお知らせも送られなくなります。','中止する'))return;
+  setYoteiSaveState(later.length+'件を中止しています…');
+  const results=await Promise.allSettled(later.map(x=>col('yotei').doc(x._id).delete()));
+  const ok=results.filter(r=>r.status==='fulfilled').length,ng=later.length-ok;
+  if(editingYoteiId&&later.some(x=>x._id===editingYoteiId))clearYoteiForm();
+  scheduleSelectedDay='';renderFamilyCal();
+  setYoteiSaveState(ng?ok+'件は中止しました。'+ng+'件は中止できませんでした。通信を確認して、もう一度押してください':later.length+'件を中止しました',!!ng);
 }
 
 /* ===== 設定(家族) ===== */
@@ -7661,12 +7828,12 @@ function speakDateHeader(){
   speak(t, true);
 }
 function speakNextYotei(){
-  const n=nextYotei();
+  if(typeof personYoteiStatus!=='undefined'&&personYoteiStatus==='loading'){ speak('予定を読み込んでいます', true); return; }
+  if(typeof personYoteiStatus!=='undefined'&&personYoteiStatus==='error'){ speak('予定を読み込めませんでした。通信を確認してください', true); return; }
+  const n=nextYoteiInfo();
   if(!n){ speak('これからの予定はありません', true); return; }
-  const showDate=n._nextDate||n.date;
-  const diff=Math.ceil((new Date(showDate+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
-  if(diff<=0){ speakToday(); return; }
-  speak(dateYomi(showDate)+'に、'+(n.time?timeYomi(n.time)+'に、':'')+(n.label||'予定')+'です。あと'+diff+'日です。', true);
+  const v=n.item;
+  speak('次の予定は、'+(n.days===0?'今日':n.days===1?'明日':dateYomi(n.date))+'、'+(v.time?timeYomi(v.time)+'に、':'')+(v.label||'予定')+'です。'+(n.days>=2?'あと'+n.days+'日です。':'')+(n.others.length?'この日は、ほかに'+n.others.length+'件あります。':''), true);
 }
 function morningGreet(){
   if(greetedThisOpen || !speechOn()) return;

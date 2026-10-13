@@ -2,11 +2,11 @@
    - 通信できるときは常に最新を取りに行き、取れたものを端末に控えておく(ネット優先)。
    - 電波がないときは控えを使う。アプリの画面が開けないときは offline.html(もしもの控え)を出す。
    - 共有記録(Firestore)の通信は控えない。控えるのは画面の部品だけ。 */
-const CACHE = 'mainico-shell-v38';  /* 2026-10-12 カレンダーに祝日・六曜(1日ずれを修正)・家族の仕事の休み */
+const CACHE = 'mainico-shell-v39';  /* 2026-10-13 次の予定を大きく・くり返し登録とこの日だけ変更 */
 const SHELL = [
   './', 'index.html', 'offline.html', 'help.html', 'privacy.html', 'manifest.json',
   'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
-  'ueda-centers.js', 'calendar-marks.js', 'mainico-config.js', 'consent.js', 'consent-ui.js', 'account-recovery.js',
+  'ueda-centers.js', 'calendar-marks.js', 'schedule-plan.js', 'mainico-config.js', 'consent.js', 'consent-ui.js', 'account-recovery.js',
   'account-deletion.js', 'household-deletion.js', 'household-ui.js', 'medicine-notebook.js',
   'medicine-notebook.css', 'notebook-integration.js', 'person-speech.js', 'person-button-feedback.js',
   'family-connection.js', 'person-tasks.js', 'line-notify.js', 'line-qr.png', 'line-login.js', 'line-login-ui.js', 'hitokoe.js', 'family-guide.js', 'owner-transfer.js',
