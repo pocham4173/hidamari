@@ -1499,11 +1499,14 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   <div class="set-sec" data-line-login-only hidden><h4>LINEでログイン（いつもの画面に戻る方法）</h4>
     <div id="person-line-login-area"></div>
   </div>
+  <!-- 声のお返事も、ほかと同じく押すと開く・しまう(2026-10-13 利用者「開いたままでしまうボタンがない」) -->
   <div class="set-sec" style="border-top:none;"><h4>声のお返事（読み上げ）</h4>
+    <details class="person-speech-menu"><summary>声のお返事の設定（オン・オフ・ためす）</summary>
     <div class="note">オンにすると、ボタンを押したあとに声でもお知らせします。</div>
     <button class="set-btn" id="speech-toggle" onclick="toggleSpeech()">声のお返事：オフ（押すとオン）</button>
     <button class="set-btn" type="button" onclick="speak('声は、この音量で聞こえます',true)">声をためす</button>
     <p class="note" id="person-speech-status" role="status"></p>
+    </details>
   </div>
   <!-- まいにこを人に紹介する(2026-10-12 利用者「友達に教えたいときにQRコードも必要」)。公式LINEのQRは、設定の上の方から見つけられるように -->
   <div class="set-sec"><h4>まいにこを紹介する</h4>
@@ -7717,7 +7720,9 @@ async function makeInvite(targetId){
         '<a class="inv-btn" href="mailto:?subject='+encodeURIComponent('まいにこの招待コード')+'&body='+encodeURIComponent(msg)+'">メールで送る</a>'+
         '</div>'+
         /* まちがえて作ったときに戻れるように(2026-10-12 利用者の実機確認) */
-        '<button class="set-btn" type="button" onclick="cancelInvite(\''+targetId+'\',\''+code+'\')">使わない（このコードを消す）</button>';
+        '<button class="set-btn" type="button" onclick="cancelInvite(\''+targetId+'\',\''+code+'\')">使わない（このコードを消す）</button>'+
+        /* コードは残したまま、欄だけしまう(2026-10-13 利用者「この画面しまうボタンないよ」) */
+        '<button class="set-btn details-close" type="button" onclick="closeInviteArea(\''+targetId+'\')">▲ しまう（コードは24時間使えます）</button>';
     }
   }catch(e){ console.warn('invite',e); alert('招待コードを発行できませんでした。通信を確認して、もう一度お試しください。'); }
 }
@@ -7731,6 +7736,12 @@ document.addEventListener('toggle',function(e){
   b.addEventListener('click',function(){d.open=false;const s=d.querySelector('summary');if(s&&s.scrollIntoView)try{s.scrollIntoView({block:'nearest'});}catch(err){}});
   d.appendChild(b);
 },true);
+/* 招待の欄だけ閉じる。コードは消さない(もう一度「招待コードを作る」を押すと新しいコードが出る) */
+function closeInviteArea(targetId){
+  const area=document.getElementById(targetId);if(!area)return;
+  area.innerHTML='';
+  const btn=area.previousElementSibling;if(btn&&btn.scrollIntoView)try{btn.scrollIntoView({block:'nearest'});}catch(e){}
+}
 /* 作った招待コードを使わないとき: コードを消して、欄を閉じる。消せなくても欄は閉じる(24時間で使えなくなり、参加には承認も要る) */
 async function cancelInvite(targetId,code){
   const area=document.getElementById(targetId);
