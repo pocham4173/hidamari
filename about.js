@@ -8,7 +8,7 @@
   trigger.addEventListener('click', () => {
     record.hidden = false;
     result.classList.add('demo-shown');
-    trigger.querySelector('span').textContent = '下に、家族の画面の見本を表示しました';
+    trigger.querySelector('span').textContent = '✓ 下に共有の見本を表示';
     trigger.setAttribute('aria-expanded', 'true');
   });
   trigger.setAttribute('aria-expanded', 'false');
