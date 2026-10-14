@@ -7,7 +7,7 @@
 /* 親への気がかり → 家族でできること → 使い方、の順に伝える */
 .hero{grid-template-columns:1.15fr 1fr;gap:26px;padding:32px 28px}
 .entry-usp{margin:0 0 22px;border-left:4px solid var(--rust);padding:5px 0 5px 12px;line-height:1.5}
-.entry-usp strong{display:block;font-size:20px;color:#823b1d}.entry-usp span{display:block;font-size:12px;margin-top:3px;color:var(--muted)}
+.entry-usp strong{display:block;font-size:20px;color:#823b1d}.entry-usp span{display:block;font-size:18px;font-weight:700;line-height:1.6;margin-top:8px;color:var(--green)}
 .hero h1{font-size:clamp(27px,3.5vw,39px);line-height:1.6;letter-spacing:-.04em;margin:0 0 16px}
 .entry-answer{font-size:22px;line-height:1.65;font-weight:700;margin:0 0 14px}
 .hero .lead{font-size:14px;line-height:1.9;margin-bottom:16px}
