@@ -5,7 +5,7 @@
 <title>「誰か、親に電話した？」が、開けばわかる。｜まいにこ</title>
 <meta name="description" content="電話・訪問を、誰が・いつしたか。まいにこなら家族で一緒に見返せます。親のスマホがなくても家族だけで始められ、上田の配食・移動・介護の相談先も探せます。">
 <meta property="og:title" content="「誰か、親に電話した？」が、開けばわかる。｜まいにこ"><meta property="og:description" content="家族が残した電話・訪問の記録から、次の声かけへ。家族だけでも、本人と一緒でも。"><meta property="og:type" content="website">
-<link rel="icon" href="icon-192.png"><link rel="stylesheet" href="about.css?v=53"><script src="about.js?v=53" defer></script>
+<link rel="icon" href="icon-192.png"><link rel="stylesheet" href="about.css?v=54"><script src="about.js?v=54" defer></script>
 </head>
 <body>
 <header><a class="brand" href="./index.html"><img src="icon-192.png" width="36" height="36" alt="">まいにこ</a><a class="header-link" href="./index.html">利用中の方はこちら ↗</a></header>
@@ -17,10 +17,10 @@
 <p class="lead">電話・訪問を、家族で共有。</p>
 </div>
 <figure class="family-scene" id="feature-share">
-<figcaption><span class="sample-label">家族で使うイメージ</span><span>架空の例</span></figcaption>
-<div class="scene-record"><div class="scene-person"><span class="avatar" aria-hidden="true">姉</span><div><p class="record-action">電話で確認した</p><p class="record-meta">姉が記録・今日 9:00</p></div></div></div>
+<figcaption id="demo-note"><span class="sample-label">体験用の見本</span><span>架空の例・保存されません</span></figcaption>
+<div class="scene-record"><div class="scene-person"><span class="avatar" aria-hidden="true">姉</span><div><p class="record-action" id="demo-static">電話で確認した</p><button class="demo-trigger" id="demo-trigger" type="button" aria-describedby="demo-note" aria-controls="demo-result" hidden>電話で確認した<span>押して、家族の画面を見る →</span></button><p class="record-meta">姉が記録・今日 9:00</p></div></div></div>
 <p class="scene-connector"><span aria-hidden="true">↓</span> 家族で同じ記録を確認</p>
-<div class="scene-response"><span class="avatar" aria-hidden="true">私</span><p><span class="sr-only">記録を見た私の気持ち：</span><strong>じゃあ、週末は私が。</strong></p></div>
+<div class="scene-response" id="demo-result" role="status" aria-live="polite" aria-atomic="true"><span class="avatar" aria-hidden="true">私</span><div><p class="demo-result-record" hidden>電話で確認した｜姉・今日 9:00</p><p><span class="sr-only">記録を見た私の気持ち：</span><strong>じゃあ、週末は私が。</strong></p></div></div>
 </figure>
 <nav class="value-links" aria-label="まいにこの便利さ"><a href="#feature-no-op"><span>家族で記録</span><small>電話・訪問 ↓</small></a><a href="#feature-together"><span>本人と挨拶</span><small>ひと声に返事 ↓</small></a><a href="#feature-ueda"><span>上田の頼り先</span><small>食事・通院 ↓</small></a></nav>
 <div class="hero-actions"><a href="./index.html" class="button hero-cta">まいにこを使ってみる <span aria-hidden="true">→</span></a><p class="cta-note">最初に使い方を選び、同意して始めます。</p><a class="guide-link" href="./guide/">始め方を写真で見る →</a></div>

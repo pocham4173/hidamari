@@ -1,3 +1,21 @@
+/* A local illustration only: no account, storage, network request or real record. */
+(() => {
+  const trigger = document.getElementById('demo-trigger');
+  const fallback = document.getElementById('demo-static');
+  const result = document.getElementById('demo-result');
+  const record = result && result.querySelector('.demo-result-record');
+  if (!trigger || !fallback || !result || !record) return;
+  trigger.addEventListener('click', () => {
+    record.hidden = false;
+    result.classList.add('demo-shown');
+    trigger.querySelector('span').textContent = '下に、家族の画面の見本を表示しました';
+    trigger.setAttribute('aria-expanded', 'true');
+  });
+  trigger.setAttribute('aria-expanded', 'false');
+  fallback.hidden = true;
+  trigger.hidden = false;
+})();
+
 /* Start actions stay available without JavaScript. Only enhance the mobile bar. */
 (() => {
   const bar = document.querySelector('.mobile-start-bar');
