@@ -86,6 +86,7 @@ jobs:
         run: |
           npm install --no-save --package-lock=false fake-indexeddb@6.2.4 jsdom@26.1.0
           node --test tests/medicine-notebook.test.mjs
+          node tests/ueda-support.test.mjs
           node tests/home-conversation-dom.test.mjs
           node tests/person-speech.test.mjs
           node tests/simple-navigation.test.mjs
