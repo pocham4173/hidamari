@@ -7,6 +7,13 @@ const code=html.slice(html.indexOf('var recY = 0'),html.indexOf('const AISATSU_B
 const dom=new JSDOM(html,{runScripts:'outside-only'}),w=dom.window;
 let only=true,printed='',source=[],pending=[];
 const day='2026-09-17';
+// Keep the rolling report window aligned with the fixed event fixtures.
+// Otherwise the same test becomes empty once the real date moves 28 days on.
+const NativeDate=w.Date;
+w.Date=class extends NativeDate{
+ constructor(...args){super(...(args.length?args:[2026,8,17,12,0,0]));}
+ static now(){return new NativeDate(2026,8,17,12,0,0).getTime();}
+};
 const person=['aisatsu','kibun','kusuri','onegai','family-message-back','aisatsu-back','ask-kusuri','family-message','onegai-back'];
 const family=['kibun-kazoku','kusuri-kakunin','care-log','memo','tag-alert','disaster-safe'];
 const shared=['family-note','family-note-reply','family-task','family-task-help','family-task-done'];
