@@ -41,3 +41,20 @@
 
 /* v71: make the complementary role clear immediately below the comparison. */
 .use-comparison>.comparison-message{font-size:clamp(20px,3vw,25px);line-height:1.6;margin-top:14px;padding:14px 16px;background:#fff0f4;border-left:4px solid #b96381;border-radius:0 12px 12px 0;color:#315840;text-align:left}.comparison-message strong{font-weight:800}.comparison-message span{display:block}.comparison-message span+span{margin-top:3px}
+
+/* v72: everyday contact methods first; LINE remains an optional notification feature. */
+.scene-hero .contact-title{font-size:clamp(29px,3.7vw,40px);line-height:1.55;letter-spacing:-.035em}
+.scene-hero .contact-title>span,.scene-hero .contact-title>em{display:block;width:fit-content;max-width:100%}
+.contact-steps{margin:24px 0}
+.contact-steps h2{font-size:24px;margin-bottom:12px}
+.contact-step-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.contact-step-list li{display:flex;gap:12px;align-items:center;padding:13px 16px;border:1px solid #d7a0b5;border-radius:14px;background:#fce7ed}
+.contact-step-list li:first-child{background:#fff1cb;border-color:#d8bc77}
+.contact-step-list li:last-child{background:#e1eff8;border-color:#9dbed1}
+.step-number{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:50%;background:#79344f;color:#fff;font-size:20px;font-weight:800}
+.contact-step-list li:first-child .step-number{background:#71551c}
+.contact-step-list li:last-child .step-number{background:#225575}
+.contact-step-list h3{font-size:21px;line-height:1.5}
+.contact-step-list p{font-size:17px;line-height:1.6;margin-top:3px}
+.contact-note{font-size:15px;color:#59625a;margin-top:10px}
+@media(max-width:650px){.scene-hero .contact-title{font-size:clamp(26px,7.3vw,34px)}.contact-steps h2{font-size:22px}.contact-step-list li{padding:12px;gap:10px}.contact-step-list h3{font-size:20px}.contact-step-list p{font-size:16px}.early-usp span{font-size:17px}}
