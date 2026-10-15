@@ -69,3 +69,14 @@
 .ueda-bridge>span{display:block;font-size:17px;line-height:1.6;margin-top:4px;text-decoration:underline;text-underline-offset:4px}
 .ueda-bridge:hover{background:#e7f1d9}
 @media(max-width:650px){.scene-heading .early-usp{padding:10px 12px}.ueda-bridge{padding:10px 12px}.ueda-bridge>strong{font-size:20px}}
+
+/* v74: one illustrated sequence, practical recording example, local support after the product. */
+main>.ueda-scene{margin:18px 0 22px;display:grid;grid-template-columns:130px minmax(0,1fr);gap:14px;align-items:center}
+main>.ueda-scene svg{max-height:70px}
+main>.ueda-scene .ueda-bridge{margin-top:0}
+.record-action-example{margin:10px 0;padding:10px 12px;background:#fce7ed;border-left:3px solid #b96381;border-radius:8px}
+.record-action-example>strong{display:block;font-size:18px;line-height:1.5;color:#79344f}
+.record-action-example>p{font-size:16px;line-height:1.65;margin-top:4px}
+.record-action-example>span{display:block;font-size:14px;color:#59625a;margin-top:4px}
+.family-flow .flow-person strong{font-size:17px;line-height:1.5}
+@media(max-width:650px){main>.ueda-scene{grid-template-columns:minmax(0,1fr);gap:0}main>.ueda-scene svg{max-height:42px}.family-flow .flow-person strong{font-size:clamp(13px,3.8vw,17px)}}
