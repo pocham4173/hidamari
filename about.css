@@ -58,3 +58,14 @@
 .contact-step-list p{font-size:17px;line-height:1.6;margin-top:3px}
 .contact-note{font-size:15px;color:#59625a;margin-top:10px}
 @media(max-width:650px){.scene-hero .contact-title{font-size:clamp(26px,7.3vw,34px)}.contact-steps h2{font-size:22px}.contact-step-list li{padding:12px;gap:10px}.contact-step-list h3{font-size:20px}.contact-step-list p{font-size:16px}.early-usp span{font-size:17px}}
+
+/* v73: readable qualified smartphone benefit and a direct local support link. */
+.scene-heading .early-usp{padding:12px 14px;border:2px solid #426c50;border-left-width:5px;background:#e7f1d9;border-radius:0 12px 12px 0}
+.scene-heading .early-usp>span{font-size:17px;line-height:1.6}
+.scene-heading .early-usp>strong{font-size:clamp(23px,2.7vw,28px);font-weight:800;line-height:1.5;margin:3px 0;color:#285438}
+.scene-heading .early-usp>.usp-explanation{font-size:16px;margin-top:5px}
+.ueda-bridge{display:block;margin-top:8px;padding:12px 14px;border:2px solid #426c50;border-radius:12px;background:#fffdf7;color:#315840;text-decoration:none}
+.ueda-bridge>strong{display:block;font-size:21px;line-height:1.5;font-weight:800}
+.ueda-bridge>span{display:block;font-size:17px;line-height:1.6;margin-top:4px;text-decoration:underline;text-underline-offset:4px}
+.ueda-bridge:hover{background:#e7f1d9}
+@media(max-width:650px){.scene-heading .early-usp{padding:10px 12px}.ueda-bridge{padding:10px 12px}.ueda-bridge>strong{font-size:20px}}
