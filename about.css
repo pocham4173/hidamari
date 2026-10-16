@@ -80,3 +80,6 @@ main>.ueda-scene .ueda-bridge{margin-top:0}
 .record-action-example>span{display:block;font-size:14px;color:#59625a;margin-top:4px}
 .family-flow .flow-person strong{font-size:17px;line-height:1.5}
 @media(max-width:650px){main>.ueda-scene{grid-template-columns:minmax(0,1fr);gap:0}main>.ueda-scene svg{max-height:42px}.family-flow .flow-person strong{font-size:clamp(13px,3.8vw,17px)}}
+
+/* v75: official LINE entry beside the existing start path. */
+.official-line-entry{max-width:400px;margin:18px auto 4px}.official-line-button{display:flex;align-items:center;justify-content:center;gap:12px;min-height:56px;padding:14px 16px;border:2px solid #087b38;border-radius:12px;background:#087f3a;color:#fff;text-decoration:none;font-size:20px;font-weight:700;line-height:1.5}.official-line-button:hover{background:#06652e}.official-line-button svg{flex:none}.official-line-entry>p{font-size:15px;line-height:1.7;color:#59625a;margin-top:8px}
