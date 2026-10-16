@@ -83,3 +83,15 @@ main>.ueda-scene .ueda-bridge{margin-top:0}
 
 /* v75: official LINE entry beside the existing start path. */
 .official-line-entry{max-width:400px;margin:18px auto 4px}.official-line-button{display:flex;align-items:center;justify-content:center;gap:12px;min-height:56px;padding:14px 16px;border:2px solid #087b38;border-radius:12px;background:#087f3a;color:#fff;text-decoration:none;font-size:20px;font-weight:700;line-height:1.5}.official-line-button:hover{background:#06652e}.official-line-button svg{flex:none}.official-line-entry>p{font-size:15px;line-height:1.7;color:#59625a;margin-top:8px}
+
+/* v77: clear, qualified guidance for connection problems. */
+.connection-intro{font-size:17px;line-height:1.7;color:#315840;margin-top:10px}
+.benefit-offline{border-color:#b5c9a3;border-left-color:#557d49}
+.benefit-offline>summary{background:#e7f1d9}
+.benefit-offline>summary strong{color:#285438}
+.benefit-offline .benefit-body>p,.connection-faq p{font-size:17px;line-height:1.8}
+.connection-faq{margin-top:16px}
+.connection-faq h3{font-size:20px;line-height:1.5;margin-bottom:8px}
+.connection-faq details{border-top:1px solid #d5ded0}
+.connection-faq summary{cursor:pointer;padding:12px 0;min-height:48px;font-size:18px;line-height:1.6;font-weight:700;color:#315840}
+.connection-faq p{margin:0 0 12px}
