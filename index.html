@@ -13,6 +13,18 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#E0711A">
+<script>
+/* Androidのホーム画面アプリだけ、OSの操作ボタンの背面を塗れるようにする。
+   iPhoneと通常のブラウザー表示は従来の表示領域を保つ。 */
+(function(){
+  if(!/Android/i.test(navigator.userAgent) || !window.matchMedia ||
+     !window.matchMedia('(display-mode: standalone)').matches) return;
+  document.documentElement.classList.add('android-pwa');
+  document.querySelector('meta[name="viewport"]').setAttribute('content',
+    'width=device-width, initial-scale=1.0, viewport-fit=cover');
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', '#767676');
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 [hidden]{display:none!important;}
@@ -29,7 +41,7 @@
   --aomidori:#2FA89A; --aomidori-koi:#197D73; --aomidori-usui:#E3F6F3;
   --aka:#B0492F; --aka-koi:#963C29; --aka-usui:#FBE5DF;
 
-  --nav-safe:env(safe-area-inset-bottom, 0px); /* iPhoneのホームバーの高さ。0のときもある */
+  --nav-safe:env(safe-area-inset-bottom, 0px); /* OSの操作領域。画面外なら0 */
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Zen Maru Gothic',sans-serif;background:#F4F7FA;color:var(--cha);display:flex;justify-content:center;min-height:100vh;}
@@ -39,6 +51,25 @@ body.f-adult #kazoku{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans
 .phone{width:100%;max-width:430px;background:var(--asa);min-height:100vh;position:relative;}
 .page{display:none;min-height:100vh;flex-direction:column;}
 .page.active{display:flex;}
+
+/* Androidの透明なシステムバーに白い画面が透けるのを防ぐ。
+   #767676は白・黒どちらのOSボタンにも4.5:1以上のコントラストがある。
+   OS領域の大きさは端末から受け取り、固定の高さで操作部分を覆わない。 */
+html.android-pwa{background:#767676;color-scheme:light;}
+.android-pwa body{
+  background:#767676;
+  padding-top:env(safe-area-inset-top, 0px);
+  padding-left:env(safe-area-inset-left, 0px);
+  padding-right:env(safe-area-inset-right, 0px);
+}
+.android-pwa .phone{min-height:calc(100vh - env(safe-area-inset-top, 0px));padding-bottom:var(--nav-safe);}
+.android-pwa .page{min-height:calc(100vh - env(safe-area-inset-top, 0px) - var(--nav-safe));}
+.android-pwa body::before,.android-pwa body::after{
+  content:"";position:fixed;left:0;right:0;z-index:10000;
+  background:#767676;pointer-events:none;
+}
+.android-pwa body::before{top:0;height:env(safe-area-inset-top, 0px);}
+.android-pwa body::after{bottom:0;height:var(--nav-safe);}
 
 /* ===== 入口 ===== */
 #entry{align-items:center;justify-content:flex-start;text-align:center;padding:24px 24px 32px;background:#FFFFFF;position:relative;}
