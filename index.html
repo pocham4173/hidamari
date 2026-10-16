@@ -2099,7 +2099,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div class="card dom-record" id="card-memo">
         <details class="family-compose" open><summary>ひとことメモを残す</summary>
           <div class="in-row"><input type="text" id="in-memo" placeholder="例: 電話した。声が元気だった"></div>
-          <button class="big-btn record" onclick="sendMemo()">メモを残す</button>
+          <button class="big-btn record" id="memo-save-btn" onclick="sendMemo()">メモを残す</button>
+          <p id="memo-save-state" class="state" role="status" aria-live="polite"></p>
         </details>
       </div>
 
@@ -6413,14 +6414,29 @@ async function recKibunFree(){
   }catch(e){state.classList.add('err');state.textContent='記録できませんでした。入力は残っています';}
   finally{btn.disabled=false;}
 }
-function sendMemo(){
+let memoSending=false;
+async function sendMemo(){
+  if(memoSending)return;
   const el=document.getElementById('in-memo');
   const t=el.value.trim();
   if(!t){alert('メモを入力してください');return;}
+  const btn=document.getElementById('memo-save-btn');
+  memoSending=true;btn.disabled=true;
+  foState('memo-save-state','保存を確認しています…',false);
   feedback();
-  addEvent({type:'memo', text:t, name:myName()}).then(()=>{
-    if(el.value===t) el.value='';   /* 送信待ちの間に書いた新しい文章は残す */
-  }).catch(()=>alert('送信できませんでした。電波状況を確認して、もう一度押してください。\n(入力した内容は消えていません)'));
+  // A delayed acknowledgement is not a failed write: keep the same request pending.
+  const waiting=setTimeout(function(){
+    foState('memo-save-state','保存はまだ確認できていません。通信が戻るまで、この画面を閉じずにお待ちください。大切な内容は別にも控えてください。',false);
+  },10000);
+  try{
+    await addEvent({type:'memo',text:t,name:myName()});
+    if(el.value.trim()===t)el.value='';
+    foState('memo-save-state','メモを保存しました。',false);
+  }catch(e){
+    foState('memo-save-state','保存できませんでした。入力は残っています。通信を確認して、もう一度押してください。',true);
+  }finally{
+    clearTimeout(waiting);memoSending=false;btn.disabled=false;
+  }
 }
 
 /* ===== 家族のみモード: 家庭ごとに選べる共有道具 =====
@@ -6656,12 +6672,15 @@ async function addCareLog(key){
   careLogSending=true;
   document.querySelectorAll('#care-quick-buttons button').forEach(function(b){b.disabled=true;});
   foState('care-log-state','記録しています…',false);
+  const waiting=setTimeout(function(){
+    foState('care-log-state','保存はまだ確認できていません。通信が戻るまで、この画面を閉じずにお待ちください。日時と内容は別にも控えてください。',false);
+  },10000);
   try{
     await addEvent({type:'care-log',careKey:key,text:o.label,name:myName(),clientAt:Date.now()});
     foState('care-log-state','「'+o.label+'」を記録しました。今日の記録にも表示されます。',false);
   }catch(e){ foState('care-log-state','記録できませんでした。通信状態を確認して、もう一度押してください',true); }
   finally{
-    careLogSending=false;
+    clearTimeout(waiting);careLogSending=false;
     document.querySelectorAll('#care-quick-buttons button').forEach(function(b){b.disabled=false;});
   }
 }
