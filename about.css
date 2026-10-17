@@ -98,3 +98,25 @@ main>.ueda-scene .ueda-bridge{margin-top:0}
 .connection-faq details{border-top:1px solid #d5ded0}
 .connection-faq summary{cursor:pointer;padding:12px 0;min-height:48px;font-size:18px;line-height:1.6;font-weight:700;color:#315840}
 .connection-faq p{margin:0 0 12px}
+
+/* v79: everyday value first, followed by practical reassurance and future value. */
+.connection-reassurance{margin:28px 0;padding:22px 24px;background:#edf3e8;border:1px solid #c4d6be;border-left:4px solid #426c50;border-radius:0 16px 16px 0}
+.connection-reassurance h2{font-size:22px;line-height:1.5;color:#315840;margin:0 0 10px}
+.connection-reassurance p{font-size:17px;line-height:1.85;margin:0}
+.connection-reassurance .reassurance-note{font-size:15px;line-height:1.8;margin-top:10px;color:#4b5c4f}
+.reassurance-note a{display:inline-block;color:#315840;text-underline-offset:4px}
+.future-values{margin:38px 0 20px}
+.future-values .values-eyebrow{font-size:15px;line-height:1.7;font-weight:700;color:#59625a;margin:0 0 6px}
+.future-values>h2{font-size:clamp(22px,3vw,28px);line-height:1.6;margin:0 0 18px;color:#315840}
+.future-values-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.value-card{min-width:0;padding:22px 20px;border:1px solid #d8bc77;border-radius:18px;background:#fff4dc}
+.value-records{background:#fff0f4;border-color:#dfbac9}
+.value-community{background:#eaf3f8;border-color:#b6cedc}
+.value-number{display:inline-block;font-size:15px;font-weight:800;letter-spacing:.08em;color:#71551c;margin-bottom:10px}
+.value-records .value-number{color:#79344f}.value-community .value-number{color:#225575}
+.value-card h3{font-size:21px;line-height:1.6;margin:0 0 12px;color:#315840;overflow-wrap:anywhere}
+.value-card>p{font-size:17px;line-height:1.85;margin:0;overflow-wrap:anywhere}
+.value-card>.value-note{font-size:14px;line-height:1.8;color:#59625a;margin-top:14px;padding-top:12px;border-top:1px solid #0002}
+#connection-help{scroll-margin-top:24px}
+@media(max-width:760px){.future-values-grid{grid-template-columns:minmax(0,1fr);gap:12px}.future-values{margin-top:30px}.value-card{padding:20px}.connection-reassurance{padding:18px;margin:24px 0}.value-card h3{margin-bottom:8px}}
+@media(max-width:360px){.value-card{padding:16px}.connection-reassurance{padding:16px}.value-card h3,.connection-reassurance h2{font-size:20px}}
