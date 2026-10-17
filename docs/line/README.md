@@ -21,6 +21,12 @@ LINE側では本人／家族を選ばせない。使い方はアプリの入口�
 | 中 | はじめての方 | `https://pocham4173.github.io/hidamari/start.html?openExternalBrowser=1` |
 | 右 | 使い方 | `https://pocham4173.github.io/hidamari/guide/?openExternalBrowser=1` |
 
+## 2026-10-18：中央から紹介ページへ
+
+中央「はじめての方」の設定済みURLを変えず、`start.html` から `about.html` へ直接移動するようにした。紹介ページからアプリ・写真つきガイド・家族だけで使う説明を開ける。移動できない場合は紹介へのリンクを表示する。
+
+これはWebページ側の変更。LINE側のメニュー画像・設定は変更していない。上表のURLへのブラウザーアクセスと、実際のLINEアプリで中央ボタンを押す確認は区別する。実機でのボタン操作は未確認。
+
 ## 友だち追加のあいさつ
 
 送信役（Cloudflare Worker の `worker.js`）が、友だち追加のときに返事で送る（`MSG_WELCOME`）。
