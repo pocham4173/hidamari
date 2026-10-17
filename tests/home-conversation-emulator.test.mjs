@@ -28,8 +28,9 @@ const quick=f=>first(f)?.querySelector('[onclick^="replyToPersonEvent"]');
 try{
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async ctx=>{
-    for(const id of ['family','person'])await ctx.firestore().doc('consents/'+id).set(consentFixture(firebase.firestore.Timestamp.now()));
-    const home=ctx.firestore().collection('groups').doc('home');
+    const seedDb=ctx.firestore();
+    for(const id of ['family','person'])await seedDb.doc('consents/'+id).set(consentFixture(firebase.firestore.Timestamp.now()));
+    const home=seedDb.collection('groups').doc('home');
     await home.set({createdBy:'family'});
     await home.collection('members').doc('family').set({name:'家族',role:'kazoku',mode:'kazoku',status:'approved'});
     await home.collection('members').doc('person').set({name:'本人',role:'honnin'}); // old registration
@@ -59,7 +60,7 @@ try{
   await family.click(family.document.getElementById('family-conversation-retry'));
   assert.equal(family.document.getElementById('in-family-message').value,'入力は残す');
   await familyDb.enableNetwork();
-  await until('retry recovers the conversation subscription',()=>!family.document.querySelector('#ev-list [data-reply-again="true"]').disabled);
+  await until('retry recovers the conversation subscription',()=>family.document.querySelector('#ev-list [data-reply-again="true"]')?.disabled===false);
   console.log('PASS real offline/cache/retry retains visible content and typed draft');
 
   const {f:waiting}=connect('kazoku','waiting');
