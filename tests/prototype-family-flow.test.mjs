@@ -332,3 +332,52 @@ test('changing examples stops old speech and invalidates old replies and print s
   assert.equal(t.el('family-request-list').children.length,0);
   t.close();
 });
+
+test('the large greeting is read-only, works while automatic replies are muted, and can be stopped nearby', () => {
+  const t = setup({ speech: true });
+  assert.equal(t.calls.spoken.length, 0);
+  t.click('toggle-voice');
+  t.click('speak-greeting');
+  assert.equal(t.calls.utterance.text, 'はるこさん、おはようございます。');
+  assert.equal(t.calls.utterance.lang, 'ja-JP');
+  assert.equal(t.el('greeting').disabled, false);
+  assert.equal(t.el('family-greeting').hidden, true);
+  assert.equal(t.el('stop-greeting').hidden, false);
+  assert.match(t.el('greeting-speech-status').textContent, /読み上げています/);
+  const old = t.calls.utterance;
+  t.click('stop-greeting');
+  assert.equal(t.el('stop-greeting').hidden, true);
+  assert.equal(t.el('stop-speech').hidden, true);
+  assert.equal(t.doc.activeElement.id, 'speak-greeting');
+  assert.match(t.el('greeting-speech-status').textContent, /止めました/);
+  old.onend();
+  assert.match(t.el('greeting-speech-status').textContent, /止めました/);
+  t.click('speak-greeting');t.calls.utterance.onend();
+  assert.equal(t.el('stop-greeting').hidden, true);
+  assert.match(t.el('greeting-speech-status').textContent, /終わりました/);
+  t.click('speak-greeting');t.check('[data-scene="family"]');
+  assert.equal(t.el('stop-greeting').hidden, true);
+  assert.equal(t.el('family-greeting').hidden, true);
+  t.close();
+});
+
+test('greeting playback errors are visible beside the greeting and never create a record', () => {
+  const missing = setup();
+  missing.click('speak-greeting');
+  assert.match(missing.el('greeting-speech-status').textContent, /音声を再生できませんでした/);
+  assert.match(missing.el('speak-greeting').textContent, /春子さん、.*おはよう/);
+  assert.equal(missing.el('stop-greeting').hidden, true);
+  assert.equal(missing.el('greeting').disabled, false);
+  missing.close();
+  const t = setup({ speech: true });
+  t.click('speak-greeting');t.calls.utterance.onerror();
+  assert.match(t.el('greeting-speech-status').textContent, /文字で確認/);
+  assert.equal(t.el('stop-greeting').hidden, true);
+  assert.equal(t.el('family-greeting').hidden, true);
+  t.click('speak-greeting');const old = t.calls.utterance;t.click('speak-date');
+  old.onend();old.onerror();
+  assert.equal(t.el('greeting-speech-status').textContent, '');
+  assert.equal(t.el('stop-greeting').hidden, true);
+  assert.equal(t.el('stop-speech').hidden, false);
+  t.close();
+});
