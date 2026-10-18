@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const categories = {food:'ごはん・買い物',travel:'通院・おでかけ',home:'家のことを頼む',watch:'見守り・備え',care:'介護・家族の相談',community:'地域とつながる'};
+  const categories = {food:'ごはん・買い物',travel:'通院・おでかけ',home:'家のこと・ごみ出し',watch:'見守り・備え',care:'介護・家族の相談',community:'地域とつながる'};
   const data = Array.isArray(window.UEDA_SERVICES) ? window.UEDA_SERVICES : [];
   const section = document.getElementById('results-section');
   const heading = document.getElementById('results-title');

@@ -577,8 +577,9 @@ details.card[open]>summary.fold-ttl::after{content:"▾";}
 .yt-color{width:40px;height:40px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #AEB8C4;cursor:pointer;position:relative;}
 .yt-color.on{box-shadow:0 0 0 3px #222;}
 .yt-color.on::after{content:'✓';position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:900;text-shadow:0 1px 3px #000;}
+.anshin-choices .anshin-choice-link{display:flex;flex-direction:column;align-items:center;justify-content:center;text-decoration:none;}
 .anshin-choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.anshin-choices button{min-height:78px;border:2px solid var(--murasaki);border-radius:12px;background:#fff;color:var(--cha);font-family:inherit;font-size:1rem;font-weight:900;padding:10px;cursor:pointer;}
+.anshin-choices button,.anshin-choices .anshin-choice-link{min-height:78px;border:2px solid var(--murasaki);border-radius:12px;background:#fff;color:var(--cha);font-family:inherit;font-size:1rem;font-weight:900;padding:10px;cursor:pointer;}
 .region-step{display:flex;flex-direction:column;gap:10px;margin:10px 0;}
 .region-step label{font-size:1rem;font-weight:900;color:var(--cha);margin-bottom:-5px}.region-step select{min-height:58px;width:100%;font-family:inherit;font-size:1.12rem;padding:12px;border:2px solid #B9C7D8;border-radius:12px;background:#fff;color:var(--cha)}.region-step select:focus{outline:3px solid var(--ao-usui);border-color:var(--ao)}.region-step select:disabled{background:#F1F3F5;color:#7C8490}.region-summary{padding:12px;border-radius:10px;background:var(--ao-usui);font-weight:800;color:var(--ao-koi)}
 .yt-item{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:11px 2px;border-bottom:1px solid #F0EAE0;font-size:1rem;}
@@ -921,8 +922,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 #loading .startup-retry{width:auto;min-width:190px;min-height:52px;margin-top:6px;padding:10px 20px;border:2px solid #B56B37;border-radius:12px;background:#fff;color:#7B451A;font:inherit;font-weight:900;cursor:pointer;}
 
 /* 2026-09-07 完成優先の画面整理 */
-.anshin-choices{grid-template-columns:1fr!important;gap:12px;}
-.anshin-choices button{width:100%;min-height:84px;font-size:1.08rem;text-align:center;}
+.anshin-choices{grid-template-columns:1fr!important;grid-auto-rows:1fr;gap:12px;}
+.anshin-choices button,.anshin-choices .anshin-choice-link{width:100%;min-height:84px;font-size:1.08rem;line-height:1.5;text-align:center;}
 .disaster-intro{margin-top:14px;padding:16px;border:2px solid var(--murasaki-usui);border-radius:16px;background:#fff;}
 .disaster-form label{display:block;font-size:.9rem;font-weight:800;margin:12px 0 5px;}
 .disaster-form input,.disaster-form select{width:100%;min-height:50px;padding:10px;border:1px solid #CDD6E1;border-radius:10px;background:#fff;font:inherit;}
@@ -2389,8 +2390,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         </div>
         <section class="set-sec" aria-labelledby="anshin-secondary-heading">
           <h4 id="anshin-secondary-heading">相談・もしもの備え</h4>
-          <a class="set-btn" href="ueda-support.html" style="display:block;text-align:center;text-decoration:none;margin-bottom:12px;">上田の暮らしサポートを探す →</a>
           <div class="anshin-choices">
+            <a class="anshin-choice-link" href="ueda-support.html"><span aria-hidden="true">🌷</span><span>上田の暮らしサポート</span></a>
             <button type="button" onclick="openAnshin('soudan')">💬<br>相談先を探す</button>
             <button type="button" onclick="openAnshin('tag')">🔔<br>おまもりタグ</button>
             <button type="button" onclick="openAnshin('bousai')">🎒<br>もしもの備え</button>
