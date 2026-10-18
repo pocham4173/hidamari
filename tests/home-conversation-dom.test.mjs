@@ -43,7 +43,8 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  const bodyKids=[...f.document.querySelector('.h-body').children].filter(el=>!['invite-switch','h-approve','next-invite-h','person-security-notices'].includes(el.id)&&!el.hasAttribute('data-install-card')&&!el.hasAttribute('data-connected-people'));
  const hTodayIndex=bodyKids.indexOf(f.document.getElementById('h-today'));
  assert.ok(hTodayIndex>=0&&hTodayIndex<=1,'今日の予定は本人画面の最上部側（初回案内の次まで）にある');
- assert.equal(bodyKids[0],f.document.getElementById('speech-notice'),'音声の初回案内は一番上に出る');
+ assert.equal(bodyKids[0],f.document.querySelector('.person-welcome'),'日付の次は、本人の今日と押して聞ける挨拶');
+ assert.ok(bodyKids.indexOf(f.document.getElementById('speech-notice'))>bodyKids.indexOf(f.document.getElementById('kusuri-box')),'声の説明は毎日の記録の下に置く');
  assert.ok(bodyKids.indexOf(f.document.getElementById('btn-a'))<bodyKids.indexOf(panel),'毎日の挨拶ボタンがやりとりより先に来る');
  assert.equal(f.document.getElementById('h-incoming-message').textContent,'','yesterday is kept off today’s home');
  assert.ok(f.visible(f.document.getElementById('person-history-open')));
