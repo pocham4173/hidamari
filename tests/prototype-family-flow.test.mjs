@@ -250,3 +250,85 @@ test('regional entry leads to the shared support page', () => {
   assert.equal(t.doc.querySelectorAll('a[href*="city.ueda.nagano.jp"]').length, 0);
   t.close();
 });
+
+function setExample(t, value) {
+  t.el('connection-example').value=value;
+  t.el('connection-example').dispatchEvent(new t.dom.window.Event('change'));
+}
+
+test('the original request choices coexist and cancellation removes only the chosen request', () => {
+  const t=setup();
+  const choices=[...t.doc.querySelectorAll('[data-request]')];
+  assert.deepEqual(choices.map(b=>b.dataset.request),['話したい','買い物をお願い','予定を確認したい','少し困っている','あとで連絡して','今日はそっとしておいて']);
+  t.click('request-call');choices[1].click();choices[1].click();choices[5].click();
+  assert.equal(t.el('family-request-list').children.length,3);
+  assert.match(t.el('family-request-list').textContent,/電話してほしい.*買い物をお願い.*今日はそっとしておいて/);
+  t.el('request-undo-list').firstElementChild.click();
+  assert.doesNotMatch(t.el('family-request-list').textContent,/買い物/);
+  assert.match(t.el('family-request-list').textContent,/電話してほしい.*今日はそっとしておいて/);
+  assert.equal(choices[1].disabled,false);
+  t.close();
+});
+
+test('a connected family with no incoming content gets no invented message or visit', () => {
+  const t=setup({speech:true});
+  setExample(t,'quiet');
+  assert.equal(t.el('message-content').hidden,true);
+  assert.equal(t.el('message-empty').hidden,false);
+  assert.match(t.el('message-empty').textContent,/伝言は、まだありません/);
+  assert.equal(t.el('next-visit').hidden,true);
+  assert.equal(t.el('no-visit').hidden,false);
+  assert.equal(t.el('family-next-visit').hidden,true);
+  assert.equal(t.el('family-no-visit').hidden,false);
+  t.click('speak');
+  assert.doesNotMatch(t.calls.utterance.text,/娘が会いに来/);
+  assert.match(t.calls.utterance.text,/まだ登録されていません/);
+  const count=t.calls.spoken.length;t.click('speak-message');
+  assert.equal(t.calls.spoken.length,count);
+  t.check('[data-reply="ありがとう"]');
+  assert.equal(t.el('family-reply').hidden,true);
+  t.click('request-call');assert.equal(t.el('family-call').hidden,false);
+  t.check('[data-scene="family"]');assert.equal(t.el('family').hidden,false);
+  t.close();
+});
+
+test('unconnected people keep their own records without implying delivery or sharing on connection', () => {
+  const t=setup();setExample(t,'solo');
+  assert.match(t.el('message-empty').textContent,/家族とまだつながっていません/);
+  assert.equal(t.el('request-call').hidden,true);
+  assert.equal(t.el('request-more').hidden,true);
+  assert.equal(t.el('local-record-note').hidden,false);
+  t.click('request-call');t.check('[data-request="買い物をお願い"]');
+  assert.equal(t.el('family-call').hidden,true);
+  t.check('[data-scene="family"]');assert.equal(t.el('family').hidden,true);
+  t.click('greeting');t.click('medicine-asa');
+  assert.match(t.el('word-status').textContent,/自分用.*共有されません/);
+  assert.match(t.el('medicine-status-asa').textContent,/家族には共有されません/);
+  assert.equal(t.el('family-greeting').hidden,true);
+  assert.equal(t.el('family-medicine').hidden,true);
+  assert.equal(t.el('greeting').disabled,true);
+  setExample(t,'connected');
+  assert.equal(t.el('greeting').disabled,true);assert.equal(t.el('medicine-asa').disabled,true);
+  assert.equal(t.el('family-greeting').hidden,true);assert.equal(t.el('family-medicine').hidden,true);
+  t.click('medicine-hiru');
+  assert.match(t.el('family-medicine-list').textContent,/昼の薬/);
+  assert.doesNotMatch(t.el('family-medicine-list').textContent,/朝の薬/);
+  t.close();
+});
+
+test('changing examples stops old speech and invalidates old replies and print selections; reset restores the example', () => {
+  const t=setup({speech:true});t.check('[data-reply="ありがとう"]');t.click('request-call');
+  t.check('[data-scene="consult"]');t.check('[name="consult-record"][value="phone-17"]');t.check('[name="question"]');t.click('preview-sheet');
+  t.click('speak-message');const old=t.calls.utterance;
+  setExample(t,'solo');old.onend();
+  assert.equal(t.el('person').hidden,false);
+  assert.equal(t.el('family-reply').hidden,true);assert.equal(t.el('family-call').hidden,true);
+  assert.equal(t.el('print-sheet').hidden,true);assert.equal(t.el('consult-records').children.length,0);
+  t.click('print');assert.equal(t.calls.prints,0);
+  assert.match(t.el('speech-status').textContent,/止めました/);
+  t.click('open-reset');t.click('confirm-reset');
+  assert.equal(t.el('connection-example').value,'connected');
+  assert.equal(t.el('message-content').hidden,false);assert.equal(t.el('next-visit').hidden,false);
+  assert.equal(t.el('family-request-list').children.length,0);
+  t.close();
+});
