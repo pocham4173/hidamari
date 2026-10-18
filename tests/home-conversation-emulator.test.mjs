@@ -47,6 +47,11 @@ try{
   await until('previous-day greeting appears on family home with an enabled reply',()=>quick(family)&&!quick(family).disabled);
   assert.ok(family.visible(first(family)));assert.match(first(family).textContent,/おはよう/);
   await family.click(quick(family));
+  await until('family reply reaches the closed contact entrance',()=>person.c.currentFamilyMessageId&&person.document.getElementById('h-contact-state').textContent.includes('今日の家族からの連絡'));
+  const contact=person.document.getElementById('person-conversation-panel');
+  assert.equal(contact.open,false);
+  assert.equal(person.visible(person.document.querySelector('#h-message-reply button')),false);
+  contact.open=true;
   await until('family reply arrives on person home',()=>person.c.currentFamilyMessageId&&person.visible(person.document.querySelector('#h-message-reply button'))&&!person.document.querySelector('#h-message-reply button').disabled);
   assert.match(person.document.getElementById('h-incoming-message').textContent,/おはよう/);
   const replyId=person.c.currentFamilyMessageId;
