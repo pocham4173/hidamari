@@ -93,6 +93,7 @@ function fixture({press=false}={}){
 }
 {
   const f=fixture({press:true});f.hold();
+  f.document.getElementById('person-conversation-panel').open=true;
   const button=[...f.document.querySelectorAll('#h-message-reply button')].find(b=>b.textContent==='ありがとう');
   f.press(button);
   assert.equal(f.calls[0].inClickTask,true);assert.match(f.last(),/ありがとう.*送ります/);
