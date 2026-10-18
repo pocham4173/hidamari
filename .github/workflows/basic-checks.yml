@@ -112,3 +112,4 @@ jobs:
           node tests/owner-transfer.test.mjs
           node tests/ueda-centers.test.mjs
           node tests/line-login-client.test.mjs
+          node --test tests/prototype-family-flow.test.mjs
