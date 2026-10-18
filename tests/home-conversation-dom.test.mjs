@@ -47,7 +47,8 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  assert.ok(bodyKids.indexOf(f.document.getElementById('speech-notice'))>bodyKids.indexOf(f.document.getElementById('kusuri-box')),'声の説明は毎日の記録の下に置く');
  assert.ok(bodyKids.indexOf(f.document.getElementById('btn-a'))<bodyKids.indexOf(panel),'毎日の挨拶ボタンがやりとりより先に来る');
  assert.equal(f.document.getElementById('h-incoming-message').textContent,'','yesterday is kept off today’s home');
- assert.ok(f.visible(f.document.getElementById('person-history-open')));
+ assert.equal(panel.open,false);assert.equal(f.visible(f.document.getElementById('person-history-open')),false);
+ panel.open=true;assert.ok(f.visible(f.document.getElementById('person-history-open')));
  f.events([greeting,{...reply,date:'2026-09-18',at:{seconds:1789722010}}]);
  assert.match(f.document.getElementById('h-incoming-message').textContent,/9月18日.*おはよう/);
  const button=[...f.document.querySelectorAll('#h-message-reply button')].find(b=>b.textContent==='ありがとう');
@@ -59,6 +60,7 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  const f=homeFixture('honnin');f.state(family);
  const question={...reply,_id:'question',type:'ask-kusuri',text:'',slot:'asa',date:'2026-09-18',at:{seconds:1789722100}};
  f.events([reply,question]);assert.match(f.document.getElementById('h-incoming-message').textContent,/朝の薬は飲みましたか/);
+ f.document.getElementById('person-conversation-panel').open=true;
  await f.click(f.document.querySelector('#h-message-reply button'));
  assert.equal(f.writes[0].replyTo,'question');assert.equal(f.writes[0].type,'family-message-back','acknowledgement is a reply, not a medication record');
  f.events([reply,{...question,date:'2026-09-17'}]);assert.equal(f.document.getElementById('h-incoming-message').textContent,'','neither yesterday’s greeting nor its medication question stays on home');

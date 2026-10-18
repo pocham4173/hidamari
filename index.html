@@ -960,6 +960,16 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 
 /* Received words and the reply action stay in one visible place. */
 .person-conversation-panel{padding:18px 14px;border:2px solid #CADBF4;border-radius:22px;background:#F5F9FF;}
+.person-conversation-panel > summary{cursor:pointer;min-height:64px;color:#315FAE;font-weight:700;font-size:1.25rem;line-height:1.6;overflow-wrap:anywhere;}
+.person-contact-title{font-weight:700;}
+.person-contact-hint{display:block;font-size:1rem;font-weight:400;margin-top:6px;}
+.person-conversation-panel > summary .communication-status{display:block;font-size:1rem;font-weight:400;margin:8px 0 0;}
+.person-conversation-panel .contact-open{display:none;}
+.person-conversation-panel[open] .contact-closed{display:none;}
+.person-conversation-panel[open] .contact-open{display:inline;}
+.person-contact-content{margin-top:16px;}
+.person-contact-content .request-panel{margin-top:16px;padding:12px;border-width:1px;}
+.person-conversation-panel > summary:focus-visible{outline:3px solid #315FAE;outline-offset:5px;border-radius:8px;}
 .person-conversation-panel h2{font-size:1.2rem;color:#315FAE;line-height:1.5;margin:0 0 12px;}
 .person-conversation-panel .pop,#h-incoming-message{margin:0 0 12px;background:#fff;border-color:#8AAFEA;font-size:1.25rem;}
 .person-conversation-panel .kibun{margin:0;padding:14px 10px;border-color:#CADBF4;}
@@ -1481,19 +1491,12 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div class="note" style="text-align:center;">お薬を飲んだら、朝・昼・夜から選んで押してください。服薬の証明ではありません。</div>
     </div>
     <button class="onegai-btn" data-share-gate="family" data-person-voice="おねがいの がめんを ひらきました" hidden onclick="openOnegai()">ちょっとお願い</button>
-    <section class="request-panel" id="person-requests-panel" aria-labelledby="person-requests-heading" hidden>
-      <h2 id="person-requests-heading">お願いと、家族の返事</h2>
-      <p class="request-note" id="person-requests-state" role="status"></p>
-      <div id="person-requests-list"></div>
-    </section>
     <div class="h-today" id="speech-notice" style="display:none;">
       <div class="ht-lb">はじめにお知らせ</div>
       <div style="font-size:1.05rem;line-height:1.7;color:#4A3A24;padding:4px 0;">このアプリは、ボタンを押すと声でもお知らせします。音を出したくないときは消せます。</div>
       <button class="set-btn person-press-target" type="button" onclick="dismissSpeechNotice(false)">このままでよい</button>
       <button class="set-btn person-press-target" type="button" onclick="dismissSpeechNotice(true)">音を消す</button>
     </div>
-    <!-- 家族からの新しい連絡は、やりとりの欄が下にあっても見落とさないよう、ここ(上)に出す -->
-    <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
     <!-- 次の予定(2026-10-13 ヒビルカから): 「明日 9:00」「デイサービス 🚐」を大きく。押すと場所などが見られる -->
     <div class="yotei-card person-press-target" id="y-card" role="button" tabindex="0" aria-expanded="false" aria-controls="y-detail" onclick="toggleNextYotei()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleNextYotei();}" style="cursor:pointer;">
       <div class="lb">次の予定</div>
@@ -1508,10 +1511,12 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <button class="cal-open" id="h-open-cal" data-person-voice="カレンダーを ひらきました" onclick="openCal()">カレンダーを見る</button>
     <button class="cal-open" id="h-open-tasks" type="button" data-person-voice="自分のやることをひらきました。やることを追加し、終わったら、できたを押します。" onclick="openPersonTasks()">自分のやること</button>
     <button class="cal-open" id="h-open-yotei" data-person-voice="予定の 入力を ひらきました" onclick="openHYotei()">予定を入れる</button>
-    <!-- 家族とのやりとり(2026-10-01: 予定を入れるの下へ) -->
-    <section class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" aria-labelledby="person-conversation-heading">
-      <h2 id="person-conversation-heading">家族とのやりとり</h2>
-    <p class="communication-status" id="h-contact-state" aria-live="polite"></p>
+    <!-- 本人の予定を先に。お願いと連絡は一つの入口から開く。 -->
+    <details class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" aria-labelledby="person-conversation-heading">
+      <summary id="person-conversation-heading"><span class="person-contact-title">お願い・家族とのやりとり</span><span class="person-contact-hint"><span class="contact-closed">押すと、お願いと返事を見られます</span><span class="contact-open">押すと閉じます</span></span><span class="communication-status" id="h-contact-state" aria-live="polite"></span></summary>
+      <div class="person-contact-content">
+    <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
+
     <button class="set-btn" id="person-conversation-retry" type="button" hidden onclick="checkPersonConversation()">もう一度読み込む</button>
     <div class="kibun" id="h-message-reply" data-communication-gate="family" hidden style="display:none;">
       <div id="person-reply-options"><div class="q">返事を選ぶ</div><p id="h-reply-context" hidden></p>
@@ -1526,7 +1531,14 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <button class="set-btn" id="person-reply-read" type="button" hidden onclick="speakElement('h-message-reply-state')">返事の結果を声で聞く</button>
     </div>
       <button class="cal-open" id="person-history-open" type="button" data-person-voice="前の連絡をひらきます" onclick="openPersonHistory()">前の連絡を見る</button>
+
+    <section class="request-panel" id="person-requests-panel" aria-labelledby="person-requests-heading" hidden>
+      <h2 id="person-requests-heading">お願いと、家族の返事</h2>
+      <p class="request-note" id="person-requests-state" role="status"></p>
+      <div id="person-requests-list"></div>
     </section>
+      </div>
+    </details>
     <button class="cal-open h-cancel-btn" type="button" data-person-voice="今日の記録を ひらきます" onclick="openCancel()">今日の記録を確認・とりけす</button>
     <div class="h-links">
       <button data-share-gate="shared" hidden onclick="openMembers()">つながっている家族</button>
@@ -3110,7 +3122,7 @@ function updateCommunicationAvailability(){
     personIncomingShown?'今は返事を送れません。': ''):
     personConversationStatus==='error'?'連絡を読み込めませんでした。':
     personConversationStatus==='cached'?'保存した連絡です。通信が戻るまでお待ちください。':
-    personConversationStatus==='loading'?'連絡を読み込んでいます…':!personIncomingShown?'今日の連絡はまだありません。':'';
+    personConversationStatus==='loading'?'連絡を読み込んでいます…':!personIncomingShown?'今日の連絡はまだありません。':'今日の家族からの連絡があります。';
   // Keep messages/results readable. Only remove controls that cannot currently be used.
   const replyOptions=document.getElementById('person-reply-options');
   if(replyOptions)replyOptions.hidden=familyConnection.status!=='unknown'&&!canUseFamilyFeature('family');
