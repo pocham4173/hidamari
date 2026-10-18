@@ -16,6 +16,7 @@
       return terms.every(term=>text.includes(term));
     });
     section.hidden=false;
+    document.getElementById('waste-guide').hidden=!(category==='home'||matches.some(item=>item.name==='上田市のごみ収集カレンダー'));
     heading.textContent=query ? '「'+query+'」の検索結果' : categories[category] || 'すべてのサービス';
     results.replaceChildren();
     document.getElementById('result-count').textContent=matches.length+'件の案内';
@@ -41,5 +42,20 @@
   document.querySelectorAll('[data-category]').forEach(a=>a.addEventListener('click',function(){if(location.hash===a.getAttribute('href'))render(a.dataset.category,'',true);}));
   document.getElementById('all-categories').addEventListener('click',function(){input.value='';document.querySelector('[data-category]').focus();});
   window.addEventListener('hashchange',()=>route(true));
+  const area=document.getElementById('waste-area'),calendar=document.getElementById('waste-calendar');
+  function updateWasteCalendar(){
+    const oldYear=new Date().getFullYear()>2026;
+    area.disabled=oldYear;
+    document.getElementById('waste-year-note').textContent=oldYear?'この地区一覧は2026年版です。下の「最新年度・地区の一覧」から確認してください。':'';
+    const selected=area.selectedOptions[0],url=selected?.value||'';
+    const valid=!oldYear&&/^https:\/\/www\.city\.ueda\.nagano\.jp\/uploaded\/attachment\/\d+\.pdf$/.test(url);
+    calendar.hidden=!valid;
+    if(valid){calendar.href=url;calendar.textContent=selected.textContent+'のカレンダー（2026年・PDF）を開く ↗';}
+    else calendar.removeAttribute('href');
+  }
+  area.addEventListener('change',updateWasteCalendar);
+  window.addEventListener('pageshow',updateWasteCalendar);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateWasteCalendar();});
+  updateWasteCalendar();
   route(false);
 })();

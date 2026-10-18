@@ -148,3 +148,19 @@ test('person home: one collapsed contact entrance after schedule; opening preser
  assert.match(d.getElementById('h-contact-state').textContent,/今日の家族からの連絡/);
  f.close();
 });
+
+
+test('person contact summary: own request replies, freshness, deletion and household reset stay accurate',()=>{
+ const f=fixture('honnin'),summary=f.document.getElementById('person-request-summary');
+ assert.match(summary.textContent,/まだ返事がありません/);
+ f.events([req,response]);assert.match(summary.textContent,/2026年9月18日.*花子さん/);
+ assert.equal(f.document.getElementById('person-conversation-panel').open,false);
+ f.events([req,response],'cached');assert.match(summary.textContent,/最新の確認ができていません/);
+ f.events([req,{...response,name:'<img src=x>'}]);assert.equal(summary.querySelector('img'),null);
+ f.events([response]);assert.equal(summary.textContent,'');
+ f.events([{...req,uid:'someone-else'},response]);assert.equal(summary.textContent,'');
+ f.events([req,response]);f.ctl().reset();assert.equal(summary.textContent,'');
+ const record=f.document.getElementById('btn-a'),note=f.document.getElementById('person-record-sharing');
+ assert.ok(record.compareDocumentPosition(note)&4,'record action precedes the long sharing explanation');
+ assert.equal(record.getAttribute('onclick'),'sendAisatsu()');assert.equal(f.writes.length,0);f.close();
+});
