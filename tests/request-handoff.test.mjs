@@ -134,3 +134,17 @@ test('stored replies survive reload; three latest requests stay short and expand
  assert.ok(f.buttons().every(b=>b.disabled));await f.ctl().send(req._id,'今から電話するね','planned');assert.equal(f.writes.length,0);
  assert.match(f.panel().textContent,/最新の確認ができていません/);f.close();
 });
+
+
+test('person home: one collapsed contact entrance after schedule; opening preserves requests and replies',()=>{
+ const f=fixture('honnin'),d=f.document,contact=d.getElementById('person-conversation-panel');
+ assert.equal(contact.tagName,'DETAILS');assert.equal(contact.open,false);
+ assert.ok(d.getElementById('y-card').compareDocumentPosition(contact)&4);
+ assert.ok(contact.contains(f.panel()));assert.ok(contact.contains(d.getElementById('h-incoming-message')));
+ assert.equal(f.visible(f.panel()),false);assert.equal(f.visible(d.getElementById('y-card')),true);
+ contact.open=true;f.events([req,response]);assert.equal(contact.open,true);assert.equal(f.visible(f.panel()),true);
+ assert.match(f.panel().textContent,/今から電話するね/);
+ contact.open=false;f.events([req,response]);assert.equal(contact.open,false);assert.equal(f.writes.length,0);
+ assert.match(d.getElementById('h-contact-state').textContent,/今日の家族からの連絡/);
+ f.close();
+});

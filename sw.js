@@ -2,7 +2,7 @@
    - 通信できるときは常に最新を取りに行き、取れたものを端末に控えておく(ネット優先)。
    - 電波がないときは控えを使う。アプリの画面が開けないときは offline.html(もしもの控え)を出す。
    - 共有記録(Firestore)の通信は控えない。控えるのは画面の部品だけ。 */
-const CACHE = 'mainico-shell-v67';  /* 2026-10-18 本人の挨拶とお願いの引継ぎ */
+const CACHE = 'mainico-shell-v68';  /* 2026-10-18 本人の予定を先に・やりとりの入口を統合 */
 const SHELL = [
   'about.html', 'about.css', 'about.js', 'docs/introduction/family-only.jpg', 'docs/introduction/person-greeting.jpg', 'docs/introduction/family-greeting.jpg', 'partners.html', 'ueda-support.html', 'ueda-support.css', 'ueda-support.js', 'ueda-services.js',
   './', 'index.html', 'offline.html', 'help.html', 'privacy.html', 'manifest.json',
