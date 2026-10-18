@@ -9,7 +9,7 @@ const { JSDOM, VirtualConsole } = require('jsdom');
 const html = readFileSync(new URL('../prototype-family-flow.html', import.meta.url), 'utf8');
 
 function setup({ speech = false } = {}) {
-  const errors = [], calls = { prints: 0, network: 0, utterance: null };
+  const errors = [], calls = { prints: 0, network: 0, utterance: null, spoken: [] };
   const console = new VirtualConsole();
   console.on('jsdomError', e => errors.push(e.message));
   const dom = new JSDOM(html, {
@@ -26,7 +26,7 @@ function setup({ speech = false } = {}) {
       Object.defineProperty(w, 'indexedDB', { get: deny });
       if (speech) {
         w.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
-        w.speechSynthesis = { speak(u) { calls.utterance = u; u.onstart(); }, cancel() {} };
+        w.speechSynthesis = { speak(u) { calls.utterance = u; calls.spoken.push(u.text); u.onstart(); }, cancel() {} };
       }
     }
   });
@@ -152,4 +152,103 @@ test('speech starts only on request, stops on navigation and keeps text when una
   assert.match(fallback.el('speech-status').textContent, /文字で確認/);
   assert.match(fallback.el('person').textContent, /午後2時/);
   fallback.close();
+});
+
+test('familiar era display is labeled as a fixed example and read aloud on request', () => {
+  const t = setup({ speech: true });
+  assert.match(t.el('speak-date').textContent, /令和8年.*昭和101年・平成38年/);
+  assert.match(t.el('speak-date').textContent, /固定の例/);
+  t.click('speak-date');
+  for (const part of ['令和8年', '昭和で101年', '平成で38年', '2026年10月18日', '午前9時5分']) {
+    assert.ok(t.calls.utterance.text.includes(part));
+  }
+  t.click('stop-speech');
+  assert.equal(t.el('stop-speech').hidden, true);
+  t.close();
+});
+
+test('morning greeting and each medicine slot are reversible person records, not family contact', () => {
+  const t = setup();
+  t.click('greeting');
+  for (const key of ['asa', 'hiru', 'yoru']) {
+    t.click('medicine-' + key); t.click('medicine-' + key);
+    assert.equal(t.el('medicine-' + key).disabled, true);
+  }
+  t.check('[data-scene="family"]');
+  assert.match(t.el('family-greeting').textContent, /おはよう.*10月18日.*春子さん（本人）/s);
+  assert.equal(t.el('family-medicine-list').children.length, 3);
+  assert.match(t.el('family-medicine').textContent, /実際に飲んだことの確認ではありません/);
+  assert.equal(t.el('last-title').textContent, '娘が電話しました');
+  assert.match(t.el('last-time').textContent, /10月17日/);
+  t.check('[data-scene="consult"]');
+  assert.equal(t.doc.querySelectorAll('[name="consult-record"]').length, 7);
+  assert.equal(t.doc.querySelectorAll('[name="consult-record"]:checked').length, 0);
+  t.check('[name="consult-record"][value="greeting-18"]');
+  t.check('[name="consult-record"][value="medicine-asa"]');
+  t.check('[name="question"]'); t.click('preview-sheet');
+  assert.equal(t.el('sheet-records').children.length, 2);
+  assert.match(t.el('sheet-records').textContent, /おはよう/);
+  assert.match(t.el('sheet-records').textContent, /朝の薬.*証明するものではありません.*春子さん（本人）/s);
+  assert.doesNotMatch(t.el('sheet-records').textContent, /昼の薬|夜の薬|買い物の荷物/);
+  t.check('[data-scene="person"]'); t.click('undo-medicine-asa');
+  assert.equal(t.el('print-sheet').hidden, true);
+  assert.equal(t.el('medicine-asa').disabled, false);
+  t.click('undo-greeting'); t.click('undo-medicine-hiru'); t.click('undo-medicine-yoru');
+  assert.equal(t.el('family-medicine').hidden, true);
+  t.check('[data-scene="consult"]');
+  assert.equal(t.doc.querySelectorAll('[name="consult-record"]').length, 3);
+  assert.equal(t.doc.querySelectorAll('[name="consult-record"]:checked').length, 0);
+  t.close();
+});
+
+test('read-aloud covers messages and recording results, and mute suppresses automatic replies', () => {
+  const t = setup({ speech: true });
+  t.click('speak-message'); assert.match(t.calls.utterance.text, /娘からの連絡.*お茶/);
+  t.click('greeting'); assert.match(t.calls.utterance.text, /おはよう.*残しました/);
+  t.click('medicine-asa'); assert.match(t.calls.utterance.text, /朝の薬.*残しました/);
+  t.click('undo-medicine-asa'); assert.match(t.calls.utterance.text, /取り消しました/);
+  t.click('toggle-voice');
+  assert.equal(t.el('toggle-voice').getAttribute('aria-pressed'), 'false');
+  const count = t.calls.spoken.length;
+  t.click('medicine-hiru'); assert.equal(t.calls.spoken.length, count);
+  assert.equal(t.el('medicine-hiru').disabled, true);
+  t.click('speak-message'); assert.equal(t.calls.spoken.length, count + 1);
+  t.click('toggle-voice'); assert.equal(t.el('toggle-voice').getAttribute('aria-pressed'), 'true');
+  t.close();
+});
+
+test('speech errors do not remove records and stale callbacks do not interrupt newer speech', () => {
+  const t = setup({ speech: true });
+  t.click('speak'); const old = t.calls.utterance;
+  t.click('medicine-yoru');
+  old.onerror(); old.onend();
+  assert.equal(t.el('stop-speech').hidden, false);
+  assert.match(t.el('speech-status').textContent, /読み上げています/);
+  t.calls.utterance.onerror();
+  assert.match(t.el('speech-status').textContent, /文字で確認/);
+  assert.equal(t.el('medicine-yoru').disabled, true);
+  assert.equal(t.el('family-medicine-list').children.length, 1);
+  t.dom.window.speechSynthesis.speak = () => { throw new Error('Playback unavailable'); };
+  t.click('greeting');
+  assert.equal(t.el('family-greeting').hidden, false);
+  assert.match(t.el('speech-status').textContent, /文字で確認/);
+  t.click('open-reset'); t.click('confirm-reset');
+  assert.equal(t.el('family-medicine').hidden, true);
+  assert.equal(t.el('medicine-yoru').disabled, false);
+  t.close();
+});
+
+test('regional entry links only to official information without asserting a collection date', () => {
+  const t = setup();
+  const card = t.el('ueda-life');
+  const links = [...card.querySelectorAll('a')];
+  assert.equal(links.length, 4);
+  for (const link of links) {
+    assert.ok(['www.city.ueda.nagano.jp','www.ueda-shakyo.or.jp'].includes(new URL(link.href).hostname));
+    assert.equal(link.target, '_blank'); assert.equal(link.rel, 'noopener noreferrer');
+  }
+  assert.match(card.textContent, /同じ自治会でも/);
+  assert.match(card.textContent, /日程の自動連携はまだありません/);
+  assert.match(card.textContent, /有償/);
+  t.close();
 });
