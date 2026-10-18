@@ -381,3 +381,68 @@ test('greeting playback errors are visible beside the greeting and never create 
   assert.equal(t.el('stop-speech').hidden, false);
   t.close();
 });
+
+test('condition is optional and a reported greeting never invents a condition', () => {
+  const t=setup({speech:true});
+  assert.equal(t.el('greeting-audience').textContent,'家族へ報告');
+  assert.equal(t.el('condition-picker').open,false);
+  assert.equal(t.el('family-condition').hidden,true);
+  t.click('greeting');
+  assert.equal(t.el('condition-picker').open,true);
+  assert.match(t.el('word-status').textContent,/家族が読んだかは未確認/);
+  assert.equal(t.el('family-condition').hidden,true);
+  t.click('skip-condition');
+  assert.equal(t.el('condition-picker').open,false);
+  assert.equal(t.el('family-condition').hidden,true);
+  assert.match(t.el('condition-status').textContent,/記録は残していません/);
+  t.check('[data-scene="consult"]');
+  assert.equal(t.doc.querySelector('[name="consult-record"][value="condition-18"]'),null);
+  t.close();
+});
+
+test('a condition preserves the chosen words and person provenance, and replacement or undo invalidates consultation', () => {
+  const t=setup({speech:true});
+  assert.deepEqual([...t.doc.querySelectorAll('[data-condition]')].map(b=>b.dataset.condition),['よく眠れた','眠れなかった','元気','疲れた','どこか痛い']);
+  t.check('[data-condition="疲れた"]');
+  assert.equal(t.el('family-condition').hidden,false);
+  assert.equal(t.el('family-condition-text').textContent,'疲れた');
+  assert.match(t.el('family-condition').textContent,/春子さん（本人）.*健康状態の判定ではありません/s);
+  assert.match(t.calls.utterance.text,/疲れた.*家族が読んだかは未確認/);
+  assert.match(t.el('last-time').textContent,/10月17日/);
+  t.click('skip-condition');
+  assert.equal(t.el('family-condition-text').textContent,'疲れた');
+  t.check('[data-scene="consult"]');
+  t.check('[name="consult-record"][value="condition-18"]');t.check('[name="question"]');t.click('preview-sheet');
+  assert.match(t.el('sheet-records').textContent,/疲れた.*本人が選んだ.*春子さん（本人）/s);
+  t.check('[data-scene="person"]');t.check('[data-condition="元気"]');
+  assert.equal(t.el('family-condition-text').textContent,'元気');
+  assert.equal(t.el('print-sheet').hidden,true);
+  t.check('[data-scene="consult"]');
+  assert.equal(t.doc.querySelector('[name="consult-record"][value="condition-18"]').checked,false);
+  t.check('[data-scene="person"]');t.click('undo-condition');
+  assert.equal(t.el('family-condition').hidden,true);
+  assert.equal(t.el('condition-summary').textContent,'今日の体調は？');
+  t.check('[data-scene="consult"]');
+  assert.equal(t.doc.querySelector('[name="consult-record"][value="condition-18"]'),null);
+  t.close();
+});
+
+test('an unconnected condition stays personal and is not automatically reported when changing examples', () => {
+  const t=setup();setExample(t,'solo');
+  assert.equal(t.el('greeting-audience').textContent,'自分用に記録');
+  t.check('[data-condition="よく眠れた"]');
+  assert.equal(t.el('family-condition').hidden,true);
+  assert.match(t.el('condition-status').textContent,/自分用.*家族には共有されません/);
+  setExample(t,'connected');
+  assert.equal(t.el('family-condition').hidden,true);
+  assert.equal(t.el('condition-summary').textContent,'今日の体調：よく眠れた（自分用）');
+  t.check('[data-condition="眠れなかった"]');
+  assert.equal(t.el('family-condition').hidden,false);
+  assert.equal(t.el('family-condition-text').textContent,'眠れなかった');
+  t.click('open-reset');t.click('confirm-reset');
+  assert.equal(t.el('family-condition').hidden,true);
+  assert.equal(t.el('condition-picker').open,false);
+  assert.equal(t.el('undo-condition').hidden,true);
+  assert.equal(t.el('condition-summary').textContent,'今日の体調は？');
+  t.close();
+});
