@@ -45,6 +45,7 @@ function source(start,end){
   const solo={status:'solo',others:0,personOthers:0,familyOthers:0};
   const unknown={status:'unknown',others:null,personOthers:null,familyOthers:null};
   f.state(family);f.events([incoming]);
+  f.document.getElementById('person-conversation-panel').open=true;
   const grid=f.document.querySelector('#h-message-reply .kibun-grid');
   const retry=f.document.getElementById('person-conversation-retry');
   assert.ok(f.visible(grid));
@@ -174,6 +175,7 @@ for(const status of ['ready','cached','error']){
   assert.equal(f.c.currentFamilyMessageId,'');
   assert.equal(f.document.getElementById('h-incoming-message').textContent,'');
   assert.equal(f.visible(f.document.getElementById('h-message-reply')),false);
+  f.document.getElementById('person-conversation-panel').open=true;
   assert.ok(f.visible(f.document.getElementById('person-history-open')));
   assert.equal(f.spoken.length,0,'old messages are not announced again');
   const today={_id:'today-hello',type:'aisatsu-back',text:'おはよう',date:day,at:at(day)};
