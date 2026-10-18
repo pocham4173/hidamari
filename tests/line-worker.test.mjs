@@ -544,6 +544,63 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.deepEqual(got, ['Ub0', 'Ub1', 'Ub2', 'Ub3', 'Ub4', 'Ub5'], '6人全員に1回ずつ届く');
   console.log('家族が多い家庭のタグのお知らせ(続きから・二重なし) passed');
 }
+/* タグの途中送信の再開(PR #216 再レビュー指摘・2026-10-19): 予約した相手にだけ送り、途中から増えた家族は1通分を予約できたときだけ送る */
+{
+  // worker.js の deliveryKey と同じ作り方(再送キー)
+  const dkey = async (value) => {
+    const b = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+    b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+    const h = Array.from(b.slice(0, 16), (x) => x.toString(16).padStart(2, '0')).join('');
+    return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+  };
+  const month = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 7);
+  const ledger = (n) => put('lineUsage/ledger-' + month, { month: S(month), used: { integerValue: String(n) } });
+  const ledgerNow = () => Number(db.get('lineUsage/ledger-' + month)?.fields.used.integerValue || 0);
+  const setup = async ({ reservedMonth = month } = {}) => {
+    for (const k of [...db.keys()]) if (/^(watchTags|tagAlertCounters|tagAlertReceipts|lineUsage)\//.test(k) || /^(groups\/g7|lineLinks\/c\d|consents\/c\d)\b/.test(k)) db.delete(k);
+    put('groups/g7', { createdBy: S('c0') });
+    for (let i = 0; i < 3; i++) { put('groups/g7/members/c' + i, { name: S('家族' + i), status: S('approved') }); put('consents/c' + i, consent()); }
+    put('lineLinks/c0', { lineUserId: S('Uc0'), groupId: S('g7') });
+    put('lineLinks/c1', { lineUserId: S('Uc1'), groupId: S('g7') });
+    put('watchTags/t7', { groupId: S('g7'), active: { booleanValue: true } });
+    const at = new Date(Date.now() - 60000);
+    put('watchTags/t7/alerts/f7', { type: S('found'), situation: S('lost'), count: { integerValue: '1' }, senderUid: S('f7'), createdAt: T(at) });
+    const k = async (to) => dkey('watchTags/t7/alerts/f7\n' + at.toISOString() + '\n' + to);
+    // 前の回: 2人分を予約し、1人目(Uc0)へ送ったところで通信回数の上限で止まった状態
+    put('tagAlertReceipts/' + await dkey('watchTags/t7/alerts/f7'), { pendingAt: T(at), sentTo: { arrayValue: { values: [S(await k('Uc0'))] } },
+      reservedFor: { arrayValue: { values: [S(await k('Uc0')), S(await k('Uc1'))] } }, reservedMonth: S(reservedMonth),
+      expiresAt: T(new Date(Date.now() + 3 * 3600000)) });
+    // 再開の前に、承認・同意が有効な家族がもう1人LINE連携した
+    put('lineLinks/c2', { lineUserId: S('Uc2'), groupId: S('g7') });
+  };
+  const resume = async () => { const b = pushes.length; await tick(); return pushes.slice(b).filter((p) => /^Uc/.test(p.to)).map((p) => p.to).sort(); };
+  const receipt7 = async () => db.get('tagAlertReceipts/' + await dkey('watchTags/t7/alerts/f7')).fields;
+
+  // 1. 再レビューの再現: 月の台帳が200/200(予約済みの2人分を含む)・LINEの使用199。予約済みの残り1人(Uc1)にだけ送り、追加の家族(Uc2)には送らない
+  await setup(); quota = { type: 'limited', value: 200 }; usage = 199; ledger(200);
+  let got = await resume();
+  assert.deepEqual(got, ['Uc1'], '予約済みの相手にだけ送り、予約できない追加の家族には送らない');
+  assert.equal(ledgerNow(), 200, '台帳は予約数のまま(201通相当の送信をしない)');
+  assert.equal((await receipt7()).result.stringValue, 'sent', 'タグのお知らせは送り終えた扱い(追加の家族はアプリの中だけ)');
+  // 2. 枠があれば、追加の家族の1通分だけ予約して送る。予約済みのUc1を二重に数えない
+  await setup(); quota = { type: 'limited', value: 200 }; usage = 10; ledger(12);
+  got = await resume();
+  assert.deepEqual(got, ['Uc1', 'Uc2'], '予約済みの人と、1通分を予約できた追加の家族に送る');
+  assert.equal(ledgerNow(), 13, '追加の家族の1通分だけ増える(予約済みの人を二重に数えない)');
+  // 3. 予約した月と今の月が違う(月をまたいだ再開): 前の月の予約では送らず、今の月の分として1人ずつ予約し直す
+  await setup({ reservedMonth: '2000-01' }); quota = { type: 'limited', value: 200 }; usage = 199; ledger(199);
+  got = await resume();
+  assert.deepEqual(got, ['Uc1'], '今の月の枠が1通分しかなければ、1人にだけ送る');
+  assert.equal(ledgerNow(), 200, '今の月の台帳に数える');
+  // 4. 解除・脱退の確かめは続く: 予約済みでも、再開前にLINE解除した人には送らない
+  await setup(); quota = { type: 'limited', value: 200 }; usage = 10; ledger(12);
+  db.delete('lineLinks/c1'); db.delete('lineLinks/c2');
+  got = await resume();
+  assert.deepEqual(got, [], 'LINE解除した人には、予約済みでも送らない');
+  for (const k of [...db.keys()]) if (/^(watchTags|tagAlertCounters|tagAlertReceipts|lineUsage)\//.test(k) || /^(groups\/g7|lineLinks\/c\d|consents\/c\d)\b/.test(k)) db.delete(k);
+  usage = 0; clearLedger();
+  console.log('タグの途中送信の再開(予約した相手だけ・追加の家族は予約できたときだけ・二重に数えない・月またぎ・解除) passed');
+}
 /* ひと声のきっかけ(2026-10-04): 「LINEにも送る」をオンにし、ご本人が了解した家庭だけ、
    決めた時刻から3時間のうちに、ご本人の操作がない日に、その日の担当1人へ1日1通。名前・様子は書かない。 */
 {

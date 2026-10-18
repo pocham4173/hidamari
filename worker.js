@@ -1088,12 +1088,31 @@ async function runTagAlerts(env, fs, now, book) {
       // 月の残りが、この家族へ送る人数に足りないときは送らない(途中まで届いて残りが毎回やり直しになるのを防ぐ)
       const linked = new Set(links.map((l) => l.fields.lineUserId).filter((v) => typeof v === 'string' && v)).size;
       if (!started && !book.canSendTag(linked)) { await mark('monthly'); continue; }
-      // 共通の送信枠を、送る人数分まとめて予約する(2026-10-19。続きの送信では取り直さない)。
-      // タグはひと声・予定より優先で、タグ用に残した分も使える。家庭の1日上限では止めない(数だけ数える)
+      // 共通の送信枠の予約(2026-10-19)。タグはひと声・予定より優先で、タグ用に残した分も使える。家庭の1日上限では止めない(数だけ数える)。
+      // 予約した相手(再送キー)と予約した月を受付(tagAlertReceipts)に残し、予約した相手にだけ送る(PR #216 再レビュー指摘)。
+      //  - 最初の回: 今の連携の相手のうち、まだ予約していない人数分をまとめて予約する(途中で止まって再開しても取り直さない)
+      //  - 続きの回: 予約済みの相手はそのまま送る。途中から増えた相手は、その1通分を予約できたときだけ送る
+      //  - 予約した月と今の月が違うときは、今の月の分として予約し直す(前の月の予約で今月の分を送らない)
+      const month = jstDateString(now).slice(0, 7);
+      const keyOfTo = (to) => deliveryKey(a.path + '\n' + at.toISOString() + '\n' + to);
+      const reservedFor = new Set(receipt && receipt.fields.reservedMonth === month && Array.isArray(receipt.fields.reservedFor)
+        ? receipt.fields.reservedFor.filter((k) => typeof k === 'string') : []);
+      const reserveKeys = async (keys) => book.reserve('tag', groupId, keys.length, async () => {
+        const cur = await fs.get(receiptPath);
+        const prev = cur && cur.fields.reservedMonth === month && Array.isArray(cur.fields.reservedFor) ? cur.fields.reservedFor : [];
+        return { writes: [{ update: { name: fs.root + '/' + receiptPath,
+          fields: toFields({ reservedFor: [...new Set([...prev, ...keys])], reservedMonth: month }) },
+          updateMask: { fieldPaths: ['reservedFor', 'reservedMonth'] }, currentDocument: cur ? { updateTime: cur.updateTime } : { exists: false } }],
+          after: () => { for (const k of keys) reservedFor.add(k); } };
+      });
       if (!started && linked) {
-        const why = await book.reserve('tag', groupId, linked);
-        if (why === 'monthly') { await mark('monthly'); continue; }
-        if (why) continue;                                               // 競合が続いた: 次の回に
+        const tos = [...new Set(links.map((l) => l.fields.lineUserId).filter((v) => typeof v === 'string' && v))];
+        const need = (await Promise.all(tos.map(keyOfTo))).filter((k) => !reservedFor.has(k));
+        if (need.length) {
+          const why = await reserveKeys(need);
+          if (why === 'monthly') { await mark('monthly'); continue; }
+          if (why) continue;                                             // 競合が続いた: 次の回に
+        }
       }
       const text = buildTagMessage(a.fields, at);
       let complete = true, reached = 0;
@@ -1103,13 +1122,19 @@ async function runTagAlerts(env, fs, now, book) {
           const to = link.fields.lineUserId;
           if (typeof to !== 'string' || !to || seen.has(to)) continue;
           // 同じ読み取り・同じ相手には同じ再送キーを使う(LINE側で二重送信を防ぐ)
-          const key = await deliveryKey(a.path + '\n' + at.toISOString() + '\n' + to);
+          const key = await keyOfTo(to);
           if (sentTo.has(key)) { seen.add(to); reached++; continue; }
           const member = await checkMember(groupId, link.id);
           if (!member) continue;
           // ご本人には送らない(「ご本人に電話して」という家族向けの知らせのため)
           if (member.mode === 'honnin' || member.role === 'honnin' || member.consentMode === 'honnin') continue;
           seen.add(to);
+          // 予約していない相手(続きの回に新しく連携した家族など)は、その1通分を予約できたときだけ送る。
+          // 月の残りがなければ、その人には送らない(アプリの中のお知らせだけになる)。競合が続いたときは次の回に
+          if (!reservedFor.has(key)) {
+            const why = await reserveKeys([key]);
+            if (why) { if (why === 'conflict') complete = false; continue; }
+          }
           const r = await push(env, fs, to, text, key);
           if (!r) { complete = false; continue; }
           reached++; sentTo.add(key);
@@ -1118,7 +1143,8 @@ async function runTagAlerts(env, fs, now, book) {
       } catch (e) {
         // 通信の上限で止まったら、送り終えた相手を控えて次の回に続きから送る(後片付け枠で書く)
         if (e.message === 'request-budget' && sentTo.size) {
-          try { await fs.set(receiptPath, { pendingAt: at, sentTo: [...sentTo], expiresAt: new Date(at.getTime() + TAG_WINDOW_MS + 3600000) }, true); } catch (ignore) {}
+          try { await fs.set(receiptPath, { pendingAt: at, sentTo: [...sentTo], reservedFor: [...reservedFor], reservedMonth: month,
+            expiresAt: new Date(at.getTime() + TAG_WINDOW_MS + 3600000) }, true); } catch (ignore) {}
         }
         throw e;
       }
