@@ -5,21 +5,24 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JT5YEykOnzNZK9oigJgf+3vCqqa+bQWr2pib6llYTUk='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
-  <meta name="theme-color" content="#faf7ef">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8WE8oaK9LEeGLwyBjyByWiGW9STqaLmvhVTrMQrklno='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="theme-color" content="#F28A42">
   <title>3つの画面をためす｜まいにこ・試作</title>
   <link rel="icon" href="data:,">
   <style>
-    :root{color-scheme:light;--paper:#faf7ef;--ink:#283b35;--muted:#53675f;--green:#335c49;--green-light:#eaf1e8;--orange:#a44822;--orange-light:#fff0dc;--blue:#315b73;--blue-light:#edf3f6;--line:#d5ddd3;--white:#fffefa}
+    :root{color-scheme:light;--paper:#F4F7FA;--ink:#263342;--muted:#667085;--green:#3F815C;--green-base:#63A57D;--green-light:#E5F4EA;--orange:#D96B24;--orange-base:#F28A42;--orange-light:#FFF0E4;--blue:#315FAE;--blue-base:#4F7FD3;--blue-light:#EAF1FD;--purple:#6D50AA;--purple-light:#F1ECFB;--teal:#2FA89A;--teal-dark:#197D73;--line:#D7DFE7;--white:#FFFFFF}
     *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;font-size:18px;line-height:1.75;overflow-wrap:anywhere}
     [hidden]{display:none!important}button,input{font:inherit}button,a,input{touch-action:manipulation}button{cursor:pointer}button:disabled{cursor:default;opacity:.65}button,a,label{-webkit-tap-highlight-color:transparent}a{color:var(--green);text-underline-offset:5px}button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible,[tabindex="-1"]:focus-visible{outline:3px solid #186ab0;outline-offset:4px}
     h1,h2,h3,p{margin:0}h1{font-size:clamp(28px,4.3vw,38px);line-height:1.5;letter-spacing:.025em}h2{font-size:24px;line-height:1.5}h3{font-size:21px;line-height:1.5}button{border:0}svg{width:26px;height:26px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.sprite{position:absolute;width:0;height:0;overflow:hidden}
     .shell{max-width:1140px;margin:auto;padding:0 28px}.masthead{padding-top:24px}.masthead-row{display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{display:flex;gap:12px;align-items:center;font-weight:800;font-size:25px;letter-spacing:.12em}.brand-mark{width:43px;height:46px;display:grid;place-content:center;color:#2f5391;border:2px solid #2f5391;border-radius:5px;font-size:14px;line-height:1.12;letter-spacing:1px;position:relative}.brand-mark:after{content:"";width:9px;height:9px;background:#dc792e;position:absolute;bottom:-4px;right:-4px;border:2px solid var(--paper)}.edition{font-size:14px;font-weight:700;color:var(--orange);background:var(--orange-light);padding:5px 12px;border-radius:7px;white-space:nowrap}
-    .demo-note{font-size:15px;color:var(--muted);margin-top:19px;padding-bottom:21px;border-bottom:1px solid var(--line)}.demo-note strong{color:var(--ink)}.scene-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:24px}.scene-nav button{display:flex;align-items:center;justify-content:center;gap:9px;min-height:68px;padding:12px;background:transparent;border:1px solid #b9c9bc;border-radius:14px;color:var(--muted);font-weight:700}.scene-nav button[aria-pressed="true"]{background:var(--green);color:#fff;border-color:var(--green);box-shadow:0 3px 0 #234433}.scene-nav button:first-child[aria-pressed="true"]{background:var(--orange);border-color:var(--orange);box-shadow:0 3px 0 #733518}.nav-break{display:none}.scene-nav button:last-child[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);box-shadow:0 3px 0 #234557}
-    .view{padding:36px 0 12px}.view-heading{margin-bottom:25px}.eyebrow{font-size:15px;font-weight:700;color:var(--muted);letter-spacing:.06em;margin-bottom:10px}.intro{margin-top:10px;color:var(--muted)}.person-intro{font-size:21px}.scene-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:19px}.card{padding:26px;background:var(--white);border:1px solid var(--line);border-radius:22px;min-width:0}.card-icon{display:grid;place-items:center;width:49px;height:49px;border-radius:15px;margin-bottom:17px;background:var(--green-light);color:var(--green)}.person .card-icon{background:var(--orange-light);color:var(--orange)}.card-icon svg{width:28px;height:28px}.card h2{margin-bottom:16px}.caption{color:var(--muted);font-size:15px}.person .card{font-size:22px}.person .caption{font-size:17px}.quiet{margin:0 0 16px;color:var(--muted)}.visit{padding:19px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:16px}.visit .date{font-size:23px;font-weight:700}.visit .time{font-size:35px;font-weight:800;letter-spacing:.03em}.visit .date small{font-size:18px}.message{font-size:24px;line-height:1.8;margin:10px 0 22px}.stack{display:grid;gap:12px}.btn{min-height:55px;display:flex;align-items:center;justify-content:center;gap:9px;padding:12px 17px;border-radius:12px;background:var(--green);color:#fff;font-weight:700;line-height:1.55;width:100%;text-align:center;box-shadow:0 3px 0 #274737}.btn:active{transform:translateY(2px);box-shadow:none}.btn.secondary{background:#fff;color:var(--green);border:1.5px solid #72907c;box-shadow:0 2px 0 #dee6dc}.person .btn{min-height:65px;font-size:22px}.person .btn.primary{background:var(--orange);box-shadow:0 3px 0 #773619}.btn.blue{background:var(--blue);box-shadow:0 3px 0 #234557}.text-btn{background:transparent;color:var(--green);text-decoration:underline;text-underline-offset:5px;min-height:48px;padding:10px 4px;font-size:17px;text-align:left}.feedback{font-size:17px;line-height:1.7;color:var(--green);margin-top:16px;padding:14px;border-radius:12px;background:var(--green-light)}.feedback:empty{display:none}.notice{color:var(--muted);font-size:15px;margin-top:23px}.person .notice{font-size:17px}.status-tag{display:inline-flex;padding:3px 11px;border-radius:7px;font-size:15px;font-weight:700;background:var(--green-light);color:var(--green)}.status-tag.waiting{background:#f8edd8;color:#795415}.status-tag.done{background:var(--blue-light);color:var(--blue)}
-    .family-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:20px}.family-main{display:grid;gap:20px}.record-row{display:flex;align-items:flex-start;gap:14px;margin-bottom:19px}.record-symbol{background:var(--green-light);color:var(--green);border-radius:50%;width:47px;height:47px;display:grid;place-items:center;flex-shrink:0}.record-time{font-size:15px;color:var(--muted)}.record-title{font-size:22px;font-weight:800}.record-copy{margin-top:6px}.border-top{border-top:1px solid var(--line);padding-top:17px;margin-top:17px}.editor-box{margin:18px 0;padding:20px;border:1px solid #b9c9bc;border-radius:15px;background:#f3f7f0}.editor-box .stack{margin-top:15px}fieldset{border:0;margin:0;padding:0;min-width:0}legend{font-size:20px;font-weight:700;margin-bottom:12px;padding:0}.choice{display:flex;gap:12px;align-items:flex-start;padding:13px 0;cursor:pointer;line-height:1.65}.choice input{appearance:auto;accent-color:var(--green);width:23px;height:23px;margin:4px 0 0;flex-shrink:0}.choice strong{display:block;font-size:18px}.choice small{display:block;color:var(--muted);font-size:15px}.task-title{font-size:25px;line-height:1.6;margin:17px 0 9px}.task-status{font-weight:700;margin:22px 0 3px}.task-state{background:var(--green-light);border-radius:12px;padding:16px;margin:19px 0}.task-state p{margin:5px 0 0}.task-actions{display:grid;gap:12px}.family-reply{margin-top:18px;padding:17px;border-left:4px solid #c57d44;background:#fff5e7}.family-reply p{font-size:20px;margin-top:7px}.family-reply strong{font-size:16px}.next-step{margin-top:23px}.next-step .btn{max-width:400px;margin-left:auto}
+    .demo-note{font-size:15px;color:var(--muted);margin-top:19px;padding-bottom:21px;border-bottom:1px solid var(--line)}.demo-note strong{color:var(--ink)}.scene-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:24px}.scene-nav button{display:flex;align-items:center;justify-content:center;gap:9px;min-height:68px;padding:12px;background:transparent;border:1px solid #b9c9bc;border-radius:14px;color:var(--muted);font-weight:700}.scene-nav button[aria-pressed="true"]{background:var(--teal);color:var(--ink);border-color:var(--teal-dark);box-shadow:0 3px 0 var(--teal-dark)}.scene-nav button:first-child[aria-pressed="true"]{background:var(--orange-base);border-color:var(--orange);box-shadow:0 3px 0 var(--orange)}.nav-break{display:none}.scene-nav button:last-child[aria-pressed="true"]{background:var(--purple);color:#fff;border-color:var(--purple);box-shadow:0 3px 0 #50377E}
+    .view{padding:36px 0 12px}.view-heading{margin-bottom:25px}.eyebrow{font-size:15px;font-weight:700;color:var(--muted);letter-spacing:.06em;margin-bottom:10px}.intro{margin-top:10px;color:var(--muted)}.person-intro{font-size:21px}.scene-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:19px;align-items:start}.card{padding:26px;background:var(--white);border:1px solid var(--line);border-radius:22px;min-width:0}.card-icon{display:grid;place-items:center;width:49px;height:49px;border-radius:15px;margin-bottom:17px;background:var(--green-light);color:var(--green)}.person .card-icon{background:var(--orange-light);color:var(--orange)}.card-icon svg{width:28px;height:28px}.card h2{margin-bottom:16px}.caption{color:var(--muted);font-size:15px}.person .card{font-size:22px}.person .caption{font-size:17px}.quiet{margin:0 0 16px;color:var(--muted)}.visit{padding:19px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:16px}.visit .date{font-size:23px;font-weight:700}.visit .time{font-size:35px;font-weight:800;letter-spacing:.03em}.visit .date small{font-size:18px}.message{font-size:24px;line-height:1.8;margin:10px 0 22px}.stack{display:grid;gap:12px}.btn{min-height:55px;display:flex;align-items:center;justify-content:center;gap:9px;padding:12px 17px;border-radius:12px;background:var(--green);color:#fff;font-weight:700;line-height:1.55;width:100%;text-align:center;box-shadow:0 3px 0 #274737}.btn:active{transform:translateY(2px);box-shadow:none}.btn.secondary{background:#fff;color:var(--green);border:1.5px solid #72907c;box-shadow:0 2px 0 #dee6dc}.person .btn{min-height:65px;font-size:22px}.person .btn.primary{background:var(--orange-base);color:var(--ink);box-shadow:0 3px 0 var(--orange)}.btn.blue{background:var(--blue);box-shadow:0 3px 0 #234557}.text-btn{background:transparent;color:var(--green);text-decoration:underline;text-underline-offset:5px;min-height:48px;padding:10px 4px;font-size:17px;text-align:left}.feedback{font-size:17px;line-height:1.7;color:var(--green);margin-top:16px;padding:14px;border-radius:12px;background:var(--green-light)}.feedback:empty{display:none}.notice{color:var(--muted);font-size:15px;margin-top:23px}.person .notice{font-size:17px}.status-tag{display:inline-flex;padding:3px 11px;border-radius:7px;font-size:15px;font-weight:700;background:var(--green-light);color:var(--green)}.status-tag.waiting{background:#f8edd8;color:#795415}.status-tag.done{background:var(--blue-light);color:var(--blue)}
+    .family-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:20px;align-items:start}.family-main{display:grid;gap:20px}.record-row{display:flex;align-items:flex-start;gap:14px;margin-bottom:19px}.record-symbol{background:var(--green-light);color:var(--green);border-radius:50%;width:47px;height:47px;display:grid;place-items:center;flex-shrink:0}.record-time{font-size:15px;color:var(--muted)}.record-title{font-size:22px;font-weight:800}.record-copy{margin-top:6px}.border-top{border-top:1px solid var(--line);padding-top:17px;margin-top:17px}.editor-box{margin:18px 0;padding:20px;border:1px solid #b9c9bc;border-radius:15px;background:var(--green-light)}.editor-box .stack{margin-top:15px}fieldset{border:0;margin:0;padding:0;min-width:0}legend{font-size:20px;font-weight:700;margin-bottom:12px;padding:0}.choice{display:flex;gap:12px;align-items:flex-start;padding:13px 0;cursor:pointer;line-height:1.65}.choice input{appearance:auto;accent-color:var(--green);width:23px;height:23px;margin:4px 0 0;flex-shrink:0}.choice strong{display:block;font-size:18px}.choice small{display:block;color:var(--muted);font-size:15px}.task-title{font-size:25px;line-height:1.6;margin:17px 0 9px}.task-status{font-weight:700;margin:22px 0 3px}.task-state{background:var(--green-light);border-radius:12px;padding:16px;margin:19px 0}.task-state p{margin:5px 0 0}.task-actions{display:grid;gap:12px}.family-reply{margin-top:18px;padding:17px;border-left:4px solid var(--orange-base);background:var(--orange-light)}.family-reply p{font-size:20px;margin-top:7px}.family-reply strong{font-size:16px}.next-step{margin-top:23px}.next-step .btn{max-width:400px;margin-left:auto}
     .consult-layout{display:grid;grid-template-columns:1.2fr .8fr;gap:20px;align-items:start}.consult-layout .card + .card{margin-top:18px}.step-title{display:flex;align-items:center;gap:12px;margin-bottom:13px}.step-number{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:var(--blue-light);color:var(--blue);font-size:17px;font-weight:800}.record-option{padding:16px 0;border-bottom:1px solid var(--line)}.record-option:last-child{border-bottom:0}.selected-count{font-size:15px;color:var(--muted);margin:18px 0 12px}.error{color:#9b3121;font-weight:700;margin:15px 0}.error:empty{display:none}.explanation{font-size:17px;color:var(--muted)}.explanation p+p{margin-top:14px}.preview{background:#fff;padding:36px;border:1px solid #c6d0cc;border-radius:15px;margin-top:25px}.preview h2{font-size:28px;margin:12px 0}.preview h3{margin-top:23px;padding-bottom:10px;border-bottom:1px solid var(--line)}.preview ul{padding-left:24px;margin:13px 0}.preview li+li{margin-top:13px}.preview .original{font-size:18px}.preview .origin{display:block;font-size:14px;color:var(--muted)}.preview-actions{display:flex;gap:12px;margin-top:22px}.preview-actions .btn{flex:1}.stamp{color:#865022;font-size:14px;font-weight:700;letter-spacing:.05em}.preview .footer-note{font-size:14px;color:var(--muted);border-top:1px solid var(--line);padding-top:15px;margin-top:25px}.last-row{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:24px 0 0;padding:20px 0;border-top:1px solid var(--line)}.last-row a{font-size:16px}.page-footer{font-size:14px;color:var(--muted);padding:0 0 28px}.reset-panel{border:1px solid #b9c9bc;background:#fff;padding:20px;border-radius:14px;margin-bottom:20px}.reset-actions{display:flex;gap:12px;margin-top:14px}.reset-actions button{width:auto;flex:1}.live-note{font-size:15px;color:var(--green);margin-bottom:12px}.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
-    @media(min-width:800px){.person .card{display:flex;flex-direction:column}.person .card .stack{margin-top:auto}.person .card .feedback{margin-top:16px}}
+    /* Keep the existing app's purpose colors and core person controls. */
+    .person-date{display:block;width:100%;padding:22px;background:var(--orange-base);border:2px solid var(--orange);border-radius:20px;color:var(--ink);text-align:center;font-weight:800;margin-bottom:18px;line-height:1.65}.person-date span{display:block}.person-date .wareki{font-size:22px}.person-date .date-large{font-size:clamp(29px,5vw,40px)}.person-date .date-time{font-size:30px}.person-date .date-example{font-size:16px;font-weight:600}.person-date .date-read{font-size:19px;margin-top:8px}
+    .voice-panel{padding:18px 22px;border:2px solid var(--orange-base);border-radius:16px;background:var(--white);margin-bottom:24px}.voice-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.voice-actions .btn{width:auto;min-height:52px;font-size:19px}.voice-panel .caption{font-size:17px}.person .medicine-card{border-top:5px solid var(--green-base)}.person .medicine-card .card-icon{background:var(--green-light);color:var(--green)}.person .medicine-card .btn{background:var(--green-base);color:var(--ink);box-shadow:0 3px 0 var(--green)}.medicine-row+.medicine-row{margin-top:12px}.medicine-row .feedback{margin-top:8px}.person .schedule-card{border-top:5px solid var(--blue-base)}.person .schedule-card .card-icon{background:var(--blue-light);color:var(--blue)}.person .schedule-card .btn{border-color:var(--blue);color:var(--blue)}.person .message-card{border-top:5px solid var(--teal)}.person .message-card .card-icon{background:#E3F6F3;color:var(--teal-dark)}.person .greeting-card{border-top:5px solid var(--orange-base)}.family-medicine{border-left-color:var(--green-base);background:var(--green-light)}.family-medicine ul{padding-left:22px}.family-medicine li+li{margin-top:8px}.local-card{margin-top:22px}.local-links{display:grid;gap:12px;margin-top:18px}.local-links a{padding:12px 15px;min-height:52px;border:1px solid var(--teal-dark);border-radius:10px;background:#E3F6F3;color:var(--teal-dark);font-weight:700}#consult .btn.blue{background:var(--purple);box-shadow:0 3px 0 #50377E}#consult .step-number{background:var(--purple-light);color:var(--purple)}
+    @media(min-width:800px){.person .card{display:flex;flex-direction:column}.person .card .stack{margin-top:0}.person .card .feedback{margin-top:16px}}
     @media(max-width:850px){.scene-grid{grid-template-columns:1fr}.person .card{font-size:23px}.person .card h2{font-size:26px}.person .card .stack{grid-template-columns:1fr 1fr}.family-grid,.consult-layout{grid-template-columns:1fr}.consult-layout aside{order:2}.scene-nav button{font-size:16px}.scene-nav svg{width:22px;height:22px}}
     @media(max-width:480px){.nav-break{display:initial}.shell{padding:0 18px}.masthead{padding-top:18px}.brand{font-size:23px}.scene-nav{gap:7px;margin-top:18px}.scene-nav button{flex-direction:column;gap:4px;padding:10px 5px;font-size:15px;line-height:1.5;min-height:78px}.scene-nav svg{width:23px;height:23px}.view{padding-top:28px}.intro{font-size:18px}.person-intro{font-size:20px}.card{padding:23px 21px;border-radius:19px}.person .card .stack{grid-template-columns:1fr}.person .btn{font-size:23px}.view-heading{margin-bottom:21px}.message{font-size:24px}.preview{padding:24px 20px}.preview-actions{flex-direction:column}.last-row{align-items:flex-start;flex-direction:column;gap:8px}.demo-note{font-size:14px}.edition{font-size:13px;padding:5px 8px}.reset-actions{flex-direction:column}}
     @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
@@ -49,23 +52,33 @@
   </nav>
   <main>
     <section id="person" class="view person" aria-labelledby="person-heading">
-      <header class="view-heading"><p class="eyebrow">10月18日（日）の例 · 春子さん、82歳</p><h1 id="person-heading" tabindex="-1">春子さん、こんにちは。</h1><p class="intro person-intro">家族の声と、楽しみな予定をここに。</p></header>
+      <header class="view-heading"><p class="eyebrow">朝の画面の例 · 春子さん、82歳</p><h1 id="person-heading" tabindex="-1">春子さん、おはよう。</h1><p class="intro person-intro">家族の声と、楽しみな予定をここに。</p></header>
+      <button id="speak-date" class="person-date" type="button" aria-label="日付と時刻を音声で聞く"><span class="date-example">試作の日付・時刻（固定の例）</span><span class="wareki">令和8年<span>（昭和101年・平成38年）</span></span><span class="date-large">10月18日（日曜日）</span><span class="date-time">午前9時05分</span><span class="date-example">西暦2026年</span><span class="date-read">🔊 日付と時刻を聞く</span></button>
+      <section class="voice-panel" aria-label="読み上げの設定"><strong>ボタンを押すと、声でもお知らせします。</strong><p class="caption">音は消せます。「聞く」を押すと、その内容だけ読み上げます。</p><div class="voice-actions"><button id="toggle-voice" class="btn secondary" type="button" aria-pressed="true">声のお返事：オン（音を消す）</button><button id="stop-speech" class="btn secondary" type="button" hidden>読み上げを止める</button></div><p id="speech-status" class="feedback" role="status"></p></section>
       <div class="scene-grid">
-        <section class="card" aria-labelledby="today-title">
-          <span class="card-icon"><svg aria-hidden="true"><use href="#calendar"/></svg></span><h2 id="today-title">今日の予定</h2><p class="quiet">今日は予定がありません。</p>
-          <div class="visit"><p class="date">明日 <small>19日（月）</small></p><p class="time">午後2時</p><p>娘が会いに来ます。</p></div>
-          <button id="speak" class="btn secondary" type="button"><svg aria-hidden="true"><use href="#sound"/></svg><span>音声で聞く</span></button><p id="speech-status" class="feedback" role="status"></p>
-        </section>
-        <section class="card" aria-labelledby="message-title">
-          <span class="card-icon"><svg aria-hidden="true"><use href="#message"/></svg></span><h2 id="message-title">家族からの連絡</h2><p class="caption">娘より · 今日 午前9時</p><p class="message">明日、午後2時に行くね。<br>いっしょにお茶しよう。</p>
-          <div class="stack"><button class="btn primary" type="button" data-reply="ありがとう">ありがとう</button><button class="btn secondary" type="button" data-reply="あとで電話するね">あとで電話するね</button></div>
-          <p id="reply-status" class="feedback" role="status"></p><button id="undo-reply" class="text-btn" type="button" hidden>返事を取り消す</button>
-        </section>
-        <section class="card" aria-labelledby="word-title">
-          <span class="card-icon"><svg aria-hidden="true"><use href="#sun"/></svg></span><h2 id="word-title">ひとこと伝える</h2><p class="quiet">伝えたいときに、<br>ひとつ押すだけ。</p>
-          <div class="stack"><button id="greeting" class="btn primary" type="button">こんにちは</button><button id="request-call" class="btn secondary" type="button">電話してほしい</button></div>
+        <section class="card greeting-card" aria-labelledby="word-title">
+          <span class="card-icon"><svg aria-hidden="true"><use href="#sun"/></svg></span><h2 id="word-title">いつものご挨拶</h2><p class="quiet">今日の「おはよう」も、<br>大切な記録に。</p>
+          <div class="stack"><button id="greeting" class="btn primary" type="button">☀️ おはよう</button><button id="request-call" class="btn secondary" type="button">電話してほしい</button></div>
           <p id="word-status" class="feedback" role="status"></p><button id="undo-greeting" class="text-btn" type="button" hidden>挨拶を取り消す</button><button id="undo-call" class="text-btn" type="button" hidden>電話のお願いを取り消す</button>
         </section>
+        <section class="card medicine-card" aria-labelledby="medicine-title"><span class="card-icon" aria-hidden="true">💊</span><h2 id="medicine-title">お薬を飲んだら</h2><p class="quiet">朝・昼・夜から選んで<br>押してください。</p>
+          <div class="medicine-row"><button id="medicine-asa" class="btn" type="button" data-medicine="asa">💊 朝の薬を飲みました</button><p id="medicine-status-asa" class="feedback" role="status"></p><button id="undo-medicine-asa" class="text-btn" type="button" data-undo-medicine="asa" hidden>朝の薬の記録を取り消す</button></div>
+          <div class="medicine-row"><button id="medicine-hiru" class="btn" type="button" data-medicine="hiru">💊 昼の薬を飲みました</button><p id="medicine-status-hiru" class="feedback" role="status"></p><button id="undo-medicine-hiru" class="text-btn" type="button" data-undo-medicine="hiru" hidden>昼の薬の記録を取り消す</button></div>
+          <div class="medicine-row"><button id="medicine-yoru" class="btn" type="button" data-medicine="yoru">💊 夜の薬を飲みました</button><p id="medicine-status-yoru" class="feedback" role="status"></p><button id="undo-medicine-yoru" class="text-btn" type="button" data-undo-medicine="yoru" hidden>夜の薬の記録を取り消す</button></div>
+          <p class="caption border-top">飲んだ薬だけ記録します。実際に飲んだことを証明するものではありません。</p><p class="caption">朝・昼・夜のボタンを試せる例です。記録は保存・送信されません。</p>
+        </section>
+        <section class="card schedule-card" aria-labelledby="today-title">
+          <span class="card-icon"><svg aria-hidden="true"><use href="#calendar"/></svg></span><h2 id="today-title">今日の予定</h2><p class="quiet">今日は予定がありません。</p>
+          <div class="visit"><p class="date">明日 <small>19日（月）</small></p><p class="time">午後2時</p><p>娘が会いに来ます。</p></div>
+          <button id="speak" class="btn secondary" type="button"><svg aria-hidden="true"><use href="#sound"/></svg><span>音声で聞く</span></button>
+        </section>
+        <section class="card message-card" aria-labelledby="message-title">
+          <span class="card-icon"><svg aria-hidden="true"><use href="#message"/></svg></span><h2 id="message-title">家族からの連絡</h2><p class="caption">娘より · 今日 午前9時</p><p class="message">明日、午後2時に行くね。<br>いっしょにお茶しよう。</p>
+          <div class="stack"><button class="btn primary" type="button" data-reply="ありがとう">ありがとう</button><button class="btn secondary" type="button" data-reply="あとで電話するね">あとで電話するね</button></div>
+          <button id="speak-message" class="text-btn" type="button">🔊 家族の連絡を聞く</button>
+          <p id="reply-status" class="feedback" role="status"></p><button id="undo-reply" class="text-btn" type="button" hidden>返事を取り消す</button>
+        </section>
+
       </div>
       <p class="notice">急ぐ連絡は、いつもの電話で。まいにこは緊急通報の代わりにはなりません。</p>
       <div class="next-step"><button class="btn secondary" type="button" data-go="family">家族の画面で確かめる →</button></div>
@@ -81,9 +94,11 @@
             <div id="record-editor" class="editor-box" hidden><fieldset><legend>確認したことを選ぶ</legend><p class="caption">今日 午前9時10分の電話、という例です。</p><label class="choice"><input type="checkbox" name="phone-detail" value="声を聞いて話した。"><span>声を聞いて話した</span></label><label class="choice"><input type="checkbox" name="phone-detail" value="明日の買い物について話した。"><span>明日の買い物について話した</span></label></fieldset><p id="record-error" class="error" role="alert"></p><div class="stack"><button id="save-record" class="btn" type="button">この内容で記録する</button><button id="cancel-record" class="btn secondary" type="button">やめる</button></div></div>
             <p id="record-status" class="feedback" role="status"></p><button id="undo-record" class="text-btn" type="button" hidden>いまの記録を取り消す</button>
             <div id="family-reply" class="family-reply" hidden><strong>春子さんからの返事</strong><p id="family-reply-text"></p><span class="caption">記録あり · 家族が読んだかは未確認</span></div>
-            <div id="family-greeting" class="family-reply" hidden><strong>春子さんからの挨拶</strong><p>こんにちは</p><span class="caption">挨拶の記録です。安否の確認ではありません。</span></div>
+            <div id="family-greeting" class="family-reply" hidden><strong>春子さんからの挨拶</strong><p>おはよう</p><span class="caption">10月18日 午前9時05分 · 記録した人：春子さん（本人）<br>挨拶の記録です。安否の確認ではありません。</span></div>
+            <div id="family-medicine" class="family-reply family-medicine" hidden><strong>春子さん本人のお薬の記録</strong><ul id="family-medicine-list"></ul><span class="caption">本人が押した記録です。実際に飲んだことの確認ではありません。</span></div>
             <div id="family-call" class="family-reply" hidden><strong>春子さんからのお願い</strong><p>電話してほしい</p><span class="caption">まだ対応の記録はありません。</span></div>
           </section>
+
           <section class="card" aria-labelledby="next-title"><span class="status-tag">予定</span><h2 id="next-title" style="margin-top:12px">次に会う予定</h2><p class="record-title">明日 19日（月）午後2時</p><p>娘が訪問。一緒にお茶を飲む。</p><p class="caption border-top">予定の登録です。訪問を終えた記録ではありません。</p></section>
         </div>
         <section class="card" aria-labelledby="task-heading"><span class="card-icon"><svg aria-hidden="true"><use href="#leaf"/></svg></span><h2 id="task-heading">助けが必要なこと</h2><h3 class="task-title">明日の買い物を手伝う</h3><p class="caption">娘が追加 · 10月17日の電話から</p><p class="border-top">相談済みの担当メモ：息子</p><p class="caption">メモだけでは、引受け済みになりません。</p>
@@ -91,6 +106,7 @@
           <div class="task-actions"><button id="accept-task" class="btn" type="button">私が引き受ける</button><button id="complete-task" class="btn" type="button" hidden>できたことを記録</button><button id="undo-complete" class="btn secondary" type="button" hidden>完了を取り消す</button><button id="cancel-task" class="text-btn" type="button" hidden>引受けを取り消す</button></div><p class="notice">この試作の中だけで表示が変わります。家族への通知は送られません。</p>
         </section>
       </div>
+          <section id="ueda-life" class="card local-card" aria-labelledby="ueda-title"><h2 id="ueda-title">上田のごみ出し、迷ったら。</h2><p>祝日や年末年始は、お住まいの地区のカレンダーと、市の変更のお知らせを一緒に確認しましょう。同じ自治会でも、収集日が違う場所があります。</p><div class="local-links"><a href="https://www.city.ueda.nagano.jp/soshiki/haiki/53555.html" target="_blank" rel="noopener noreferrer">上田市のごみ収集カレンダー ↗</a><a href="https://www.city.ueda.nagano.jp/soshiki/haiki/" target="_blank" rel="noopener noreferrer">収集・回収の変更のお知らせ ↗</a><a href="https://www.city.ueda.nagano.jp/soshiki/haiki/1072.html" target="_blank" rel="noopener noreferrer">ごみ分別アプリ「さんあ～る」の案内 ↗</a><a href="https://www.ueda-shakyo.or.jp/?page_id=402" target="_blank" rel="noopener noreferrer">ごみ出しが負担なときの地域の手助け ↗</a></div><p class="caption border-top">市・社会福祉協議会の案内が別の画面で開きます。地域の手助けは有償で、登録や条件の確認が必要です。</p><p class="caption">2026年10月18日に案内先を確認。まいにことの提携・日程の自動連携はまだありません。</p></section>
       <div class="next-step"><button class="btn secondary" type="button" data-go="consult">相談に使う記録を選ぶ →</button></div>
     </section>
 
@@ -103,7 +119,7 @@
         </div>
         <aside class="card explanation"><h2>相談のときに、手元へ。</h2><p>本人と相談しながら、伝えたい内容を整理するための試作です。</p><p>選んだ内容は、この画面で確かめてから印刷できます。相談先へ自動では送られません。</p><p>上田の相談窓口へ持っていく場面を想定しています。窓口との提携や、この用紙の採用が決まっているわけではありません。</p><p class="border-top">実際の名前や健康情報は入力しないでください。この試作では、用意した例だけを使います。</p></aside>
       </div>
-      <article id="print-sheet" class="preview" aria-labelledby="sheet-title" hidden><p class="stamp">まいにこ · 試作用／すべて架空の内容</p><h2 id="sheet-title" tabindex="-1">春子さんの相談メモ</h2><p id="sheet-period" class="caption"></p><h3>実際にあったこととして選んだ記録（例）</h3><ul id="sheet-records"></ul><h3>家族が相談したいこと（例）</h3><ul id="sheet-questions"></ul><p class="footer-note">選ばなかった記録は載せていません。この用紙は診断・安否確認ではなく、相談の準備用です。実際に使う際は、本人と見せる範囲を確かめ、持参先を自分で選びます。</p><div class="preview-actions"><button id="print" class="btn blue" type="button">この内容を印刷する</button><button id="edit-sheet" class="btn secondary" type="button">選び直す</button></div></article>
+      <article id="print-sheet" class="preview" aria-labelledby="sheet-title" hidden><p class="stamp">まいにこ · 試作用／すべて架空の内容</p><h2 id="sheet-title" tabindex="-1">春子さんの相談メモ</h2><p id="sheet-period" class="caption"></p><h3>本人・家族が残した記録（例）</h3><ul id="sheet-records"></ul><h3>家族が相談したいこと（例）</h3><ul id="sheet-questions"></ul><p class="footer-note">選ばなかった記録は載せていません。この用紙は診断・安否確認ではなく、相談の準備用です。実際に使う際は、本人と見せる範囲を確かめ、持参先を自分で選びます。</p><div class="preview-actions"><button id="print" class="btn blue" type="button">この内容を印刷する</button><button id="edit-sheet" class="btn secondary" type="button">選び直す</button></div></article>
     </section>
   </main>
   <div class="last-row"><a href="./about.html">← まいにこの紹介へ戻る</a><button id="open-reset" class="text-btn" type="button" aria-controls="reset-panel" aria-expanded="false">試作を最初に戻す</button></div>
@@ -122,10 +138,45 @@
     { id:'phone-13', date:'2026-10-13', time:'午前10時', author:'娘', action:'電話', text:'週末に買いたいものを聞いた。' }
   ];
   let reply = '', greeting = false, callRequest = false, task = 'pending', addedRecord = null;
-  let selected = new Set(), utterance = null;
-  const records = () => addedRecord ? [addedRecord,...initialRecords] : [...initialRecords];
+  let selected = new Set(), utterance = null, speechTimer = null, voiceEnabled = true;
+  const medicines = new Set();
+  const slots = {asa:{label:"朝",time:"午前9時05分"},hiru:{label:"昼",time:"午後0時30分"},yoru:{label:"夜",time:"午後7時"}};
+  const contactRecords = () => addedRecord ? [addedRecord,...initialRecords] : [...initialRecords];
+  const personRecords = () => [
+    ...(greeting ? [{id:'greeting-18',date:'2026-10-18',time:'午前9時05分',author:'春子さん（本人）',action:'本人の挨拶',text:'「おはよう」と本人が記録した。安否の確認ではありません。'}] : []),
+    ...Object.keys(slots).filter(key=>medicines.has(key)).map(key=>({id:'medicine-'+key,date:'2026-10-18',time:slots[key].time,author:'春子さん（本人）',action:'本人のお薬の記録',text:`「${slots[key].label}の薬を飲みました」と本人が記録した。実際に飲んだことを証明するものではありません。`}))
+  ];
+  const records = () => [...personRecords(),...contactRecords()];
   const day = date => `${Number(date.slice(5,7))}月${Number(date.slice(8,10))}日`;
-  function stopSpeech(){ const wasSpeaking=!!utterance;utterance=null;if('speechSynthesis' in window) window.speechSynthesis.cancel();$('speak').querySelector('span').textContent='音声で聞く';if(wasSpeaking)$('speech-status').textContent='読み上げを止めました。'; }
+  function stopSpeech(){
+    const wasSpeaking=!!utterance;utterance=null;clearTimeout(speechTimer);speechTimer=null;
+    try{window.speechSynthesis?.cancel();}catch{}
+    $('stop-speech').hidden=true;
+    if(wasSpeaking)$('speech-status').textContent='読み上げを止めました。';
+  }
+  function say(text,force=false){
+    if(!force&&!voiceEnabled)return;
+    stopSpeech();
+    const unavailable=()=>{$('speech-status').textContent='音声を再生できませんでした。内容は画面の文字で確認できます。';};
+    if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)){unavailable();return;}
+    try{
+      const current=new SpeechSynthesisUtterance(text);current.lang='ja-JP';current.rate=.85;utterance=current;
+      $('speech-status').textContent='音声を準備しています。';$('stop-speech').hidden=false;
+      current.onstart=()=>{if(utterance===current){clearTimeout(speechTimer);speechTimer=null;$('speech-status').textContent='読み上げています。';}};
+      current.onend=()=>{if(utterance===current){utterance=null;clearTimeout(speechTimer);speechTimer=null;$('stop-speech').hidden=true;$('speech-status').textContent='読み上げが終わりました。';}};
+      current.onerror=()=>{if(utterance===current){stopSpeech();unavailable();}};
+      speechTimer=setTimeout(()=>{if(utterance===current){stopSpeech();unavailable();}},3000);
+      window.speechSynthesis.speak(current);
+    }catch{stopSpeech();unavailable();}
+  }
+  function announce(id,text){$(id).textContent=text;say(text);}
+  $('stop-speech').addEventListener('click',()=>{stopSpeech();$('toggle-voice').focus({preventScroll:true});});
+  $('toggle-voice').addEventListener('click',()=>{
+    voiceEnabled=!voiceEnabled;stopSpeech();$('toggle-voice').setAttribute('aria-pressed',String(voiceEnabled));
+    $('toggle-voice').textContent=voiceEnabled?'声のお返事：オン（音を消す）':'声のお返事：オフ（音を出す）';
+    $('speech-status').textContent=voiceEnabled?'声のお返事をオンにしました。':'声のお返事をオフにしました。「聞く」を押すと、その内容だけ読み上げます。';
+    if(voiceEnabled)say('声のお返事をオンにしました。');
+  });
   function showScene(scene){
     if(!['person','family','consult'].includes(scene)) return;
     stopSpeech();
@@ -144,30 +195,36 @@
     $('greeting').disabled=greeting; $('request-call').disabled=callRequest;
     $('undo-greeting').hidden=!greeting; $('undo-call').hidden=!callRequest;
     $('family-greeting').hidden=!greeting; $('family-call').hidden=!callRequest;
+    $('family-medicine').hidden=medicines.size===0;$('family-medicine-list').replaceChildren();
+    Object.keys(slots).forEach(key=>{
+      const done=medicines.has(key);$('medicine-'+key).disabled=done;$('undo-medicine-'+key).hidden=!done;
+      if(done){const li=document.createElement('li');li.textContent=`10月18日 ${slots[key].time} · ${slots[key].label}の薬を飲みました / 記録した人：春子さん（本人）`;$('family-medicine-list').append(li);}
+    });
   }
   all('[data-reply]').forEach(button=>button.addEventListener('click',()=>{
     reply=button.dataset.reply; renderPerson();
-    $('reply-status').textContent=`「${reply}」をこの試作に残しました。家族が読んだかは未確認です。`;
+    announce('reply-status',`「${reply}」をこの試作に残しました。家族が読んだかは未確認です。`);
     $('undo-reply').focus({preventScroll:true});
   }));
-  $('undo-reply').addEventListener('click',()=>{reply='';renderPerson();$('reply-status').textContent='返事を取り消しました。';all('[data-reply]')[0].focus({preventScroll:true});});
-  $('greeting').addEventListener('click',()=>{greeting=true;renderPerson();$('word-status').textContent='「こんにちは」をこの試作に残しました。';$('undo-greeting').focus({preventScroll:true});});
-  $('request-call').addEventListener('click',()=>{callRequest=true;renderPerson();$('word-status').textContent='「電話してほしい」をこの試作に残しました。家族の画面で確かめられます。';$('undo-call').focus({preventScroll:true});});
-  $('undo-greeting').addEventListener('click',()=>{greeting=false;renderPerson();$('word-status').textContent='挨拶を取り消しました。';$('greeting').focus({preventScroll:true});});
-  $('undo-call').addEventListener('click',()=>{callRequest=false;renderPerson();$('word-status').textContent='電話のお願いを取り消しました。';$('request-call').focus({preventScroll:true});});
-  $('speak').addEventListener('click',()=>{
-    if(utterance){stopSpeech();$('speech-status').textContent='読み上げを止めました。';return;}
-    if(!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)){$('speech-status').textContent='この画面では音声を使えません。予定は上の文字で確認できます。';return;}
-    const current = new SpeechSynthesisUtterance('今日は予定がありません。明日、10月19日、月曜日の午後2時に、娘が会いに来ます。');
-    current.lang='ja-JP';current.rate=.85;utterance=current;
-    $('speech-status').textContent='音声を準備しています。';$('speak').querySelector('span').textContent='読み上げを止める';
-    current.onstart=()=>{if(utterance===current)$('speech-status').textContent='予定を読み上げています。';};
-    current.onend=()=>{if(utterance===current){utterance=null;$('speak').querySelector('span').textContent='音声で聞く';$('speech-status').textContent='読み上げが終わりました。';}};
-    current.onerror=()=>{if(utterance===current){stopSpeech();$('speech-status').textContent='音声を再生できませんでした。予定は上の文字で確認できます。';}};
-    try{window.speechSynthesis.speak(current);}catch{stopSpeech();$('speech-status').textContent='音声を再生できませんでした。予定は上の文字で確認できます。';}
-  });
+  $('undo-reply').addEventListener('click',()=>{reply='';renderPerson();announce('reply-status','返事を取り消しました。');all('[data-reply]')[0].focus({preventScroll:true});});
+  $('greeting').addEventListener('click',()=>{greeting=true;renderPerson();invalidateSheet();announce('word-status','「おはよう」をこの試作に残しました。');$('undo-greeting').focus({preventScroll:true});});
+  $('request-call').addEventListener('click',()=>{callRequest=true;renderPerson();announce('word-status','「電話してほしい」をこの試作に残しました。家族の画面で確かめられます。');$('undo-call').focus({preventScroll:true});});
+  $('undo-greeting').addEventListener('click',()=>{greeting=false;selected.delete('greeting-18');renderPerson();invalidateSheet();announce('word-status','挨拶を取り消しました。');$('greeting').focus({preventScroll:true});});
+  $('undo-call').addEventListener('click',()=>{callRequest=false;renderPerson();announce('word-status','電話のお願いを取り消しました。');$('request-call').focus({preventScroll:true});});
+  all('[data-medicine]').forEach(button=>button.addEventListener('click',()=>{
+    const key=button.dataset.medicine;if(medicines.has(key))return;
+    medicines.add(key);renderPerson();invalidateSheet();
+    announce('medicine-status-'+key,`${slots[key].label}の薬の記録を、この試作に残しました。`);$('undo-medicine-'+key).focus({preventScroll:true});
+  }));
+  all('[data-undo-medicine]').forEach(button=>button.addEventListener('click',()=>{
+    const key=button.dataset.undoMedicine;medicines.delete(key);selected.delete('medicine-'+key);renderPerson();invalidateSheet();
+    announce('medicine-status-'+key,`${slots[key].label}の薬の記録を取り消しました。`);$('medicine-'+key).focus({preventScroll:true});
+  }));
+  $('speak-date').addEventListener('click',()=>say('試作の日付と時刻です。令和8年、昭和で101年、平成で38年。西暦2026年10月18日、日曜日。午前9時5分です。',true));
+  $('speak').addEventListener('click',()=>say('今日は予定がありません。明日、10月19日、月曜日の午後2時に、娘が会いに来ます。',true));
+  $('speak-message').addEventListener('click',()=>say('娘からの連絡です。明日、午後2時に行くね。いっしょにお茶しよう。',true));
   function renderLast(){
-    const r=records()[0]; $('last-time').textContent=`${day(r.date)} ${r.time}`;$('last-title').textContent=`${r.author}が${r.action}しました`;$('last-copy').textContent=r.text;
+    const r=contactRecords()[0]; $('last-time').textContent=`${day(r.date)} ${r.time}`;$('last-title').textContent=`${r.author}が${r.action}しました`;$('last-copy').textContent=r.text;
     $('open-record').hidden=!!addedRecord;$('undo-record').hidden=!addedRecord;
   }
   function closeEditor(){ $('record-editor').hidden=true;$('open-record').setAttribute('aria-expanded','false');$('record-error').textContent=''; }
@@ -213,7 +270,7 @@
     const questions=all('[name="question"]:checked').map(input=>input.value);
     if(!chosen.length||!questions.length){$('consult-error').textContent='見せる記録と相談したいことを、それぞれひとつ以上選んでください。';return;}
     $('consult-error').textContent='';$('sheet-records').replaceChildren();$('sheet-questions').replaceChildren();
-    chosen.slice().reverse().forEach(record=>{const li=document.createElement('li'),text=document.createElement('span'),origin=document.createElement('span');text.className='original';text.textContent=record.text;origin.className='origin';origin.textContent=`2026年${day(record.date)} ${record.time} / ${record.action} / 記録した人：${record.author}`;li.append(text,origin);$('sheet-records').append(li);});
+    chosen.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(record=>{const li=document.createElement('li'),text=document.createElement('span'),origin=document.createElement('span');text.className='original';text.textContent=record.text;origin.className='origin';origin.textContent=`2026年${day(record.date)} ${record.time} / ${record.action} / 記録した人：${record.author}`;li.append(text,origin);$('sheet-records').append(li);});
     questions.forEach(question=>{const li=document.createElement('li');li.textContent=question;$('sheet-questions').append(li);});
     const dates=chosen.map(record=>record.date).sort();$('sheet-period').textContent=`選んだ記録：2026年${day(dates[0])}${dates[0]!==dates.at(-1)?'〜'+day(dates.at(-1)):''} / ${chosen.length}件`;
     $('print-sheet').hidden=false;$('sheet-title').focus({preventScroll:true});$('print-sheet').scrollIntoView({block:'start',behavior:'instant'});
@@ -224,9 +281,9 @@
   function closeReset(){$('reset-panel').hidden=true;$('open-reset').setAttribute('aria-expanded','false');}
   $('cancel-reset').addEventListener('click',()=>{closeReset();$('open-reset').focus({preventScroll:true});});
   $('confirm-reset').addEventListener('click',()=>{
-    reply='';greeting=false;callRequest=false;task='pending';addedRecord=null;selected=new Set();
+    reply='';greeting=false;callRequest=false;task='pending';addedRecord=null;selected=new Set();medicines.clear();
     all('input[type="checkbox"]').forEach(input=>{input.checked=false;});
-    ['reply-status','word-status','speech-status','record-status'].forEach(id=>{$(id).textContent='';});
+    ['reply-status','word-status','speech-status','record-status',...Object.keys(slots).map(key=>'medicine-status-'+key)].forEach(id=>{$(id).textContent='';});
     closeEditor();invalidateSheet();closeReset();renderPerson();renderLast();renderTask();renderChoices();showScene('person');$('global-status').textContent='最初の架空の例に戻しました。';
   });
   window.addEventListener('pagehide',stopSpeech);
