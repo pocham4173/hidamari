@@ -17,6 +17,13 @@ for(const a of d.querySelectorAll('[data-category]')){
 d.querySelector('#query').value='草取り';d.querySelector('#search-form').dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
 assert.equal(d.querySelectorAll('.service').length,1);
 assert.match(d.querySelector('.service h3').textContent,/シルバー/);
+d.querySelector('#query').value='ごみ';d.querySelector('#search-form').dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
+assert.ok([...d.querySelectorAll('.service h3')].some(h=>h.textContent==='上田市のごみ収集カレンダー'));
+assert.ok([...d.querySelectorAll('.service h3')].some(h=>h.textContent==='ご用聞きサービス'));
+d.querySelector('[data-category="home"]').click();await tick();
+assert.equal(d.querySelector('.service h3').textContent,'上田市のごみ収集カレンダー');
+assert.equal(d.querySelector('.service a').href,'https://www.city.ueda.nagano.jp/soshiki/haiki/53555.html');
+assert.match(d.querySelector('.service').textContent,/同じ自治会でも/);
 d.querySelector('#query').value='<img src=x onerror=alert(1)>';d.querySelector('#search-form').dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
 assert.equal(d.querySelectorAll('.service').length,0);assert.equal(d.querySelector('#results-section img'),null);
 d.querySelector('[data-category="food"]').click();await tick();

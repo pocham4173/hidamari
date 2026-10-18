@@ -164,6 +164,10 @@ test('familiar era display is labeled as a fixed example and read aloud on reque
   }
   t.click('stop-speech');
   assert.equal(t.el('stop-speech').hidden, true);
+  t.check('[data-scene="family"]');
+  assert.equal(t.el('speak-date').hidden, true);
+  t.check('[data-scene="person"]');
+  assert.equal(t.el('speak-date').hidden, false);
   t.close();
 });
 
@@ -238,17 +242,11 @@ test('speech errors do not remove records and stale callbacks do not interrupt n
   t.close();
 });
 
-test('regional entry links only to official information without asserting a collection date', () => {
+test('regional entry leads to the shared support page', () => {
   const t = setup();
-  const card = t.el('ueda-life');
-  const links = [...card.querySelectorAll('a')];
-  assert.equal(links.length, 4);
-  for (const link of links) {
-    assert.ok(['www.city.ueda.nagano.jp','www.ueda-shakyo.or.jp'].includes(new URL(link.href).hostname));
-    assert.equal(link.target, '_blank'); assert.equal(link.rel, 'noopener noreferrer');
-  }
-  assert.match(card.textContent, /同じ自治会でも/);
-  assert.match(card.textContent, /日程の自動連携はまだありません/);
-  assert.match(card.textContent, /有償/);
+  const link = t.el('ueda-life');
+  assert.equal(link.getAttribute('href'), './ueda-support.html');
+  assert.match(link.textContent, /上田の暮らしサポート/);
+  assert.equal(t.doc.querySelectorAll('a[href*="city.ueda.nagano.jp"]').length, 0);
   t.close();
 });

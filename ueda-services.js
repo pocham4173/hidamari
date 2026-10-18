@@ -172,6 +172,36 @@ window.UEDA_SERVICES = [
   },
   {
     "category": "home",
+    "name": "上田市のごみ収集カレンダー",
+    "kind": "市の案内",
+    "description": "祝日や年末年始に迷ったら、まずはお住まいの地区の収集カレンダーを確認しましょう。",
+    "conditions": "地区・自治会・区分番号を確認してください。同じ自治会でも収集日が異なる場所があります。収集・回収の変更のお知らせもあわせて確認してください。まいにこへの日程の自動取り込みはありません。",
+    "url": "https://www.city.ueda.nagano.jp/soshiki/haiki/53555.html",
+    "phone": "",
+    "checkedAt": "2026-10-18"
+  },
+  {
+    "category": "home",
+    "name": "ごみの収集・回収の変更のお知らせ",
+    "kind": "市の案内",
+    "description": "地区のカレンダーとあわせて、廃棄物対策課の新しいお知らせを確認できます。",
+    "conditions": "お住まいの地区・ごみの種類・対象の日付を確かめてください。祝日だから一律に休みとは限りません。",
+    "url": "https://www.city.ueda.nagano.jp/soshiki/haiki/",
+    "phone": "",
+    "checkedAt": "2026-10-18"
+  },
+  {
+    "category": "home",
+    "name": "ごみ分別アプリ「さんあ～る」",
+    "kind": "市の案内",
+    "description": "収集カレンダーや、ごみの分け方を調べられるアプリを市が案内しています。",
+    "conditions": "利用方法や地区の設定は市の公式案内で確認してください。まいにことのデータ連携はありません。",
+    "url": "https://www.city.ueda.nagano.jp/soshiki/haiki/1072.html",
+    "phone": "",
+    "checkedAt": "2026-10-18"
+  },
+  {
+    "category": "home",
     "name": "上田市シルバー人材センター",
     "kind": "地域団体",
     "description": "掃除・草取り・庭木・障子やふすま・小修繕など。",
