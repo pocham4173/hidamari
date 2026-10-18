@@ -16,7 +16,8 @@ async function save(rows, change) {
   const written = [], confirms = [];
   let listener;
   const ctl = H.create({
-    document, col: () => ({ where: () => ({ onSnapshot: (ok) => { listener = listener || ok; return () => {}; } }) }),
+    // 2026-10-18: 控えからサーバーへの確定を待つため onSnapshot({includeMetadataChanges:true}, 成功, 失敗) の形で呼ばれる
+    document, col: () => ({ where: () => ({ onSnapshot: (...a) => { listener = listener || a.find((f) => typeof f === 'function'); return () => {}; } }) }),
     addEvent: async (d) => { written.push(d); }, uid: () => 'ani', myName: () => '太郎', members: () => members,
     day: () => '2026-10-05', confirm: async (t, l) => { confirms.push([t, l]); return true; },
     cardId: 'card', settingsId: 'set',
@@ -29,7 +30,8 @@ async function save(rows, change) {
   box.querySelector('[data-hk-act="save"]').dispatchEvent(new dom.window.Event('click'));
   for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0));
   ctl.stop();
-  return { data: written[0], confirms, state: box.querySelector('[data-hk-state]').textContent };
+  // 受け取りの確認(hitokoe-receive)も書かれることがあるので、設定の記録を取り出す
+  return { data: written.find((w) => w.type === 'hitokoe-config'), confirms: confirms.filter((c) => !/受け取りますか/.test(c[0])), state: box.querySelector('[data-hk-state]').textContent };
 }
 const cfg = (extra) => ({ type: 'hitokoe-config', enabled: true, hour: 11, requestId: 'r1', uid: 'ani', clientAt: 1, ...extra });
 

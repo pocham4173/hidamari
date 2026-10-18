@@ -1,30 +1,42 @@
-/* まいにこ「ひと声のきっかけ」(2026-10-01)
+/* まいにこ「ひと声のきっかけ」(2026-10-01・2026-10-18 安全性の見直し)
  *
  * 押されなかった日は、心配の知らせではなく、声を聞くきっかけとして、家族の一人にそっと届きます。
  * まいにこやLINEに頼らず、家族が自分から声をかける(電話する・顔を見に行く)きっかけにするための機能です。
+ * 安否確認・緊急通報ではありません。家族の対応・返事・報告は義務ではありません。
  *
  * しくみ(段階1: アプリの中。2026-10-04から「LINEにも送る」を選べる)
  *  - 家族が設定でオンにし、時刻(9・10・11・12時)を選ぶ。初めは切ってある。
  *  - オンにしたときだけ、ご本人のスマホに1回確認を出す。ご本人が「はい」を選ぶまでは動かない。
- *  - その時刻までにご本人の操作(挨拶・薬・体調・お願いなど)が1つもない日だけ、担当の家族1人のホームに出る。
- *    夜中0〜4時の操作は前の日の分に数える。
- *  - 担当は曜日ごとに決められる。決めていない曜日は、設定した人が受け取る。
- *  - 入院・旅行・デイサービスの日は「お休み」(毎週の曜日・期間)にできる。
- *  - 受け取った人が「連絡しました」を押すと、ほかの家族にも「○○さんが11:20に連絡しました」と出る。
- *  - ご本人の画面には、了解の確認のほかは何も出さない。催促も警告もしない。
- *  - 「LINEにも送る」をオンにすると、担当の家族が自分のLINEを登録しているとき、LINEにも1日1通届く
- *    (送るのはLINE送信役 worker.js。文面に名前・様子は書かない。まいにこ全体で月90通まで)。
- *    オンにしたときは、ご本人にもう一度了解を聞く(LINEに届くことを確認の文に書く)。
+ *    ご本人があとから「やめる」を選んだら、家族が設定を変えても止まったまま(ご本人が自分で「使う」に戻すまで)。
+ *  - 受け取る家族本人も「受け取る」を選ぶまでは、その人には届かない(2026-10-18)。設定した人・曜日の届け先に
+ *    選ばれただけ・LINE連携しているだけでは了承とみなさない。家族はいつでも自分を届け先から外せる。
+ *  - その時刻までにご本人の操作(挨拶・薬・体調・お願い・「今日はそっとしておいて」など)が1つもない日だけ、
+ *    その日の届け先の家族1人のホームに出る。夜中0〜4時の操作は前の日の分に数える。日付と時刻は日本時間で判定する。
+ *  - ご本人が了解した日・受け取る家族が了承した日(利用開始日)は出さない。
+ *  - 設定・了解・その日の記録の3つを、すべてサーバーで確かめられたときだけ判定する。読み込み中・読み込み失敗・
+ *    端末に残っていた古い控えだけのときは「判定できない」として、何も出さない(記録がないことにしない)。
+ *  - 届け先は曜日ごとに決められる(日替わりの届け先。当番ではない)。決めていない曜日は、設定した人(了承している場合)。
+ *  - 入院・旅行・デイサービスの日は「お休み」(毎週の曜日・期間)にできる。期間のお休みは終わった翌日から自動で再開する。
+ *  - 受け取った人は、任意で「連絡しました」を押せる。押すと、ほかの家族にも「○○さんが11:20に連絡しました」と出る。
+ *    押さなくてもよく、押していないことを確かめたり催促したりはしない。
+ *  - ご本人の画面には、了解の確認と「その他の設定」のほかは何も出さない。催促も警告もしない。
+ *  - 「LINEにも送る」をオンにすると、届け先の家族が「LINEでも受け取る」を選んでいて自分のLINEを登録しているとき、
+ *    LINEにも1日1通届く(送るのはLINE送信役 worker.js。文面に名前・様子は書かない)。
+ *    LINEへの送信の結果は、家族のホームに「送信を受け付けました(届いた・読まれたかは分かりません)」などと出す。
  *
  * 記録(家庭の events)
  *  hitokoe-config    家族の設定(最新1件が有効)。{enabled, line, hour, offWeekdays, pauses, assignees, requestId}
- *  hitokoe-consent   ご本人の了解。{requestId, answer:'yes'|'no'}(ルールでご本人だけが書ける)
- *  hitokoe-contacted 家族の「連絡しました」。{target, date}
+ *  hitokoe-consent   ご本人の了解。{requestId, answer:'yes'|'no', version}(ルールでご本人だけが書け、消せない)
+ *  hitokoe-receive   家族本人の受け取りの了承。{answer:'yes'|'no', line:true|false}(ルールで家族本人だけが書け、消せない)
+ *  hitokoe-contacted 家族の「連絡しました」(任意)。{target, date}
+ *  hitokoe-sent      LINE送信役が書く、LINEへの送信の記録。{date, target, status:'accepted'|'unknown'|'failed'|'skipped'}
  */
 (function(global){
   'use strict';
   var HOURS=[9,10,11,12], DEFAULT_HOUR=11;
-  var NOT_ACTIVITY={'hitokoe-consent':1,'device-recovery':1,'person-ui-config':1,'line-login-signin':1,'device-reconnect':1};
+  /* ご本人への説明の版(2026-10-18)。古い版への「はい」では動かず、新しい説明でもう一度聞く。「やめる」はどの版でも有効 */
+  var CONSENT_VERSION='2026-10-18';
+  var NOT_ACTIVITY={'hitokoe-consent':1,'hitokoe-receive':1,'hitokoe-sent':1,'device-recovery':1,'person-ui-config':1,'line-login-signin':1,'device-reconnect':1};
   var WD='日月火水木金土';
 
   function millis(v){
@@ -37,9 +49,13 @@
   function newest(rows){ return rows.slice().sort(function(a,b){ return millis(b)-millis(a); })[0]||null; }
   function isHonnin(m){ return !!m&&(m.role==='honnin'||m.mode==='honnin'); }
   function approved(m){ return !!m&&(m.status===undefined||m.status==='approved'); }
-  function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-  function weekdayOf(day){ var p=String(day).split('-'); return new Date(+p[0],+p[1]-1,+p[2]).getDay(); }
-  function hm(ms){ var d=new Date(ms); return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0'); }
+  /* 日本時間の日付・時・曜日(端末の時間帯がずれていても、LINE送信役と同じ日付で判定する) */
+  function jst(ms){ var d=new Date(ms+9*3600000); return {day:d.toISOString().slice(0,10),hour:d.getUTCHours()}; }
+  function jstDayOf(ms){ return ms?jst(ms).day:''; }
+  function weekdayOf(day){ var p=String(day).split('-'); return new Date(Date.UTC(+p[0],+p[1]-1,+p[2])).getUTCDay(); }
+  function nextDay(day){ var p=String(day).split('-'); var d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2]+1)); return d.toISOString().slice(0,10); }
+  function mdText(day){ var p=String(day).split('-'); return Number(p[1])+'月'+Number(p[2])+'日'; }
+  function hm(ms){ var j=new Date(ms+9*3600000); return j.getUTCHours()+':'+String(j.getUTCMinutes()).padStart(2,'0'); }
 
   /* 設定を正しい形にそろえる(壊れた値や古い形でも落ちないように) */
   function normalizeConfig(c){
@@ -54,44 +70,64 @@
   }
   function latestConfig(rows){ return normalizeConfig(newest((rows||[]).filter(function(v){ return v&&v.type==='hitokoe-config'; }))); }
 
-  /* その日に受け取る家族(担当が抜けていたら設定した人、その人もいなければ空) */
-  function assigneeFor(cfg,day,members){
-    var fam=function(u){ var m=members[u]; return approved(m)&&!isHonnin(m)?u:''; };
-    return fam(cfg.assignees[String(weekdayOf(day))]||'')||fam(cfg.uid)||'';
+  /* 家族本人の受け取りの了承(最新1件)。なければ null */
+  function receiveFor(rows,u){
+    return newest((rows||[]).filter(function(v){ return v&&v.type==='hitokoe-receive'&&v.uid===u&&(v.answer==='yes'||v.answer==='no'); }));
   }
-  function consentFor(cfg,rows,target){
-    if(!cfg.requestId) return null;
-    return newest((rows||[]).filter(function(v){ return v&&v.type==='hitokoe-consent'&&v.uid===target&&v.requestId===cfg.requestId&&(v.answer==='yes'||v.answer==='no'); }));
+  function receives(rows,u){ var r=receiveFor(rows,u); return !!r&&r.answer==='yes'; }
+  /* その日に受け取る家族。届け先(なければ設定した人)のうち、承認済みの家族で、受け取りを了承している人。いなければ空 */
+  function assigneeFor(cfg,day,members,receiveRows){
+    var ok=function(u){ var m=members[u]; return u&&approved(m)&&!isHonnin(m)&&(receiveRows===undefined||receives(receiveRows,u))?u:''; };
+    return ok(cfg.assignees[String(weekdayOf(day))]||'')||ok(cfg.uid)||'';
+  }
+  /* ご本人のいちばん新しい答え(どのお願いへの答えでも)。あとの「やめておく」は、家族が新しくお願いしても解除されない */
+  function newestConsent(rows,target){
+    return newest((rows||[]).filter(function(v){ return v&&v.type==='hitokoe-consent'&&v.uid===target&&(v.answer==='yes'||v.answer==='no'); }));
   }
   function pausedOn(cfg,day){
     if(cfg.offWeekdays.indexOf(weekdayOf(day))>=0) return true;
     return cfg.pauses.some(function(p){ return p.from<=day&&day<=p.to; });
   }
+  /* 家族が受け取りに関わる人か(設定した人か、どこかの曜日の届け先) */
+  function isCandidate(cfg,u){
+    if(!u) return false;
+    if(cfg.uid===u) return true;
+    return Object.keys(cfg.assignees).some(function(k){ return cfg.assignees[k]===u; });
+  }
 
-  /* ご本人ごとに、今日のようすを判定する(画面に何を出すかの元) */
+  /* ご本人ごとに、今日のようすを判定する(画面に何を出すかの元)。
+     o.ready が false のとき(設定・了解・その日の記録のどれかをサーバーで確かめられていない)は、すべて 'unknown'。 */
   function evaluate(o){
     var cfg=latestConfig(o.configRows), members=o.members||{}, out=[];
-    var now=o.now instanceof Date?o.now:new Date(), day=o.day||ymd(now);
+    var now=o.now instanceof Date?o.now:new Date(), j=jst(now.getTime()), day=o.day||j.day;
+    var ready=o.ready!==false;
     Object.keys(members).forEach(function(target){
       var m=members[target];
       if(!approved(m)||!isHonnin(m)) return;
-      var r={target:target,targetName:m.name||'ご本人',config:cfg,state:'off',assignee:'',assigneeName:'',contacted:null};
+      var r={target:target,targetName:m.name||'ご本人',config:cfg,state:'off',assignee:'',assigneeName:'',contacted:null,sent:null};
       out.push(r);
+      if(!ready){ r.state='unknown'; return; }
       if(!cfg.enabled) return;
-      var consent=consentFor(cfg,o.consentRows,target);
-      if(!consent){ r.state='waiting-consent'; return; }
-      if(consent.answer!=='yes'){ r.state='declined'; return; }
+      var consent=newestConsent(o.consentRows,target);
+      if(consent&&consent.answer==='no'){ r.state='declined'; return; }
+      if(!consent||consent.requestId!==cfg.requestId||consent.version!==CONSENT_VERSION){ r.state='waiting-consent'; return; }
       r.consentAt=millis(consent);
-      r.assignee=assigneeFor(cfg,day,members);
-      r.assigneeName=r.assignee&&members[r.assignee]?members[r.assignee].name||'家族':'';
       var today=(o.todayRows||[]).filter(function(v){ return v&&v.date===day; });
       var contacted=newest(today.filter(function(v){ return v.type==='hitokoe-contacted'&&v.target===target; }));
       if(contacted) r.contacted={uid:contacted.uid,name:contacted.name||'家族',at:millis(contacted)};
+      var sent=newest(today.filter(function(v){ return v.type==='hitokoe-sent'; }));
+      if(sent) r.sent={target:sent.target,status:sent.status,name:(members[sent.target]||{}).name||'家族'};
+      r.assignee=assigneeFor(cfg,day,members,o.receiveRows||[]);
+      r.assigneeName=r.assignee&&members[r.assignee]?members[r.assignee].name||'家族':'';
+      if(jstDayOf(r.consentAt)===day){ r.state='start-day'; return; }
       if(pausedOn(cfg,day)){ r.state='paused'; return; }
       var active=today.some(function(v){ return v.uid===target&&!NOT_ACTIVITY[v.type]; });
       if(active){ r.state='active'; return; }
       /* 夜中0〜4時は前の日の扱い。その時間には出さない(「今日はまだ」が昨日の話になるため) */
-      if(ymd(now)!==day||now.getHours()<cfg.hour){ r.state='before-time'; return; }
+      if(j.day!==day||j.hour<cfg.hour){ r.state='before-time'; return; }
+      if(!r.assignee){ r.state='no-receiver'; return; }
+      var rec=receiveFor(o.receiveRows||[],r.assignee);
+      if(rec&&jstDayOf(millis(rec))===day){ r.state='start-day'; return; }
       r.state=r.contacted?'contacted':'show';
     });
     return out;
@@ -99,76 +135,115 @@
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   var NOTES='「ひと声のきっかけ」は、安否確認・緊急通報ではありません。知らせがないことは無事の保証ではありません。心配なときは直接電話を。緊急時は119番へ。';
+  var DUTY_NOTE='届け先は当番ではありません。対応・返事・報告は任意です。';
+  var SENT_TEXT={
+    accepted:function(n){ return '今日のお知らせを、'+n+'のLINEへ送る手続きが受け付けられました（届いたか・読まれたかは分かりません）'; },
+    unknown:function(n){ return '今日の'+n+'へのLINEは、送信の結果が分かりませんでした（決めた時刻から3時間のうちは、同じお知らせを送り直すことがあります。二重には届きません）'; },
+    failed:function(n){ return '今日の'+n+'へのLINEは、送れませんでした（アプリの中のお知らせだけです）'; },
+    skipped:function(){ return '今日のLINEのお知らせは見送りました（アプリの中のお知らせだけです）'; }
+  };
 
   /* ===== 家族ホームのカード ===== */
   function cardHtml(results,me){
     var html='';
     results.forEach(function(r){
+      if(r.state==='unknown') return;
       if(r.state==='show'&&r.assignee===me){
         html+='<div class="card hitokoe-card" role="status">'+
           '<h3>🌼 ひと声のきっかけ</h3>'+
           '<p class="hitokoe-lead">今日はまだ'+esc(r.targetName)+'さんから届いていません。電話や顔を見に行くなど、あなたから声をかけるきっかけにどうぞ。</p>'+
-          '<p class="note">押し忘れや外出のことも多くあります。電話では「押してないよ」とは言わず、「声が聞きたくて」でかけてみてください。</p>'+
-          '<button class="big-btn family" type="button" data-hitokoe-contacted="'+esc(r.target)+'">連絡しました</button>'+
-          '<p class="note hitokoe-small">'+esc(NOTES)+'</p></div>';
+          '<p class="note">押し忘れや外出のことも多くあります。電話では「押してないよ」とは言わず、「声が聞きたくて」でかけてみてください。'+esc(DUTY_NOTE)+'</p>'+
+          '<button class="big-btn family" type="button" data-hitokoe-contacted="'+esc(r.target)+'">連絡しました（任意）</button>'+
+          '<p class="note hitokoe-small">押さなくても大丈夫です。'+esc(NOTES)+'</p></div>';
       }else if(r.contacted&&(r.state==='contacted'||r.state==='show'||r.state==='active')){
         html+='<div class="card hitokoe-card done" role="status"><p class="hitokoe-done">🌼 '+
           (r.contacted.uid===me?'あなた':esc(r.contacted.name)+'さん')+'が'+hm(r.contacted.at)+'に'+esc(r.targetName)+'さんへ連絡しました</p></div>';
+      }
+      if(r.sent&&SENT_TEXT[r.sent.status]){
+        html+='<p class="note hitokoe-small" data-hitokoe-sent>'+esc(SENT_TEXT[r.sent.status](r.sent.target===me?'あなた':r.sent.name+'さん'))+'</p>';
       }
     });
     return html;
   }
 
   /* ===== 家族の設定画面 ===== */
-  function statusText(results){
+  function statusText(results,ready){
+    if(ready===false) return '今の状態を確かめられませんでした。通信を確認して、開き直してください。';
     if(!results.length) return 'ご本人として参加している人がいないため、使えません。';
     return results.map(function(r){
       var n=esc(r.targetName)+'さん：';
+      if(r.state==='unknown') return n+'今の状態を確かめています';
       if(r.state==='off') return n+'切っています';
       if(r.state==='waiting-consent') return n+'ご本人の了解待ちです（ご本人がまいにこを開くと、確認が1回だけ出ます）';
-      if(r.state==='declined') return n+'ご本人が「やめておく」を選びました。動いていません';
-      return n+'ご本人が了解しています'+(r.consentAt?'（'+(new Date(r.consentAt).getMonth()+1)+'月'+new Date(r.consentAt).getDate()+'日）':'')+(r.config&&r.config.line?'。LINEにも送ります':'');
+      if(r.state==='declined') return n+'ご本人が止めています。ご本人が「その他の設定」で「使う」を選ぶまで動きません';
+      return n+'ご本人が了解しています'+(r.consentAt?'（'+mdText(jstDayOf(r.consentAt))+'）':'')+(r.config&&r.config.line?'。LINEにも送ります':'');
     }).join('<br>');
   }
-  function settingsHtml(cfg,members,results){
+  function receiveText(cfg,members,receiveRows){
+    var fam=Object.keys(members).filter(function(u){ return approved(members[u])&&!isHonnin(members[u])&&isCandidate(cfg,u); });
+    if(!fam.length) return '';
+    return '受け取る家族の了承：'+fam.map(function(u){
+      var r=receiveFor(receiveRows,u);
+      var t=!r?'まだ答えていません':r.answer!=='yes'?'受け取らない':(r.line?'受け取る（LINEでも）':'受け取る（アプリの中だけ）');
+      return esc(members[u].name||'家族')+'さん＝'+t;
+    }).join('、')+'。了承していない人には届きません。';
+  }
+  function settingsHtml(cfg,members,results,receiveRows,me,ready){
     var fam=Object.keys(members).filter(function(u){ return approved(members[u])&&!isHonnin(members[u]); });
     var opt=function(sel){ return '<option value="">（設定した人）</option>'+fam.map(function(u){ return '<option value="'+esc(u)+'"'+(sel===u?' selected':'')+'>'+esc(members[u].name||'家族')+'</option>'; }).join(''); };
-    var h='<p class="note">押されなかった日に、家族の1人へ「声をかけてみませんか」とそっと届きます。心配の知らせではありません。</p>'+
+    var mine=receiveFor(receiveRows||[],me);
+    var h='<p class="note">押されなかった日に、家族の1人へ「声をかけてみませんか」とそっと届きます。心配の知らせではありません。'+esc(DUTY_NOTE)+'</p>'+
       '<p class="note hitokoe-small">'+esc(NOTES)+'</p>'+
-      '<p class="note" data-hitokoe-status>'+statusText(results)+'</p>'+
+      '<p class="note" data-hitokoe-status>'+statusText(results,ready)+'</p>'+
+      '<p class="note" data-hitokoe-receivers>'+receiveText(cfg,members,receiveRows||[])+'</p>'+
       '<label class="consent-item"><input type="checkbox" data-hk="enabled"'+(cfg.enabled?' checked':'')+'> 使う（オンにすると、ご本人のスマホに了解の確認が1回出ます）</label>'+
       '<label class="consent-item"><input type="checkbox" data-hk="line"'+(cfg.line?' checked':'')+'> LINEにも送る（1日1通・名前や様子は書きません）</label>'+
       '<label>お知らせする時刻<select data-hk="hour">'+HOURS.map(function(x){ return '<option value="'+x+'"'+(cfg.hour===x?' selected':'')+'>'+x+'時までに届かないとき</option>'; }).join('')+'</select></label>'+
-      '<details><summary>曜日ごとの担当（受け取る家族は1人）</summary><div class="hitokoe-grid">';
+      '<details><summary>曜日ごとの届け先（日替わり・受け取る家族は1人）</summary><p class="note">'+esc(DUTY_NOTE)+'届け先に選ばれた人が「受け取る」を選んでいない日は、受け取りを了承している設定した人に届きます。</p><div class="hitokoe-grid">';
     for(var i=0;i<7;i++) h+='<label>'+WD.charAt(i)+'曜<select data-hk-day="'+i+'">'+opt(cfg.assignees[String(i)]||'')+'</select></label>';
     h+='</div></details><details><summary>お休みの日（デイサービス・入院・旅行など）</summary><div class="note">毎週お休みの曜日</div><div class="hitokoe-week">';
     for(var j=0;j<7;j++) h+='<label><input type="checkbox" data-hk-off="'+j+'"'+(cfg.offWeekdays.indexOf(j)>=0?' checked':'')+'>'+WD.charAt(j)+'</label>';
-    h+='</div><div class="note">期間でお休み（10件まで）</div><ul class="hitokoe-pauses">'+
+    h+='</div><div class="note">期間でお休み（10件まで。終わった翌日から自動で再開します）</div><ul class="hitokoe-pauses">'+
       pauseItems(cfg.pauses)+
       '</ul><div class="yt-form-row"><label>から<input type="date" data-hk="from"></label><label>まで<input type="date" data-hk="to"></label></div>'+
       '<button class="set-btn" type="button" data-hk-act="pause">この期間をお休みにする</button></details>'+
       '<button class="big-btn family" type="button" data-hk-act="save">保存する</button>'+
-      '<div class="save-state" data-hk-state aria-live="polite"></div>';
+      '<div class="save-state" data-hk-state aria-live="polite"></div>'+
+      '<div class="set-sec" data-hk-mine><h4>あなたの受け取り</h4>'+
+      '<p class="note">今の設定：'+(!mine?'まだ答えていません（受け取りません）':mine.answer!=='yes'?'受け取らない':(mine.line?'受け取る（LINEでも）':'受け取る（アプリの中だけ）'))+'</p>'+
+      '<p class="note hitokoe-small">受け取ると、届け先の日に、あなたのホームにお知らせが出ます。'+esc(DUTY_NOTE)+'いつでもやめられます。</p>'+
+      '<label class="consent-item"><input type="checkbox" data-hk-recv="line"'+(mine&&mine.answer==='yes'&&mine.line?' checked':'')+'> LINEでも受け取る（LINE連携している場合）</label>'+
+      '<div class="yt-form-row"><button class="set-btn" type="button" data-hk-act="recv-yes">受け取る</button>'+
+      '<button class="set-btn" type="button" data-hk-act="recv-no">受け取らない（届け先から外れる）</button></div>'+
+      '<div class="save-state" data-hk-recv-state aria-live="polite"></div></div>';
     return h;
   }
 
   function pauseItems(list){
-    return list.map(function(p,k){ return '<li>'+esc(p.from)+' 〜 '+esc(p.to)+' <button type="button" class="yt-del" data-hk-unpause="'+k+'">消す</button></li>'; }).join('');
+    return list.map(function(p,k){ return '<li>'+esc(p.from)+' 〜 '+esc(p.to)+'（'+esc(mdText(nextDay(p.to)))+'から再開） <button type="button" class="yt-del" data-hk-unpause="'+k+'">消す</button></li>'; }).join('');
   }
   function consentQuestion(hour,who,line){
     return '挨拶やお薬などの記録が'+hour+'時までに1つもない日は、'+who+'に「声をかけるきっかけ」のお知らせが届きます。'+
       (line?'お知らせは、まいにこの画面と、LINEにも届きます（LINEには名前や様子は書きません）。':'')+'よろしいですか。';
   }
+  function receiveQuestion(cfg,targetName,line){
+    return targetName+'さんの記録が'+cfg.hour+'時までに1つもない日に、あなたが届け先の日は「ひと声のきっかけ」のお知らせを受け取りますか。'+
+      (line?'まいにこの画面と、LINEにも届きます（LINEには名前や様子は書きません）。':'まいにこの画面に出ます。')+
+      DUTY_NOTE+'あとから設定でやめられます。';
+  }
 
   /* ===== つなぎ込み ===== */
   function create(ctx){
-    var st={configRows:[],consentRows:[],todayRows:[],unsubs:[],timer:null,loaded:false,pausesDraft:null,sending:{}};
+    var st={configRows:[],consentRows:[],receiveRows:[],todayRows:[],unsubs:[],timer:null,cfgOk:false,todayOk:false,failed:false,
+      pausesDraft:null,sending:{},asking:''};
     function members(){ return ctx.members()||{}; }
-    function results(){ return evaluate({configRows:st.configRows,consentRows:st.consentRows,todayRows:st.todayRows,members:members(),now:new Date(),day:ctx.day()}); }
+    function ready(){ return st.cfgOk&&st.todayOk&&!st.failed; }
+    function results(){ return evaluate({configRows:st.configRows,consentRows:st.consentRows,receiveRows:st.receiveRows,todayRows:st.todayRows,
+      members:members(),now:new Date(),day:ctx.day(),ready:ready()}); }
     function renderCard(){
       var box=ctx.document.getElementById(ctx.cardId);
       if(!box) return;
-      box.innerHTML=st.loaded?cardHtml(results(),ctx.uid()):'';
+      box.innerHTML=ready()?cardHtml(results(),ctx.uid()):'';
       Array.prototype.forEach.call(box.querySelectorAll('[data-hitokoe-contacted]'),function(b){
         b.addEventListener('click',function(){ contacted(b.getAttribute('data-hitokoe-contacted'),b); });
       });
@@ -181,30 +256,60 @@
       finally{ st.sending[target]=false; }
     }
     function stop(){ st.unsubs.forEach(function(u){ try{u();}catch(e){} }); st.unsubs=[]; if(st.timer){ clearInterval(st.timer); st.timer=null; } }
+    /* サーバーで確かめられた一覧だけを使う(端末に残った控え・書き込み途中のものは、判定の根拠にしない) */
+    function confirmed(snap){ var m=snap&&snap.metadata; return !(m&&(m.fromCache||m.hasPendingWrites)); }
+    function listen(q,next){
+      var onNext=function(snap){ next(snap); };
+      var onErr=function(){ st.failed=true; renderCard(); renderSettingsStatus(); };
+      return q.onSnapshot({includeMetadataChanges:true},onNext,onErr);
+    }
     function start(){
-      stop(); st.loaded=false; st.configRows=[]; st.consentRows=[]; st.todayRows=[];
+      stop(); st.cfgOk=false; st.todayOk=false; st.failed=false; st.configRows=[]; st.consentRows=[]; st.receiveRows=[]; st.todayRows=[];
       var day=ctx.day();
-      st.unsubs.push(ctx.col('events').where('type','in',['hitokoe-config','hitokoe-consent']).onSnapshot(function(snap){
-        var c=[],k=[]; snap.forEach(function(d){ var v=d.data(); (v.type==='hitokoe-config'?c:k).push(v); });
-        st.configRows=c; st.consentRows=k; st.loaded=true; renderCard(); renderSettingsStatus();
-      },function(){}));
-      st.unsubs.push(ctx.col('events').where('date','==',day).onSnapshot(function(snap){
-        var rows=[]; snap.forEach(function(d){ rows.push(d.data()); }); st.todayRows=rows; renderCard();
-      },function(){}));
+      st.unsubs.push(listen(ctx.col('events').where('type','in',['hitokoe-config','hitokoe-consent','hitokoe-receive']),function(snap){
+        var c=[],k=[],r=[]; snap.forEach(function(d){ var v=d.data(); (v.type==='hitokoe-config'?c:v.type==='hitokoe-consent'?k:r).push(v); });
+        st.configRows=c; st.consentRows=k; st.receiveRows=r; st.cfgOk=confirmed(snap);
+        renderCard(); renderSettingsStatus(); askReceive();
+      }));
+      st.unsubs.push(listen(ctx.col('events').where('date','==',day),function(snap){
+        var rows=[]; snap.forEach(function(d){ rows.push(d.data()); }); st.todayRows=rows; st.todayOk=confirmed(snap); renderCard();
+      }));
       /* 時刻を過ぎたら出す・日付が変わったら読み直す */
       st.timer=setInterval(function(){ if(ctx.day()!==day) start(); else renderCard(); },60000);
     }
+    /* 受け取りに関わる家族に、1回だけ「受け取りますか」と聞く。「受け取らない」と答えた人には、自分から変えるまで聞かない */
+    function askReceive(){
+      if(!st.cfgOk||st.failed||typeof ctx.confirm!=='function') return;
+      var cfg=latestConfig(st.configRows), me=ctx.uid();
+      if(!cfg.enabled||!cfg.requestId||!isCandidate(cfg,me)) return;
+      var mine=receiveFor(st.receiveRows,me);
+      if(mine&&(mine.answer==='no'||!cfg.line||mine.line)) return;
+      var key='mainicoHitokoeRecv-'+cfg.requestId+(cfg.line?'-line':'');
+      if(st.asking===key) return;
+      try{ if(ctx.storage&&ctx.storage.getItem(key)) return; }catch(e){}
+      st.asking=key;
+      var mem=members(), target=Object.keys(mem).filter(function(u){ return approved(mem[u])&&isHonnin(mem[u]); })[0];
+      var name=target&&mem[target].name?mem[target].name:'ご本人';
+      Promise.resolve(ctx.confirm(receiveQuestion(cfg,name,cfg.line),cfg.line?'LINEでも受け取る':'受け取る')).then(function(yes){
+        if(yes!==true&&yes!==false){ st.asking=''; return; }
+        try{ if(ctx.storage) ctx.storage.setItem(key,'1'); }catch(e){}
+        return ctx.addEvent({type:'hitokoe-receive',answer:yes?'yes':'no',line:!!(yes&&cfg.line),name:ctx.myName(),clientAt:Date.now()});
+      }).catch(function(){ try{ if(ctx.storage) ctx.storage.removeItem(key); }catch(e){} st.asking=''; });
+    }
     function renderSettingsStatus(){
       var el=ctx.document.querySelector('#'+ctx.settingsId+' [data-hitokoe-status]');
-      if(el) el.innerHTML=statusText(results());
+      if(el) el.innerHTML=statusText(results(),ready());
+      var rv=ctx.document.querySelector('#'+ctx.settingsId+' [data-hitokoe-receivers]');
+      if(rv) rv.innerHTML=receiveText(latestConfig(st.configRows),members(),st.receiveRows);
     }
     function renderSettings(){
       var box=ctx.document.getElementById(ctx.settingsId);
       if(!box) return;
-      if(!st.loaded){ box.innerHTML='<p class="note">今の設定を読み込んでいます…</p>'; return; }
+      if(st.failed){ box.innerHTML='<p class="note">今の設定を読み込めませんでした。通信を確認して、開き直してください。</p>'; return; }
+      if(!st.cfgOk){ box.innerHTML='<p class="note">今の設定を読み込んでいます…</p>'; return; }
       var cfg=latestConfig(st.configRows);
       st.pausesDraft=cfg.pauses.slice();
-      box.innerHTML=settingsHtml(cfg,members(),results());
+      box.innerHTML=settingsHtml(cfg,members(),results(),st.receiveRows,ctx.uid(),ready());
       bindSettings(box,cfg);
     }
     function bindSettings(box,cfg){
@@ -223,7 +328,7 @@
         if(!f||t<f){ state('お休みの期間を正しく選んでください',true); return; }
         if(st.pausesDraft.length>=10){ state('期間のお休みは10件までです。古いものを消してください',true); return; }
         st.pausesDraft.push({from:f,to:t}); drawPauses();
-        state('「保存する」を押すと反映されます');
+        state(mdText(f)+'から'+mdText(t)+'までお休みにし、'+mdText(nextDay(t))+'から自動で再開します。「保存する」を押すと反映されます');
       });
       q('[data-hk-act="save"]').addEventListener('click',async function(){
         var btn=this; var on=q('[data-hk="enabled"]').checked;
@@ -239,12 +344,23 @@
           requestId:on?(cfg.enabled&&cfg.requestId&&(cfg.line||!line)?cfg.requestId:'r'+Date.now().toString(36)):'',
           name:ctx.myName(),clientAt:Date.now()};
         var ask=on&&data.requestId!==cfg.requestId;
-        if(ask&&!await ctx.confirm((cfg.enabled?'LINEにも送るようにすると':'オンにすると')+'、ご本人のスマホに「'+consentQuestion(data.hour,'ご家族',line)+'」と1回だけ確認が出ます。ご本人が「はい」を選ぶまでは動きません。ご本人が「やめておく」を選んだら、その気持ちを大切にしてください。',cfg.enabled?'LINEにも送る':'オンにする')) return;
+        if(ask&&!await ctx.confirm((cfg.enabled?'LINEにも送るようにすると':'オンにすると')+'、ご本人のスマホに「'+consentQuestion(data.hour,'ご家族',line)+'」と1回だけ確認が出ます。ご本人が「はい」を選ぶまでは動きません。ご本人が「やめておく」を選んだら、その気持ちを大切にしてください（家族の設定では解除されません）。受け取る家族にも、受け取るかどうかを1回だけ聞きます。',cfg.enabled?'LINEにも送る':'オンにする')) return;
         btn.disabled=true; state('保存しています…');
         try{ await ctx.addEvent(data); state(on?(ask?'保存しました。ご本人の了解を待っています':'保存しました'):'切りました。お知らせは出ません'); }
         catch(e){ state('保存できませんでした。通信を確認してください',true); }
         finally{ btn.disabled=false; }
       });
+      var recvState=function(t,err){ var e=q('[data-hk-recv-state]'); if(e){ e.textContent=t; e.classList.toggle('err',!!err); } };
+      var sendReceive=async function(yes,btn){
+        btn.disabled=true; recvState('保存しています…');
+        try{
+          await ctx.addEvent({type:'hitokoe-receive',answer:yes?'yes':'no',line:!!(yes&&q('[data-hk-recv="line"]').checked),name:ctx.myName(),clientAt:Date.now()});
+          recvState(yes?'受け取るにしました（届け先の日に、あなたのホームに出ます）':'受け取らないにしました。あなたには届きません');
+        }catch(e){ recvState('保存できませんでした。通信を確認してください',true); }
+        finally{ btn.disabled=false; }
+      };
+      q('[data-hk-act="recv-yes"]').addEventListener('click',function(){ sendReceive(true,this); });
+      q('[data-hk-act="recv-no"]').addEventListener('click',function(){ sendReceive(false,this); });
     }
     return {start:start,stop:stop,renderCard:renderCard,renderSettings:renderSettings,results:results};
   }
@@ -256,10 +372,14 @@
       var cfg=latestConfig(st.configRows);
       if(!cfg.enabled||!cfg.requestId||st.asking===cfg.requestId) return;
       var me=ctx.uid();
-      if(st.mine.some(function(v){ return v.uid===me&&v.requestId===cfg.requestId; })) return;
-      try{ if(ctx.storage.getItem('mainicoHitokoeAsked-'+cfg.requestId)) return; }catch(e){}
+      if(st.mine.some(function(v){ return v.uid===me&&v.requestId===cfg.requestId&&v.version===CONSENT_VERSION; })) return;
+      /* 一度「やめておく」を選んだご本人には、家族が設定を変えても聞き直さない(自分で「使う」に戻せる) */
+      var last=newestConsent(st.mine,me);
+      if(last&&last.answer==='no') return;
+      var askedKey='mainicoHitokoeAsked-'+cfg.requestId+'-'+CONSENT_VERSION;
+      try{ if(ctx.storage.getItem(askedKey)) return; }catch(e){}
       st.asking=cfg.requestId;
-      var mem=ctx.members()||{}, day=ctx.day();
+      var mem=ctx.members()||{};
       var names=[];
       [0,1,2,3,4,5,6].forEach(function(i){ var u=cfg.assignees[String(i)]||cfg.uid; var m=mem[u]; if(m&&m.name&&names.indexOf(m.name)<0) names.push(m.name); });
       if(!names.length&&mem[cfg.uid]&&mem[cfg.uid].name) names.push(mem[cfg.uid].name);
@@ -268,11 +388,10 @@
       ctx.ask(text,'はい','やめておく').then(function(yes){
         /* 画面が切り替わって答えがなかったときは、記録せず次の機会にもう一度聞く */
         if(yes===null||yes===undefined){ st.asking=''; return; }
-        try{ ctx.storage.setItem('mainicoHitokoeAsked-'+cfg.requestId,'1'); }catch(e){}
-        return ctx.addEvent({type:'hitokoe-consent',requestId:cfg.requestId,answer:yes?'yes':'no',clientAt:Date.now()})
+        try{ ctx.storage.setItem(askedKey,'1'); }catch(e){}
+        return ctx.addEvent({type:'hitokoe-consent',requestId:cfg.requestId,answer:yes?'yes':'no',version:CONSENT_VERSION,clientAt:Date.now()})
           .then(function(){ ctx.speak(yes?'はい、に しました':'やめておく、に しました'); });
-      }).catch(function(){ try{ ctx.storage.removeItem('mainicoHitokoeAsked-'+cfg.requestId); }catch(e){} st.asking=''; });
-      void day;
+      }).catch(function(){ try{ ctx.storage.removeItem(askedKey); }catch(e){} st.asking=''; });
     }
     function start(){
       if(st.unsub){ try{st.unsub();}catch(e){} }
@@ -283,22 +402,23 @@
       },function(){});
     }
     function stop(){ if(st.unsub){ try{st.unsub();}catch(e){} st.unsub=null; } }
-    /* ご本人の「その他の設定」用: 今の状態と、あとから変える操作 */
+    /* ご本人の「その他の設定」用: 今の状態と、あとから変える操作。止めている(最新の答えが「やめておく」)ときは 'no' */
     function status(){
       var cfg=latestConfig(st.configRows);
       if(!cfg.enabled||!cfg.requestId) return {enabled:false};
       var me=ctx.uid();
-      var mine=newest(st.mine.filter(function(v){ return v.uid===me&&v.requestId===cfg.requestId&&(v.answer==='yes'||v.answer==='no'); }));
-      return {enabled:true,hour:cfg.hour,line:cfg.line,answer:mine?mine.answer:''};
+      var last=newestConsent(st.mine,me);
+      var answer=last&&(last.answer==='no'||(last.requestId===cfg.requestId&&last.version===CONSENT_VERSION))?last.answer:'';
+      return {enabled:true,hour:cfg.hour,line:cfg.line,answer:answer};
     }
     function answer(yes){
       var cfg=latestConfig(st.configRows);
       if(!cfg.enabled||!cfg.requestId) return Promise.resolve(false);
-      return ctx.addEvent({type:'hitokoe-consent',requestId:cfg.requestId,answer:yes?'yes':'no',clientAt:Date.now()}).then(function(){ return true; });
+      return ctx.addEvent({type:'hitokoe-consent',requestId:cfg.requestId,answer:yes?'yes':'no',version:CONSENT_VERSION,clientAt:Date.now()}).then(function(){ return true; });
     }
     return {start:start,stop:stop,status:status,answer:answer};
   }
 
-  global.MainicoHitokoe={evaluate:evaluate,latestConfig:latestConfig,normalizeConfig:normalizeConfig,assigneeFor:assigneeFor,
-    cardHtml:cardHtml,settingsHtml:settingsHtml,statusText:statusText,create:create,createPersonPrompt:createPersonPrompt,NOTES:NOTES};
+  global.MainicoHitokoe={evaluate:evaluate,latestConfig:latestConfig,normalizeConfig:normalizeConfig,assigneeFor:assigneeFor,receiveFor:receiveFor,
+    cardHtml:cardHtml,settingsHtml:settingsHtml,statusText:statusText,create:create,createPersonPrompt:createPersonPrompt,NOTES:NOTES,CONSENT_VERSION:CONSENT_VERSION};
 })(typeof window!=='undefined'?window:globalThis);

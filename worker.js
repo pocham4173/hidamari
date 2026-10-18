@@ -15,8 +15,8 @@
  *       notifyTo で選ばれた予定だけを送る(選んでいない予定・おまもりタグは送らない)。
  *       送るのは、予定を登録した家族が「アプリを使わない人へ送る」ことに同意しているときだけ。
  *     - おまもりタグが読み取られたら、LINE連携した家族(ご本人以外)へ知らせる。
- *     - 「ひと声のきっかけ」(2026-10-04): 家族が「LINEにも送る」をオンにし、ご本人が了解した家庭で、
- *       決めた時刻までにご本人の操作が1つもない日だけ、その日の担当の家族1人へ1日1通送る。
+ *     - 「ひと声のきっかけ」(2026-10-04・10-18見直し): 家族が「LINEにも送る」をオンにし、ご本人が了解し、
+ *       受け取る家族本人も了承した家庭で、決めた時刻までにご本人の操作が1つもない日だけ、その日の届け先の家族1人へ1日1通送る。
  *       文面に名前・様子は書かない。操作があったかは、その日の記録の「種類と書いた人」だけで判断する(中身は読まない)。
  *     - 利用数の集計(2026-10-04): 世帯ごとに、日ごとの「ご本人の操作の数」と「家族の記録の数」だけを数える
  *       (記録の中身・名前は読まない)。運営者がLINEで「集計」と送ると、全体の数字だけを返事する。
@@ -68,12 +68,12 @@ const TAG_REQUEST_BUDGET = 30;               // タグの処理に使う通信�
 const HITOKOE_MONTHLY_LIMIT = 90;           // ひと声のきっかけのLINEは、まいにこ全体で月90通まで(無料の200通の内側)
 const HITOKOE_WINDOW_HOURS = 3;              // 決めた時刻から3時間のうちだけ送る(遅れた知らせは送らない)
 const HITOKOE_REQUEST_BUDGET = 36;           // ひと声の処理はここまで。残りは後片付けに回す
-const HITOKOE_NOT_ACTIVITY = new Set(['hitokoe-consent', 'device-recovery', 'person-ui-config', 'line-login-signin', 'device-reconnect']); // hitokoe.js と同じ
+const HITOKOE_NOT_ACTIVITY = new Set(['hitokoe-consent', 'hitokoe-receive', 'hitokoe-sent', 'device-recovery', 'person-ui-config', 'line-login-signin', 'device-reconnect']); // hitokoe.js と同じ
 const USAGE_KEEP_DAYS = 70;                  // 利用数の集計: 日ごとの数を残す日数(8週間の継続を見るため)
 const USAGE_PER_RUN = 4;                     // 1回の見回りで集計する世帯の数
 const USAGE_REQUEST_BUDGET = 36;             // 集計の処理はここまで。残りは後片付けに回す
 // 操作に数えない記録(設定・連携の記録・了解など。hitokoe.js の「操作に数えない」も含む)
-const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'device-recovery', 'person-ui-config',
+const USAGE_NOT_OPERATION = new Set(['hitokoe-consent', 'hitokoe-config', 'hitokoe-receive', 'hitokoe-sent', 'device-recovery', 'person-ui-config',
   'kibun-config', 'care-config', 'yotei-cat-config', 'line-link-log', 'member-joined', 'line-login-signin', 'device-reconnect']);
 const VERSION_TEXT = '版：2026-10-11 友だち追加のあいさつ';
 
@@ -586,10 +586,13 @@ class UsageBook {
     return '';
   }
   canSendTag(recipients) { return this.remaining() >= Math.max(1, recipients || 1); }
-  /* ひと声のきっかけを止める理由(止めないときは空文字)。月の残りはタグの分を残し、ひと声だけの月の上限も守る */
-  async hitokoeBlocked(groupId) {
+  /* ひと声のきっかけを止める理由(止めないときは空文字)。
+     2026-10-18: 残り通数をこの回にLINEから確かめられないとき(取得失敗・前回の記録からの推定)は、ひと声だけは送らない。
+     月の残りはタグの分を残し、ひと声だけの月の上限・家庭の1日上限も守る。初回も再試行も毎回ここを通す */
+  async hitokoeBlocked(groupId, reserved) {
+    if (!this.quota || this.quota.estimated) return 'quota-unknown';
     if (this.remaining() - 1 < TAG_RESERVE) return 'monthly';
-    if (await this.hitokoeMonth() >= HITOKOE_MONTHLY_LIMIT) return 'hitokoe-monthly';
+    if (!reserved && await this.hitokoeMonth() >= HITOKOE_MONTHLY_LIMIT) return 'hitokoe-monthly';
     if (await this.home(groupId) + 1 > HOUSEHOLD_DAILY_LIMIT) return 'household';
     return '';
   }
@@ -600,10 +603,23 @@ class UsageBook {
     }
     return this.hitokoeCount;
   }
-  async countHitokoe(groupId) {
-    this.hitokoeCount = await this.hitokoeMonth() + 1;
-    this.hitokoeDirty = true;
-    await this.count(groupId);
+  /* ひと声の月の枠を1通分、送る前に予約する(2026-10-18)。読んだ時点から変わっていない時だけ書けるので、
+     同時に動いた見回りが数を上書きしたり、上限を超えたりしない。予約できなければ false。
+     予約は受付記録ごとに1回だけ(再試行では取り直さない)。結果が分からなかった送信の予約は戻さない(多めに数える側に倒す) */
+  async hitokoeReserve(month, receiptPath) {
+    const path = 'lineUsage/hitokoe-' + month;
+    const d = await this.fs.get(path);
+    const count = d && Number.isFinite(d.fields.count) ? d.fields.count : 0;
+    if (count >= HITOKOE_MONTHLY_LIMIT) return false;
+    const fields = { month, count: count + 1, limit: HITOKOE_MONTHLY_LIMIT, updatedAt: new Date(),
+      expiresAt: new Date(this.now.getTime() + 40 * 86400000) };
+    const writes = [{ update: { name: this.fs.root + '/' + path, fields: toFields(fields) },
+      currentDocument: d ? { updateTime: d.updateTime } : { exists: false } }];
+    if (receiptPath) writes.push({ update: { name: this.fs.root + '/' + receiptPath, fields: toFields({ quotaMonth: month }) },
+      updateMask: { fieldPaths: ['quotaMonth'] }, currentDocument: { exists: true } });
+    const ok = await this.fs.commit(writes);
+    if (ok) this.hitokoeCount = count + 1;
+    return !!ok;
   }
   async count(groupId) {
     this.homes.set(groupId, await this.home(groupId) + 1);
@@ -611,12 +627,7 @@ class UsageBook {
     if (this.quota) { this.quota.used++; this.quotaDirty = true; }
   }
   async flush() {
-    // ひと声の月の数は上限(90通)の判断に使うので、いちばん先に、最後の後片付け枠で書く
-    if (this.hitokoeDirty) {
-      await this.fs.set('lineUsage/hitokoe-' + this.day.slice(0, 7), { month: this.day.slice(0, 7), count: this.hitokoeCount,
-        limit: HITOKOE_MONTHLY_LIMIT, updatedAt: new Date(), expiresAt: new Date(this.now.getTime() + 40 * 86400000) }, true);
-      this.hitokoeDirty = false;
-    }
+    // ひと声の月の数は、送る前の予約(hitokoeReserve)でその場で書く(ここでまとめて上書きしない)
     for (const groupId of this.dirty) {
       await this.fs.set('lineUsage/' + groupId, { day: this.day, count: this.homes.get(groupId), updatedAt: new Date(), expiresAt: new Date(this.now.getTime() + 2 * 86400000) }, true);
     }
@@ -631,25 +642,39 @@ class UsageBook {
   }
 }
 
-/* ================= ひと声のきっかけ(2026-10-04) =================
- * hitokoe.js(アプリ)と同じ判定で、LINEにも1日1通だけ送る。
- *  - 家族の最新の設定(hitokoe-config)が「使う」かつ「LINEにも送る」
- *  - ご本人がその設定のお願い(requestId)に「はい」と答えている
- *  - 今日(日本時間)がお休みの曜日・期間でない。決めた時刻から HITOKOE_WINDOW_HOURS 時間のうち
- *  - 今日、ご本人の操作が1つもなく、家族の「連絡しました」もまだない
- *  - その日の担当の家族(いなければ設定した人)が、承認済みでLINE連携している
- * 送る文面に名前・様子は書かない。家庭ごとに1日1通(同じ日の再送キーで二重に届かない)。 */
+/* ================= ひと声のきっかけ(2026-10-04・2026-10-18 安全性の見直し) =================
+ * 押されなかった日に、家族が任意で声をかけるきっかけとして、LINEに1日1通だけ送る。安否確認・緊急通報ではない。
+ * 送るのは、次をすべて「サーバーで正常に確かめられた」ときだけ。読めない・確かめられないときは送らない。
+ *  - 家庭が削除中でない。家族の最新の設定が「使う」かつ「LINEにも送る」
+ *  - ご本人の最新の答えが、今の設定のお願い(requestId)への「はい」。あとから「やめておく」を選んだら、
+ *    家族が設定を変えても解除されない(ご本人が自分で「使う」に戻すまで止まる)
+ *  - 了解した日(利用開始日)でない。今日(日本時間)がお休みの曜日・期間でない。決めた時刻から HITOKOE_WINDOW_HOURS 時間のうち
+ *  - 今日、ご本人の操作が1つもなく(「今日はそっとしておいて」も操作に数える)、家族の「連絡しました」もない
+ *  - 受け取る家族本人が「受け取る(LINEでも)」と了承している。設定した人・曜日の届け先・LINE連携だけでは了承とみなさない
+ *  - 受け取る家族が承認済み・在籍中・同意済みで、アカウント終了の手続き中でなく、この家庭でLINE連携している
+ *  - LINEの残り通数をこの回に確かめられ、タグの分を残しても足りる。ひと声の月上限・家庭の1日上限の内側
+ * 二重防止(同時に動いても1家庭1日1通):
+ *  ① 受付記録(家庭+日付)を exists:false の条件付きで作れた回だけが、初回の送信へ進む
+ *  ② 同じ家庭・同じ日は同じLINE再送キー(キーの有効期間24時間より、その日の送信期限を優先する)
+ * 受付には家庭・日付・受け取る人・LINE宛先・本文・了解のお願い番号・送信期限・状態を保存する。
+ *  状態: reserved(予約) → accepted(LINEが受け付けた。届いた・読まれたではない) / unknown(結果不明)
+ *        / rejected(LINEが4xxで断った。送り直さない) / skipped(見送り)
+ * 結果不明のときは、期限内に限り、保存した宛先・本文だけへ、同じキーで送り直す。その前に条件をすべて確かめ直す。
+ *  新しいキー・別の宛先・新しい受付では送り直さない。宛先が変わっていたらその日は見送る。
+ * 限界: 送信直前に確かめた後、LINEへ要求を出すまでの間の操作(ご本人が押した等)は反映できない。要求を出した後は取り消せない。
+ * 家族への履歴は、その家庭の記録に「ひと声のお知らせ」(type: hitokoe-sent)として残す(名前・LINE識別子は書かない)。 */
 const HITOKOE_HOURS = [9, 10, 11, 12], HITOKOE_DEFAULT_HOUR = 11;
-const HITOKOE_TEXT = ['🌼 ひと声のきっかけ（まいにこ）', '',
-  '今日はまだ、まいにこの「おはよう」などが届いていません。よかったら、声をかけてみてください。', '',
-  '押し忘れや外出のことも多くあります。返事や対応は必要ありません。',
-  '安否確認・緊急通報ではありません。緊急のときは119番へ。', '',
+const HITOKOE_TEXT = ['まいにこ：今日の記録は、まだありません。余裕のあるときに、いつもの電話などでひと声どうぞ。対応は任意です。記録がないことは、異常を意味しません。', '',
   'まいにこを開く', APP_URL].join('\n');
+const HITOKOE_LEASE_MS = 5 * 60000;          // 結果不明の再試行は、前の試みから5分以上たってから(同時に二つの見回りが送らないように)
+const HITOKOE_SEND_COST = 16;                 // 受付から履歴まで1家庭を送り切るのに要る通信の目安。残りが足りなければ受付を作らず次の回へ
+const HITOKOE_CONSENT_VERSION = '2026-10-18'; // ご本人への説明の版。古い版への「はい」では動かない(hitokoe.js と同じ)
 function eventMillis(f) {
   const a = f.at instanceof Date ? f.at : f.createdAt instanceof Date ? f.createdAt : null;
   return a ? a.getTime() : Number(f.clientAt) || 0;
 }
 function newestEvent(rows) { return rows.slice().sort((a, b) => eventMillis(b.fields) - eventMillis(a.fields))[0] || null; }
+function newestWhere(rows, pred) { return newestEvent(rows.filter((d) => pred(d.fields))); }
 function hitokoeConfig(f) {
   const hour = HITOKOE_HOURS.includes(Number(f.hour)) ? Number(f.hour) : HITOKOE_DEFAULT_HOUR;
   const off = Array.isArray(f.offWeekdays) ? f.offWeekdays.map(Number).filter((n) => n >= 0 && n <= 6) : [];
@@ -663,65 +688,147 @@ function hitokoeConfig(f) {
 }
 const memberApproved = (m) => !!m && (m.status === undefined || m.status === 'approved');
 const memberHonnin = (m) => !!m && (m.role === 'honnin' || m.mode === 'honnin');
+const eventDay = (f) => { const ms = eventMillis(f); return ms ? jstDateString(new Date(ms)) : ''; };
+
+/* 今この家庭へ送ってよいかを、すべてサーバーから読み直して判定する。送れないときは {reason} を返す。
+   読み取りに失敗したときは例外のまま上へ返す(呼び出し側で「送らない」になる)。 */
+async function hitokoeCheck(fs, g, now, fresh) {
+  const jst = new Date(now.getTime() + 9 * 3600000), hour = jst.getUTCHours(), day = jstDateString(now), weekday = jst.getUTCDay();
+  // 送信直前(fresh)は家庭を読み直す。最初の判定は見回りの初めに読んだ家庭の一覧を使う(通信を節約)
+  const group = fresh ? await fs.get(g.path) : g;
+  if (!group || group.fields.deletionState === 'deleting') return { reason: 'group' };
+  // 設定・ご本人の了解・家族の受け取りの了承を1回の問い合わせで読む
+  const hk = await fs.query(g.path, { from: [{ collectionId: 'events' }],
+    where: { fieldFilter: { field: { fieldPath: 'type' }, op: 'IN', value: { arrayValue: { values: [
+      { stringValue: 'hitokoe-config' }, { stringValue: 'hitokoe-consent' }, { stringValue: 'hitokoe-receive' }] } } } },
+    select: { fields: ['type', 'enabled', 'line', 'hour', 'offWeekdays', 'pauses', 'assignees', 'requestId', 'uid', 'answer', 'version', 'at', 'clientAt']
+      .map((fieldPath) => ({ fieldPath })) } });
+  const ofType = (t) => hk.filter((d) => d.fields.type === t);
+  const cfgDoc = newestEvent(ofType('hitokoe-config'));
+  if (!cfgDoc) return { reason: 'off' };
+  const cfg = hitokoeConfig(cfgDoc.fields);
+  if (!cfg.enabled || !cfg.line || !cfg.requestId) return { reason: 'off' };
+  if (hour < cfg.hour || hour >= cfg.hour + HITOKOE_WINDOW_HOURS) return { reason: 'window' };
+  if (cfg.off.includes(weekday) || cfg.pauses.some((p) => p.from <= day && day <= p.to)) return { reason: 'paused' };
+  // 家族の名簿は一度の問い合わせで全員分を読む(途中で切れた一覧を根拠にしない)
+  const memberDocs = await fs.query(g.path, { from: [{ collectionId: 'members' }],
+    select: { fields: ['name', 'role', 'mode', 'status'].map((fieldPath) => ({ fieldPath })) } });
+  const members = Object.fromEntries(memberDocs.map((m) => [m.id, m.fields]));
+  const honnins = Object.keys(members).filter((u) => memberApproved(members[u]) && memberHonnin(members[u]));
+  if (!honnins.length) return { reason: 'no-honnin' };
+  // ご本人の最新の答え(どのお願いへの答えでも、いちばん新しいもの)が、今のお願いへの「はい」であること
+  const consents = ofType('hitokoe-consent');
+  const agreed = honnins.filter((u) => {
+    const c = newestWhere(consents, (f) => f.uid === u && (f.answer === 'yes' || f.answer === 'no'));
+    return !!c && c.fields.requestId === cfg.requestId && c.fields.answer === 'yes' && c.fields.version === HITOKOE_CONSENT_VERSION
+      && eventDay(c.fields) !== day;
+  });
+  if (!agreed.length) return { reason: 'consent' };
+  const todayRows = (await fs.query(g.path, { from: [{ collectionId: 'events' }], where: fieldEq('date', { stringValue: day }),
+    select: { fields: [{ fieldPath: 'type' }, { fieldPath: 'uid' }, { fieldPath: 'target' }] } })).map((d) => d.fields);
+  const quiet = agreed.filter((u) => !todayRows.some((v) => v.uid === u && !HITOKOE_NOT_ACTIVITY.has(v.type))
+    && !todayRows.some((v) => v.type === 'hitokoe-contacted' && v.target === u));
+  if (!quiet.length) return { reason: 'active' };
+  // 受け取る家族本人の了承(最新の答えが「受け取る」かつ「LINEでも」)。了承した日は送らない
+  const receives = ofType('hitokoe-receive');
+  const receivesLine = (u) => {
+    const r = newestWhere(receives, (f) => f.uid === u && (f.answer === 'yes' || f.answer === 'no'));
+    return !!r && r.fields.answer === 'yes' && r.fields.line === true && eventDay(r.fields) !== day;
+  };
+  const fam = (u) => (u && memberApproved(members[u]) && !memberHonnin(members[u]) && receivesLine(u) ? u : '');
+  const assignee = fam(cfg.assignees[String(weekday)] || '') || fam(cfg.uid);
+  if (!assignee) return { reason: 'receiver' };
+  // LINE連携・アカウント終了・同意を1回の通信でまとめて確かめる
+  const [link, closure, consent] = await fs.getMany(['lineLinks/' + assignee, 'accountClosures/' + assignee, 'consents/' + assignee]);
+  const to = link && link.fields.groupId === g.id && typeof link.fields.lineUserId === 'string' ? link.fields.lineUserId : '';
+  if (!to) return { reason: 'line' };
+  if (closure || !validConsent(consent && consent.fields)) return { reason: 'member' };
+  const [y, mo, d] = day.split('-').map(Number);
+  return { ok: true, day, assignee, to, requestId: cfg.requestId,
+    deadline: new Date(Date.UTC(y, mo - 1, d, cfg.hour + HITOKOE_WINDOW_HOURS - 9)) };
+}
+
 async function runHitokoe(env, fs, now, book, groups) {
   const jst = new Date(now.getTime() + 9 * 3600000), hour = jst.getUTCHours();
   if (hour < HITOKOE_HOURS[0] || hour >= HITOKOE_HOURS[HITOKOE_HOURS.length - 1] + HITOKOE_WINDOW_HOURS) return 0;
-  const day = jstDateString(now), weekday = jst.getUTCDay();
   let sent = 0;
   const offset = groups.length ? Math.floor(now.getTime() / 900000) % groups.length : 0;
   for (const g of [...groups.slice(offset), ...groups.slice(0, offset)]) {
     if (g.fields.deletionState === 'deleting') continue;
-    const eventsOf = (type, fields) => fs.query(g.path, { from: [{ collectionId: 'events' }], where: fieldEq('type', { stringValue: type }),
-      select: { fields: fields.map((fieldPath) => ({ fieldPath })) } });
-    const newest = newestEvent(await eventsOf('hitokoe-config',
-      ['type', 'enabled', 'line', 'hour', 'offWeekdays', 'pauses', 'assignees', 'requestId', 'uid', 'at', 'clientAt']));
-    if (!newest) continue;
-    const cfg = hitokoeConfig(newest.fields);
-    if (!cfg.enabled || !cfg.line || !cfg.requestId) continue;
-    if (hour < cfg.hour || hour >= cfg.hour + HITOKOE_WINDOW_HOURS) continue;
-    if (cfg.off.includes(weekday) || cfg.pauses.some((p) => p.from <= day && day <= p.to)) continue;
-    const key = await deliveryKey('hitokoe\n' + g.id + '\n' + day);
-    const receiptPath = 'lineDeliveryReceipts/' + key;
-    let receipt = await fs.get(receiptPath);
-    if (receipt && receipt.fields.acceptedAt instanceof Date) continue;   // 今日はもう送った
-    const memberDocs = await fs.list(g.path + '/members', ['name', 'role', 'mode', 'status']);
-    const members = Object.fromEntries(memberDocs.map((m) => [m.id, m.fields]));
-    const honnins = Object.keys(members).filter((u) => memberApproved(members[u]) && memberHonnin(members[u]));
-    if (!honnins.length) continue;
-    const consents = await eventsOf('hitokoe-consent', ['type', 'uid', 'requestId', 'answer', 'at', 'clientAt']);
-    const agreed = honnins.filter((u) => {
-      const c = newestEvent(consents.filter((d) => d.fields.uid === u && d.fields.requestId === cfg.requestId
-        && (d.fields.answer === 'yes' || d.fields.answer === 'no')));
-      return c && c.fields.answer === 'yes';
-    });
-    if (!agreed.length) continue;
-    const todayRows = (await fs.query(g.path, { from: [{ collectionId: 'events' }], where: fieldEq('date', { stringValue: day }),
-      select: { fields: [{ fieldPath: 'type' }, { fieldPath: 'uid' }, { fieldPath: 'target' }] } })).map((d) => d.fields);
-    const quiet = agreed.filter((u) => !todayRows.some((v) => v.uid === u && !HITOKOE_NOT_ACTIVITY.has(v.type))
-      && !todayRows.some((v) => v.type === 'hitokoe-contacted' && v.target === u));
-    if (!quiet.length) continue;
-    // その日の担当(承認済みの家族。ご本人は受け取らない)。いなければ設定した人
-    const fam = (u) => (u && memberApproved(members[u]) && !memberHonnin(members[u]) ? u : '');
-    const assignee = fam(cfg.assignees[String(weekday)] || '') || fam(cfg.uid);
-    if (!assignee) continue;
-    const link = await fs.get('lineLinks/' + assignee);
-    const to = link && link.fields.groupId === g.id && typeof link.fields.lineUserId === 'string' ? link.fields.lineUserId : '';
-    if (!to) continue;
-    if (!await approvedMember(fs, g.id, assignee)) continue;
-    if (!receipt) {
-      if (await book.hitokoeBlocked(g.id)) continue;                     // 上限: アプリの中のお知らせだけになる
-      await fs.commit([{ update: { name: fs.root + '/' + receiptPath,
-        fields: toFields({ text: HITOKOE_TEXT, expiresAt: new Date(now.getTime() + 2 * 86400000) }) },
-        currentDocument: { exists: false } }]);
-      receipt = await fs.get(receiptPath);
-      if (!receipt || receipt.fields.acceptedAt instanceof Date) continue;
-    }
-    const r = await push(env, fs, to, HITOKOE_TEXT, key);
-    if (!r) continue;                                                      // 次の回に同じ再送キーで送り直す
-    if (r === 'sent') { sent++; await book.countHitokoe(g.id); }
-    await fs.set(receiptPath, { acceptedAt: new Date(), expiresAt: new Date(now.getTime() + 2 * 86400000) });
+    // 1つの家庭で読み取りに失敗しても、その家庭は送らずに次の家庭へ(通信回数の上限だけは全体を止める)
+    try { sent += await hitokoeHousehold(env, fs, now, book, g); }
+    catch (e) { if (e.message === 'request-budget') throw e; console.error('hitokoe household', e.message); }
   }
   return sent;
+}
+
+async function hitokoeHousehold(env, fs, now, book, g) {
+  const first = await hitokoeCheck(fs, g, now, false);
+  if (!first.ok) return 0;
+  // 途中で通信回数の上限に届くと、送った記録が残らないことがある。送り切れる余裕がなければ、この回は受付を作らない
+  if (fs.count + HITOKOE_SEND_COST > (fs.softLimit || SUBREQUEST_BUDGET)) throw new Error('request-budget');
+  const key = await deliveryKey('hitokoe\n' + g.id + '\n' + first.day);
+  const receiptPath = 'lineDeliveryReceipts/' + key;
+  const expiresAt = new Date(now.getTime() + 2 * 86400000);
+  const receipt = await fs.get(receiptPath);
+  let rec;
+  if (receipt) {
+    const f = receipt.fields;
+    if (f.acceptedAt instanceof Date) return 0;                                 // 今日はもう受け付けられた
+    if (f.kind !== 'hitokoe' || !['reserved', 'unknown'].includes(f.state)) return 0;  // 見送り・拒否・古い形式の受付は送らない
+    if (f.day !== first.day) return 0;
+    const last = f.attemptAt instanceof Date ? f.attemptAt.getTime() : 0;
+    if (now.getTime() - last < HITOKOE_LEASE_MS) return 0;                       // ほかの見回りが送っている最中かもしれない
+    // 再試行の権利を取る(読んだ時点から変わっていない時だけ。同時に動いた見回りのうち1つだけが進む)
+    const claimed = await fs.patch(receiptPath, { attemptAt: now, attempts: (Number(f.attempts) || 0) + 1 },
+      ['attemptAt', 'attempts'], receipt.updateTime);
+    if (!claimed) return 0;
+    rec = f;
+  } else {
+    if (await book.hitokoeBlocked(g.id)) return 0;                               // 枠が足りない・確かめられない日は受付も作らない
+    rec = { kind: 'hitokoe', groupId: g.id, day: first.day, receiver: first.assignee, to: first.to, text: HITOKOE_TEXT,
+      requestId: first.requestId, deadline: first.deadline, state: 'reserved', attempts: 1, attemptAt: now, createdAt: now, expiresAt };
+    const created = await fs.commit([{ update: { name: fs.root + '/' + receiptPath, fields: toFields(rec) },
+      currentDocument: { exists: false } }]);
+    if (!created) return 0;                                                       // ほかの見回りが先に受付を作った
+  }
+  const mark = (state, extra = {}) => fs.patch(receiptPath, { state, updatedAt: new Date(), ...extra },
+    ['state', 'updatedAt', ...Object.keys(extra)]);
+  const history = (status) => fs.set(g.path + '/events/hitokoe-sent-' + rec.day, { type: 'hitokoe-sent', date: rec.day,
+    target: rec.receiver, status, uid: '', at: new Date() });
+  // 送信直前の確かめ直し(初回も再試行も)。宛先が変わっていたら、同じキーで別の人へは振り替えず、その日は見送る
+  const check = await hitokoeCheck(fs, g, new Date(), true);
+  if (!check.ok || check.day !== rec.day || check.assignee !== rec.receiver || check.to !== rec.to || check.requestId !== rec.requestId) {
+    await mark('skipped', { skipReason: check.ok ? 'changed' : check.reason });
+    if (check.reason === 'window') await history('skipped');
+    return 0;
+  }
+  // 期限は送信の直前にもう一度確かめる(遅れた知らせは送らず、翌日に持ち越さない)。枠を予約する前に
+  if (!(rec.deadline instanceof Date) || Date.now() >= rec.deadline.getTime()) {
+    await mark('skipped', { skipReason: 'deadline' }); await history('skipped'); return 0;
+  }
+  // 再試行で、この受付の分の月の枠がもう予約済みなら、月上限の確認は二重に数えない(残り通数・タグの確保・家庭の上限は毎回確かめる)
+  const blocked = await book.hitokoeBlocked(g.id, !!rec.quotaMonth);
+  if (blocked === 'quota-unknown') return 0;                                       // 確かめられない間は送らない(期限内に確かめられれば次の回)
+  if (blocked) { await mark('skipped', { skipReason: blocked }); await history('skipped'); return 0; }
+  const month = rec.day.slice(0, 7);
+  if (rec.quotaMonth && rec.quotaMonth !== month) { await mark('skipped', { skipReason: 'month' }); return 0; }  // 翌月の枠で古い要求を送らない
+  if (!rec.quotaMonth) {
+    // 月の枠の予約と、受付への「予約済み」の印を同じ書き込みで行う(途中で止まって二重に予約しないように)
+    if (!await book.hitokoeReserve(month, receiptPath)) { await mark('skipped', { skipReason: 'hitokoe-monthly' }); await history('skipped'); return 0; }
+    rec.quotaMonth = month;
+  }
+  const r = await push(env, fs, rec.to, rec.text, key, true);
+  if (r === 'sent' || r === 'dup') {
+    await mark('accepted', { acceptedAt: new Date() });
+    await history('accepted');
+    if (r === 'sent') { await book.count(g.id); return 1; }
+    return 0;
+  }
+  if (r === 'rejected') { await mark('rejected'); await history('failed'); return 0; }  // 4xx: 送り直しても結果は変わらない
+  await mark('unknown');                                                             // 結果不明: 期限内に同じキー・同じ宛先で
+  await history('unknown');
+  return 0;
 }
 
 /* ================= 利用数の集計(2026-10-04・事業計画書 第2版の Phase 0 の判定用) =================
@@ -1922,7 +2029,9 @@ async function reply(env, replyToken, text) {
   if (!res.ok) console.error('reply failed', res.status);
 }
 
-async function push(env, fs, to, text, retryKey) {
+/* reportRejected: true のとき、LINEが4xx(409の受付済みを除く)で断ったら 'rejected' を返す(送り直しても結果は変わらないため)。
+   500・時間切れ・応答なしは false(結果不明。同じ再送キーで送り直せる) */
+async function push(env, fs, to, text, retryKey, reportRejected) {
   fs.reserve();
   try {
   const res = await fetch('https://api.line.me/v2/bot/message/push', {
@@ -1938,6 +2047,7 @@ async function push(env, fs, to, text, retryKey) {
   // 同じ再送キーで受付済み(前の回で送れていた)。二重には届かず、通数も増えない
   if (res.status === 409 && res.headers.get('x-line-accepted-request-id')) return 'dup';
   console.error('push failed', res.status);
+  if (reportRejected && res.status >= 400 && res.status < 500 && res.status !== 429) return 'rejected';  // 429(混雑)は結果不明として送り直せる
   return false;
   } catch (e) { console.error('push response unavailable'); return false; }
 }

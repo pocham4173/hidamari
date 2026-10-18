@@ -228,7 +228,8 @@ service cloud.firestore {
 
       /* 記録の種類(2026-10-01): アプリが書く種類だけを受け付ける。
          LINE連携の記録は送信役(サーバー)が書く。家族がアプリから書けるのは「アプリから解除した」記録だけ。
-         「ひと声のきっかけ」への了解は、ご本人だけが書ける。 */
+         「ひと声のきっかけ」への了解は、ご本人だけが書ける。受け取りの了承(hitokoe-receive)は、ご本人以外の家族が自分の分だけ書ける
+         (uid は書いた本人に限る)。LINEへの送信の記録(hitokoe-sent)は送信役だけが書く(ここには入れない)。 */
       function isHonninMember(groupId) {
         return get(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.get('role', '') == 'honnin'
           || get(/databases/$(db)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.get('mode', '') == 'honnin';
@@ -241,10 +242,12 @@ service cloud.firestore {
             'family-task', 'family-task-done', 'family-task-help', 'person-ui-config', 'tag-alert',
             'yotei-note', 'yotei-cat-config', 'line-link-log',
             'disaster-safe', 'disaster-evacuating', 'disaster-help',
-            'hitokoe-config', 'hitokoe-consent', 'hitokoe-contacted', 'device-recovery'
+            'hitokoe-config', 'hitokoe-consent', 'hitokoe-contacted', 'hitokoe-receive', 'device-recovery'
           ]
           && (d.type != 'line-link-log' || (d.get('action', '') == 'unlinked' && d.get('via', '') == 'app'))
-          && (d.type != 'hitokoe-consent' || isHonninMember(groupId));
+          && (d.type != 'hitokoe-consent' || isHonninMember(groupId))
+          && (d.type != 'hitokoe-receive' || (!isHonninMember(groupId)
+                && d.get('answer', '') in ['yes', 'no'] && d.get('line', false) is bool));
       }
 
       match /events/{eventId} {
@@ -254,9 +257,10 @@ service cloud.firestore {
           && validEventType(groupId, request.resource.data);
         allow update: if false;
         // 安全のお知らせ(LINEでログイン・再接続QR。送信役だけが書く)は、書いた人も消せない(家庭の削除のときだけ消える)
+        // 2026-10-18: ひと声の了解・受け取りの了承も消せない(「やめる」の記録を消して、前の「はい」が戻らないように)
         allow delete: if deletingOwner(groupId) || (usableAccount() && isApproved(groupId)
           && resource.data.uid == request.auth.uid
-          && !(resource.data.get('type', '') in ['line-login-signin', 'device-reconnect']));
+          && !(resource.data.get('type', '') in ['line-login-signin', 'device-reconnect', 'hitokoe-consent', 'hitokoe-receive']));
       }
 
       /* 予定の追加項目(2026-09-26): 場所(60文字まで)と、LINEで知らせる日時。

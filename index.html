@@ -2611,7 +2611,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="line-notify.js?v=20261012c"></script>
 <script src="line-login.js?v=20261001"></script>
 <script src="line-login-ui.js?v=20261003"></script>
-<script src="hitokoe.js?v=20261004"></script>
+<script src="hitokoe.js?v=20261018"></script>
 <script src="qr-scan.js?v=20261004"></script>
 <script src="device-stop.js?v=20261005"></script>
 <script src="family-survey.js?v=20261005"></script>
@@ -2948,11 +2948,13 @@ function kusuriQuestion(key){
 }
 function validKusuriSlot(key){ return Object.prototype.hasOwnProperty.call(KUSURI_SLOT_NAMES,key); }
 /* 本人の記録の「日」(2026-09-30): 夜中0時〜朝4時前は前の日の夜として扱う。
-   その日の夜の欄が、夜中に押した分で先に埋まらないようにするため。 */
+   その日の夜の欄が、夜中に押した分で先に埋まらないようにするため。
+   2026-10-18: 日本時間で決める(00:00:00〜03:59:59は前の日、04:00:00から当日)。LINE送信役(日本時間)と同じ日付にそろえ、
+   端末の時間帯の設定がずれていても日付が食い違わないようにする。日本時間の端末では、これまでと同じ結果になる。 */
 function personDay(){
-  const d=new Date();
-  if(d.getHours()<4) d.setDate(d.getDate()-1);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const d=new Date(Date.now()+9*3600000);
+  if(d.getUTCHours()<4) d.setUTCDate(d.getUTCDate()-1);
+  return d.toISOString().slice(0,10);
 }
 function slot(){
   const h=new Date().getHours();
@@ -4767,7 +4769,7 @@ function cancelRecordLabel(v){
   return nm[v.type]?nm[v.type](v):'記録';
 }
 /* 取り消し一覧に出さない種類(設定や、家族が見る連携の記録) */
-const CANCEL_HIDDEN_TYPES={'line-login-signin':1,'device-reconnect':1,'hitokoe-config':1,'hitokoe-consent':1,'device-recovery':1,'line-link-log':1,'care-config':1,'kibun-config':1,'yotei-cat-config':1,'person-ui-config':1,'medicine-info':1,'family-contact':1};
+const CANCEL_HIDDEN_TYPES={'line-login-signin':1,'device-reconnect':1,'hitokoe-config':1,'hitokoe-consent':1,'hitokoe-receive':1,'hitokoe-sent':1,'device-recovery':1,'line-link-log':1,'care-config':1,'kibun-config':1,'yotei-cat-config':1,'person-ui-config':1,'medicine-info':1,'family-contact':1};
 function cancelDialogKeydown(event){
   if(event.key==='Escape'){event.preventDefault();closeCancel();return;}
   if(event.key!=='Tab')return;
@@ -5504,7 +5506,9 @@ var REC_META_TYPES = {
   'person-ui-config':1,
   'family-note':1,'family-note-ack':1,'family-note-reply':1,
   'family-task':1,'family-task-done':1,'family-task-help':1,
-  'family-contact':1
+  'family-contact':1,
+  /* 2026-10-18: ひと声の受け取りの了承・LINEへの送信の記録は、記録一覧に出さない(送信の記録は家族ホームのひと声の欄だけに出す) */
+  'hitokoe-receive':1,'hitokoe-sent':1
 };
 function recVisible(v){
   return !REC_META_TYPES[v.type] && !(isKOnly() && REC_PERSON_TYPES.has(v.type));
@@ -8813,6 +8817,7 @@ function initHitokoe(){
   hitokoeCtl=MainicoHitokoe.create({document:document,col:col,addEvent:addEvent,uid:uid,myName:myName,
     members:()=>memberInfoByUid,day:()=>(typeof personDay==='function'?personDay():todayStr()),
     confirm:(t,l)=>(typeof appConfirm==='function'?appConfirm(t,l,'やめる',true):Promise.resolve(confirm(t))),
+    storage:(()=>{try{return window.localStorage;}catch(e){return null;}})(),
     cardId:'hitokoe-card',settingsId:'settings-hitokoe'});
   hitokoeCtl.start();
   initFamilyNotices();
@@ -8868,7 +8873,7 @@ function renderPersonHitokoe(){
   if(sec.hidden)return;
   document.getElementById('person-hitokoe-state').textContent=st.answer==='yes'
     ?'使っています。挨拶やお薬などの記録が'+st.hour+'時までに1つもない日は、ご家族に「声をかけるきっかけ」のお知らせが届きます。'+(st.line?'お知らせは、ご家族のまいにことLINEに届きます（LINEには名前や様子は書きません）。':'')
-    :'使っていません（「やめておく」を選んでいます）。';
+    :'使っていません（止めています）。ご家族が設定を変えても、ここで「使う」を選ぶまで止まったままです。今日だけ休みたいときは、お願いの「今日はそっとしておいて」も使えます。';
   document.getElementById('person-hitokoe-btn').textContent=st.answer==='yes'?'やめる（お知らせを止める）':'使う（お知らせを始める）';
 }
 async function togglePersonHitokoe(){
