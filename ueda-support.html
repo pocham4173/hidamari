@@ -28,7 +28,20 @@
 </nav>
 </section>
 <form role="search" id="search-form"><label for="query">言葉で探す</label><div class="search-row"><input id="query" type="search" placeholder="例：ごみ、草取り、車いす" maxlength="80"><button type="submit">探す</button></div></form>
-<section id="results-section" hidden aria-labelledby="results-title"><div class="results-heading"><h2 id="results-title" tabindex="-1"></h2><a href="#" id="all-categories">分類に戻る</a></div><p id="result-count" role="status"></p><div id="results"></div></section>
+<section id="results-section" hidden aria-labelledby="results-title"><div class="results-heading"><h2 id="results-title" tabindex="-1"></h2><a href="#" id="all-categories">分類に戻る</a></div><p id="result-count" role="status"></p><section id="waste-guide" class="waste-guide" aria-labelledby="waste-title" hidden>
+<h3 id="waste-title">ごみ収集日を確認する</h3>
+<p>① お住まいの地区を選ぶ</p>
+<label for="waste-area">令和8年（2026年）の地区別カレンダー</label>
+<select id="waste-area"><option value="">地区を選んでください</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77598.pdf">東部地区</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77600.pdf">南部地区</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77601.pdf">中央・北部地区1</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77602.pdf">北部地区2</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77603.pdf">西部地区</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77604.pdf">城下・塩尻地区</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77605.pdf">川辺・泉田・神川地区1</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77606.pdf">神川地区2</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77607.pdf">東塩田・中塩田地区1</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77608.pdf">中塩田地区2・西塩田地区</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77609.pdf">神科地区</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77610.pdf">豊殿地区</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77611.pdf">別所温泉・川西地区</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77612.pdf">真田・武石地域</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77112.pdf">丸子地域：依田・長瀬・塩川</option><option value="https://www.city.ueda.nagano.jp/uploaded/attachment/77113.pdf">丸子地域：内村・丸子中央</option></select>
+<a id="waste-calendar" class="action" target="_blank" rel="noopener noreferrer" hidden>選んだ地区のカレンダーを開く ↗</a>
+<p id="waste-year-note" role="status"></p>
+<p>地区が分からないときは、<a href="https://www.city.ueda.nagano.jp/uploaded/attachment/77599.pdf" target="_blank" rel="noopener noreferrer">自治会名のさくいん（2026年・PDF）</a>で探せます。</p>
+<p><b>② 自治会名・番号・ごみの種類・日付を確かめる</b><br>同じ自治会でも収集日が違う場所があります。番号が分からないときは、いつもの集積所の表示や市の案内を確認してください。</p>
+<p><b>③ 祝日・年末年始は、変更のお知らせも確認</b></p>
+<a class="action secondary" href="https://www.city.ueda.nagano.jp/soshiki/haiki/" target="_blank" rel="noopener noreferrer">市の新しいお知らせを見る ↗</a>
+<p class="notice">市のPDFが別の画面で開きます。日程の自動取り込みはありません。リンク確認：2026年10月18日。</p>
+<a href="https://www.city.ueda.nagano.jp/soshiki/haiki/53555.html" target="_blank" rel="noopener noreferrer">最新年度・地区の一覧を市のページで見る ↗</a>
+</section><div id="results"></div></section>
 <noscript><p class="notice">一覧の表示にはJavaScriptが必要です。<a href="https://www.city.ueda.nagano.jp/soshiki/korei/2770.html">上田市の生活支援サービス</a>からも探せます。</p></noscript>
 <aside class="help"><b>どこへ相談したらよいか迷ったら</b><p>住んでいる地区の地域包括支援センターへ。</p><a class="action secondary" href="https://www.city.ueda.nagano.jp/soshiki/korei/2610.html" target="_blank" rel="noopener noreferrer">地区の相談先を探す ↗</a></aside>
 <p class="notice">公式案内・電話で利用条件をご確認ください。掲載は提携や市の推薦を意味しません。予約・申込みは各窓口で行います。</p>

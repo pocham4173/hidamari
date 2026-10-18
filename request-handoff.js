@@ -32,6 +32,7 @@
     function reset(){
       generation++;scope='';data={person:[],family:[]};status={person:'loading',family:'loading'};
       busy.clear();saved.clear();messages.clear();drafts.clear();expanded.clear();
+      const summary=el('person-request-summary');if(summary)summary.textContent='';
       for(const role of ['person','family']){const list=el(role+'-requests-list');if(list)list.replaceChildren();const panel=el(role+'-requests-panel');if(panel)panel.hidden=true;}
       try{options.stopSpeech?.();}catch(_){}
     }
@@ -73,7 +74,17 @@
       const active=doc.activeElement,focusKey=list.contains(active)?active.dataset.handoffKey:null;
       const selection=focusKey&&active.tagName==='INPUT'?[active.selectionStart,active.selectionEnd]:null;
       list.querySelectorAll('details[data-open-key]').forEach(d=>{if(d.open)expanded.add(d.dataset.openKey);else expanded.delete(d.dataset.openKey);});
-      list.replaceChildren();if(panel.hidden)return;
+      list.replaceChildren();
+      if(role==='person'){
+        const summary=el('person-request-summary');
+        if(summary){
+          const replies=rows.flatMap(req=>responses(req._id,'person')).sort(compare),latest=replies.at(-1);
+          summary.textContent=!rows.length?'':status.person!=='ready'?'お願いの返事は、最新の確認ができていません。':
+            latest?'お願いへの返事：'+stamp(latest)+' · '+(latest.name||'家族')+'さん':
+            '表示中のお願いには、まだ返事がありません。';
+        }
+      }
+      if(panel.hidden)return;
       const connected=role==='family'?c.familyReady:c.personReady;
       state.textContent=(status[role]!=='ready'?'最新の確認ができていません。保存済みの内容です。':!connected?'今は家族と返事をやりとりできません。以前の内容を表示しています。':'')+
         '最近読み込んだ100件の記録の中のお願いです。保存は、相手が読んだことを意味しません。';

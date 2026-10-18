@@ -1007,14 +1007,17 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .tag-preview-family .tag-alert{background:#fff;border:1px solid #EFD9BC;border-radius:9px;padding:8px 10px;font-size:.88rem;line-height:1.55;}
 
 /* 本人の今日と、家族へのお願い。既存の橙・緑を使い、文字は濃く。 */
-.h-date-wrap{background:#FFF0E1;color:var(--cha);border-bottom:4px solid var(--hi);}
-.h-seireki{display:block;font-size:1rem;letter-spacing:0;}
-.person-welcome{background:#fff;border:3px solid var(--hi);border-radius:22px;padding:16px;}
+.h-date-wrap{background:#FFF0E1;color:var(--cha);border-bottom:4px solid var(--hi);padding:12px 14px 10px;}
+.h-seireki{display:inline-block;font-size:1rem;letter-spacing:0;margin-left:10px;}
+.person-welcome{background:#fff;border:3px solid var(--hi);border-radius:18px;padding:10px 12px;}
 .person-welcome button{font:inherit;color:var(--cha);cursor:pointer;}
-#person-welcome-read{display:block;width:100%;background:#fff;border:0;padding:8px 0;text-align:left;}
-#person-welcome-text{display:block;font-size:clamp(1.75rem,7vw,2.5rem);font-weight:900;line-height:1.5;overflow-wrap:anywhere;}
+#person-welcome-read{display:block;width:100%;background:#fff;border:0;padding:4px 0;text-align:left;}
+#person-welcome-text{display:block;font-size:clamp(1.75rem,7vw,2.5rem);font-weight:900;line-height:1.3;overflow-wrap:anywhere;}
 #person-welcome-read small{display:block;font-size:1.05rem;color:#7C461E;margin-top:6px;font-weight:700;}
 .person-welcome p,.request-note{font-size:1rem;line-height:1.7;margin:8px 0;color:#4E5969;overflow-wrap:anywhere;}
+.person-welcome p:empty{display:none;}
+#person-request-summary:empty{display:none;}
+#person-request-summary{display:block;font-size:1rem;color:#305E45;margin-top:8px;font-weight:700;overflow-wrap:anywhere;}
 .person-welcome .welcome-stop{min-height:48px;padding:8px 12px;background:#fff;border:2px solid #956039;border-radius:12px;font-size:1rem;}
 .person-record-heading{font-size:1.15rem;margin:4px 0 0;}
 .request-panel{background:#F1F8F3;border:2px solid #70A583;border-radius:20px;padding:16px;margin:12px 0;min-width:0;}
@@ -1463,12 +1466,12 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
     <div id="person-record-actions" hidden><button class="set-btn" id="person-record-correct" type="button" onclick="openCancel()">記録を確認・とりけす</button></div>
     <h2 class="person-record-heading">ご挨拶を記録する</h2>
-    <p class="request-note" id="person-record-sharing" role="status"></p>
     <button class="aisatsu" id="btn-a" onclick="sendAisatsu()">
       <div class="ic" id="a-ic">☀️</div>
       <div class="tx" id="a-tx">おはよう</div>
       <div class="sb" id="a-sb">押すと挨拶を記録します</div>
     </button>
+    <p class="request-note" id="person-record-sharing" role="status"></p>
     <div class="kibun" id="kibun-box" style="display:none;">
       <div class="q">今日の調子はどうですか?</div>
       <div class="kibun-grid">
@@ -1512,7 +1515,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <button class="cal-open" id="h-open-yotei" data-person-voice="予定の 入力を ひらきました" onclick="openHYotei()">予定を入れる</button>
     <!-- 本人の予定を先に。お願いと連絡は一つの入口から開く。 -->
     <details class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" aria-labelledby="person-conversation-heading">
-      <summary id="person-conversation-heading"><span class="person-contact-title">お願い・家族とのやりとり</span><span class="person-contact-hint"><span class="contact-closed">押すと、お願いと返事を見られます</span><span class="contact-open">押すと閉じます</span></span><span class="communication-status" id="h-contact-state" aria-live="polite"></span></summary>
+      <summary id="person-conversation-heading"><span class="person-contact-title">お願い・家族とのやりとり</span><span class="person-contact-hint"><span class="contact-closed">押すと、お願いと返事を見られます</span><span class="contact-open">押すと閉じます</span></span><span class="communication-status" id="h-contact-state" aria-live="polite"></span><span id="person-request-summary" role="status"></span></summary>
       <div class="person-contact-content">
     <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
 
@@ -2601,7 +2604,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
-<script src="request-handoff.js?v=20261018"></script>
+<script src="request-handoff.js?v=20261018b"></script>
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
