@@ -603,35 +603,72 @@ class UsageBook {
     }
     return this.hitokoeCount;
   }
-  /* ひと声の月の枠を1通分、送る前に予約する(2026-10-18)。読んだ時点から変わっていない時だけ書けるので、
-     同時に動いた見回りが数を上書きしたり、上限を超えたりしない。予約できなければ false。
-     予約は受付記録ごとに1回だけ(再試行では取り直さない)。結果が分からなかった送信の予約は戻さない(多めに数える側に倒す) */
-  async hitokoeReserve(month, receiptPath) {
-    const path = 'lineUsage/hitokoe-' + month;
-    const d = await this.fs.get(path);
-    const count = d && Number.isFinite(d.fields.count) ? d.fields.count : 0;
-    if (count >= HITOKOE_MONTHLY_LIMIT) return false;
-    const fields = { month, count: count + 1, limit: HITOKOE_MONTHLY_LIMIT, updatedAt: new Date(),
-      expiresAt: new Date(this.now.getTime() + 40 * 86400000) };
-    const writes = [{ update: { name: this.fs.root + '/' + path, fields: toFields(fields) },
-      currentDocument: d ? { updateTime: d.updateTime } : { exists: false } }];
-    if (receiptPath) writes.push({ update: { name: this.fs.root + '/' + receiptPath, fields: toFields({ quotaMonth: month }) },
-      updateMask: { fieldPaths: ['quotaMonth'] }, currentDocument: { exists: true } });
-    const ok = await this.fs.commit(writes);
-    if (ok) this.hitokoeCount = count + 1;
-    return !!ok;
-  }
-  async count(groupId) {
-    this.homes.set(groupId, await this.home(groupId) + 1);
-    this.dirty.add(groupId);
-    if (this.quota) { this.quota.used++; this.quotaDirty = true; }
-  }
-  async flush() {
-    // ひと声の月の数は、送る前の予約(hitokoeReserve)でその場で書く(ここでまとめて上書きしない)
-    for (const groupId of this.dirty) {
-      await this.fs.set('lineUsage/' + groupId, { day: this.day, count: this.homes.get(groupId), updatedAt: new Date(), expiresAt: new Date(this.now.getTime() + 2 * 86400000) }, true);
+  /* 共通の送信枠の予約(2026-10-19・PR #216 レビュー指摘2)。
+     おまもりタグ・予定のお知らせ・ひと声のどれも、LINEへ送る前にここで枠を取る。
+     まいにこ全体の月の通数(lineUsage/ledger-YYYY-MM)と、家庭ごとの1日の通数(lineUsage/{家庭})を読み、
+     「読んだ時点から変わっていない時だけ書ける」条件付きの1回の書き込みで同時に増やす。
+     同時に動いた別の見回りが先に枠を取っていたら書き込みは失敗し、読み直して判断し直す(上書きも上限超えもしない)。
+     月の通数は、LINEから取った使用数とこの台帳の大きい方を使う(台帳はほかの見回りの予約も含む)。
+     extra は、同じ書き込みに含める追加の条件(ひと声の月上限・受付への「予約済み」の印)を返す関数。
+     予約は受付ごとに1回だけ(再試行では取り直さない＝受付済みの409で二重に数えない)。
+     結果不明・期限切れで送らなかった分の予約は戻さない(多めに数える側に倒す)。
+     戻り値: 予約できたら空文字。できなければ理由('monthly'|'household'|'quota-unknown'|'hitokoe-monthly'|'conflict') */
+  async reserve(kind, groupId, n, extra) {
+    const month = this.day.slice(0, 7), lp = 'lineUsage/ledger-' + month, hp = groupId ? 'lineUsage/' + groupId : '';
+    if (kind === 'hitokoe' && (!this.quota || this.quota.estimated)) return 'quota-unknown';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const [led, home] = await this.fs.getMany(hp ? [lp, hp] : [lp]);
+      const ledgerUsed = led && led.fields.month === month && Number.isFinite(led.fields.used) ? led.fields.used : 0;
+      const used = Math.max(ledgerUsed, this.quota && Number.isFinite(this.quota.used) ? this.quota.used : 0);
+      const remaining = this.quota && Number.isFinite(this.quota.limit) ? this.quota.limit - used : Infinity;
+      const homeCount = home && home.fields.day === this.day && Number.isFinite(home.fields.count) ? home.fields.count : 0;
+      if (kind === 'tag') {
+        if (remaining < n) return 'monthly';                       // タグは月の残りがあれば送る(家庭の1日上限では止めない)
+      } else {
+        if (remaining - n < TAG_RESERVE) return 'monthly';         // 予定・ひと声はタグの分を残す
+        if (homeCount + n > HOUSEHOLD_DAILY_LIMIT) return 'household';
+      }
+      const more = extra ? await extra() : { writes: [] };
+      if (more.blocked) return more.blocked;
+      const writes = [{ update: { name: this.fs.root + '/' + lp, fields: toFields({ month, used: used + n, updatedAt: new Date(),
+        expiresAt: new Date(this.now.getTime() + 40 * 86400000) }) }, currentDocument: led ? { updateTime: led.updateTime } : { exists: false } }];
+      if (hp) writes.push({ update: { name: this.fs.root + '/' + hp, fields: toFields({ day: this.day, count: homeCount + n, updatedAt: new Date(),
+        expiresAt: new Date(this.now.getTime() + 2 * 86400000) }) }, currentDocument: home ? { updateTime: home.updateTime } : { exists: false } });
+      if (await this.fs.commit([...writes, ...(more.writes || [])])) {
+        if (hp) this.homes.set(groupId, homeCount + n);
+        if (this.quota) { this.quota.used = used + n; this.quotaDirty = true; }
+        if (more.after) more.after();
+        return '';
+      }
     }
-    this.dirty.clear();
+    return 'conflict';
+  }
+  /* ひと声の予約: 共通の枠に加えて、ひと声だけの月上限(90通)と、受付への「予約済み」の印を同じ書き込みで行う */
+  async hitokoeReserve(groupId, month, receiptPath) {
+    const path = 'lineUsage/hitokoe-' + month;
+    let next = 0;
+    return this.reserve('hitokoe', groupId, 1, async () => {
+      const d = await this.fs.get(path);
+      const count = d && Number.isFinite(d.fields.count) ? d.fields.count : 0;
+      if (count >= HITOKOE_MONTHLY_LIMIT) return { blocked: 'hitokoe-monthly' };
+      next = count + 1;
+      return { writes: [
+        { update: { name: this.fs.root + '/' + path, fields: toFields({ month, count: next, limit: HITOKOE_MONTHLY_LIMIT, updatedAt: new Date(),
+          expiresAt: new Date(this.now.getTime() + 40 * 86400000) }) }, currentDocument: d ? { updateTime: d.updateTime } : { exists: false } },
+        { update: { name: this.fs.root + '/' + receiptPath, fields: toFields({ quotaMonth: month }) },
+          updateMask: { fieldPaths: ['quotaMonth'] }, currentDocument: { exists: true } }],
+        after: () => { this.hitokoeCount = next; } };
+    });
+  }
+  /* 受付記録に「予約済み」の印を付ける書き込み(予定・タグの予約と同じ書き込みに入れる) */
+  receiptMark(receiptPath) {
+    return () => ({ writes: [{ update: { name: this.fs.root + '/' + receiptPath, fields: toFields({ reservedAt: new Date() }) },
+      updateMask: { fieldPaths: ['reservedAt'] }, currentDocument: { exists: true } }] });
+  }
+  /* 送れたことの記録。数は予約(reserve)のときに数え終えているので、ここでは何もしない(二重に数えない) */
+  async count() {}
+  async flush() {
+    // 家庭の1日の通数・月の通数・ひと声の月の数は、送る前の予約(reserve)でその場で書く(ここでまとめて上書きしない)
     if (this.quota) {
       const remaining = this.quota.limit === null ? null : Math.max(0, this.quota.limit - this.quota.used);
       // 推定(LINEから取れず、前回の記録で判断した)ときは checkedAt を進めない(古い数をいつまでも新しいと扱わない)
@@ -646,6 +683,7 @@ class UsageBook {
  * 押されなかった日に、家族が任意で声をかけるきっかけとして、LINEに1日1通だけ送る。安否確認・緊急通報ではない。
  * 送るのは、次をすべて「サーバーで正常に確かめられた」ときだけ。読めない・確かめられないときは送らない。
  *  - 家庭が削除中でない。家族の最新の設定が「使う」かつ「LINEにも送る」
+ *  - ご本人のサービスの同意が有効で、アカウント終了の手続き中でない(2026-10-19)
  *  - ご本人の最新の答えが、今の設定のお願い(requestId)への「はい」。あとから「やめておく」を選んだら、
  *    家族が設定を変えても解除されない(ご本人が自分で「使う」に戻すまで止まる)
  *  - 了解した日(利用開始日)でない。今日(日本時間)がお休みの曜日・期間でない。決めた時刻から HITOKOE_WINDOW_HOURS 時間のうち
@@ -724,9 +762,14 @@ async function hitokoeCheck(fs, g, now, fresh) {
       && eventDay(c.fields) !== day;
   });
   if (!agreed.length) return { reason: 'consent' };
+  // ご本人のサービスの同意が有効で、アカウント終了の手続き中でないこと(2026-10-19・レビュー指摘1)。
+  // 複数のご本人がいる家庭では、無効なご本人だけを外す(その人を理由に送らない)。読めなければ例外で送らない
+  const people = await fs.getMany(agreed.flatMap((u) => ['consents/' + u, 'accountClosures/' + u]));
+  const activeAgreed = agreed.filter((u, i) => validConsent(people[2 * i] && people[2 * i].fields) && !people[2 * i + 1]);
+  if (!activeAgreed.length) return { reason: 'person' };
   const todayRows = (await fs.query(g.path, { from: [{ collectionId: 'events' }], where: fieldEq('date', { stringValue: day }),
     select: { fields: [{ fieldPath: 'type' }, { fieldPath: 'uid' }, { fieldPath: 'target' }] } })).map((d) => d.fields);
-  const quiet = agreed.filter((u) => !todayRows.some((v) => v.uid === u && !HITOKOE_NOT_ACTIVITY.has(v.type))
+  const quiet = activeAgreed.filter((u) => !todayRows.some((v) => v.uid === u && !HITOKOE_NOT_ACTIVITY.has(v.type))
     && !todayRows.some((v) => v.type === 'hitokoe-contacted' && v.target === u));
   if (!quiet.length) return { reason: 'active' };
   // 受け取る家族本人の了承(最新の答えが「受け取る」かつ「LINEでも」)。了承した日は送らない
@@ -814,9 +857,17 @@ async function hitokoeHousehold(env, fs, now, book, g) {
   const month = rec.day.slice(0, 7);
   if (rec.quotaMonth && rec.quotaMonth !== month) { await mark('skipped', { skipReason: 'month' }); return 0; }  // 翌月の枠で古い要求を送らない
   if (!rec.quotaMonth) {
-    // 月の枠の予約と、受付への「予約済み」の印を同じ書き込みで行う(途中で止まって二重に予約しないように)
-    if (!await book.hitokoeReserve(month, receiptPath)) { await mark('skipped', { skipReason: 'hitokoe-monthly' }); await history('skipped'); return 0; }
+    // 共通の送信枠(月の通数・家庭の1日の通数)・ひと声の月上限・受付への「予約済み」の印を、同じ条件付きの書き込みで予約する
+    // (予定・タグと同時に動いても上限を超えない。途中で止まって二重に予約しない)
+    const why = await book.hitokoeReserve(g.id, month, receiptPath);
+    if (why === 'quota-unknown' || why === 'conflict') return 0;                     // 確かめられない・競合が続いた: 送らず、期限内なら次の回
+    if (why) { await mark('skipped', { skipReason: why }); await history('skipped'); return 0; }
     rec.quotaMonth = month;
+  }
+  // 最後の確かめ(2026-10-19・レビュー指摘3): 枠の予約などの非同期の処理の後、LINEへ要求を出す直前に、もう一度期限を確かめる。
+  // 期限を過ぎていたら送らず見送る。予約した枠は戻さない(多めに数える側に倒す)
+  if (Date.now() >= rec.deadline.getTime()) {
+    await mark('skipped', { skipReason: 'deadline' }); await history('skipped'); return 0;
   }
   const r = await push(env, fs, rec.to, rec.text, key, true);
   if (r === 'sent' || r === 'dup') {
@@ -1037,6 +1088,13 @@ async function runTagAlerts(env, fs, now, book) {
       // 月の残りが、この家族へ送る人数に足りないときは送らない(途中まで届いて残りが毎回やり直しになるのを防ぐ)
       const linked = new Set(links.map((l) => l.fields.lineUserId).filter((v) => typeof v === 'string' && v)).size;
       if (!started && !book.canSendTag(linked)) { await mark('monthly'); continue; }
+      // 共通の送信枠を、送る人数分まとめて予約する(2026-10-19。続きの送信では取り直さない)。
+      // タグはひと声・予定より優先で、タグ用に残した分も使える。家庭の1日上限では止めない(数だけ数える)
+      if (!started && linked) {
+        const why = await book.reserve('tag', groupId, linked);
+        if (why === 'monthly') { await mark('monthly'); continue; }
+        if (why) continue;                                               // 競合が続いた: 次の回に
+      }
       const text = buildTagMessage(a.fields, at);
       let complete = true, reached = 0;
       const seen = new Set();
@@ -1267,6 +1325,14 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
       receipt = await fs.get(receiptPath);
     }
     if (!receipt || typeof receipt.fields.text !== 'string') { for (const y of items) plans.get(y.path).complete = false; continue; }
+    // 共通の送信枠を、送る前に1通分予約する(2026-10-19)。受付ごとに1回だけ(再試行・受付済みの409では取り直さない)
+    if (!(receipt.fields.reservedAt instanceof Date)) {
+      const why = await book.reserve('schedule', g.id, 1, book.receiptMark(receiptPath));
+      if (why) {
+        for (const y of items) { const p = plans.get(y.path); p.complete = false; if (why !== 'conflict') p.limited = why; }
+        continue;
+      }
+    }
     const r = await push(env, fs, to, receipt.fields.text, key);
     if (!r) { for (const y of items) plans.get(y.path).complete = false; continue; }
     if (r === 'sent') { sent++; await book.count(g.id); }
@@ -1281,7 +1347,14 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
         updateMask: {fieldPaths: ['acceptedAt', 'expiresAt']}}))));
     }
   }
-  for (const {y, accepted, complete} of plans.values()) {
+  for (const {y, accepted, complete, limited} of plans.values()) {
+    // 予約の時点で枠が足りなかった予定は、前もって止めたときと同じく「上限で送れなかった」と記録する
+    if (limited && accepted === 0) {
+      await fs.patch(y.path, {notifyAt:null, notifiedAt:null, notificationStatus:'limited',
+        notifyLog: appendNotifyLog(y.fields.notifyLog, {status:'limited', reason:limited, at:now, scheduledAt:y.fields.notifyAt})},
+        ['notifyAt','notifiedAt','notificationStatus','notifyLog'], y.updateTime);
+      continue;
+    }
     if (complete && accepted > 0) {
       const sentAt = new Date();
       await fs.patch(y.path, {notifyAt:null, notifiedAt:sentAt, notificationStatus:'accepted',
