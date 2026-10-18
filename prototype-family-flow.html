@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-dM9a2y/pfUqNBPSaJLuJRtdkGU5Muya+YmJn8ets3zw='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-56OLXlfdQ6vNWsU5LHYhnqX+qEFL6E7sn+uolGril14='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="theme-color" content="#F28A42">
   <title>3つの画面をためす｜まいにこ・試作</title>
   <link rel="icon" href="data:,">
@@ -24,6 +24,7 @@
     .voice-panel{padding:22px;border:2px solid var(--orange-base);border-radius:16px;background:var(--white);margin:28px 0 0}.voice-panel h2{font-size:24px;margin-bottom:10px}.voice-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.voice-actions .btn{width:auto;min-height:52px;font-size:19px}.voice-panel .caption{font-size:17px}.person .medicine-card{border:2px solid var(--green-base);border-top-width:7px}.person .medicine-card .card-icon{background:var(--green-light);color:var(--green)}.person .medicine-card .btn{background:var(--green-base);color:var(--ink);box-shadow:0 3px 0 var(--green)}.medicine-row+.medicine-row{margin-top:12px}.medicine-row .feedback{margin-top:8px}.person .schedule-card{border-top:5px solid var(--blue-base)}.person .schedule-card .card-icon{background:var(--blue-light);color:var(--blue)}.person .schedule-card .btn{border-color:var(--blue);color:var(--blue)}.person .message-card{border-top:5px solid var(--teal)}.person .message-card .card-icon{background:#E3F6F3;color:var(--teal-dark)}.person .greeting-card{border:2px solid var(--orange-base);border-top-width:7px}.family-medicine{border-left-color:var(--green-base);background:var(--green-light)}.family-medicine ul{padding-left:22px}.family-medicine li+li{margin-top:8px}.local-entry{margin-top:22px}.local-entry a{text-decoration:none}.local-entry .caption{margin-top:8px}#consult .btn.blue{background:var(--purple);box-shadow:0 3px 0 #50377E}#consult .step-number{background:var(--purple-light);color:var(--purple)}
     .demo-controls{margin-top:22px;padding:14px 18px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:16px}.demo-controls summary,.request-more summary{cursor:pointer;font-weight:700;min-height:48px;padding:10px 0}.demo-controls label{display:block;margin:10px 0 6px}.demo-controls select{font:inherit;width:100%;min-height:52px;padding:10px 8px;background:#fff;color:var(--ink);border:2px solid #72907c;border-radius:10px}.demo-controls p{margin-top:8px}.request-more{margin-top:14px}.request-more summary{color:var(--green);font-size:21px}.request-more .stack{margin-top:10px}.empty-state{padding:18px;background:var(--blue-light);border-radius:12px;font-size:20px;line-height:1.8}.request-undo{display:block}.local-record-note{font-size:17px;color:var(--ink);margin-top:12px}
     .greeting-listen{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;padding:24px 16px;border:3px solid var(--orange-base);border-radius:24px;background:var(--white);color:var(--ink);box-shadow:0 5px 0 var(--orange);text-align:center;line-height:1.5;font-weight:800}.greeting-listen:active{transform:translateY(2px);box-shadow:0 2px 0 var(--orange)}.greeting-sun{font-size:42px;line-height:1.2}.greeting-name{font-size:clamp(32px,8.2vw,44px);letter-spacing:.015em}.greeting-hint{font-size:20px;letter-spacing:0}.person .greeting-stop{margin-top:14px;max-width:400px}.person-intro{text-align:center;margin-top:20px}.person .voice-panel .voice-actions .btn{font-size:21px}.person .voice-panel .caption{font-size:19px}.person .greeting-card #greeting{font-size:clamp(27px,6vw,32px);min-height:86px}.person .medicine-card .btn{font-size:clamp(24px,5.7vw,28px);min-height:76px}
+    .greeting-record{flex-direction:column;gap:3px}.button-caption{display:block;font-size:20px;font-weight:700}.report-note{margin-top:12px}.condition-picker{margin:20px 0;padding:12px 16px;border:2px solid var(--green-base);border-radius:16px;background:var(--green-light)}.condition-picker summary{min-height:56px;padding:9px 0;cursor:pointer;font-size:24px;font-weight:800;line-height:1.6}.condition-options{display:grid;gap:12px;margin:14px 0}.person .condition-options .btn{font-size:23px;min-height:65px}.condition-options button[aria-pressed="true"]{background:var(--green);color:#fff}
     @media(min-width:800px){.person .card{display:flex;flex-direction:column}.person .card .stack{margin-top:0}.person .card .feedback{margin-top:16px}}
     @media(max-width:850px){.scene-grid{grid-template-columns:1fr}.person .card{font-size:23px}.person .card h2{font-size:26px}.person .card .stack{grid-template-columns:1fr 1fr}.family-grid,.consult-layout{grid-template-columns:1fr}.consult-layout aside{order:2}.scene-nav button{font-size:16px}.scene-nav svg{width:22px;height:22px}}
     @media(max-width:480px){.nav-break{display:initial}.shell{padding:0 18px}.masthead{padding-top:18px}.brand{font-size:23px}.scene-nav{gap:7px;margin-top:18px}.scene-nav button{flex-direction:column;gap:4px;padding:10px 5px;font-size:15px;line-height:1.5;min-height:78px}.scene-nav svg{width:23px;height:23px}.view{padding-top:28px}.intro{font-size:18px}.person-intro{font-size:20px}.card{padding:23px 21px;border-radius:19px}.person .card .stack{grid-template-columns:1fr}.person .btn{font-size:23px}.view-heading{margin-bottom:21px}.message{font-size:24px}.preview{padding:24px 20px}.preview-actions{flex-direction:column}.last-row{align-items:flex-start;flex-direction:column;gap:8px}.demo-note{font-size:14px}.edition{font-size:13px;padding:5px 8px}.reset-actions{flex-direction:column}}
@@ -60,7 +61,11 @@
       <div class="scene-grid">
         <section class="card greeting-card" aria-labelledby="word-title">
           <span class="card-icon"><svg aria-hidden="true"><use href="#sun"/></svg></span><h2 id="word-title">いつものご挨拶</h2><p class="quiet">今日の「おはよう」も、<br>大切な記録に。</p>
-          <div class="stack"><button id="greeting" class="btn primary" type="button">☀️ おはよう</button><button id="request-call" class="btn secondary" type="button">電話してほしい</button></div>
+          <button id="greeting" class="btn primary greeting-record" type="button" aria-describedby="report-note"><span id="greeting-label">☀️ おはよう</span><span id="greeting-audience" class="button-caption">家族へ報告</span></button>
+          <p id="report-note" class="caption report-note">この試作の家族画面に表示します。家族が読んだかは未確認です。</p>
+          <details id="condition-picker" class="condition-picker"><summary id="condition-summary">今日の体調は？</summary><p class="caption">伝えたいときだけ、ひとつ選べます。</p><div class="condition-options"><button class="btn secondary" type="button" data-condition="よく眠れた" aria-pressed="false">😊 よく眠れた</button><button class="btn secondary" type="button" data-condition="眠れなかった" aria-pressed="false">🌙 眠れなかった</button><button class="btn secondary" type="button" data-condition="元気" aria-pressed="false">💪 元気</button><button class="btn secondary" type="button" data-condition="疲れた" aria-pressed="false">😌 疲れた</button><button class="btn secondary" type="button" data-condition="どこか痛い" aria-pressed="false">🤕 どこか痛い</button></div><button id="skip-condition" class="text-btn" type="button">今日は答えない</button><p class="caption">本人が選んだ言葉を記録します。健康状態の判定ではありません。</p></details>
+          <p id="condition-status" class="feedback" role="status"></p><button id="undo-condition" class="text-btn" type="button" hidden>体調の記録を取り消す</button>
+          <button id="request-call" class="btn secondary" type="button">電話してほしい</button>
           <details id="request-more" class="request-more"><summary>ちょっとお願い（ほかのお願い）</summary><div class="stack"><button class="btn secondary" type="button" data-request="話したい">話したい</button><button class="btn secondary" type="button" data-request="買い物をお願い">買い物をお願い</button><button class="btn secondary" type="button" data-request="予定を確認したい">予定を確認したい</button><button class="btn secondary" type="button" data-request="少し困っている">少し困っている</button><button class="btn secondary" type="button" data-request="あとで連絡して">あとで連絡して</button><button class="btn secondary" type="button" data-request="今日はそっとしておいて">今日はそっとしておいて</button></div><p id="request-status" class="feedback" role="status"></p><div id="request-undo-list"></div></details>
           <p id="local-record-note" class="local-record-note" hidden>「おはよう」や薬の記録は自分用に使えます。家族との共有はまだ始まっていません。</p>
           <p id="word-status" class="feedback" role="status"></p><button id="undo-greeting" class="text-btn" type="button" hidden>挨拶を取り消す</button><button id="undo-call" class="text-btn" type="button" hidden>電話のお願いを取り消す</button>
@@ -101,6 +106,7 @@
             <p id="record-status" class="feedback" role="status"></p><button id="undo-record" class="text-btn" type="button" hidden>いまの記録を取り消す</button>
             <div id="family-reply" class="family-reply" hidden><strong>春子さんからの返事</strong><p id="family-reply-text"></p><span class="caption">記録あり · 家族が読んだかは未確認</span></div>
             <div id="family-greeting" class="family-reply" hidden><strong>春子さんからの挨拶</strong><p>おはよう</p><span class="caption">10月18日 午前9時05分 · 記録した人：春子さん（本人）<br>挨拶の記録です。安否の確認ではありません。</span></div>
+            <div id="family-condition" class="family-reply family-medicine" hidden><strong>春子さん本人の体調の記録</strong><p id="family-condition-text"></p><span class="caption">10月18日 午前9時05分 · 記録した人：春子さん（本人）<br>本人が選んだ言葉です。健康状態の判定ではありません。<br>家族が読んだかは未確認です。</span></div>
             <div id="family-medicine" class="family-reply family-medicine" hidden><strong>春子さん本人のお薬の記録</strong><ul id="family-medicine-list"></ul><span class="caption">本人が押した記録です。実際に飲んだことの確認ではありません。</span></div>
             <div id="family-call" class="family-reply" hidden><strong>春子さんからのお願い</strong><ul id="family-request-list"></ul><span class="caption">まだ対応の記録はありません。</span></div>
           </section>
@@ -146,13 +152,14 @@
   let reply = '', greeting = false, callRequest = false, task = 'pending', addedRecord = null;
   let selected = new Set(), utterance = null, speechTimer = null, voiceEnabled = true, speechSource = '';
   const medicines = new Set(), sharedMedicines = new Set(), otherRequests = new Set();
-  let example='connected', sharedGreeting=false;
+  let example='connected', sharedGreeting=false, condition='', sharedCondition='';
   const linked=()=>example!=='solo';
   const hasMessage=()=>example==='connected';
   const slots = {asa:{label:"朝",time:"午前9時05分"},hiru:{label:"昼",time:"午後0時30分"},yoru:{label:"夜",time:"午後7時"}};
   const contactRecords = () => addedRecord ? [addedRecord,...initialRecords] : [...initialRecords];
   const personRecords = () => [
     ...(greeting ? [{id:'greeting-18',date:'2026-10-18',time:'午前9時05分',author:'春子さん（本人）',action:'本人の挨拶',text:'「おはよう」と本人が記録した。安否の確認ではありません。'}] : []),
+    ...(condition ? [{id:'condition-18',date:'2026-10-18',time:'午前9時05分',author:'春子さん（本人）',action:'本人の体調',text:`「${condition}」と本人が選んだ記録です。健康状態の判定ではありません。`}] : []),
     ...Object.keys(slots).filter(key=>medicines.has(key)).map(key=>({id:'medicine-'+key,date:'2026-10-18',time:slots[key].time,author:'春子さん（本人）',action:'本人のお薬の記録',text:`「${slots[key].label}の薬を飲みました」と本人が記録した。実際に飲んだことを証明するものではありません。`}))
   ];
   const records = () => [...personRecords(),...(linked()?contactRecords():[])];
@@ -220,15 +227,22 @@
   $('connection-example').addEventListener('change',()=>{
     const value=$('connection-example').value;if(!['connected','quiet','solo'].includes(value))return;
     stopSpeech();example=value;reply='';callRequest=false;otherRequests.clear();
-    $('request-more').open=false;
-    ['word-status','reply-status','request-status',...Object.keys(slots).map(key=>'medicine-status-'+key)].forEach(id=>{$(id).textContent='';});
+    $('request-more').open=false;$('condition-picker').open=false;
+    ['word-status','reply-status','request-status','condition-status',...Object.keys(slots).map(key=>'medicine-status-'+key)].forEach(id=>{$(id).textContent='';});
     invalidateSheet();renderExample();renderPerson();renderChoices();showScene('person');
   });
   function renderPerson(){
     $('undo-reply').hidden=!reply;
     all('[data-reply]').forEach(button=>{button.disabled=!hasMessage()||button.dataset.reply===reply;});
     $('family-reply').hidden=!linked()||!reply; $('family-reply-text').textContent=reply;
-    $('greeting').disabled=greeting;$('greeting').textContent=greeting?'☀️ おはよう（記録済み）':'☀️ おはよう'; $('request-call').disabled=!linked()||callRequest;
+    $('greeting').disabled=greeting;$('greeting-label').textContent=greeting?'☀️ おはよう（記録済み）':'☀️ おはよう';
+    $('greeting-audience').textContent=greeting?(sharedGreeting&&linked()?'試作の家族画面に記録済み':'自分用に記録済み'):(linked()?'家族へ報告':'自分用に記録');
+    $('report-note').textContent=!linked()?'家族とはまだつながっていません。自分用の記録として試せます。':greeting&&!sharedGreeting?'この挨拶は自分用の記録です。家族の画面には移していません。':'この試作の家族画面に表示します。家族が読んだかは未確認です。';
+    $('condition-summary').textContent=condition?`今日の体調：${condition}${!linked()||!sharedCondition?'（自分用）':''}`:'今日の体調は？';
+    all('[data-condition]').forEach(button=>{const chosen=button.dataset.condition===condition;button.disabled=chosen;button.setAttribute('aria-pressed',String(chosen));});
+    $('skip-condition').textContent=condition?'選び直さずに閉じる':'今日は答えない';
+    $('undo-condition').hidden=!condition;
+    $('family-condition').hidden=!linked()||!sharedCondition;$('family-condition-text').textContent=sharedCondition; $('request-call').disabled=!linked()||callRequest;
     $('undo-greeting').hidden=!greeting; $('undo-call').hidden=!callRequest;
     $('family-greeting').hidden=!linked()||!sharedGreeting; $('family-call').hidden=!linked()||(!callRequest&&!otherRequests.size);
     $('family-request-list').replaceChildren();
@@ -249,7 +263,22 @@
     $('undo-reply').focus({preventScroll:true});
   }));
   $('undo-reply').addEventListener('click',()=>{reply='';renderPerson();announce('reply-status','返事を取り消しました。');all('[data-reply]')[0].focus({preventScroll:true});});
-  $('greeting').addEventListener('click',()=>{greeting=true;sharedGreeting=linked();renderPerson();invalidateSheet();announce('word-status',linked()?'「おはよう」をこの試作に残しました。':'「おはよう」を自分用の記録として、この試作に残しました。家族には共有されません。');$('undo-greeting').focus({preventScroll:true});});
+  $('greeting').addEventListener('click',()=>{greeting=true;sharedGreeting=linked();renderPerson();if(!condition)$('condition-picker').open=true;invalidateSheet();announce('word-status',linked()?'「おはよう」をこの試作に残しました。家族の画面で確認できます。家族が読んだかは未確認です。':'「おはよう」を自分用の記録として、この試作に残しました。家族には共有されません。');$('undo-greeting').focus({preventScroll:true});});
+  all('[data-condition]').forEach(button=>button.addEventListener('click',()=>{
+    condition=button.dataset.condition;sharedCondition=linked()?condition:'';
+    selected.delete('condition-18');renderPerson();invalidateSheet();$('condition-picker').open=false;
+    announce('condition-status',`「${condition}」をこの試作に記録しました。${linked()?'家族の画面で確認できます。家族が読んだかは未確認です。':'自分用の記録です。家族には共有されません。'}`);
+    $('undo-condition').focus({preventScroll:true});
+  }));
+  $('skip-condition').addEventListener('click',()=>{
+    $('condition-picker').open=false;
+    announce('condition-status',condition?'体調の記録は変えていません。':'今日は答えずに閉じました。体調の記録は残していません。');
+    $('condition-summary').focus({preventScroll:true});
+  });
+  $('undo-condition').addEventListener('click',()=>{
+    condition='';sharedCondition='';selected.delete('condition-18');renderPerson();invalidateSheet();
+    announce('condition-status','体調の記録を取り消しました。');$('condition-summary').focus({preventScroll:true});
+  });
   $('request-call').addEventListener('click',()=>{if(!linked())return;callRequest=true;renderPerson();announce('word-status','「電話してほしい」をこの試作に残しました。家族の画面で確かめられます。');$('undo-call').focus({preventScroll:true});});
   $('undo-greeting').addEventListener('click',()=>{greeting=false;sharedGreeting=false;selected.delete('greeting-18');renderPerson();invalidateSheet();announce('word-status','挨拶を取り消しました。');$('greeting').focus({preventScroll:true});});
   $('undo-call').addEventListener('click',()=>{callRequest=false;renderPerson();announce('word-status','電話のお願いを取り消しました。');$('request-call').focus({preventScroll:true});});
@@ -327,9 +356,9 @@
   function closeReset(){$('reset-panel').hidden=true;$('open-reset').setAttribute('aria-expanded','false');}
   $('cancel-reset').addEventListener('click',()=>{closeReset();$('open-reset').focus({preventScroll:true});});
   $('confirm-reset').addEventListener('click',()=>{
-    reply='';greeting=false;sharedGreeting=false;callRequest=false;task='pending';addedRecord=null;selected=new Set();medicines.clear();sharedMedicines.clear();otherRequests.clear();example='connected';$('request-more').open=false;renderExample();
+    reply='';greeting=false;sharedGreeting=false;condition='';sharedCondition='';$('condition-picker').open=false;callRequest=false;task='pending';addedRecord=null;selected=new Set();medicines.clear();sharedMedicines.clear();otherRequests.clear();example='connected';$('request-more').open=false;renderExample();
     all('input[type="checkbox"]').forEach(input=>{input.checked=false;});
-    ['reply-status','word-status','request-status','speech-status','greeting-speech-status','record-status',...Object.keys(slots).map(key=>'medicine-status-'+key)].forEach(id=>{$(id).textContent='';});
+    ['reply-status','word-status','request-status','condition-status','speech-status','greeting-speech-status','record-status',...Object.keys(slots).map(key=>'medicine-status-'+key)].forEach(id=>{$(id).textContent='';});
     closeEditor();invalidateSheet();closeReset();renderPerson();renderLast();renderTask();renderChoices();showScene('person');$('global-status').textContent='最初の架空の例に戻しました。';
   });
   window.addEventListener('pagehide',stopSpeech);
