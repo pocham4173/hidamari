@@ -5,6 +5,7 @@
 # では動きません。
 #
 # 使い方：Issue か Pull Request のコメント欄に「@claude 〇〇してください」と書くだけです。
+# 作業の決まり(マージ・本番反映・実際のLINE送信をしない、テストしてから push する、など)は CLAUDE.md にあります。
 # Claude は main を直接書き換えず、作業用ブランチを作って Pull Request にまとめます。
 #
 # 準備：リポジトリの Settings → Secrets and variables → Actions に
@@ -56,9 +57,21 @@ jobs:
         with:
           fetch-depth: 1
 
+      # 2026-10-19: Claude が push の前にテストを実行できるように Node.js を用意する(基本検査と同じ版)
+      - name: Node.jsを準備
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Claude を実行
         uses: anthropics/claude-code-action@v1
         with:
           # 認証には GitHub Secret「CLAUDETOKEN」を使います。
           # 中身は claude setup-token で発行した Claude Code の OAuth トークンです。
           claude_code_oauth_token: ${{ secrets.CLAUDETOKEN }}
+          # 2026-10-19: 使ってよいコマンドを決める。テスト(node)と、変更の確認(git の読み取り)だけを許す。
+          # それ以外のコマンド(デプロイ・削除・外部への送信など)は使えない。
+          # 作業の決まり(しないこと・報告のしかた)はリポジトリの CLAUDE.md に書いてある。
+          claude_args: |
+            --allowedTools "Bash(node:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*)"
+
