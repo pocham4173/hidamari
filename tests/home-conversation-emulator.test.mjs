@@ -3,6 +3,9 @@ import {consentFixture} from './helpers/consent-fixture.mjs';
    compat SDK/rules. Two independent authenticated identities; no live user data. */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+const handoff=require('../request-handoff.js');
 import {initializeTestEnvironment} from '@firebase/rules-unit-testing';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
@@ -19,6 +22,8 @@ function connect(screen,uid){
   const f=homeFixture(screen,uid),db=env.authenticatedContext(uid).firestore();fixtures.push(f);
   f.c.col=name=>db.collection('groups').doc('home').collection(name);
   f.c.addEvent=data=>f.c.col('events').add({...data,uid,date:f.c.todayStr(),at:firebase.firestore.FieldValue.serverTimestamp()});
+  f.c.previewStorage.setItem('mainicoMode',screen);
+  f.c.MainicoRequestHandoff=handoff;f.c.stopPersonSpeech=()=>{};f.c.appConfirm=async()=>true;
   f.c.startFamilyConnection();
   if(screen==='honnin')f.c.subscribePersonConversation();else f.c.subscribeFamilyConversation();
   return {f,db};
@@ -51,6 +56,22 @@ try{
   assert.ok(family.visible(first(family)));await family.click(quick(family));
   await until('continued reply returns to person home',()=>person.c.currentFamilyMessageId!==replyId&&person.document.getElementById('h-incoming-message').textContent.includes('ありがとう'));
   console.log('PASS actual two-identity home roundtrip: yesterday greeting → family reply → person thanks → continued reply');
+
+  const requestRef=await person.c.addEvent({type:'onegai',text:'電話してほしい'});
+  const requestPanel=f=>f.document.getElementById((f===family?'family':'person')+'-requests-panel');
+  const requestButton=text=>[...requestPanel(family).querySelectorAll('button')].find(b=>b.textContent===text);
+  await until('original request becomes actionable',()=>requestButton('今から電話するね')&&!requestButton('今から電話するね').disabled);
+  requestButton('今から電話するね').click();
+  await until('dated commitment reaches other identity',()=>requestPanel(person).textContent.includes('対応予定')&&requestPanel(person).textContent.includes('今から電話するね'));
+  await until('completion available after confirmed save',()=>requestButton('対応したことを本人へ伝える')&&!requestButton('対応したことを本人へ伝える').disabled);
+  requestButton('対応したことを本人へ伝える').click();
+  await until('completion statement reaches original person',()=>requestPanel(person).textContent.includes('対応した報告')&&requestPanel(person).textContent.includes('電話で話しました。'));
+  await until('correction available',()=>requestButton('対応した報告を訂正する')&&!requestButton('対応した報告を訂正する').disabled);
+  requestButton('対応した報告を訂正する').click();
+  await until('correction reaches original person',()=>requestPanel(person).textContent.includes('まだ対応していません'));
+  await person.c.col('events').doc(requestRef.id).delete();
+  await until('withdrawn original disappears from both panels',()=>requestPanel(person).hidden&&requestPanel(family).hidden);
+  console.log('PASS actual two-identity request → family commitment → completion → correction → original withdrawal with unchanged rules');
 
   family.document.getElementById('in-family-message').value='入力は残す';
   await familyDb.disableNetwork();

@@ -995,6 +995,33 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .tag-preview-family{background:#FFF6EA;border:1px solid #EFD9BC;border-radius:12px;padding:10px 12px;margin:10px 0;text-align:left;}
 .tag-preview-family .tpf-ttl{font-weight:900;font-size:.85rem;color:#8A6A3B;margin-bottom:5px;}
 .tag-preview-family .tag-alert{background:#fff;border:1px solid #EFD9BC;border-radius:9px;padding:8px 10px;font-size:.88rem;line-height:1.55;}
+
+/* 本人の今日と、家族へのお願い。既存の橙・緑を使い、文字は濃く。 */
+.h-date-wrap{background:#FFF0E1;color:var(--cha);border-bottom:4px solid var(--hi);}
+.h-seireki{display:block;font-size:1rem;letter-spacing:0;}
+.person-welcome{background:#fff;border:3px solid var(--hi);border-radius:22px;padding:16px;}
+.person-welcome button{font:inherit;color:var(--cha);cursor:pointer;}
+#person-welcome-read{display:block;width:100%;background:#fff;border:0;padding:8px 0;text-align:left;}
+#person-welcome-text{display:block;font-size:clamp(1.75rem,7vw,2.5rem);font-weight:900;line-height:1.5;overflow-wrap:anywhere;}
+#person-welcome-read small{display:block;font-size:1.05rem;color:#7C461E;margin-top:6px;font-weight:700;}
+.person-welcome p,.request-note{font-size:1rem;line-height:1.7;margin:8px 0;color:#4E5969;overflow-wrap:anywhere;}
+.person-welcome .welcome-stop{min-height:48px;padding:8px 12px;background:#fff;border:2px solid #956039;border-radius:12px;font-size:1rem;}
+.person-record-heading{font-size:1.15rem;margin:4px 0 0;}
+.request-panel{background:#F1F8F3;border:2px solid #70A583;border-radius:20px;padding:16px;margin:12px 0;min-width:0;}
+.request-panel[hidden]{display:none!important;}
+.request-panel h2,.request-panel h4{font-size:1.25rem;margin:0 0 10px;}
+.request-item{padding:14px 0;border-top:1px solid #BBD9C5;overflow-wrap:anywhere;}
+.request-item h3{font-size:1.15rem;line-height:1.6;margin:6px 0;}
+.request-item p{margin:8px 0;line-height:1.7;white-space:pre-line;}
+.request-item .request-meta{font-size:1rem;color:#4E5969;}
+.request-actions{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px;}
+.request-actions button,.request-panel summary{min-height:52px;font:inherit;font-weight:700;line-height:1.6;cursor:pointer;}
+.request-actions button{padding:12px;background:#fff;color:#305E45;border:2px solid #609879;border-radius:14px;white-space:normal;overflow-wrap:anywhere;}
+.request-actions button:disabled{background:#EDF1F0;color:#53625A;border-color:#BDC9C1;cursor:default;}
+.request-actions input{box-sizing:border-box;width:100%;min-width:0;font:inherit;padding:12px;border:2px solid #609879;border-radius:12px;}
+.request-result{color:#28583D;font-weight:700;}
+#honnin .request-item{font-size:1.15rem;}
+.person-welcome button:focus-visible,.request-panel button:focus-visible,.request-panel summary:focus-visible{outline:3px solid #275CAE;outline-offset:3px;}
 </style>
 </head>
 <body>
@@ -1410,14 +1437,15 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div id="invite-switch" class="invite-switch" role="region" aria-label="受け取った招待" hidden></div>
     <div id="h-approve"></div>
     <div id="person-security-notices"></div>
+    <section class="person-welcome" aria-label="本人の今日">
+      <div class="ht-lb">本人の今日</div>
+      <button id="person-welcome-read" type="button" onclick="speakPersonWelcome()"><span id="person-welcome-text">こんにちは。</span><small>🔊 ごあいさつを聞く</small></button>
+      <p>ここは声を聞くボタンです。記録は下の「ご挨拶を記録する」から。</p>
+      <button class="welcome-stop" type="button" onclick="stopPersonSpeech()">読み上げを止める</button>
+      <p id="person-welcome-status" role="status"></p>
+    </section>
     <div class="next-invite" id="next-invite-h" data-next-invite hidden><b>次にすること：家族を招待する</b><p data-next-invite-text>まだ、ほかの家族がつながっていません。招待QRを出して、もう1台のスマホのカメラで読んでもらいます。</p><button class="set-btn" type="button" onclick="startInviteFromHome()">招待QRを出す</button></div>
     <div class="install-card" data-install-card hidden><b>📲 ホーム画面に追加しましょう</b><p>次から、ホーム画面の「まいにこ」のアイコンですぐ開けます。ブラウザーで開いたままだと、つながりが分かれることがあります。</p><button class="set-btn install-go" type="button" onclick="installApp()">ホーム画面に追加する</button><button class="set-btn sub" type="button" onclick="dismissInstallCard()">あとで</button></div>
-    <div class="h-today" id="speech-notice" style="display:none;">
-      <div class="ht-lb">はじめにお知らせ</div>
-      <div style="font-size:1.05rem;line-height:1.7;color:#4A3A24;padding:4px 0;">このアプリは、ボタンを押すと声でもお知らせします。音を出したくないときは消せます。</div>
-      <button class="set-btn person-press-target" type="button" onclick="dismissSpeechNotice(false)">このままでよい</button>
-      <button class="set-btn person-press-target" type="button" onclick="dismissSpeechNotice(true)">音を消す</button>
-    </div>
     <div class="h-today person-press-target" id="h-today" style="display:none;cursor:pointer;" onclick="speakToday()">
       <div class="ht-lb">今日の予定</div>
       <div id="h-today-list"></div>
@@ -1425,10 +1453,12 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     </div>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
     <div id="person-record-actions" hidden><button class="set-btn" id="person-record-correct" type="button" onclick="openCancel()">記録を確認・とりけす</button></div>
+    <h2 class="person-record-heading">ご挨拶を記録する</h2>
+    <p class="request-note" id="person-record-sharing" role="status"></p>
     <button class="aisatsu" id="btn-a" onclick="sendAisatsu()">
       <div class="ic" id="a-ic">☀️</div>
       <div class="tx" id="a-tx">おはよう</div>
-      <div class="sb" id="a-sb">押すと記録を保存します</div>
+      <div class="sb" id="a-sb">押すと挨拶を記録します</div>
     </button>
     <div class="kibun" id="kibun-box" style="display:none;">
       <div class="q">今日の調子はどうですか?</div>
@@ -1451,6 +1481,17 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div class="note" style="text-align:center;">お薬を飲んだら、朝・昼・夜から選んで押してください。服薬の証明ではありません。</div>
     </div>
     <button class="onegai-btn" data-share-gate="family" data-person-voice="おねがいの がめんを ひらきました" hidden onclick="openOnegai()">ちょっとお願い</button>
+    <section class="request-panel" id="person-requests-panel" aria-labelledby="person-requests-heading" hidden>
+      <h2 id="person-requests-heading">お願いと、家族の返事</h2>
+      <p class="request-note" id="person-requests-state" role="status"></p>
+      <div id="person-requests-list"></div>
+    </section>
+    <div class="h-today" id="speech-notice" style="display:none;">
+      <div class="ht-lb">はじめにお知らせ</div>
+      <div style="font-size:1.05rem;line-height:1.7;color:#4A3A24;padding:4px 0;">このアプリは、ボタンを押すと声でもお知らせします。音を出したくないときは消せます。</div>
+      <button class="set-btn person-press-target" type="button" onclick="dismissSpeechNotice(false)">このままでよい</button>
+      <button class="set-btn person-press-target" type="button" onclick="dismissSpeechNotice(true)">音を消す</button>
+    </div>
     <!-- 家族からの新しい連絡は、やりとりの欄が下にあっても見落とさないよう、ここ(上)に出す -->
     <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
     <!-- 次の予定(2026-10-13 ヒビルカから): 「明日 9:00」「デイサービス 🚐」を大きく。押すと場所などが見られる -->
@@ -2035,6 +2076,11 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <p class="today-glance" id="today-glance" hidden></p>
         <p class="communication-status" id="person-contact-state" aria-live="polite">読み込んでいます…</p>
         <button class="set-btn" id="family-conversation-retry" type="button" hidden onclick="retryHomeConversation('kazoku')">もう一度読み込む</button>
+        <section class="request-panel" id="family-requests-panel" aria-labelledby="family-requests-heading" hidden>
+          <h4 id="family-requests-heading">お願いへの返事・次の対応</h4>
+          <p class="request-note" id="family-requests-state" role="status"></p>
+          <div id="family-requests-list"></div>
+        </section>
         <div class="communication-received" id="card-today-records">
           <h4 id="home-date-h3">最近のやりとり</h4>
           <div id="ev-list"><div class="empty" id="ev-empty">やりとりを読み込んでいます…</div></div>
@@ -2544,6 +2590,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
+<script src="request-handoff.js?v=20261018"></script>
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
@@ -2630,12 +2677,20 @@ function speak(t, force, background=false){
       allowed:()=>previewStorage.getItem('mainicoMode')==='honnin'&&!document.hidden,enabled:speechOn,
       scope:()=>[previewStorage.getItem('mainicoMode'),uid(),gid()].join(':'),
       voice:()=>{if(!chosenVoice)chosenVoice=pickVoice();return chosenVoice;},
-      available:()=>{const state=document.getElementById('person-speech-status');if(state)state.textContent='';},
-      unavailable:()=>{const state=document.getElementById('person-speech-status');if(state)state.textContent='声を再生できませんでした。音量を確認して「声をためす」を押してください。保存・送信の結果は画面に残っています。';}
+      available:()=>{['person-speech-status','person-welcome-status'].forEach(id=>{const state=document.getElementById(id);if(state)state.textContent='';});},
+      unavailable:()=>{['person-speech-status','person-welcome-status'].forEach(id=>{const state=document.getElementById(id);if(state)state.textContent='声を再生できませんでした。音量を確認し、もう一度「聞く」を押してください。保存・送信の結果は画面で確認できます。';});}
     });
     return personSpeech.say(t,!!force,background);
   }catch(e){return false;}
 }
+function personWelcomeText(){
+  const name=String(previewStorage.getItem('mainicoName')||'').trim();
+  return (name&&!['本人','家族'].includes(name)?name+'さん、':'')+slot().tx+'。';
+}
+function renderPersonWelcome(){
+  const el=document.getElementById('person-welcome-text');if(el)el.textContent=personWelcomeText();
+}
+function speakPersonWelcome(){renderPersonWelcome();speak(personWelcomeText(),true);}
 function speakElement(id){
   const element=document.getElementById(id),text=element&&element.textContent.trim();
   speak(text||'まだ操作の結果はありません',true);
@@ -3027,6 +3082,7 @@ function showCommunication(kind){
   return kind==='person'?!isKOnly():kind==='family';
 }
 function updateCommunicationAvailability(){
+  if(typeof refreshRequestHandoff==='function')refreshRequestHandoff();
   document.querySelectorAll('[data-communication-gate]').forEach(el=>el.hidden=!showCommunication(el.dataset.communicationGate));
   document.querySelectorAll('[data-send-audience]').forEach(el=>{
     const kind=el.dataset.sendAudience;
@@ -3108,6 +3164,8 @@ function renderFamilyConnection(){
     '現在、本人用の参加者は確認されていません。本人がアプリを使わなくても、予定や様子の記録はできます。':
     '本人用の画面で開いて確認できます。保存は、本人が読んだことを意味しません。');
   document.querySelectorAll('[data-share-gate]').forEach(el=>{el.hidden=!canUseFamilyFeature(el.dataset.shareGate);});
+  const recordSharing=document.getElementById('person-record-sharing');
+  if(recordSharing)recordSharing.textContent=state.status==='unknown'?'記録は残せます。家族との共有状況は確認中です。':canUseFamilyFeature('shared')?'家族へ報告：承認された家族がアプリで確認できます。通知・既読の確認ではありません。':'今は自分の記録として残せます。家族が参加すると、これまでの記録も共有されます。';
   const connected=canUseFamilyFeature();
   const summary=document.getElementById('home-summary-description');
   if(summary)summary.textContent=canUseFamilyFeature('person')?'今日の様子（ご本人とのやりとり）、予定、伝言を確認できます。返事もここからできます。':connected?'今日の様子、予定、家族の伝言を確認できます。':'今日の様子と予定を確認できます。';
@@ -3142,6 +3200,25 @@ function startFamilyConnection(reset=true){
     renderFamilyConnection();
   },()=>{if(current()){familyConnection={status:'unknown',others:null,familyOthers:null,personOthers:null};connectedPeopleText='';renderFamilyConnection();}});
 }
+let requestHandoffController=null;
+function getRequestHandoff(){
+  if(typeof MainicoRequestHandoff==='undefined')return null;
+  if(!requestHandoffController)requestHandoffController=MainicoRequestHandoff.create({
+    document,
+    context:()=>({uid:uid(),gid:gid(),generation:communicationGeneration,mode:previewStorage.getItem('mainicoMode'),kOnly:isKOnly(),
+      familyReady:canUseFamilyFeature('person'),personReady:canUseFamilyFeature('family'),connection:familyConnection.status,
+      familyStatus:familyHomeEventStatus,personStatus:personConversationStatus}),
+    name:()=>myName(),write:payload=>addEvent(payload),speak:text=>speak(text,true),stopSpeech:stopPersonSpeech,
+    confirm:text=>appConfirm(text,'この内容で伝える','やめる',true),
+    readRequest:async id=>{const snap=await col('events').doc(id).get({source:'server'});
+      if(snap.metadata?.fromCache||snap.metadata?.hasPendingWrites)throw Error('unconfirmed');
+      return snap.exists?{...snap.data(),_id:snap.id||id}:null;}
+  });
+  return requestHandoffController;
+}
+function renderRequestHandoff(role,items,status){const ctl=getRequestHandoff();if(ctl)ctl.update(role,items,status);}
+function refreshRequestHandoff(){if(requestHandoffController)requestHandoffController.refresh();}
+function resetRequestHandoff(){if(requestHandoffController)requestHandoffController.reset();}
 let personTasksController=null;
 function openPersonTasks(){
   if(!personTasksController)personTasksController=MainicoPersonTasks.create({
@@ -4056,7 +4133,7 @@ function refreshSlotUI(){
   if(ba) ba.classList.remove('done');
   document.getElementById('a-ic').textContent=s.ic;
   document.getElementById('a-tx').textContent=s.tx;
-  document.getElementById('a-sb').textContent='押すと記録を保存します';
+  document.getElementById('a-sb').textContent='押すと挨拶を記録します';
   ['asa','hiru','yoru'].forEach(function(k){
     const b=document.getElementById('btn-k-'+k);
     if(!b) return;
@@ -4070,6 +4147,7 @@ function renderPersonConversation(items,metadata={},announce=true){
   personConversationDay=(typeof personDay==='function'?personDay():todayStr());
   personConversationItems=items;
   personConversationStatus=metadata.fromCache||metadata.hasPendingWrites?'cached':'ready';
+  if(typeof renderRequestHandoff==='function')renderRequestHandoff('person',items,personConversationStatus);
   const msgs=[];
   items.forEach(v=>{
     // Home is today's inbox. Older contacts remain in the dated history.
@@ -4157,8 +4235,9 @@ function initHonnin(){
     const d=new Date();
     document.getElementById('h-date').textContent=dateJp(d);
     document.getElementById('h-time').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+    renderPersonWelcome();
     const wk=document.getElementById('h-wareki');
-    if(wk) wk.innerHTML='令和'+(d.getFullYear()-2018)+'年（昭和'+(d.getFullYear()-1925)+'年・平成'+(d.getFullYear()-1988)+'年）'+(rokuyoOf(d)?'<span class="rokuyo">'+rokuyoOf(d)+'</span>':'');
+    if(wk) wk.innerHTML='令和'+(d.getFullYear()-2018)+'年（昭和'+(d.getFullYear()-1925)+'年・平成'+(d.getFullYear()-1988)+'年）'+(rokuyoOf(d)?'<span class="rokuyo">'+rokuyoOf(d)+'</span>':'')+'<small class="h-seireki">西暦'+d.getFullYear()+'年</small>';
   };
   upd();
   if(clockTimer) clearInterval(clockTimer);
@@ -4170,7 +4249,7 @@ function initHonnin(){
   document.getElementById('a-ic').textContent=s.ic;
   document.getElementById('a-tx').textContent=s.tx;
   document.getElementById('a-sb').style.display='block';
-  document.getElementById('a-sb').textContent='押すと記録を保存します';
+  document.getElementById('a-sb').textContent='押すと挨拶を記録します';
   if(previewStorage.getItem('aisatsu-'+personDay()+'-'+s.key)) markAisatsuDone();
   ['asa','hiru','yoru'].forEach(function(k){
     if(previewStorage.getItem('kusuri-'+personDay()+'-'+k)) markKusuriDone(k);
@@ -4840,6 +4919,7 @@ function communicationSession(){
   return ()=>generation===communicationGeneration&&boot===householdBootGeneration&&owner===uid()&&group===gid();
 }
 function resetCommunication(){
+  if(typeof resetRequestHandoff==='function')resetRequestHandoff();
   if(typeof stopPersonSpeech==='function')stopPersonSpeech();
   if(typeof hYoteiSaving!=='undefined'){
     hYoteiSaving=false;hYoteiView++;hEditingYoteiId='';
@@ -4928,6 +5008,7 @@ function renderTodayGlance(items){
 }
 function renderFamilyConversation(){
   const items=familyHomeItems;
+  if(typeof renderRequestHandoff==='function')renderRequestHandoff('family',items,familyHomeEventStatus);
   if(typeof renderTodayGlance==='function'){try{renderTodayGlance(items);}catch(e){console.warn('glance',e);}}
   const box=document.getElementById('ev-list');
   const card=document.getElementById('card-today-records');
@@ -4982,10 +5063,11 @@ function renderFamilyConversation(){
       const soto=v.text==='今日はそっとしておいて';
       const title=soto?'今日はそっとしておいてほしいそうです':'お願いが届きました: 「'+(v.text||'')+'」';
       const answered=replies[v._id]||[];
-      const presets=soto||answered.length?'':
+      const handoff=typeof MainicoRequestHandoff!=='undefined';
+      const presets=handoff?'<div class="reply-guide">返事と対応予定は、上の「お願いへの返事・次の対応」で確認できます。</div>':soto||answered.length?'':
         '<div class="reply-guide">ご本人へ送る返事を選ぶか、自由に書けます</div>'+['今から対応するね','あとで連絡するね','今は対応できないよ'].map(r=>
           '<button class="reply-btn" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="sendOnegaiBack(\''+jsArg(v._id)+'\',\''+r+'\')">'+r+'</button>').join('');
-      const write=soto||answered.length?'':'<button class="reply-btn" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="openOnegaiBackFree(\''+jsArg(v._id)+'\')">自由に返事を書く</button>';
+      const write=handoff||soto||answered.length?'':'<button class="reply-btn" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="openOnegaiBackFree(\''+jsArg(v._id)+'\')">自由に返事を書く</button>';
       return '<div class="ev onegai-ev '+eventWhoClass(v)+'">'+head+'<b>'+esc(title)+'</b>'+(presets||write?'<div class="reply-row">'+presets+write+'</div>':'')+'</div>';
     }
     const own=v.type==='family-message'&&v.uid===uid()&&v.date===(typeof personDay==='function'?personDay():todayStr())?' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\'family-message\',\'\')">とりけす</button>':'';
