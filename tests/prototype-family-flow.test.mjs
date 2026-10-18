@@ -446,3 +446,103 @@ test('an unconnected condition stays personal and is not automatically reported 
   assert.equal(t.el('condition-summary').textContent,'今日の体調は？');
   t.close();
 });
+
+function requestAction(t,label,action){t.check(`[data-request-label="${label}"][data-request-action="${action}"]`);}
+
+test('a request makes a round trip, acceptance is not completion, and a phone record can be undone',()=>{
+  const t=setup();t.click('request-call');
+  assert.match(t.el('person-request-list').textContent,/返事は、まだありません/);
+  t.check('[data-scene="family"]');
+  assert.match(t.el('family-request-list').textContent,/返事待ち/);
+  requestAction(t,'電話してほしい','evening');
+  t.check('[data-scene="person"]');
+  assert.match(t.el('person-request-list').textContent,/息子より「今日の夕方に電話するね。/);
+  assert.match(t.el('person-request-list').textContent,/まだ対応を終えた記録はありません/);
+  assert.match(t.el('last-time').textContent,/10月17日/);
+  t.check('[data-scene="family"]');requestAction(t,'電話してほしい','complete');
+  assert.equal(t.el('record-editor').hidden,false);
+  t.click('save-record'); // An empty record must not mark the request complete.
+  assert.match(t.el('person-request-list').textContent,/まだ対応を終えた/);
+  t.check('[name="phone-detail"]');t.click('save-record');
+  assert.match(t.el('person-request-list').textContent,/息子が、電話して話したことを記録/);
+  assert.equal(t.el('last-title').textContent,'息子が電話しました');
+  t.check('[data-scene="consult"]');t.check('[name="consult-record"][value="phone-18"]');t.check('[name="question"]');t.click('preview-sheet');
+  t.check('[data-scene="family"]');t.click('undo-record');
+  assert.equal(t.el('print-sheet').hidden,true);
+  assert.match(t.el('person-request-list').textContent,/まだ対応を終えた/);
+  assert.match(t.el('last-time').textContent,/10月17日/);
+  requestAction(t,'電話してほしい','cancel');
+  assert.match(t.el('person-request-list').textContent,/返事は、まだありません/);
+  t.close();
+});
+
+test('an existing phone record is linked only by an explicit action; undo completion preserves contact history',()=>{
+  const t=setup();t.click('open-record');t.check('[name="phone-detail"]');t.click('save-record');
+  t.click('request-call');requestAction(t,'電話してほしい','now');
+  assert.match(t.el('person-request-list').textContent,/まだ対応を終えた/);
+  requestAction(t,'電話してほしい','complete');
+  assert.match(t.el('person-request-list').textContent,/電話して話したことを記録/);
+  requestAction(t,'電話してほしい','undo-done');
+  assert.equal(t.el('last-title').textContent,'息子が電話しました');
+  assert.match(t.el('person-request-list').textContent,/まだ対応を終えた/);
+  t.close();
+});
+
+test('requests have independent replies and respecting quiet is not a phone call or task completion',()=>{
+  const t=setup();t.click('request-call');t.check('[data-request="買い物をお願い"]');t.check('[data-request="今日はそっとしておいて"]');
+  requestAction(t,'電話してほしい','now');requestAction(t,'買い物をお願い','help');requestAction(t,'今日はそっとしておいて','respect');
+  assert.equal(t.el('person-request-list').children.length,3);
+  assert.match(t.el('person-request-list').textContent,/今から電話.*買い物を手伝う.*今日はそっとして/s);
+  assert.equal(t.doc.querySelector('[data-request-label="今日はそっとしておいて"][data-request-action="complete"]'),null);
+  requestAction(t,'買い物をお願い','complete');
+  assert.match(t.el('person-request-list').children[1].textContent,/対応を終えた/);
+  assert.match(t.el('person-request-list').children[0].textContent,/まだ対応を終えた/);
+  assert.match(t.el('last-time').textContent,/10月17日/);
+  t.el('request-undo-list').firstElementChild.click();
+  assert.equal(t.el('person-request-list').children.length,2);
+  assert.doesNotMatch(t.el('family-request-list').textContent,/買い物/);
+  t.close();
+});
+
+test('withdrawing, changing examples and resetting cannot leave stale request replies or an open linked editor',()=>{
+  const t=setup();t.click('request-call');requestAction(t,'電話してほしい','now');requestAction(t,'電話してほしい','complete');
+  requestAction(t,'電話してほしい','cancel');
+  assert.equal(t.el('record-editor').hidden,true);
+  requestAction(t,'電話してほしい','now');requestAction(t,'電話してほしい','complete');
+  t.click('undo-call');assert.equal(t.el('person-requests').hidden,true);
+  assert.equal(t.el('record-editor').hidden,true);
+  t.click('request-call');assert.match(t.el('person-request-list').textContent,/返事は、まだありません/);
+  requestAction(t,'電話してほしい','now');setExample(t,'solo');
+  assert.equal(t.el('family-call').hidden,true);assert.equal(t.el('person-requests').hidden,true);
+  setExample(t,'quiet');t.click('request-call');
+  assert.match(t.el('person-request-list').textContent,/返事は、まだありません/);
+  requestAction(t,'電話してほしい','now');
+  assert.equal(t.el('message-content').hidden,true); // A reply to this request is not a fabricated incoming message.
+  assert.match(t.el('person-request-list').textContent,/今から電話/);
+  t.click('open-reset');t.click('confirm-reset');
+  assert.equal(t.el('family-request-list').children.length,0);assert.equal(t.el('person-requests').hidden,true);
+  t.close();
+});
+
+test('request replies can be read while muted, stopped nearby, and replaced without stale speech',()=>{
+  const t=setup({speech:true});t.click('toggle-voice');t.click('request-call');requestAction(t,'電話してほしい','evening');
+  assert.equal(t.calls.spoken.length,0);t.click('speak-requests');
+  assert.match(t.calls.utterance.text,/息子より「今日の夕方/);assert.equal(t.el('stop-requests').hidden,false);
+  t.click('stop-requests');assert.equal(t.doc.activeElement.id,'speak-requests');
+  t.click('speak-requests');const old=t.calls.utterance;requestAction(t,'電話してほしい','cancel');old.onend();
+  assert.equal(t.el('stop-requests').hidden,true);assert.match(t.el('person-request-list').textContent,/返事は、まだありません/);
+  t.click('speak-requests');t.calls.utterance.onerror();
+  assert.match(t.el('request-speech-status').textContent,/文字で確認/);
+  t.close();
+});
+
+test('private greeting, condition and medicine never become family consultation choices on example changes',()=>{
+  const t=setup();setExample(t,'solo');t.click('greeting');t.click('medicine-asa');t.check('[data-condition="疲れた"]');
+  setExample(t,'connected');t.check('[data-scene="consult"]');
+  for(const id of ['greeting-18','medicine-asa','condition-18'])assert.equal(t.doc.querySelector(`[name="consult-record"][value="${id}"]`),null);
+  t.check('[data-scene="person"]');t.click('medicine-hiru');t.check('[data-condition="元気"]');
+  t.check('[data-scene="consult"]');
+  assert.ok(t.doc.querySelector('[name="consult-record"][value="medicine-hiru"]'));assert.ok(t.doc.querySelector('[name="consult-record"][value="condition-18"]'));
+  assert.equal(t.doc.querySelector('[name="consult-record"][value="medicine-asa"]'),null);
+  t.close();
+});
