@@ -1013,7 +1013,6 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .person-welcome button{font:inherit;color:var(--cha);cursor:pointer;}
 #person-welcome-read{display:block;width:100%;background:#fff;border:0;padding:4px 0;text-align:left;}
 #person-welcome-text{display:block;font-size:clamp(1.75rem,7vw,2.5rem);font-weight:900;line-height:1.3;overflow-wrap:anywhere;}
-#person-welcome-read small{display:block;font-size:1.05rem;color:#7C461E;margin-top:6px;font-weight:700;}
 .person-welcome p,.request-note{font-size:1rem;line-height:1.7;margin:8px 0;color:#4E5969;overflow-wrap:anywhere;}
 .person-welcome p:empty{display:none;}
 #person-request-summary:empty{display:none;}
@@ -1452,7 +1451,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div id="person-security-notices"></div>
     <section class="person-welcome" aria-label="本人の今日">
       <div class="ht-lb">本人の今日</div>
-      <button id="person-welcome-read" type="button" onclick="speakPersonWelcome()"><span id="person-welcome-text">こんにちは。</span><small>🔊 ごあいさつを聞く</small></button>
+      <button id="person-welcome-read" type="button" onclick="speakPersonWelcome()"><span id="person-welcome-text">こんにちは。</span></button>
       <button class="welcome-stop" type="button" onclick="stopPersonSpeech()">読み上げを止める</button>
       <p id="person-welcome-status" role="status"></p>
     </section>
