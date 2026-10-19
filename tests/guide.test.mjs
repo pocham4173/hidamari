@@ -17,7 +17,7 @@ assert.match(html, /<div class="ttl">その他の設定<\/div>\n  <\/div>\n  <a 
 // ご本人の「その他の設定」も、家族の設定と同じく全画面で開き、上に「← 戻る」(2026-10-11)
 assert.match(html, /#settings-modal,#person-settings-modal\{padding:0;align-items:stretch/);
 assert.match(html, /id="person-settings-modal"><div class="modal-box adult-font">[\s\S]{0,200}<button type="button" class="set-back" onclick="closePersonSettings\(\)">← 戻る<\/button>/);
-assert.match(html, /<a class="consent-back" href="guide\/" target="_blank" rel="noopener">📷 写真つきの使い方<\/a>/, '入口からも');
+assert.match(html, /<a class="set-btn" href="guide\/" target="_blank" rel="noopener">📷 写真つきの使い方を見る<\/a>/, '入口からも');
 // 準備中の「LINEでログイン」は、送信役の場所が設定されるまでメニューに出さない
 assert.match(html, /id="menu-line-login" data-line-login-only hidden/);
 assert.match(html, /<div class="set-sec" data-line-login-only hidden><h4>LINEでログイン/);
