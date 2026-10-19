@@ -837,27 +837,28 @@ function surveySummary(docs, now, honninGroups = null) {
   const base = rows.filter((x) => x.kind === 'baseline');
   const monthly = rows.filter((x) => x.kind === 'monthly');
   // 回数の選択肢: 0・1・2(2〜3回)・4(4回以上)。-1(働いていない・答えない)は数えない
-  const avg = (list) => { const v = list.map((x) => Number(x.absences)).filter((n) => n >= 0); return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) + '回（' + v.length + '人）' : '—'; };
-  // 一人ひとりの、いちばん新しい毎月の答え
+  const avg = (list) => { const v = list.map((x) => Number(x.absences)).filter((n) => n >= 0); return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) + '回（回答' + v.length + '件）' : '—'; };
+  // アカウントごとの、いちばん新しい毎月の答え。実人数への換算はしない。
   const latest = new Map();
   for (const x of monthly) if (!latest.has(x.uid) || latest.get(x.uid).month < x.month) latest.set(x.uid, x);
   const last = [...latest.values()];
   const burden = last.filter((x) => ['less', 'same', 'more'].includes(x.burden));
   const less = burden.filter((x) => x.burden === 'less').length;
-  // 同じ人の「使い始める前」と「いちばん新しい月」の差(両方答えた人だけ)
+  // 同じアカウントの「使い始める前」と「いちばん新しい月」の差(両方の回答があるものだけ)
   const baseOf = new Map(base.filter((x) => Number(x.absences) >= 0).map((x) => [x.uid, Number(x.absences)]));
   const pairs = last.filter((x) => Number(x.absences) >= 0 && baseOf.has(x.uid)).map((x) => Number(x.absences) - baseOf.get(x.uid));
-  const pairText = pairs.length ? (pairs.reduce((a, b) => a + b, 0) / pairs.length).toFixed(1) + '回（' + pairs.length + '人）' : '—（両方に答えた人がまだいません）';
+  const pairText = pairs.length ? (pairs.reduce((a, b) => a + b, 0) / pairs.length).toFixed(1) + '回（' + pairs.length + 'アカウント）' : '—（両方の回答がそろうアカウントはまだありません）';
   // ご本人も使う世帯と、家族だけで使う世帯に分けた「減った」の割合
   const split = (list, isHonnin) => { const l = list.filter((x) => honninGroups && (honninGroups.has(x.groupId) === isHonnin)); const n = l.filter((x) => x.burden === 'less').length; return l.length ? n + '/' + l.length : '—'; };
-  return ['📝 家族のアンケート（答えた家族：' + new Set(rows.map((x) => x.uid)).size + '人・今月の答え：' + rows.filter((x) => x.month === month).length + '件）',
+  return ['📝 家族のアンケート（回答アカウント：' + new Set(rows.map((x) => x.uid)).size + '件・今月の答え：' + rows.filter((x) => x.month === month).length + '件）',
     '確認の負担が「減った」：' + (burden.length ? less + '/' + burden.length + '（' + Math.round(less / burden.length * 100) + '%）' : '—'),
     '仕事を休んだ・早退した回数の平均（2〜3回は2、4回以上は4として計算）',
     '　使い始める前の1か月：' + avg(base),
-    '　いちばん新しい1か月：' + avg(last),
-    '　同じ人どうしの差（新しい月−始める前）：' + pairText,
+    '　各アカウントの最新の月：' + avg(last),
+    '　同じアカウントの前後の差（最新の月−始める前）：' + pairText,
     (honninGroups ? '確認の負担が「減った」：ご本人も使う世帯 ' + split(burden, true) + '／家族だけで使う世帯 ' + split(burden, false) : ''),
-    '※ アンケートに答えていない人は含みません。人数が少ないうちは、割合だけで判断しないでください。'].filter((v) => v !== '').join('\n');
+    '※ 回答アカウント数は、実際の人数とは限りません。同じ人が複数使う場合や試験回答は自動では区別していません。',
+    '※ 最新の月はアカウントごとに異なる場合があります。未回答は含みません。回答が少ないうちは、割合だけで判断しないでください。'].filter((v) => v !== '').join('\n');
 }
 /* 運営者の登録: Cloudflare に入れた合言葉と同じなら、このLINEを運営者にする(1日5回まで試せる) */
 async function registerOperator(env, fs, given, lineUserId) {

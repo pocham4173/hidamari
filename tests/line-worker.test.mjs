@@ -769,11 +769,37 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   await hook([{ type: 'message', replyToken: 'sv2', source: user('Uop7'), message: { type: 'text', text: '集計' } }]);
   const report = replies.at(-1).messages[0].text;
   delete env.OPERATOR_PASSPHRASE;
-  assert.match(report, /家族のアンケート（答えた家族：3人・今月の答え：3件）/);
-  assert.match(report, /確認の負担が「減った」：2\/3（67%）/, '一人ひとりの、いちばん新しい答えで数える');
-  assert.match(report, /使い始める前の1か月：3\.0回（2人）/, '働いていない・答えない は数えない');
-  assert.match(report, /いちばん新しい1か月：1\.0回（2人）/);
+  assert.match(report, /家族のアンケート（回答アカウント：3件・今月の答え：3件）/, '複数月の回答を重複して数えず、実人数とは表示しない');
+  assert.match(report, /確認の負担が「減った」：2\/3（67%）/, 'アカウントごとの、いちばん新しい答えで数える');
+  assert.match(report, /使い始める前の1か月：3\.0回（回答2件）/, '働いていない・答えない は数えない');
+  assert.match(report, /各アカウントの最新の月：1\.0回（回答2件）/);
+  assert.match(report, /同じアカウントの前後の差（最新の月−始める前）：-2\.0回（2アカウント）/);
+  assert.match(report, /回答アカウント数は、実際の人数とは限りません/);
+  assert.match(report, /試験回答は自動では区別していません/);
+  assert.match(report, /最新の月はアカウントごとに異なる場合があります/);
+  assert.doesNotMatch(report, /答えた家族：|\d+人）|同じ人どうし/);
   assert.ok(!/家族a7|a7|g7/.test(report), '名前・番号は出さない');
+  // 世帯除外と月次未回答でも、数値・未測定の意味を変えない。すべて偽のDB・LINEだけを使う。
+  const surveyBefore = [...db].filter(([k]) => k.startsWith('surveyAnswers/'));
+  const surveyText = async () => {
+    await hook([{ type: 'message', replyToken: 'sv-units', source: user('Uop7'), message: { type: 'text', text: '集計' } }]);
+    return replies.at(-1).messages[0].text;
+  };
+  const pushesBefore = pushes.length;
+  env.USAGE_EXCLUDE_GROUPS = 'g7';
+  try { assert.match(await surveyText(), /家族のアンケート：まだ答えがありません/); }
+  finally { delete env.USAGE_EXCLUDE_GROUPS; }
+  assert.deepEqual([...db].filter(([k]) => k.startsWith('surveyAnswers/')), surveyBefore, '除外は回答を削除しない');
+  const monthlyRows = surveyBefore.filter(([, d]) => d.fields.kind.stringValue === 'monthly');
+  for (const [k] of monthlyRows) db.delete(k);
+  try {
+    const baselineOnly = await surveyText();
+    assert.match(baselineOnly, /回答アカウント：3件・今月の答え：0件/, '回答月と回答時刻が違う4つ目のアカウントは数えない');
+    assert.match(baselineOnly, /確認の負担が「減った」：—/);
+    assert.match(baselineOnly, /各アカウントの最新の月：—/);
+    assert.match(baselineOnly, /前後の差（最新の月−始める前）：—（両方の回答がそろうアカウントはまだありません）/);
+  } finally { for (const [k, d] of monthlyRows) db.set(k, d); }
+  assert.equal(pushes.length, pushesBefore, '集計の確認で予定などのpushを追加しない');
   // 参加をやめた人・アカウントを削除した人の答えは、見回りの後片付けで消す
   db.delete('groups/g7/members/c7'); put('accountClosures/b7', { requestedAt: T(new Date()) });
   const RealDate = Date; let shift = 0;
