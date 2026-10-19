@@ -725,14 +725,15 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .ln-more summary{cursor:pointer;color:var(--usucha);padding:6px 0;}
 /* 開け閉めする所は、はっきりしたボタンの形にする(2026-10-12 利用者「三角ボタンがわかりづらい・開きっぱなしにしてしまう」) */
 /* 本人の設定の見出し(2026-10-13): 押すと開く大きな行。開いた中は少し下げて、どこまでが中身か分かるように */
-#person-settings-modal .p-group>summary{font-size:1.1rem;padding:14px 14px;}
-#person-settings-modal .p-group>summary small{display:block;font-size:.85rem;font-weight:700;color:#7A6A55;margin-top:2px;}
-#person-settings-modal .p-group[open]{border-left:4px solid #C9B79C;padding-left:10px;margin-bottom:12px;}
+#person-settings-modal .p-group>summary,.entry-help>summary{font-size:1.1rem;padding:14px 14px;}
+#person-settings-modal .p-group>summary small,.entry-help>summary small{display:block;font-size:.85rem;font-weight:700;color:#7A6A55;margin-top:2px;}
+#person-settings-modal .p-group[open],.entry-help[open]{border-left:4px solid #C9B79C;padding-left:10px;margin-bottom:12px;}
 #person-settings-modal .p-group[hidden]{display:none;}
-.ln-more>summary,#person-settings-modal details>summary{list-style:none;display:block;cursor:pointer;margin:8px 0;padding:12px 14px;border:2px solid #C9B79C;border-radius:12px;background:#fff;color:#33404E;font-weight:800;font-size:1rem;line-height:1.5;text-align:left;}
-.ln-more>summary::-webkit-details-marker,#person-settings-modal details>summary::-webkit-details-marker{display:none;}
-.ln-more>summary::after,#person-settings-modal details>summary::after{content:'▼ 押すと開きます';display:block;font-size:.82rem;font-weight:700;color:#7A6A55;margin-top:2px;}
-.ln-more[open]>summary::after,#person-settings-modal details[open]>summary::after{content:'▲ 押すとしまいます';}
+.ln-more>summary,#person-settings-modal details>summary,.entry-help>summary{list-style:none;display:block;cursor:pointer;margin:8px 0;padding:12px 14px;border:2px solid #C9B79C;border-radius:12px;background:#fff;color:#33404E;font-weight:800;font-size:1rem;line-height:1.5;text-align:left;}
+.ln-more>summary::-webkit-details-marker,#person-settings-modal details>summary::-webkit-details-marker,.entry-help>summary::-webkit-details-marker{display:none;}
+.ln-more>summary::after,#person-settings-modal details>summary::after,.entry-help>summary::after{content:'▼ 押すと開きます';display:block;font-size:.82rem;font-weight:700;color:#7A6A55;margin-top:2px;}
+.ln-more[open]>summary::after,#person-settings-modal details[open]>summary::after,.entry-help[open]>summary::after{content:'▲ 押すとしまいます';}
+.entry-help .set-btn{min-height:52px;overflow-wrap:anywhere;}
 .details-close{margin-top:10px;}
 .ln-family{list-style:none;padding:0;margin:6px 0 0;}
 .ln-family li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid #F0EAE0;}
@@ -1149,9 +1150,15 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   </ul>
   <div class="entry-tools">
     <button class="install-main" id="install-main" type="button" onclick="installApp()">ホーム画面に追加</button>
-    <p class="note">本サービスは119番通報や安否確認、医療行為の代替ではありません。</p><a class="consent-back" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
-    <a class="consent-back" href="guide/" target="_blank" rel="noopener">📷 写真つきの使い方</a>
-    <a class="consent-back" href="help.html#notifications" target="_blank" rel="noopener">使い方・困ったとき</a>
+    <p class="note">本サービスは119番通報や安否確認、医療行為の代替ではありません。</p>
+    <details class="entry-help" id="entry-help"><summary>❓ 使い方・困ったとき<small>説明・問い合わせ</small></summary>
+      <a class="set-btn" href="guide/" target="_blank" rel="noopener">📷 写真つきの使い方を見る</a>
+      <a class="set-btn" href="help.html#notifications" target="_blank" rel="noopener">くわしい説明を見る</a>
+      <a class="set-btn" href="guide/trouble.html" target="_blank" rel="noopener">📷 困ったとき（写真つき）</a>
+      <a class="set-btn" href="contact.html" target="_blank" rel="noopener">✉️ 問い合わせる</a>
+      <a class="set-btn" href="guide/line.html" target="_blank" rel="noopener">LINEで予定のお知らせを受け取るには</a>
+      <a class="set-btn" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
+    </details>
     <details style="margin:12px auto;text-align:left;"><summary>利用終了・データの整理</summary><p class="note">機種変更では削除しないでください。</p><button class="consent-back" type="button" onclick="openNotebookCleanup()">端末内の控えを削除</button><button class="consent-back" type="button" onclick="openAccountDeletion()">自分のログイン登録を削除する</button><a class="consent-back" href="help.html#end" target="_blank" rel="noopener">利用終了の手順を見る</a></details>
   </div>
 </div>
@@ -7867,7 +7874,7 @@ document.addEventListener('toggle',function(e){
 /* 開いた欄のいちばん下にも「しまう」を置く(上まで戻らなくても閉じられる。2026-10-12) */
 document.addEventListener('toggle',function(e){
   const d=e.target;
-  if(!d||d.tagName!=='DETAILS'||!d.open||!d.matches('.ln-more,#person-settings-modal details'))return;
+  if(!d||d.tagName!=='DETAILS'||!d.open||!d.matches('.ln-more,#person-settings-modal details,.entry-help'))return;
   if(d.querySelector(':scope>.details-close'))return;
   const b=document.createElement('button');b.type='button';b.className='set-btn details-close';b.textContent='▲ しまう';
   b.addEventListener('click',function(){d.open=false;const s=d.querySelector('summary');if(s&&s.scrollIntoView)try{s.scrollIntoView({block:'nearest'});}catch(err){}});
