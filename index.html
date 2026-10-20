@@ -984,6 +984,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .communication-received .reply-log{padding:8px 0;overflow-wrap:anywhere;}
 .communication-received .reply-guide{font-size:.88rem;margin-top:8px;color:var(--usucha);}
 .today-glance{font-size:1.02rem;font-weight:800;color:#4A3A24;background:#FFF6EA;border:1px solid #EFD9BC;border-radius:10px;padding:9px 11px;margin:0 0 10px;line-height:1.5;}
+.medicine-latest{display:block;margin-top:8px;padding-top:8px;border-top:1px solid #EFD9BC;overflow-wrap:anywhere;}
+.medicine-latest small{display:block;margin-top:4px;font-size:.9em;font-weight:400;}
 /* 返事を送れないことが確定している間は、押せないボタンを並べず理由だけを示す */
 #card-actions.replies-unavailable .reply-row,
 #card-person-compose.replies-unavailable #family-conversation-compose{display:none!important;}
@@ -5020,11 +5022,22 @@ function renderTodayGlance(items){
   const day=dateString(new Date());
   const t=(items||[]).filter(v=>v&&v.date===day);
   const ai=t.some(v=>v.type==='aisatsu');
-  const ku=t.filter(v=>v.type==='kusuri').length;
+  const medicines=t.filter(v=>v.type==='kusuri').sort(compareConversationEvents);
+  const ku=medicines.length;
   const kb=t.filter(v=>v.type==='kibun'&&v.text).sort(compareConversationEvents).pop();
   el.hidden=false;
   if(!t.length){el.textContent='今日のようす：まだ今日の記録はありません（記録がないことは異常を意味しません）';return;}
   el.textContent='今日のようす：挨拶 '+(ai?'あり':'なし')+' ／ お薬の記録 '+ku+'回'+(kb?' ／ 体調「'+kb.text+'」':'');
+  if(ku&&familyHomeEventStatus==='ready'){
+    const latest=medicines[ku-1],seconds=latest.at?.seconds;
+    const recorded=typeof seconds==='number'&&Number.isFinite(seconds)?new Date(seconds*1000):null;
+    const time=recorded&&!Number.isNaN(recorded.getTime())?recorded.getHours()+':'+String(recorded.getMinutes()).padStart(2,'0'):'記録時刻を確認できません';
+    const detail=document.createElement('span');detail.className='medicine-latest';
+    detail.textContent='最新のお薬：'+(kusuriSlotName(latest.slot)?kusuriSlotName(latest.slot)+'の記録':'記録')+' · '+time;
+    const note=document.createElement('small');
+    note.textContent='記録が保存された時刻です。飲んだ時刻の確認ではありません。';
+    detail.appendChild(note);el.appendChild(detail);
+  }
 }
 function renderFamilyConversation(){
   const items=familyHomeItems;
