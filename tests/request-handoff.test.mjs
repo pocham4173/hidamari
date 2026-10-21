@@ -164,3 +164,30 @@ test('person contact summary: own request replies, freshness, deletion and house
  assert.ok(record.compareDocumentPosition(note)&4,'record action precedes the long sharing explanation');
  assert.equal(record.getAttribute('onclick'),'sendAisatsu()');assert.equal(f.writes.length,0);f.close();
 });
+
+
+test('family request entrance stays compact, keeps dates and does not send by opening',()=>{
+ const f=fixture(),panel=f.panel(),summary=f.document.getElementById('family-request-summary');
+ assert.equal(panel.tagName,'DETAILS');assert.equal(panel.open,false);
+ assert.match(summary.textContent,/2026年9月18日.*電話してほしい/);
+ assert.equal(f.visible(f.buttons()[0]),false);
+ panel.open=true;f.events([req,response]);assert.equal(panel.open,true);
+ assert.ok(f.visible(f.buttons()[0]));assert.equal(f.writes.length,0);
+ assert.match(summary.textContent,/返事があります/);
+ assert.doesNotMatch(f.document.getElementById('ev-list').textContent,/電話してほしい|今から電話するね/,'request and its reply appear in the request panel only');
+ f.events([response]);assert.match(f.document.getElementById('ev-list').textContent,/今から電話するね/,'orphan reply remains readable');
+ panel.open=false;f.events([req,response]);assert.equal(panel.open,false);
+ f.events([req],'cached');assert.match(summary.textContent,/最新の確認ができていません/);
+ f.events([{...req,text:'<img src=x>'}]);assert.equal(summary.querySelector('img'),null);
+ f.events([]);assert.equal(panel.hidden,true);assert.equal(summary.textContent,'');
+ panel.open=true;f.ctl().reset();assert.equal(panel.open,false);assert.equal(f.writes.length,0);f.close();
+});
+
+
+test('later-call choices do not invent a date or an evening promise',()=>{
+ for(const text of ['電話してほしい','話したい','あとで連絡して']){
+  const choices=handoff.plans(text,new Date(2026,9,21,20,12));
+  assert.ok(choices.includes('電話できる時間を、あとで伝えるね'));
+  assert.ok(choices.every(choice=>!/[0-9]|夕方/.test(choice)));
+ }
+});

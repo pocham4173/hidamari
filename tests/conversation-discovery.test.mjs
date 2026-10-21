@@ -43,7 +43,7 @@ const message=(id,type,text,seconds,replyTo,owner='family-A')=>({_id:id,type,tex
   assert.match(rendered,/onclick="replyToPersonEvent\('morning-A'\)"/,'unanswered morning retains its own reply control after a newer greeting');
   assert.match(rendered,/class="reply-btn reply-primary"[^>]*data-reply-to="morning-A"/);
   assert.doesNotMatch(rendered,/onclick="replyToPersonEvent\('noon-A'\)"/,'sent preset does not become another send action');
-  assert.match(rendered,/disabled aria-disabled="true">返事を送りました/);
+  assert.match(rendered,/class="reply-log">あなたは返事を送りました/);
   assert.match(rendered,/data-reply-to="noon-A" data-reply-again="true"[^>]*>続けて言葉を送る/);
 }
 {
