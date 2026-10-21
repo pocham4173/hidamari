@@ -1024,6 +1024,10 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .person-record-heading{font-size:1.15rem;margin:4px 0 0;}
 .request-panel{background:#F1F8F3;border:2px solid #70A583;border-radius:20px;padding:16px;margin:12px 0;min-width:0;}
 .request-panel[hidden]{display:none!important;}
+#family-request-summary{display:block;font-size:1rem;font-weight:400;line-height:1.6;margin-top:6px;overflow-wrap:anywhere;color:#305E45;}
+.reply-choice{margin-top:8px;}
+.reply-choice summary{min-height:48px;padding:10px 4px;box-sizing:border-box;font:inherit;font-weight:700;line-height:1.5;color:#315EAC;cursor:pointer;overflow-wrap:anywhere;}
+.reply-choice summary:focus-visible{outline:3px solid #275CAE;outline-offset:3px;}
 .request-panel h2,.request-panel h4{font-size:1.25rem;margin:0 0 10px;}
 .request-item{padding:14px 0;border-top:1px solid #BBD9C5;overflow-wrap:anywhere;}
 .request-item h3{font-size:1.15rem;line-height:1.6;margin:6px 0;}
@@ -2098,11 +2102,11 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <p class="today-glance" id="today-glance" hidden></p>
         <p class="communication-status" id="person-contact-state" aria-live="polite">読み込んでいます…</p>
         <button class="set-btn" id="family-conversation-retry" type="button" hidden onclick="retryHomeConversation('kazoku')">もう一度読み込む</button>
-        <section class="request-panel" id="family-requests-panel" aria-labelledby="family-requests-heading" hidden>
-          <h4 id="family-requests-heading">お願いへの返事・次の対応</h4>
+        <details class="request-panel" id="family-requests-panel" hidden>
+          <summary id="family-requests-heading">お願い・返事を確認する<span id="family-request-summary"></span></summary>
           <p class="request-note" id="family-requests-state" role="status"></p>
           <div id="family-requests-list"></div>
-        </section>
+        </details>
         <div class="communication-received" id="card-today-records">
           <h4 id="home-date-h3">最近のやりとり</h4>
           <div id="ev-list"><div class="empty" id="ev-empty">やりとりを読み込んでいます…</div></div>
@@ -2613,7 +2617,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
-<script src="request-handoff.js?v=20261018b"></script>
+<script src="request-handoff.js?v=20261022"></script>
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
@@ -5054,10 +5058,14 @@ function renderFamilyConversation(){
     }
   });
   Object.values(replies).forEach(rows=>rows.sort(compareConversationEvents));
-  const vis=homeAttentionRows(items,replies,false);
+  const requestIds=new Set(items.filter(v=>v.type==='onegai').map(v=>v._id));
+  const hasRequestPanel=typeof MainicoRequestHandoff!=='undefined';
+  // Requests with their source present live in one place; orphan replies stay readable here.
+  const vis=homeAttentionRows(items,replies,false).filter(v=>!hasRequestPanel||
+    !(v.type==='onegai'||(v.type==='onegai-back'&&requestIds.has(v.replyTo))));
   card.style.display='block';
   if(!vis.length){
-    box.textContent=familyHomeEventStatus==='ready'?'まだやりとりはありません。連絡が届くと、ここに表示します。':'やりとりを読み込んでいます…';
+    box.textContent=familyHomeEventStatus==='ready'?(hasRequestPanel&&requestIds.size?'お願いとその返事は、上の「お願い・返事を確認する」で見られます。':'まだやりとりはありません。連絡が届くと、ここに表示します。'):'やりとりを読み込んでいます…';
     updateCommunicationAvailability();return;
   }
   const label={
@@ -5079,6 +5087,7 @@ function renderFamilyConversation(){
     const original=byId.get(v.replyTo);
     return '<div class="note">'+esc(original?'「'+(original.text||'お薬の記録')+'」への返事':'前の連絡への返事')+'</div>';
   }
+  const openReplies=new Set(Array.from(box.querySelectorAll?.('details[data-person-reply]')||[]).filter(d=>d.open).map(d=>d.dataset.personReply));
   const rowsMarkup=vis.map(v=>{
     const head='<div class="tm">'+esc(sender(v))+' · '+time(v)+'</div>'+replyContext(v);
     if(['aisatsu','kibun','kusuri','family-message-back'].includes(v.type)){
@@ -5086,11 +5095,12 @@ function renderFamilyConversation(){
       const replyState=familyReplyStates.get(v._id);
       const mine=answered.some(r=>r.uid===uid())||replyState?.status==='sent';
       const quick=v.type==='aisatsu'?(v.text||'おはよう'):'ありがとう';
-      const primary=mine?'<button class="reply-btn reply-complete" type="button" disabled aria-disabled="true">返事を送りました</button>':
+      const primary=mine?'':
         '<button class="reply-btn reply-primary" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="replyToPersonEvent(\''+jsArg(v._id)+'\')">'+esc('「'+quick+'」を返す')+'</button>';
       const write='<button class="reply-btn" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'"'+(mine?' data-reply-again="true"':'')+' onclick="openPersonContactReply(\''+jsArg(v._id)+'\')">'+(mine?'続けて言葉を送る':'言葉を書いて返す')+'</button>';
       return '<div class="ev '+eventWhoClass(v)+'">'+head+'<b>'+esc(label[v.type](v))+'</b>'+
-        (mine?'<div class="reply-log">あなたは返事を送りました</div>':'')+'<div class="reply-row">'+primary+write+'</div>'+
+        (mine?'<div class="reply-log">あなたは返事を送りました</div>':'')+
+        '<details class="reply-choice" data-person-reply="'+esc(v._id)+'"'+(openReplies.has(v._id)?' open':'')+'><summary>'+(mine?'続けて返事をする（任意）':'返事をする（任意）')+'</summary><div class="reply-row">'+primary+write+'</div></details>'+
         '<div class="save-state'+(replyState?.status==='error'?' err':'')+'" id="person-reply-state-'+esc(v._id)+'" aria-live="polite">'+esc(replyState?.text||'')+'</div></div>';
     }
     if(v.type==='onegai'){
@@ -5098,7 +5108,7 @@ function renderFamilyConversation(){
       const title=soto?'今日はそっとしておいてほしいそうです':'お願いが届きました: 「'+(v.text||'')+'」';
       const answered=replies[v._id]||[];
       const handoff=typeof MainicoRequestHandoff!=='undefined';
-      const presets=handoff?'<div class="reply-guide">返事と対応予定は、上の「お願いへの返事・次の対応」で確認できます。</div>':soto||answered.length?'':
+      const presets=handoff?'<div class="reply-guide">返事と対応予定は、上の「お願い・返事を確認する」で確認できます。</div>':soto||answered.length?'':
         '<div class="reply-guide">ご本人へ送る返事を選ぶか、自由に書けます</div>'+['今から対応するね','あとで連絡するね','今は対応できないよ'].map(r=>
           '<button class="reply-btn" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="sendOnegaiBack(\''+jsArg(v._id)+'\',\''+r+'\')">'+r+'</button>').join('');
       const write=handoff||soto||answered.length?'':'<button class="reply-btn" type="button" data-send-audience="person" data-reply-to="'+esc(v._id)+'" onclick="openOnegaiBackFree(\''+jsArg(v._id)+'\')">自由に返事を書く</button>';
@@ -5113,8 +5123,11 @@ function renderFamilyConversation(){
   if(box.innerHTML!==markup){
     const active=document.activeElement;
     const focusAction=active&&box.contains(active)?active.getAttribute('onclick'):null;
+    const focusReply=active&&box.contains(active)?active.closest('details[data-person-reply]')?.dataset.personReply:null;
     box.innerHTML=markup;
-    if(focusAction){const next=Array.from(box.querySelectorAll('button')).find(button=>button.getAttribute('onclick')===focusAction);if(next)next.focus({preventScroll:true});}
+    const next=focusAction?Array.from(box.querySelectorAll('button')).find(button=>button.getAttribute('onclick')===focusAction):null;
+    const summary=focusReply?Array.from(box.querySelectorAll('details[data-person-reply]')).find(d=>d.dataset.personReply===focusReply)?.querySelector('summary'):null;
+    if(next||summary)(next||summary).focus({preventScroll:true});
   }
   updateCommunicationAvailability();
 }

@@ -46,6 +46,8 @@ try{
   const {f:person}=connect('honnin','person');
   await until('previous-day greeting appears on family home with an enabled reply',()=>quick(family)&&!quick(family).disabled);
   assert.ok(family.visible(first(family)));assert.match(first(family).textContent,/おはよう/);
+  assert.equal(family.visible(quick(family)),false);
+  quick(family).closest('details').open=true;
   await family.click(quick(family));
   await until('family reply reaches the closed contact entrance',()=>person.c.currentFamilyMessageId&&person.document.getElementById('h-contact-state').textContent.includes('今日の家族からの連絡'));
   const contact=person.document.getElementById('person-conversation-panel');
@@ -58,7 +60,9 @@ try{
   const thanks=[...person.document.querySelectorAll('#h-message-reply button')].find(b=>b.textContent==='ありがとう');
   await person.click(thanks);
   await until('person thanks is first on family home and can be answered',()=>first(family)?.textContent.includes('ご本人からの返事：「ありがとう」')&&quick(family)&&!quick(family).disabled);
-  assert.ok(family.visible(first(family)));await family.click(quick(family));
+  assert.ok(family.visible(first(family)));assert.equal(family.visible(quick(family)),false);
+  quick(family).closest('details').open=true;
+  await family.click(quick(family));
   await until('continued reply returns to person home',()=>person.c.currentFamilyMessageId!==replyId&&person.document.getElementById('h-incoming-message').textContent.includes('ありがとう'));
   console.log('PASS actual two-identity home roundtrip: yesterday greeting → family reply → person thanks → continued reply');
 
@@ -66,6 +70,8 @@ try{
   const requestPanel=f=>f.document.getElementById((f===family?'family':'person')+'-requests-panel');
   const requestButton=text=>[...requestPanel(family).querySelectorAll('button')].find(b=>b.textContent===text);
   await until('original request becomes actionable',()=>requestButton('今から電話するね')&&!requestButton('今から電話するね').disabled);
+  assert.equal(requestPanel(family).open,false);
+  requestPanel(family).open=true;
   requestButton('今から電話するね').click();
   await until('dated commitment reaches other identity',()=>requestPanel(person).textContent.includes('対応予定')&&requestPanel(person).textContent.includes('今から電話するね'));
   await until('completion available after confirmed save',()=>requestButton('対応したことを本人へ伝える')&&!requestButton('対応したことを本人へ伝える').disabled);

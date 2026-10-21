@@ -37,7 +37,12 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  const row=f.document.querySelector('#ev-list > .ev');
  assert.match(row.textContent,/本人からの返事：「ありがとう」/,'latest incoming reply is first, not nested below an old greeting');
  const button=row.querySelector('[onclick^="replyToPersonEvent"]');
- await f.click(button);assert.equal(f.writes[0].replyTo,'thanks');assert.equal(f.writes[0].text,'ありがとう');
+ assert.equal(f.visible(button),false,'reply choices stay closed until requested');
+ assert.equal(f.writes.length,0,'reading does not send a reply');
+ button.closest('details').open=true;
+ f.events([greeting,reply,thanks]);
+ assert.ok(f.document.querySelector('[data-person-reply="thanks"]').open,'live update keeps the chosen reply open');
+ await f.click(f.document.querySelector('[data-person-reply="thanks"] [onclick^="replyToPersonEvent"]'));assert.equal(f.writes[0].replyTo,'thanks');assert.equal(f.writes[0].text,'ありがとう');
  f.events([greeting,reply,thanks],'cached');
  assert.ok(f.visible(f.document.querySelector('#ev-list > .ev')),'cached conversation remains readable');
  assert.ok([...f.document.querySelectorAll('#ev-list [data-send-audience]')].every(b=>b.disabled));
@@ -85,6 +90,19 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  assert.equal(f.writes[0].replyTo,'question');assert.equal(f.writes[0].type,'family-message-back','acknowledgement is a reply, not a medication record');
  f.events([reply,{...question,date:'2026-09-17'}]);assert.equal(f.document.getElementById('h-incoming-message').textContent,'','neither yesterday’s greeting nor its medication question stays on home');
  f.close();
+}
+{
+ const f=homeFixture();f.state(person);f.events([greeting]);
+ const details=f.document.querySelector('[data-person-reply="hello"]');details.open=true;
+ details.querySelector('summary').focus();
+ f.events([{...greeting,text:'こんにちは'}]);
+ assert.equal(f.document.activeElement.tagName,'SUMMARY','live update preserves the focused disclosure');
+ f.c.addEvent=async()=>{throw new Error('isolated rejection');};
+ await f.click(f.document.querySelector('[onclick^="replyToPersonEvent"]'));
+ const current=f.document.querySelector('[data-person-reply="hello"]');
+ assert.ok(current.open);assert.ok(f.visible(current.querySelector('button')),'failure leaves retry reachable');
+ assert.ok(f.document.querySelector('#person-reply-state-hello').textContent.length>0);
+ assert.equal(f.writes.length,0);f.close();
 }
 // 家族のホーム(2026-10-10): 「今日見ること」の中に、今日の様子・やりとり → 「記録する」
 assert.ok(html.indexOf('id="family-handoff-heading"')<html.indexOf('id="card-actions"'));

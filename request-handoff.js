@@ -12,11 +12,11 @@
     const d=new Date((row.at?.seconds||0)*1000);
     return row.at?.seconds?`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`:'日時の確認待ち';
   }
-  function plans(text,now){
-    const d=now||new Date(),evening=`${d.getMonth()+1}月${d.getDate()}日の夕方に電話するね`;
+  function plans(text){
+    const later='電話できる時間を、あとで伝えるね';
     if(text===quiet)return ['わかったよ。今日はそっとしておくね'];
-    if(text==='電話してほしい'||text==='話したい')return ['今から電話するね',evening];
-    if(text==='あとで連絡して')return [evening];
+    if(text==='電話してほしい'||text==='話したい')return ['今から電話するね',later];
+    if(text==='あとで連絡して')return [later];
     if(text==='買い物をお願い')return ['買い物を手伝うね。品物と時間は電話で相談しよう'];
     if(text==='予定を確認したい')return ['一緒に予定を確認するね。時間は電話で相談しよう'];
     if(text==='少し困っている')return ['今から電話で話を聞くね'];
@@ -32,8 +32,8 @@
     function reset(){
       generation++;scope='';data={person:[],family:[]};status={person:'loading',family:'loading'};
       busy.clear();saved.clear();messages.clear();drafts.clear();expanded.clear();
-      const summary=el('person-request-summary');if(summary)summary.textContent='';
-      for(const role of ['person','family']){const list=el(role+'-requests-list');if(list)list.replaceChildren();const panel=el(role+'-requests-panel');if(panel)panel.hidden=true;}
+      for(const role of ['person','family']){const summary=el(role+'-request-summary');if(summary)summary.textContent='';}
+      for(const role of ['person','family']){const list=el(role+'-requests-list');if(list)list.replaceChildren();const panel=el(role+'-requests-panel');if(panel){panel.hidden=true;if(role==='family')panel.open=false;}}
       try{options.stopSpeech?.();}catch(_){}
     }
     function ensure(){const next=key(context());if(scope!==next){reset();scope=next;}}
@@ -83,6 +83,12 @@
             latest?'お願いへの返事：'+stamp(latest)+' · '+(latest.name||'家族')+'さん':
             '表示中のお願いには、まだ返事がありません。';
         }
+      }
+      if(role==='family'){
+        const summary=el('family-request-summary'),latest=rows[0];
+        if(summary)summary.textContent=!latest?'':(status.family!=='ready'?'最新の確認ができていません。':'')+
+          stamp(latest)+' · 「'+(latest.text||'お願い')+'」'+(rows.length>1?' ほか'+(rows.length-1)+'件':'')+
+          (rows.some(req=>responses(req._id,'family').length)?' · 返事があります':'');
       }
       if(panel.hidden)return;
       const connected=role==='family'?c.familyReady:c.personReady;
