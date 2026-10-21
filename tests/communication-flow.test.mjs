@@ -66,7 +66,7 @@ const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:f
  assert.equal(f.writes[0].replyTo,'hello-1');assert.equal(f.writes[0].type,'aisatsu-back');
  const response={...f.writes[0],_id:'response-1',uid:'family',date:'2026-09-17',at:{seconds:2}};
  f.events([greeting,response]);assert.match(f.el('ev-list').innerHTML,/あなたは返事を送りました/);
- assert.ok(f.el('ev-list').querySelectorAll('button').some(button=>button.disabled&&button.textContent==='返事を送りました'),'返事済みはその場所に残す');
+ assert.match(f.el('ev-list').innerHTML,/class="reply-log">あなたは返事を送りました/,'返事済みは短い表示でその場所に残す');
  const continuation=f.replyButtons('hello-1').find(button=>button.dataset.replyAgain==='true');
  assert.equal(continuation.textContent,'続けて言葉を送る');await f.click(continuation);
  f.el('in-family-message').value='午後に電話するね';await f.c.sendFamilyMessage();
@@ -97,7 +97,7 @@ const legacyMembers={metadata:{fromCache:false,hasPendingWrites:false},forEach:f
  const pending=f.c.replyToPersonEvent('hello-1');assert.ok(f.replyButtons('hello-1').every(button=>button.disabled),'送信中の実ボタンは無効');await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,1);release();await pending;
  await f.c.replyToPersonEvent('hello-1');assert.equal(f.writes.length,1,'成功後はサーバー購読の返答を待たず重複送信を防ぐ');
  f.events([greeting]);assert.match(f.el('ev-list').innerHTML,/あなたは返事を送りました/);
- assert.ok(f.el('ev-list').querySelectorAll('button').some(button=>button.disabled&&button.textContent==='返事を送りました'));
+ assert.match(f.el('ev-list').innerHTML,/class="reply-log">あなたは返事を送りました/);
  const continuation=f.replyButtons('hello-1').find(button=>button.dataset.replyAgain==='true');
  assert.ok(continuation);assert.equal(continuation.disabled,false,'購読反映前も続けて書くボタンは使える');
  assert.equal(f.replyButtons('hello-1').some(button=>button.getAttribute('onclick').startsWith('replyToPersonEvent')),false,'済んだ定型返信を再送する操作にはしない');
@@ -254,7 +254,7 @@ console.log('communication + press integration: new-arrival cancellation and del
  const f=fixture();f.state(connected);
  const savedReply={_id:'saved-reply',type:'aisatsu-back',text:'おはよう',replyTo:'hello-1',uid:'family',name:'家族',date:'2026-09-17',at:{seconds:2}};
  f.events([greeting,savedReply]);
- assert.ok(f.el('ev-list').querySelectorAll('button').some(button=>button.disabled&&button.textContent==='返事を送りました'));
+ assert.match(f.el('ev-list').innerHTML,/class="reply-log">あなたは返事を送りました/);
  const continuation=f.replyButtons('hello-1').find(button=>button.dataset.replyAgain==='true');
  await f.click(continuation);f.el('in-family-message').value='朝の挨拶に追伸です';
  f.events([greeting,savedReply,{...greeting,_id:'later-greeting',text:'こんにちは',slot:'hiru',date:'2026-09-17',at:{seconds:3}}]);

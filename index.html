@@ -5065,7 +5065,7 @@ function renderFamilyConversation(){
     !(v.type==='onegai'||(v.type==='onegai-back'&&requestIds.has(v.replyTo))));
   card.style.display='block';
   if(!vis.length){
-    box.textContent=familyHomeEventStatus==='ready'?'まだやりとりはありません。連絡が届くと、ここに表示します。':'やりとりを読み込んでいます…';
+    box.textContent=familyHomeEventStatus==='ready'?(hasRequestPanel&&requestIds.size?'お願いとその返事は、上の「お願い・返事を確認する」で見られます。':'まだやりとりはありません。連絡が届くと、ここに表示します。'):'やりとりを読み込んでいます…';
     updateCommunicationAvailability();return;
   }
   const label={
