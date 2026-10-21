@@ -8,6 +8,26 @@ const greeting={_id:'hello',uid:'person',type:'aisatsu',text:'おはよう',slot
 const reply={_id:'reply',uid:'family',name:'家族',type:'aisatsu-back',text:'おはよう',replyTo:'hello',date:'2026-09-17',at:{seconds:1789635610}};
 const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back',text:'ありがとう',replyTo:'reply',date:'2026-09-18',at:{seconds:1789722000}};
 {
+ const f=homeFixture();f.state(person);
+ const at=(hour,minute)=>({seconds:new Date(2026,8,18,hour,minute).getTime()/1000});
+ const morning={_id:'med-am',uid:'person',type:'kusuri',slot:'asa',date:'2026-09-18',at:at(7,5)};
+ const noon={...morning,_id:'med-noon',slot:'hiru',at:at(12,3)};
+ const proxy={...morning,_id:'proxy',type:'kusuri-kakunin',at:at(13,0)};
+ f.events([noon,{...morning,_id:'yesterday',date:'2026-09-17',at:at(23,0)},morning,proxy]);
+ const glance=f.document.getElementById('today-glance');
+ assert.match(glance.textContent,/お薬の記録 2回/);
+ assert.match(glance.querySelector('.medicine-latest').textContent,/最新のお薬：昼の記録 · 12:03/);
+ assert.match(glance.textContent,/記録が保存された時刻です。飲んだ時刻の確認ではありません/);
+ f.events([morning]);assert.match(glance.textContent,/朝の記録 · 7:05/,'removed records do not stay in the summary');
+ f.events([morning],'cached');assert.equal(glance.querySelector('.medicine-latest'),null,'cached records are not presented as latest');
+ f.events([]);assert.doesNotMatch(glance.textContent,/7:05/);
+ f.c.renderTodayGlance([{...morning,at:null}]);assert.match(glance.textContent,/記録時刻を確認できません/);
+ f.c.isKOnly=()=>true;f.events([morning]);assert.equal(glance.hidden,true);
+ f.c.isKOnly=()=>false;f.events([morning],'loading');assert.equal(glance.hidden,true);
+ assert.equal(f.writes.length,0,'showing a timestamp never writes or sends anything');
+ f.close();
+}
+{
  const f=homeFixture();
  for(const state of [unknown,solo,person]){
    f.state(state);f.events([]);

@@ -725,14 +725,15 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .ln-more summary{cursor:pointer;color:var(--usucha);padding:6px 0;}
 /* 開け閉めする所は、はっきりしたボタンの形にする(2026-10-12 利用者「三角ボタンがわかりづらい・開きっぱなしにしてしまう」) */
 /* 本人の設定の見出し(2026-10-13): 押すと開く大きな行。開いた中は少し下げて、どこまでが中身か分かるように */
-#person-settings-modal .p-group>summary{font-size:1.1rem;padding:14px 14px;}
-#person-settings-modal .p-group>summary small{display:block;font-size:.85rem;font-weight:700;color:#7A6A55;margin-top:2px;}
-#person-settings-modal .p-group[open]{border-left:4px solid #C9B79C;padding-left:10px;margin-bottom:12px;}
+#person-settings-modal .p-group>summary,.entry-help>summary{font-size:1.1rem;padding:14px 14px;}
+#person-settings-modal .p-group>summary small,.entry-help>summary small{display:block;font-size:.85rem;font-weight:700;color:#7A6A55;margin-top:2px;}
+#person-settings-modal .p-group[open],.entry-help[open]{border-left:4px solid #C9B79C;padding-left:10px;margin-bottom:12px;}
 #person-settings-modal .p-group[hidden]{display:none;}
-.ln-more>summary,#person-settings-modal details>summary{list-style:none;display:block;cursor:pointer;margin:8px 0;padding:12px 14px;border:2px solid #C9B79C;border-radius:12px;background:#fff;color:#33404E;font-weight:800;font-size:1rem;line-height:1.5;text-align:left;}
-.ln-more>summary::-webkit-details-marker,#person-settings-modal details>summary::-webkit-details-marker{display:none;}
-.ln-more>summary::after,#person-settings-modal details>summary::after{content:'▼ 押すと開きます';display:block;font-size:.82rem;font-weight:700;color:#7A6A55;margin-top:2px;}
-.ln-more[open]>summary::after,#person-settings-modal details[open]>summary::after{content:'▲ 押すとしまいます';}
+.ln-more>summary,#person-settings-modal details>summary,.entry-help>summary{list-style:none;display:block;cursor:pointer;margin:8px 0;padding:12px 14px;border:2px solid #C9B79C;border-radius:12px;background:#fff;color:#33404E;font-weight:800;font-size:1rem;line-height:1.5;text-align:left;}
+.ln-more>summary::-webkit-details-marker,#person-settings-modal details>summary::-webkit-details-marker,.entry-help>summary::-webkit-details-marker{display:none;}
+.ln-more>summary::after,#person-settings-modal details>summary::after,.entry-help>summary::after{content:'▼ 押すと開きます';display:block;font-size:.82rem;font-weight:700;color:#7A6A55;margin-top:2px;}
+.ln-more[open]>summary::after,#person-settings-modal details[open]>summary::after,.entry-help[open]>summary::after{content:'▲ 押すとしまいます';}
+.entry-help .set-btn{min-height:52px;overflow-wrap:anywhere;}
 .details-close{margin-top:10px;}
 .ln-family{list-style:none;padding:0;margin:6px 0 0;}
 .ln-family li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid #F0EAE0;}
@@ -983,6 +984,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .communication-received .reply-log{padding:8px 0;overflow-wrap:anywhere;}
 .communication-received .reply-guide{font-size:.88rem;margin-top:8px;color:var(--usucha);}
 .today-glance{font-size:1.02rem;font-weight:800;color:#4A3A24;background:#FFF6EA;border:1px solid #EFD9BC;border-radius:10px;padding:9px 11px;margin:0 0 10px;line-height:1.5;}
+.medicine-latest{display:block;margin-top:8px;padding-top:8px;border-top:1px solid #EFD9BC;overflow-wrap:anywhere;}
+.medicine-latest small{display:block;margin-top:4px;font-size:.9em;font-weight:400;}
 /* 返事を送れないことが確定している間は、押せないボタンを並べず理由だけを示す */
 #card-actions.replies-unavailable .reply-row,
 #card-person-compose.replies-unavailable #family-conversation-compose{display:none!important;}
@@ -1013,7 +1016,6 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .person-welcome button{font:inherit;color:var(--cha);cursor:pointer;}
 #person-welcome-read{display:block;width:100%;background:#fff;border:0;padding:4px 0;text-align:left;}
 #person-welcome-text{display:block;font-size:clamp(1.75rem,7vw,2.5rem);font-weight:900;line-height:1.3;overflow-wrap:anywhere;}
-#person-welcome-read small{display:block;font-size:1.05rem;color:#7C461E;margin-top:6px;font-weight:700;}
 .person-welcome p,.request-note{font-size:1rem;line-height:1.7;margin:8px 0;color:#4E5969;overflow-wrap:anywhere;}
 .person-welcome p:empty{display:none;}
 #person-request-summary:empty{display:none;}
@@ -1150,9 +1152,15 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
   </ul>
   <div class="entry-tools">
     <button class="install-main" id="install-main" type="button" onclick="installApp()">ホーム画面に追加</button>
-    <p class="note">本サービスは119番通報や安否確認、医療行為の代替ではありません。</p><a class="consent-back" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
-    <a class="consent-back" href="guide/" target="_blank" rel="noopener">📷 写真つきの使い方</a>
-    <a class="consent-back" href="help.html#notifications" target="_blank" rel="noopener">使い方・困ったとき</a>
+    <p class="note">本サービスは119番通報や安否確認、医療行為の代替ではありません。</p>
+    <details class="entry-help" id="entry-help"><summary>❓ 使い方・困ったとき<small>説明・問い合わせ</small></summary>
+      <a class="set-btn" href="guide/" target="_blank" rel="noopener">📷 写真つきの使い方を見る</a>
+      <a class="set-btn" href="help.html#notifications" target="_blank" rel="noopener">くわしい説明を見る</a>
+      <a class="set-btn" href="guide/trouble.html" target="_blank" rel="noopener">📷 困ったとき（写真つき）</a>
+      <a class="set-btn" href="contact.html" target="_blank" rel="noopener">✉️ 問い合わせる</a>
+      <a class="set-btn" href="guide/line.html" target="_blank" rel="noopener">LINEで予定のお知らせを受け取るには</a>
+      <a class="set-btn" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
+    </details>
     <details style="margin:12px auto;text-align:left;"><summary>利用終了・データの整理</summary><p class="note">機種変更では削除しないでください。</p><button class="consent-back" type="button" onclick="openNotebookCleanup()">端末内の控えを削除</button><button class="consent-back" type="button" onclick="openAccountDeletion()">自分のログイン登録を削除する</button><a class="consent-back" href="help.html#end" target="_blank" rel="noopener">利用終了の手順を見る</a></details>
   </div>
 </div>
@@ -1452,7 +1460,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div id="person-security-notices"></div>
     <section class="person-welcome" aria-label="本人の今日">
       <div class="ht-lb">本人の今日</div>
-      <button id="person-welcome-read" type="button" onclick="speakPersonWelcome()"><span id="person-welcome-text">こんにちは。</span><small>🔊 ごあいさつを聞く</small></button>
+      <button id="person-welcome-read" type="button" onclick="speakPersonWelcome()"><span id="person-welcome-text">こんにちは。</span></button>
       <button class="welcome-stop" type="button" onclick="stopPersonSpeech()">読み上げを止める</button>
       <p id="person-welcome-status" role="status"></p>
     </section>
@@ -2162,7 +2170,8 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div class="card dom-record" id="card-memo">
         <details class="family-compose" open><summary>ひとことメモを残す</summary>
           <div class="in-row"><input type="text" id="in-memo" placeholder="例: 電話した。声が元気だった"></div>
-          <button class="big-btn record" onclick="sendMemo()">メモを残す</button>
+          <button class="big-btn record" id="memo-save-btn" onclick="sendMemo()">メモを残す</button>
+          <p id="memo-save-state" class="state" role="status" aria-live="polite"></p>
         </details>
       </div>
 
@@ -5014,11 +5023,22 @@ function renderTodayGlance(items){
   const day=dateString(new Date());
   const t=(items||[]).filter(v=>v&&v.date===day);
   const ai=t.some(v=>v.type==='aisatsu');
-  const ku=t.filter(v=>v.type==='kusuri').length;
+  const medicines=t.filter(v=>v.type==='kusuri').sort(compareConversationEvents);
+  const ku=medicines.length;
   const kb=t.filter(v=>v.type==='kibun'&&v.text).sort(compareConversationEvents).pop();
   el.hidden=false;
   if(!t.length){el.textContent='今日のようす：まだ今日の記録はありません（記録がないことは異常を意味しません）';return;}
   el.textContent='今日のようす：挨拶 '+(ai?'あり':'なし')+' ／ お薬の記録 '+ku+'回'+(kb?' ／ 体調「'+kb.text+'」':'');
+  if(ku&&familyHomeEventStatus==='ready'){
+    const latest=medicines[ku-1],seconds=latest.at?.seconds;
+    const recorded=typeof seconds==='number'&&Number.isFinite(seconds)?new Date(seconds*1000):null;
+    const time=recorded&&!Number.isNaN(recorded.getTime())?recorded.getHours()+':'+String(recorded.getMinutes()).padStart(2,'0'):'記録時刻を確認できません';
+    const detail=document.createElement('span');detail.className='medicine-latest';
+    detail.textContent='最新のお薬：'+(kusuriSlotName(latest.slot)?kusuriSlotName(latest.slot)+'の記録':'記録')+' · '+time;
+    const note=document.createElement('small');
+    note.textContent='記録が保存された時刻です。飲んだ時刻の確認ではありません。';
+    detail.appendChild(note);el.appendChild(detail);
+  }
 }
 function renderFamilyConversation(){
   const items=familyHomeItems;
@@ -6512,14 +6532,29 @@ async function recKibunFree(){
   }catch(e){state.classList.add('err');state.textContent='記録できませんでした。入力は残っています';}
   finally{btn.disabled=false;}
 }
-function sendMemo(){
+let memoSending=false;
+async function sendMemo(){
+  if(memoSending)return;
   const el=document.getElementById('in-memo');
   const t=el.value.trim();
   if(!t){alert('メモを入力してください');return;}
+  const btn=document.getElementById('memo-save-btn');
+  memoSending=true;btn.disabled=true;
+  foState('memo-save-state','保存を確認しています…',false);
   feedback();
-  addEvent({type:'memo', text:t, name:myName()}).then(()=>{
-    if(el.value===t) el.value='';   /* 送信待ちの間に書いた新しい文章は残す */
-  }).catch(()=>alert('送信できませんでした。電波状況を確認して、もう一度押してください。\n(入力した内容は消えていません)'));
+  // A delayed acknowledgement is not a failed write: keep the same request pending.
+  const waiting=setTimeout(function(){
+    foState('memo-save-state','保存はまだ確認できていません。通信が戻るまで、この画面を閉じずにお待ちください。大切な内容は別にも控えてください。',false);
+  },10000);
+  try{
+    await addEvent({type:'memo',text:t,name:myName()});
+    if(el.value.trim()===t)el.value='';
+    foState('memo-save-state','メモを保存しました。',false);
+  }catch(e){
+    foState('memo-save-state','保存できませんでした。入力は残っています。通信を確認して、もう一度押してください。',true);
+  }finally{
+    clearTimeout(waiting);memoSending=false;btn.disabled=false;
+  }
 }
 
 /* ===== 家族のみモード: 家庭ごとに選べる共有道具 =====
@@ -6755,12 +6790,15 @@ async function addCareLog(key){
   careLogSending=true;
   document.querySelectorAll('#care-quick-buttons button').forEach(function(b){b.disabled=true;});
   foState('care-log-state','記録しています…',false);
+  const waiting=setTimeout(function(){
+    foState('care-log-state','保存はまだ確認できていません。通信が戻るまで、この画面を閉じずにお待ちください。日時と内容は別にも控えてください。',false);
+  },10000);
   try{
     await addEvent({type:'care-log',careKey:key,text:o.label,name:myName(),clientAt:Date.now()});
     foState('care-log-state','「'+o.label+'」を記録しました。今日の記録にも表示されます。',false);
   }catch(e){ foState('care-log-state','記録できませんでした。通信状態を確認して、もう一度押してください',true); }
   finally{
-    careLogSending=false;
+    clearTimeout(waiting);careLogSending=false;
     document.querySelectorAll('#care-quick-buttons button').forEach(function(b){b.disabled=false;});
   }
 }
@@ -7868,7 +7906,7 @@ document.addEventListener('toggle',function(e){
 /* 開いた欄のいちばん下にも「しまう」を置く(上まで戻らなくても閉じられる。2026-10-12) */
 document.addEventListener('toggle',function(e){
   const d=e.target;
-  if(!d||d.tagName!=='DETAILS'||!d.open||!d.matches('.ln-more,#person-settings-modal details'))return;
+  if(!d||d.tagName!=='DETAILS'||!d.open||!d.matches('.ln-more,#person-settings-modal details,.entry-help'))return;
   if(d.querySelector(':scope>.details-close'))return;
   const b=document.createElement('button');b.type='button';b.className='set-btn details-close';b.textContent='▲ しまう';
   b.addEventListener('click',function(){d.open=false;const s=d.querySelector('summary');if(s&&s.scrollIntoView)try{s.scrollIntoView({block:'nearest'});}catch(err){}});

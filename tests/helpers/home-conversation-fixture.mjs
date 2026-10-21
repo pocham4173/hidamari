@@ -19,7 +19,7 @@ export function homeFixture(screen='kazoku',identity=screen==='kazoku'?'family':
     personMessageReplySending:false,honninSending:false,onegaiBackFreeId:'',honninUnsub:null,evUnsub:null,
     feedback(){},speak:t=>spoken.push(t),timeYomi:t=>t,validKusuriSlot:k=>['asa','hiru','yoru'].includes(k),
     kusuriSlotName:k=>({asa:'朝',hiru:'昼',yoru:'夜'}[k]||''),kusuriQuestion:()=> '朝の薬は飲みましたか？',slot:()=>({key:'asa'}),
-    todayStr:()=> '2026-09-18',myName:()=>identity==='family'?'家族':'本人',
+    todayStr:()=> '2026-09-18',dateString:()=> '2026-09-18',myName:()=>identity==='family'?'家族':'本人',
     esc:v=>String(v??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x])),
     jsArg:v=>String(v??'').replace(/[^A-Za-z0-9_-]/g,''),eventWhoClass:()=> 'who-honnin',
     previewStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},alert:t=>alerts.push(t),
@@ -30,6 +30,7 @@ export function homeFixture(screen='kazoku',identity=screen==='kazoku'?'family':
   vm.runInContext(section('let familyConnection={','let personTasksController=null;'),c);
   vm.runInContext(section('/* Conversation state is scoped','/* ===== 家族 ===== */'),c);
   vm.runInContext(section('function renderFamilyConversation(){',"let familyYoteiStatus='loading';"),c);
+  vm.runInContext(section('function renderTodayGlance(items){','function renderFamilyConversation(){'),c);
   vm.runInContext(section('function subscribeFamilyConversation(){','function initKazoku(){'),c);
   vm.runInContext(section('function renderPersonConversation(', 'function initHonnin(){'),c);
   vm.runInContext(section('let familyMessageSending=false;',"let onegaiBackFreeId='';"),c);
