@@ -998,6 +998,9 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .communication-received .reply-btn:disabled{opacity:1;background:#EDF1F6;color:#566171;border-color:#CDD5E0;cursor:default;}
 .communication-received .reply-log{padding:8px 0;overflow-wrap:anywhere;}
 .communication-received .reply-guide{font-size:.88rem;margin-top:8px;color:var(--usucha);}
+.today-glance .glance-row{display:block;padding:7px 0;overflow-wrap:anywhere;}
+.today-glance .glance-row + .glance-row{border-top:1px solid #EFD9BC;}
+.today-glance .glance-note{display:block;font-size:.88rem;font-weight:400;line-height:1.6;margin-top:8px;}
 .today-glance{font-size:1.02rem;font-weight:800;color:#4A3A24;background:#FFF6EA;border:1px solid #EFD9BC;border-radius:10px;padding:9px 11px;margin:0 0 10px;line-height:1.5;}
 .medicine-latest{display:block;margin-top:8px;padding-top:8px;border-top:1px solid #EFD9BC;overflow-wrap:anywhere;}
 .medicine-latest small{display:block;margin-top:4px;font-size:.9em;font-weight:400;}
@@ -2112,11 +2115,22 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
           <div class="care-today" id="care-today">今日押した記録を読み込んでいます…</div>
         <button class="family-jump" type="button" onclick="openHomeDetail('yosu')">様子を記録する</button>
       </div>
-      <div class="card dom-record" id="card-actions" data-communication-gate="person">
-        <h3>本人と家族のやりとり</h3>
-        <p class="today-glance" id="today-glance" hidden></p>
+      <div class="card dom-record" id="card-person-today" data-communication-gate="person">
+        <h3>本人の今日の様子</h3>
+        <div class="today-glance" id="today-glance" hidden></div>
         <p class="communication-status" id="person-contact-state" aria-live="polite">読み込んでいます…</p>
         <button class="set-btn" id="family-conversation-retry" type="button" hidden onclick="retryHomeConversation('kazoku')">もう一度読み込む</button>
+      </div>
+
+      <div class="card dom-yotei" id="card-next-yotei" style="display:none;">
+        <h3>今日・明日の予定</h3>
+        <div id="family-today-tomorrow" class="family-day-plan" aria-live="polite">予定を読み込んでいます…</div>
+        <div class="family-upcoming">その後の予定：<span id="f-next-yotei">予定を読み込んでいます…</span></div>
+        <button class="family-jump" type="button" onclick="showTab('t-yotei')">カレンダー・予定一覧を見る</button>
+      </div>
+
+      <div class="card dom-record" id="card-actions" data-communication-gate="person">
+        <h3>本人と家族のやりとり</h3>
         <details class="request-panel" id="family-requests-panel" hidden>
           <summary id="family-requests-heading"><span id="family-requests-label">お願い・返事を確認する</span><span id="family-request-summary"></span></summary>
           <p class="request-note" id="family-requests-state" role="status"></p>
@@ -2127,13 +2141,6 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
           <div id="ev-list"><div class="empty" id="ev-empty">やりとりを読み込んでいます…</div></div>
         </div>
         <button class="family-jump" type="button" onclick="showTab('t-kiroku')">前の日のやりとりを見る</button>
-      </div>
-
-      <div class="card dom-yotei" id="card-next-yotei" style="display:none;">
-        <h3>今日・明日の予定</h3>
-        <div id="family-today-tomorrow" class="family-day-plan" aria-live="polite">予定を読み込んでいます…</div>
-        <div class="family-upcoming">その後の予定：<span id="f-next-yotei">予定を読み込んでいます…</span></div>
-        <button class="family-jump" type="button" onclick="showTab('t-yotei')">カレンダー・予定一覧を見る</button>
       </div>
 
       <div class="card dom-record family-shared-card" id="card-family-notes-preview" data-share-gate="family" hidden>
@@ -3210,7 +3217,7 @@ function renderFamilyConnection(){
   if(recordSharing)recordSharing.textContent=state.status==='unknown'?'記録は残せます。家族との共有状況は確認中です。':canUseFamilyFeature('shared')?'家族へ報告：承認された家族がアプリで確認できます。通知・既読の確認ではありません。':'今は自分の記録として残せます。家族が参加すると、これまでの記録も共有されます。';
   const connected=canUseFamilyFeature();
   const summary=document.getElementById('home-summary-description');
-  if(summary)summary.textContent=canUseFamilyFeature('person')?'本人から・家族からの枠で、記録と連絡を見られます。':connected?'今日の様子、予定、家族の伝言を確認できます。':'今日の様子と予定を確認できます。';
+  if(summary)summary.textContent=canUseFamilyFeature('person')?'今日の様子、予定、お願いの順に確認できます。':connected?'今日の様子、予定、家族の伝言を確認できます。':'今日の様子と予定を確認できます。';
   const heading=document.getElementById('home-record-heading');
   if(heading)heading.textContent='記録する';
   const kind=document.getElementById('family-task-kind');
@@ -5042,13 +5049,27 @@ function renderTodayGlance(items){
   if(isKOnly()||familyHomeEventStatus==='loading'){el.hidden=true;return;}
   const day=dateString(new Date());
   const t=(items||[]).filter(v=>v&&v.date===day);
-  const ai=t.some(v=>v.type==='aisatsu');
+  const greetings=t.filter(v=>v.type==='aisatsu').sort(compareConversationEvents);
+  const ai=greetings.length>0;
   const medicines=t.filter(v=>v.type==='kusuri').sort(compareConversationEvents);
   const ku=medicines.length;
   const kb=t.filter(v=>v.type==='kibun'&&v.text).sort(compareConversationEvents).pop();
   el.hidden=false;
-  if(!t.length){el.textContent='今日のようす：まだ今日の記録はありません（記録がないことは異常を意味しません）';return;}
-  el.textContent='今日のようす：挨拶 '+(ai?'あり':'なし')+' ／ お薬の記録 '+ku+'回'+(kb?' ／ 体調「'+kb.text+'」':'');
+  if(!t.length){
+    el.textContent=familyHomeEventStatus==='ready'?'まだ今日の記録はありません。記録がないことは異常を意味しません。':'今日の記録を確認できません。通信が戻ってから、もう一度確認してください。';
+    return;
+  }
+  el.textContent='';
+  const row=text=>{const span=document.createElement('span');span.className='glance-row';span.textContent=text;el.appendChild(span);};
+  let greeting='挨拶の記録 '+(ai?'あり':'なし');
+  if(ai&&familyHomeEventStatus==='ready'){
+    const latest=greetings[greetings.length-1],seconds=latest.at?.seconds;
+    const at=typeof seconds==='number'&&Number.isFinite(seconds)?new Date(seconds*1000):null;
+    if(at&&!Number.isNaN(at.getTime()))greeting+=' · '+at.getHours()+':'+String(at.getMinutes()).padStart(2,'0');
+  }
+  row(greeting);
+  row('お薬の記録 '+ku+'回');
+  row(kb?'体調「'+kb.text+'」':'体調の記録 なし');
   if(ku&&familyHomeEventStatus==='ready'){
     const latest=medicines[ku-1],seconds=latest.at?.seconds;
     const recorded=typeof seconds==='number'&&Number.isFinite(seconds)?new Date(seconds*1000):null;
@@ -5058,6 +5079,9 @@ function renderTodayGlance(items){
     const note=document.createElement('small');
     note.textContent='記録が保存された時刻です。飲んだ時刻の確認ではありません。';
     detail.appendChild(note);el.appendChild(detail);
+  }else if(ai&&familyHomeEventStatus==='ready'){
+    const note=document.createElement('small');note.className='glance-note';
+    note.textContent='時刻は記録が保存された時刻です。';el.appendChild(note);
   }
 }
 function renderFamilyConversation(){

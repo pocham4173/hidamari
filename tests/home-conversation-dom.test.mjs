@@ -135,3 +135,20 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
 assert.ok(html.indexOf('id="family-handoff-heading"')<html.indexOf('id="card-actions"'));
 assert.ok(html.indexOf('id="card-actions"')<html.indexOf('id="home-record-heading"'));
 console.log('Production DOM: visible home conversations, latest reply first, inline continuation, today-only contact and previous-day history access, hidden ancestors, bounded home, retry and XSS passed');
+
+{
+ const f=homeFixture();f.state(person);
+ const ids=['card-person-today','card-next-yotei','family-requests-panel','card-today-records'];
+ for(let i=1;i<ids.length;i++)assert.ok(f.document.getElementById(ids[i-1]).compareDocumentPosition(f.document.getElementById(ids[i])) & 4,'summary, schedule, request, history follow reading order');
+ const at={seconds:new Date(2026,8,18,7,10).getTime()/1000};
+ f.events([{...greeting,date:'2026-09-18',at}]);
+ const glance=f.document.getElementById('today-glance');
+ assert.equal(glance.querySelectorAll('.glance-row').length,3);
+ assert.match(glance.querySelector('.glance-row').textContent,/7:10/);
+ assert.equal(glance.querySelectorAll('button').length,0,'reading the summary requires no reply');
+ f.events([],'error');assert.doesNotMatch(glance.textContent,/まだ今日の記録はありません/);
+ f.events([],'cached');assert.match(glance.textContent,/確認できません/);
+ f.events([]);assert.match(glance.textContent,/まだ今日の記録はありません/);
+ f.c.isKOnly=()=>true;f.state(person);assert.equal(f.visible(f.document.getElementById('card-person-today')),false);
+ assert.equal(f.writes.length,0);f.close();
+}

@@ -220,7 +220,8 @@ for(const cached of [true,false]){
  assert.equal(f.el('person-thanks').disabled,true);await f.c.sendFamilyMessageBack('ありがとう');assert.equal(f.writes.length,0);
 }
 assert.doesNotMatch(html,/試験運用中｜実名・住所・電話・病歴は入力しないでください/);
-assert.ok(html.indexOf('id="card-actions"')<html.indexOf('id="card-next-yotei"'));
+assert.ok(html.indexOf('id="card-person-today"')<html.indexOf('id="card-next-yotei"'));
+assert.ok(html.indexOf('id="card-next-yotei"')<html.indexOf('id="card-actions"'));
 assert.doesNotMatch(html,/<details[^>]*id="family-person-contact"/);
 assert.match(html,/onSnapshot\(\{includeMetadataChanges:true\},snap=>\{\s*if\(!conversationCurrent\(\)\)return/);
 assert.match(html,/onSnapshot\(\{includeMetadataChanges:true\},snap=>\{\s*if\(!current\(\)\)return/);
