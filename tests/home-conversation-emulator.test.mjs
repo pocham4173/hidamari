@@ -28,7 +28,7 @@ function connect(screen,uid){
   if(screen==='honnin')f.c.subscribePersonConversation();else f.c.subscribeFamilyConversation();
   return {f,db};
 }
-const first=f=>f.document.querySelector('#ev-list > .ev');
+const first=f=>f.document.querySelector('#conversation-from-person > .ev');
 const quick=f=>first(f)?.querySelector('[onclick^="replyToPersonEvent"]');
 try{
   await env.clearFirestore();

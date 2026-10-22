@@ -9,6 +9,33 @@ const reply={_id:'reply',uid:'family',name:'家族',type:'aisatsu-back',text:'�
 const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back',text:'ありがとう',replyTo:'reply',date:'2026-09-18',at:{seconds:1789722000}};
 {
  const f=homeFixture();f.state(person);
+ const types=['aisatsu','kibun','kusuri','family-message-back','aisatsu-back','ask-kusuri','family-message','onegai-back'];
+ const rows=types.map((type,i)=>({...greeting,type,_id:'source-'+i,text:'記録'+i,at:{seconds:i+1}}));
+ f.events(rows);
+ const fromPerson=f.document.getElementById('conversation-from-person');
+ const fromFamily=f.document.getElementById('conversation-from-family');
+ assert.equal(fromPerson.querySelector('h5').textContent,'本人から');
+ assert.equal(fromFamily.querySelector('h5').textContent,'家族から');
+ for(let i=0;i<types.length;i++){
+   assert.ok((i<4?fromPerson:fromFamily).textContent.includes('記録'+i)||types[i]==='kusuri'||types[i]==='ask-kusuri');
+ }
+ assert.equal(fromPerson.querySelectorAll('.ev').length,4);
+ assert.equal(fromFamily.querySelectorAll('.ev').length,4,'orphan request replies remain visible in family frame');
+ assert.equal(fromPerson.querySelectorAll(':scope > .ev').length,2);
+ assert.equal(fromFamily.querySelectorAll(':scope > .ev').length,2);
+ assert.equal(fromFamily.querySelectorAll('[data-person-reply]').length,0,'family outgoing records do not request a reply to oneself');
+ const history=f.document.getElementById('family-earlier-conversation-family');history.open=true;history.querySelector('summary').focus();
+ f.events([...rows,{...reply,_id:'new-family',text:'また電話するね',at:{seconds:100}}]);
+ assert.equal(f.document.querySelector('#conversation-from-family > .ev').textContent.includes('また電話するね'),true);
+ assert.equal(f.document.getElementById('family-earlier-conversation-family').open,true);
+ assert.equal(f.document.activeElement.closest('details').id,'family-earlier-conversation-family','live update preserves history focus');
+ f.events([greeting]);assert.match(f.document.getElementById('conversation-from-family').textContent,/表示できる記録はまだありません/);
+ f.events([],'error');assert.match(f.document.getElementById('conversation-from-person').textContent,/通信を確認/);
+ assert.doesNotMatch(f.document.getElementById('conversation-from-person').textContent,/記録はまだありません/,'failure must not become empty-success');
+ assert.equal(f.writes.length,0);f.close();
+}
+{
+ const f=homeFixture();f.state(person);
  const at=(hour,minute)=>({seconds:new Date(2026,8,18,hour,minute).getTime()/1000});
  const morning={_id:'med-am',uid:'person',type:'kusuri',slot:'asa',date:'2026-09-18',at:at(7,5)};
  const noon={...morning,_id:'med-noon',slot:'hiru',at:at(12,3)};
@@ -34,7 +61,7 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
    assert.ok(f.visible(f.document.getElementById('card-actions')),'empty or unconfirmed membership cannot hide the entire conversation');
  }
  f.state(person);f.events([greeting,reply,thanks]);
- const row=f.document.querySelector('#ev-list > .ev');
+ const row=f.document.querySelector('#conversation-from-person > .ev');
  assert.match(row.textContent,/本人からの返事：「ありがとう」/,'latest incoming reply is first, not nested below an old greeting');
  const button=row.querySelector('[onclick^="replyToPersonEvent"]');
  assert.equal(f.visible(button),false,'reply choices stay closed until requested');
@@ -44,7 +71,7 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  assert.ok(f.document.querySelector('[data-person-reply="thanks"]').open,'live update keeps the chosen reply open');
  await f.click(f.document.querySelector('[data-person-reply="thanks"] [onclick^="replyToPersonEvent"]'));assert.equal(f.writes[0].replyTo,'thanks');assert.equal(f.writes[0].text,'ありがとう');
  f.events([greeting,reply,thanks],'cached');
- assert.ok(f.visible(f.document.querySelector('#ev-list > .ev')),'cached conversation remains readable');
+ assert.ok(f.visible(f.document.querySelector('#conversation-from-person > .ev')),'cached conversation remains readable');
  assert.ok([...f.document.querySelectorAll('#ev-list [data-send-audience]')].every(b=>b.disabled));
  f.state(unknown);assert.ok(f.visible(f.document.getElementById('family-conversation-retry')));
  assert.equal(f.document.getElementById('conversation-setup-entry'),null,'no explanation button replaces the conversation');
@@ -54,10 +81,10 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  const f=homeFixture();f.state(person);
  const rows=Array.from({length:8},(_,i)=>({...greeting,_id:'greet-'+i,text:'挨拶'+i,at:{seconds:i+1}}));
  f.events(rows);
- assert.equal(f.document.querySelectorAll('#ev-list > .ev').length,3,'home stays short');
- const details=f.document.getElementById('family-earlier-conversation');assert.equal(details.open,false);
+ assert.equal(f.document.querySelectorAll('#conversation-from-person > .ev').length,2,'each source stays short');
+ const details=f.document.getElementById('family-earlier-conversation-person');assert.equal(details.open,false);
  assert.equal(f.visible(details.querySelector('.ev')),false);details.open=true;
- f.events([...rows,{...thanks,at:{seconds:9}}]);assert.equal(f.document.getElementById('family-earlier-conversation').open,true,'arrival does not close expanded history');
+ f.events([...rows,{...thanks,at:{seconds:9}}]);assert.equal(f.document.getElementById('family-earlier-conversation-person').open,true,'arrival does not close expanded history');
  f.events([{...thanks,text:'<img src=x onerror=alert(1)>'}]);assert.equal(f.document.querySelector('#ev-list img'),null,'message content cannot create markup');
  f.close();
 }
