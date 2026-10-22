@@ -191,3 +191,43 @@ test('later-call choices do not invent a date or an evening promise',()=>{
   assert.ok(choices.every(choice=>!/[0-9]|夕方/.test(choice)));
  }
 });
+
+
+test('dismiss hides only this account/home view, survives controller reset and can be restored without server writes',async()=>{
+ const f=fixture();f.panel().open=true;f.events([req,response]);
+ await f.click('ホームから消す');
+ assert.equal(f.panel().querySelector('[data-request-id]'),null);
+ assert.equal(f.panel().open,false);assert.match(f.document.getElementById('family-requests-label').textContent,/消したお願いを見る/);
+ assert.equal(f.writes.length,0);assert.equal(f.server.has(req._id),true);
+ f.c.resetRequestHandoff();f.events([req,response]);assert.equal(f.panel().querySelector('[data-request-id]'),null);
+ f.setAccount('other-family');f.events([req,response]);assert.ok(f.panel().querySelector('[data-request-id]'));
+ f.setAccount('family');f.setGroup('other-home');f.events([req,response]);assert.ok(f.panel().querySelector('[data-request-id]'));
+ f.setGroup('home');f.events([req,response]);assert.equal(f.panel().querySelector('[data-request-id]'),null);
+ f.panel().open=true;await f.click('ホームに戻す');assert.ok(f.panel().querySelector('[data-request-id]'));assert.equal(f.writes.length,0);f.close();
+});
+
+test('new reply or new request resurfaces; hidden item never suppresses a new message',async()=>{
+ const f=fixture();f.events([req,response]);await f.click('ホームから消す');
+ f.events([req,response,{...response,_id:'new-reply',text:'電話したよ',at:{seconds:1789723000}}]);
+ assert.ok(f.panel().querySelector('[data-request-id="request-1"]'));assert.match(f.panel().textContent,/電話したよ/);
+ f.events([req,response]);await f.click('ホームに戻す');await f.click('ホームから消す');
+ f.events([req,response,{...req,_id:'new-request',text:'買い物をお願い'}]);
+ assert.ok(f.panel().querySelector('[data-request-id="new-request"]'));assert.equal(f.panel().querySelector('[data-request-id="request-1"]'),null);
+ assert.equal(f.writes.length,0);f.close();
+});
+
+test('dismiss cancel, storage failure, changed conversation and household switch do not hide a request',async()=>{
+ for(const failure of ['cancel','storage','reply','group']){
+  const f=fixture(),pending=deferred();
+  if(failure==='cancel')f.c.appConfirm=async()=>false;
+  if(failure==='storage')f.c.previewStorage.setItem=()=>{throw Error('quota');};
+  if(['reply','group'].includes(failure))f.c.appConfirm=()=>pending.promise;
+  const b=f.buttons().find(b=>b.textContent==='ホームから消す');b.click();await flush();
+  if(failure==='reply'){f.events([req,response]);pending.resolve(true);await flush();}
+  if(failure==='group'){f.setGroup('new-home');f.c.resetCommunication();f.events([req]);pending.resolve(true);await flush();}
+  assert.ok(f.panel().querySelector('[data-request-id]'),failure);
+  if(failure==='storage')assert.match(f.panel().textContent,/表示は変更していません/);
+  if(failure==='reply')assert.match(f.panel().textContent,/返事が更新されました/);
+  assert.equal(f.writes.length,0);f.close();
+ }
+});

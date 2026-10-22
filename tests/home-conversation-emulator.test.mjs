@@ -72,6 +72,14 @@ try{
   await until('original request becomes actionable',()=>requestButton('今から電話するね')&&!requestButton('今から電話するね').disabled);
   assert.equal(requestPanel(family).open,false);
   requestPanel(family).open=true;
+  requestButton('ホームから消す').click();
+  await until('request hidden only on family home',()=>!requestPanel(family).querySelector('[data-request-id]')&&requestButton('ホームに戻す')&&!requestButton('ホームに戻す').disabled);
+  const storedRequest=await familyDb.collection('groups').doc('home').collection('events').doc(requestRef.id).get();
+  assert.equal(storedRequest.exists,true,'dismiss never deletes the shared request');
+  await until('person still has their request',()=>requestPanel(person).textContent.includes('電話してほしい'));
+  requestPanel(family).open=true;requestButton('ホームに戻す').click();
+  await until('restored request is actionable',()=>requestButton('今から電話するね')&&!requestButton('今から電話するね').disabled);
+  console.log('PASS family home dismissal/restoration leaves actual shared request and person view intact');
   requestButton('今から電話するね').click();
   await until('dated commitment reaches other identity',()=>requestPanel(person).textContent.includes('対応予定')&&requestPanel(person).textContent.includes('今から電話するね'));
   await until('completion available after confirmed save',()=>requestButton('対応したことを本人へ伝える')&&!requestButton('対応したことを本人へ伝える').disabled);
