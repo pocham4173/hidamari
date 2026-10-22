@@ -2103,7 +2103,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <p class="communication-status" id="person-contact-state" aria-live="polite">読み込んでいます…</p>
         <button class="set-btn" id="family-conversation-retry" type="button" hidden onclick="retryHomeConversation('kazoku')">もう一度読み込む</button>
         <details class="request-panel" id="family-requests-panel" hidden>
-          <summary id="family-requests-heading">お願い・返事を確認する<span id="family-request-summary"></span></summary>
+          <summary id="family-requests-heading"><span id="family-requests-label">お願い・返事を確認する</span><span id="family-request-summary"></span></summary>
           <p class="request-note" id="family-requests-state" role="status"></p>
           <div id="family-requests-list"></div>
         </details>
@@ -2617,7 +2617,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
-<script src="request-handoff.js?v=20261022"></script>
+<script src="request-handoff.js?v=20261022-dismiss"></script>
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
@@ -3231,7 +3231,8 @@ let requestHandoffController=null;
 function getRequestHandoff(){
   if(typeof MainicoRequestHandoff==='undefined')return null;
   if(!requestHandoffController)requestHandoffController=MainicoRequestHandoff.create({
-    document,
+    document,storage:previewStorage,
+    confirmDismiss:text=>appConfirm(text,'ホームから消す','やめる',true),
     context:()=>({uid:uid(),gid:gid(),generation:communicationGeneration,mode:previewStorage.getItem('mainicoMode'),kOnly:isKOnly(),
       familyReady:canUseFamilyFeature('person'),personReady:canUseFamilyFeature('family'),connection:familyConnection.status,
       familyStatus:familyHomeEventStatus,personStatus:personConversationStatus}),

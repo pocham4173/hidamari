@@ -65,12 +65,42 @@
       for(const [id,v] of saved){if(items.some(x=>x._id===v._id)||!items.some(x=>x._id===v.replyTo))saved.delete(id);}
       render(role);
     }
+    // Only opaque event IDs/versions are stored, scoped to this account and household.
+    function hiddenKey(){const c=context();return 'mainicoRequestHidden-v1:'+JSON.stringify([c.uid,c.gid]);}
+    function hiddenRows(){
+      try{const rows=JSON.parse(options.storage?.getItem(hiddenKey())||'[]');
+        return new Map(Array.isArray(rows)?rows.filter(v=>Array.isArray(v)&&v.length===2&&v.every(x=>typeof x==='string')):[]);
+      }catch(_){return new Map();}
+    }
+    function version(id){return JSON.stringify(all('family').filter(v=>v._id===id||(v.type==='onegai-back'&&v.replyTo===id))
+      .map(v=>v._id).sort());}
+    async function dismiss(id,restore=false){
+      ensure();if(!ready()||busy.has(id)||!request(id))return false;
+      const token=generation,scopeKey=scope,before=version(id);busy.add(id);render('family');
+      const current=()=>token===generation&&scope===scopeKey&&key(context())===scopeKey;
+      try{
+        if(!restore&&!await options.confirmDismiss('このスマホのホームから、このお願いを消しますか？\n本人やほかの家族の記録は残ります。\n「消したお願い」から戻せます。新しい返事が届くと、再び表示します。'))return false;
+        if(!current()||!ready()||!request(id))return false;
+        if(version(id)!==before){messages.set(id,'返事が更新されました。内容を確認してから、もう一度お試しください。');return false;}
+        const entries=hiddenRows();if(restore)entries.delete(id);else{entries.delete(id);entries.set(id,before);}
+        options.storage.setItem(hiddenKey(),JSON.stringify([...entries].slice(-300)));
+        messages.delete(id);expanded.delete(id);
+        render('family');
+        const panel=el('family-requests-panel');if(!restore&&el('family-requests-label')?.textContent.startsWith('消したお願い'))panel.open=false;
+        el('family-requests-heading')?.focus({preventScroll:true});
+        return true;
+      }catch(_){if(current())messages.set(id,'このスマホに保存できなかったため、表示は変更していません。もう一度お試しください。');return false;}
+      finally{if(current()){busy.delete(id);render('family');}}
+    }
     function render(role){
       const panel=el(role+'-requests-panel'),list=el(role+'-requests-list'),state=el(role+'-requests-state');
       if(!panel||!list)return;
-      const c=context(),rows=data[role].filter(v=>v.type==='onegai'&&(role==='family'||v.uid===c.uid)).sort((a,b)=>compare(b,a));
+      const c=context(),allRows=data[role].filter(v=>v.type==='onegai'&&(role==='family'||v.uid===c.uid)).sort((a,b)=>compare(b,a));
+      const hidden=role==='family'?hiddenRows():new Map();
+      const archived=allRows.filter(v=>hidden.get(v._id)===version(v._id));
+      const rows=allRows.filter(v=>!archived.includes(v));
       // The family-only recording mode has no inbox from a person using the app.
-      panel.hidden=!rows.length||(role==='family'&&c.kOnly);
+      panel.hidden=!allRows.length||(role==='family'&&c.kOnly);
       const active=doc.activeElement,focusKey=list.contains(active)?active.dataset.handoffKey:null;
       const selection=focusKey&&active.tagName==='INPUT'?[active.selectionStart,active.selectionEnd]:null;
       list.querySelectorAll('details[data-open-key]').forEach(d=>{if(d.open)expanded.add(d.dataset.openKey);else expanded.delete(d.dataset.openKey);});
@@ -86,6 +116,7 @@
       }
       if(role==='family'){
         const summary=el('family-request-summary'),latest=rows[0];
+        const title=el('family-requests-label');if(title)title.textContent=rows.length?'お願い・返事を確認する':archived.length?'消したお願いを見る（'+archived.length+'件）':'お願い・返事を確認する';
         if(summary)summary.textContent=!latest?'':(status.family!=='ready'?'最新の確認ができていません。':'')+
           stamp(latest)+' · 「'+(latest.text||'お願い')+'」'+(rows.length>1?' ほか'+(rows.length-1)+'件':'')+
           (rows.some(req=>responses(req._id,'family').length)?' · 返事があります':'');
@@ -141,8 +172,21 @@
             button(details,'この返事を送る',req._id,'reply',locked,()=>send(req._id,input.value,'reply'));
           }
         }
+        if(role==='family')button(actions,'ホームから消す',req._id,'dismiss',!ready()||busy.has(req._id),()=>dismiss(req._id));
         node(row,'p',messages.get(req._id)||'','request-result').setAttribute('role','status');
       });
+      if(role==='family'&&archived.length){
+        let parent=list;
+        if(rows.length){parent=node(list,'details');parent.dataset.openKey='archived';parent.open=expanded.has('archived');node(parent,'summary','消したお願いを見る（'+archived.length+'件）');}
+        node(parent,'p','このスマホのホームから消したお願いです。本人やほかの家族の記録には影響しません。','request-note');
+        archived.forEach(req=>{
+          const row=node(parent,'article',undefined,'request-item');row.dataset.archivedRequestId=req._id;
+          node(row,'p',stamp(req)+' · 「'+(req.text||'お願い')+'」');
+          const actions=node(row,'div',undefined,'request-actions');
+          button(actions,'ホームに戻す',req._id,'restore',!ready()||busy.has(req._id),()=>dismiss(req._id,true));
+          node(row,'p',messages.get(req._id)||'','request-result').setAttribute('role','status');
+        });
+      }
       if(focusKey){const targets=[...list.querySelectorAll('[data-handoff-key]')];const target=targets.find(n=>n.dataset.handoffKey===focusKey)||targets.find(n=>n.dataset.handoffKey===focusKey.split(':')[0]+':heading');if(target&&!target.disabled){target.focus({preventScroll:true});if(selection)target.setSelectionRange(...selection);}}
     }
     async function send(id,text,stage,expected){
