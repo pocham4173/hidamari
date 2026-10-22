@@ -948,6 +948,21 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .communication-status{font-size:.88rem;line-height:1.6;color:var(--usucha);margin:0 0 12px;}
 .communication-received{margin:12px 0 18px;padding:14px;background:#F4F8FC;border-radius:16px;}
 .communication-received h4{margin:0 0 10px;color:#315C8D;}
+#card-today-records{background:transparent;padding:0;}
+#ev-list{display:grid;gap:16px;}
+.conversation-source{min-width:0;border:2px solid #E9A16A;border-radius:18px;background:#FFFAF5;overflow:hidden;}
+.conversation-source.source-family{border-color:#83A7DC;background:#F5F8FF;}
+.conversation-source h5{margin:0;padding:14px 16px;background:#FFE5CE;color:#743C16;font-size:1.3rem;line-height:1.5;font-weight:800;}
+.conversation-source.source-family h5{background:#E1ECFF;color:#244F8D;}
+.conversation-source .ev{margin:0 14px;padding:14px 0;border-left:0;background:transparent;overflow-wrap:anywhere;}
+.conversation-source .ev:last-child{border-bottom:0;}
+.conversation-source .tm{line-height:1.6;}
+.conversation-source .source-empty{margin:0;padding:16px;color:#555F6F;font-size:1rem;line-height:1.7;}
+.source-history{margin:0 14px 10px;border-top:1px solid #C8CFD8;}
+.source-history > summary{cursor:pointer;min-height:48px;padding:12px 0;box-sizing:border-box;font-weight:700;line-height:1.6;overflow-wrap:anywhere;}
+.source-history > summary:focus-visible{outline:3px solid #315FAE;outline-offset:2px;}
+.source-history .ev{margin:0;}
+
 .communication-received .reply-btn{min-height:48px;margin-top:8px;}
 #card-actions button:disabled,#h-message-reply button:disabled{opacity:.65;cursor:wait;}
 #card-actions h4{font-size:1rem;}
@@ -2098,7 +2113,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <button class="family-jump" type="button" onclick="openHomeDetail('yosu')">様子を記録する</button>
       </div>
       <div class="card dom-record" id="card-actions" data-communication-gate="person">
-        <h3>今日の様子・ご本人とのやりとり</h3>
+        <h3>本人と家族のやりとり</h3>
         <p class="today-glance" id="today-glance" hidden></p>
         <p class="communication-status" id="person-contact-state" aria-live="polite">読み込んでいます…</p>
         <button class="set-btn" id="family-conversation-retry" type="button" hidden onclick="retryHomeConversation('kazoku')">もう一度読み込む</button>
@@ -3195,7 +3210,7 @@ function renderFamilyConnection(){
   if(recordSharing)recordSharing.textContent=state.status==='unknown'?'記録は残せます。家族との共有状況は確認中です。':canUseFamilyFeature('shared')?'家族へ報告：承認された家族がアプリで確認できます。通知・既読の確認ではありません。':'今は自分の記録として残せます。家族が参加すると、これまでの記録も共有されます。';
   const connected=canUseFamilyFeature();
   const summary=document.getElementById('home-summary-description');
-  if(summary)summary.textContent=canUseFamilyFeature('person')?'今日の様子（ご本人とのやりとり）、予定、伝言を確認できます。返事もここからできます。':connected?'今日の様子、予定、家族の伝言を確認できます。':'今日の様子と予定を確認できます。';
+  if(summary)summary.textContent=canUseFamilyFeature('person')?'本人から・家族からの枠で、記録と連絡を見られます。':connected?'今日の様子、予定、家族の伝言を確認できます。':'今日の様子と予定を確認できます。';
   const heading=document.getElementById('home-record-heading');
   if(heading)heading.textContent='記録する';
   const kind=document.getElementById('family-task-kind');
@@ -5065,10 +5080,6 @@ function renderFamilyConversation(){
   const vis=homeAttentionRows(items,replies,false).filter(v=>!hasRequestPanel||
     !(v.type==='onegai'||(v.type==='onegai-back'&&requestIds.has(v.replyTo))));
   card.style.display='block';
-  if(!vis.length){
-    box.textContent=familyHomeEventStatus==='ready'?(hasRequestPanel&&requestIds.size?'お願いとその返事は、上の「お願い・返事を確認する」で見られます。':'まだやりとりはありません。連絡が届くと、ここに表示します。'):'やりとりを読み込んでいます…';
-    updateCommunicationAvailability();return;
-  }
   const label={
     'aisatsu':v=>'ご本人が「'+(v.text||'')+'」と挨拶しました',
     'kibun':v=>'その日の調子: '+(v.text||''),
@@ -5118,17 +5129,29 @@ function renderFamilyConversation(){
     const own=v.type==='family-message'&&v.uid===uid()&&v.date===(typeof personDay==='function'?personDay():todayStr())?' <button class="yt-del" onclick="cancelEvent(\''+jsArg(v._id)+'\',\'family-message\',\'\')">とりけす</button>':'';
     return '<div class="ev '+eventWhoClass(v)+'">'+head+esc(label[v.type]?label[v.type](v):'')+own+'</div>';
   });
-  const earlierOpen=box.querySelector?.('#family-earlier-conversation')?.open;
-  const markup=rowsMarkup.slice(0,3).join('')+(rowsMarkup.length>3?
-    '<details id="family-earlier-conversation"'+(earlierOpen?' open':'')+'><summary>前のやりとりを見る（'+(rowsMarkup.length-3)+'件）</summary>'+rowsMarkup.slice(3).join('')+'</details>':'');
+  const fromPerson=v=>['aisatsu','kibun','kusuri','onegai','family-message-back'].includes(v.type);
+  const markup=['person','family'].map(source=>{
+    const title=source==='person'?'本人から':'家族から';
+    const rows=rowsMarkup.filter((_,i)=>fromPerson(vis[i])===(source==='person'));
+    const historyId='family-earlier-conversation-'+source;
+    const earlierOpen=box.querySelector?.('#'+historyId)?.open;
+    const empty=familyHomeEventStatus==='ready'?'表示できる記録はまだありません。':
+      familyHomeEventStatus==='loading'?'読み込んでいます…':'通信を確認して、もう一度読み込んでください。';
+    return '<section class="conversation-source source-'+source+'" id="conversation-from-'+source+'" aria-labelledby="conversation-title-'+source+'">'+
+      '<h5 id="conversation-title-'+source+'">'+title+'</h5>'+
+      (rows.length?rows.slice(0,2).join(''):'<p class="source-empty">'+empty+'</p>')+
+      (rows.length>2?'<details class="source-history" id="'+historyId+'"'+(earlierOpen?' open':'')+'><summary>前の記録を見る（'+(rows.length-2)+'件）</summary>'+rows.slice(2).join('')+'</details>':'')+'</section>';
+  }).join('');
   if(box.innerHTML!==markup){
     const active=document.activeElement;
     const focusAction=active&&box.contains(active)?active.getAttribute('onclick'):null;
     const focusReply=active&&box.contains(active)?active.closest('details[data-person-reply]')?.dataset.personReply:null;
+    const focusHistory=active?.tagName==='SUMMARY'&&box.contains(active)?active.closest('.source-history')?.id:null;
     box.innerHTML=markup;
     const next=focusAction?Array.from(box.querySelectorAll('button')).find(button=>button.getAttribute('onclick')===focusAction):null;
     const summary=focusReply?Array.from(box.querySelectorAll('details[data-person-reply]')).find(d=>d.dataset.personReply===focusReply)?.querySelector('summary'):null;
-    if(next||summary)(next||summary).focus({preventScroll:true});
+    const historySummary=focusHistory?document.getElementById(focusHistory)?.querySelector('summary'):null;
+    if(next||summary||historySummary)(next||summary||historySummary).focus({preventScroll:true});
   }
   updateCommunicationAvailability();
 }
