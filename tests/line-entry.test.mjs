@@ -26,7 +26,11 @@ assert.match(about, /href="\.\/guide\/family-only\.html"/);
 // メニュー③「使い方」: 写真つきガイド。今の入口・家族のホーム・LINEの言葉
 const guide = read('guide/index.html'), lineGuide = read('guide/line.html');
 assert.match(guide, /招待から参加する<\/span> → <span class="btnlike or">本人<\/span>/);
-assert.match(guide, /「今日見ること」/);
+// ガイドが案内する入口は、現行ホームと履歴の表示名に一致する。
+for (const label of ['本人の今日の様子', '今日・昨日のやりとりを見る', '以前のお願い・ホームから消したお願い']) {
+  assert.ok(guide.includes('「' + label + '」'), 'ガイドに現行の入口: ' + label);
+  assert.ok(read('index.html').includes('>' + label + '<'), '画面にも同じ入口: ' + label);
+}
 assert.doesNotMatch(guide, /本人が使う<\/span>|ご本人と一緒に初期設定する/);
 assert.ok(lineGuide.includes('予定のお知らせを受け取るには、友だち追加後に、まいにこでLINE連携の設定が必要です。'));
 assert.doesNotMatch(lineGuide, /LINEの送信先を追加|登録できました。」/);
