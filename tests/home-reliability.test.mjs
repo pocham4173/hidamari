@@ -41,8 +41,9 @@ assert.match(html, /id="card-family-notes-preview"[\s\S]*?onclick="openFamilyNot
 assert.match(html, /id="card-next-yotei"[\s\S]*?id="family-today-tomorrow"[\s\S]*?onclick="showTab\('t-yotei'\)"/);
 assert.match(html, /id="card-family-tasks-preview"[\s\S]*?onclick="openFamilyTasks\(\)"/);
 assert.ok(html.indexOf('id="card-next-yotei"')<html.indexOf('id="card-family-tasks-preview"'));
-assert.match(html, /id="card-today-records"[\s\S]*?最近のやりとり/);
-assert.match(section('id="card-actions"','id="card-family-notes-preview"'), /onclick="showTab\('t-kiroku'\)">前の日のやりとりを見る<\/button>/);
+assert.match(html, /id="card-today-records"[\s\S]*?今日・昨日のやりとりを見る/);
+assert.doesNotMatch(section('id="card-actions"','id="card-family-notes-preview"'), /前の日のやりとりを見る/);
+assert.match(html, /<details[^>]*id="card-today-records"/);
 assert.match(html, /id="watch-tag-history"/);
 assert.match(html, /この端末で確認しました/);
 assert.match(html, /get\(\{source:'server'\}\)/);

@@ -46,6 +46,8 @@ try{
   const {f:family,db:familyDb}=connect('kazoku','family');
   const {f:person}=connect('honnin','person');
   await until('previous-day greeting appears on family home with an enabled reply',()=>quick(family)&&!quick(family).disabled);
+  assert.equal(family.visible(first(family)),false,'home conversation stays folded');
+  family.document.getElementById('card-today-records').open=true;
   assert.ok(family.visible(first(family)));assert.match(first(family).textContent,/おはよう/);
   await env.withSecurityRulesDisabled(async ctx=>{await ctx.firestore().doc('groups/home/events/older').set({type:'aisatsu',text:'一昨日の挨拶',slot:'asa',uid:'person',date:'2026-09-16',at:firebase.firestore.Timestamp.now()});});
   await until('older event snapshot reached',()=>vm.runInContext("familyHomeItems.some(v=>v._id==='older')",family.c));
@@ -72,7 +74,7 @@ try{
 
   const requestRef=await person.c.addEvent({type:'onegai',text:'電話してほしい'});
   const requestPanel=f=>f.document.getElementById((f===family?'family':'person')+'-requests-panel');
-  const requestButton=text=>[...requestPanel(family).querySelectorAll('button')].find(b=>b.textContent===text);
+  const requestButton=text=>[...requestPanel(family).querySelectorAll('button'),...family.document.querySelectorAll('#family-request-history button')].find(b=>b.textContent===text);
   await until('original request becomes actionable',()=>requestButton('今から電話するね')&&!requestButton('今から電話するね').disabled);
   assert.equal(requestPanel(family).open,false);
   requestPanel(family).open=true;

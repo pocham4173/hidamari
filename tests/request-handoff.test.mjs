@@ -17,7 +17,7 @@ function fixture(screen='kazoku'){
  c.previewStorage.setItem('mainicoMode',screen);
  f.state(connection);f.events([req]);
  const role=screen==='honnin'?'person':'family',panel=()=>document.getElementById(role+'-requests-panel');
- const buttons=()=>[...panel().querySelectorAll('button')];
+ const buttons=()=>[...panel().querySelectorAll('button'),...document.querySelectorAll('#family-request-history button')];
  async function click(label){const button=buttons().find(b=>b.textContent===label);assert.ok(button,label);assert.equal(button.disabled,false,label);button.click();await flush();}
  return {...f,server,panel,buttons,click,ctl:()=>c.getRequestHandoff()};
 }
@@ -197,7 +197,7 @@ test('dismiss hides only this account/home view, survives controller reset and c
  const f=fixture();f.panel().open=true;f.events([req,response]);
  await f.click('ホームから消す');
  assert.equal(f.panel().querySelector('[data-request-id]'),null);
- assert.equal(f.panel().open,false);assert.match(f.document.getElementById('family-requests-label').textContent,/消したお願いを見る/);
+ assert.equal(f.panel().open,false);assert.equal(f.panel().hidden,true);assert.ok(f.document.querySelector('#t-kiroku #family-request-history [data-archived-request-id]'));
  assert.equal(f.writes.length,0);assert.equal(f.server.has(req._id),true);
  f.c.resetRequestHandoff();f.events([req,response]);assert.equal(f.panel().querySelector('[data-request-id]'),null);
  f.setAccount('other-family');f.events([req,response]);assert.ok(f.panel().querySelector('[data-request-id]'));
@@ -235,9 +235,10 @@ test('dismiss cancel, storage failure, changed conversation and household switch
 test('old requests stay folded; a recent reply resurfaces the source without writes',()=>{
  const f=fixture();const old={...req,date:'2026-09-10',at:{seconds:1}};
  f.events([old]);assert.equal(f.panel().open,false);
- assert.equal(f.document.getElementById('family-requests-label').textContent,'以前のお願いを見る');
- f.panel().open=true;const older=f.panel().querySelector('[data-open-key="family:older"]');assert.equal(older.open,false);
+ assert.equal(f.panel().hidden,true);
+ const older=f.document.getElementById('family-request-history');assert.equal(older.open,false);
  assert.equal(f.visible(older.querySelector('article')),false);
+ assert.equal(f.document.getElementById('t-kiroku').contains(older),true);
  f.events([old,{...response,date:'2026-09-18'}]);
  assert.equal(f.document.getElementById('family-requests-label').textContent,'お願い・返事を確認する');
  f.panel().open=true;assert.equal(f.visible(f.panel().querySelector('article')),true);
@@ -255,4 +256,23 @@ test('schedule review shows today/yesterday only until older schedules are opene
  assert.equal(f.visible(f.document.querySelector('#yr-list > button')),true);
  f.document.getElementById('yr-search').value='古い';f.c.renderYoteiReview();assert.equal(f.document.getElementById('yr-older').open,true);
  assert.equal(f.writes.length,0);f.close();
+});
+
+test('history owns old and dismissed requests; visible restoration and account reset leave home quiet',async()=>{
+ const f=fixture();const old={...req,_id:'old-history',date:'2026-09-01',at:{seconds:1}};
+ f.events([old,req]);
+ const history=f.document.getElementById('family-request-history');
+ assert.equal(f.panel().querySelector('[data-request-id="old-history"]'),null);
+ assert.ok(history.querySelector('[data-request-id="old-history"]'));
+ assert.equal(history.open,false);
+ await f.click('ホームから消す');assert.equal(f.panel().hidden,true);
+ assert.ok(history.querySelector('[data-archived-request-id="request-1"]'));
+ f.document.getElementById('t-home').style.display='none';f.document.getElementById('t-kiroku').style.display='block';history.open=true;
+ const restore=[...history.querySelectorAll('button')].find(b=>b.textContent==='ホームに戻す');
+ restore.closest('details').open=true;assert.equal(f.visible(restore),true);
+ restore.click();await flush();assert.equal(f.panel().hidden,false);
+ assert.equal(history.querySelector('[data-archived-request-id]'),null);
+ assert.equal(f.writes.length,0);
+ f.c.resetRequestHandoff();assert.equal(history.hidden,true);assert.equal(history.open,false);assert.equal(history.querySelectorAll('article').length,0);
+ f.close();
 });

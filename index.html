@@ -949,6 +949,9 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .communication-received{margin:12px 0 18px;padding:14px;background:#F4F8FC;border-radius:16px;}
 .communication-received h4{margin:0 0 10px;color:#315C8D;}
 #card-today-records{background:transparent;padding:0;}
+#card-today-records > summary{min-height:48px;padding:12px 4px;box-sizing:border-box;cursor:pointer;font-weight:800;line-height:1.6;}
+#card-today-records[open] > summary{margin-bottom:12px;}
+#card-today-records > summary:focus-visible{outline:3px solid #315FAE;outline-offset:2px;}
 #ev-list{display:grid;gap:16px;}
 .conversation-source{min-width:0;border:2px solid #E9A16A;border-radius:18px;background:#FFFAF5;overflow:hidden;}
 .conversation-source.source-family{border-color:#83A7DC;background:#F5F8FF;}
@@ -2137,11 +2140,10 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
           <p class="request-note" id="family-requests-state" role="status"></p>
           <div id="family-requests-list"></div>
         </details>
-        <div class="communication-received" id="card-today-records">
-          <h4 id="home-date-h3">今日・昨日のやりとり</h4>
+        <details class="communication-received" id="card-today-records">
+          <summary class="fold-ttl" id="home-date-h3">今日・昨日のやりとりを見る</summary>
           <div id="ev-list"><div class="empty" id="ev-empty">やりとりを読み込んでいます…</div></div>
-        </div>
-        <button class="family-jump" type="button" onclick="showTab('t-kiroku')">前の日のやりとりを見る</button>
+        </details>
       </div>
 
       <div class="card dom-record family-shared-card" id="card-family-notes-preview" data-share-gate="family" hidden>
@@ -2429,6 +2431,11 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
         <div id="yr-list"><div class="empty">読み込み中…</div></div>
       </div>
       <div class="card dom-record"><h3 id="rec-day-ttl">その日の記録</h3><div id="rec-source-legend" class="note" style="margin:0 0 10px;">記録した人と時間を確認できます。</div><div id="rec-day"><div class="empty">読み込み中…</div></div><div class="note" id="rec-day-note" style="display:none;">服薬の記録は、ご本人やご家族が画面で押した記録です。実際に飲んだことを証明するものではありません。</div></div>
+      <details class="card dom-record" id="family-request-history" hidden>
+        <summary class="fold-ttl" id="family-request-history-heading">以前のお願い・ホームから消したお願い</summary>
+        <p class="request-note" id="family-request-history-state"></p>
+        <div id="family-request-history-list"></div>
+      </details>
       <details class="card dom-record"><summary class="fold-ttl" id="rec-sum-ttl">今月のまとめ</summary><div class="rec-sum" id="rec-sum"></div><div class="note">件数と日数のまとめです。良い・悪いの判断はしていません。医療の記録ではありません。</div></details>
       <details class="card dom-record"><summary class="fold-ttl">期間のグラフ</summary>
         <div class="rg-period">
@@ -2640,7 +2647,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
-<script src="request-handoff.js?v=20261023-recent"></script>
+<script src="request-handoff.js?v=20261023-history"></script>
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
@@ -4980,6 +4987,7 @@ function resetCommunication(){
     ['hy-free','hy-date','hy-time'].forEach(id=>document.getElementById(id).value='');
   }
   if(familyGuide)familyGuide.interrupt();
+  const recentPanel=document.getElementById('card-today-records');if(recentPanel)recentPanel.open=false;
   communicationGeneration++;familyHomeItems=[];familyHomeEventStatus='loading';
   personConversationItems=[];personConversationStatus='loading';personConversationRequest++;
   personConversationDay='';
@@ -5281,7 +5289,7 @@ function initKazoku(){
   const kOnly=isKOnly();
   document.getElementById('f-lg').textContent='まいにこ ─ ホーム';
   document.getElementById('f-title').textContent=dateJp(new Date((typeof personDay==='function'?personDay():todayStr())+'T00:00:00'));
-  document.getElementById('home-date-h3').textContent='最近のやりとり';
+  document.getElementById('home-date-h3').textContent='今日・昨日のやりとりを見る';
   document.querySelectorAll('.ab-btn').forEach(b=>b.classList.remove('suggested'));
   const curAb=document.getElementById('btn-ab-'+slot().key);
   if(curAb) curAb.classList.add('suggested');
@@ -5369,7 +5377,7 @@ function showTab(t){
   if(t==='t-soudan') openAnshin('home');
   if(t==='t-home'){
     if(typeof closeHomeDetail==='function'&&homeDetailOpen)closeHomeDetail();
-    document.getElementById('home-date-h3').textContent='最近のやりとり';
+    document.getElementById('home-date-h3').textContent='今日・昨日のやりとりを見る';
     renderFamilySchedule();
     renderFamilyTasks();
   }
