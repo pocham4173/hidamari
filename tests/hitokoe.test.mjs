@@ -10,10 +10,15 @@ const members = {
   wait: { name: '承認待ち', role: 'kazoku', status: 'pending' },
 };
 const day = '2026-10-05'; // 月曜日
-const now = (h, m = 0) => new Date(2026, 9, 5, h, m);
+// 日本時間で指定する(2026-10-18: 判定は端末の時間帯ではなく日本時間)
+const now = (h, m = 0) => new Date(Date.UTC(2026, 9, 5, h - 9, m));
 const cfg = (extra) => ({ type: 'hitokoe-config', enabled: true, hour: 11, requestId: 'r1', uid: 'ani', name: '太郎', at: at(now(8)), ...extra });
-const yes = { type: 'hitokoe-consent', uid: 'hon', requestId: 'r1', answer: 'yes', at: at(now(8, 30)) };
-const run = (o) => H.evaluate({ configRows: [cfg()], consentRows: [yes], todayRows: [], members, now: now(12), day, ...o })[0];
+// 了解・受け取りの了承は前の日(了解した日・了承した日は出さないため)
+const prev = (h, m = 0) => new Date(Date.UTC(2026, 9, 4, h - 9, m));
+const yes = { type: 'hitokoe-consent', uid: 'hon', requestId: 'r1', answer: 'yes', version: H.CONSENT_VERSION, at: at(prev(8, 30)) };
+const recv = (uid, extra) => ({ type: 'hitokoe-receive', uid, answer: 'yes', line: false, at: at(prev(9)), ...extra });
+const receiveRows = [recv('ani'), recv('imo')];
+const run = (o) => H.evaluate({ configRows: [cfg()], consentRows: [yes], receiveRows, todayRows: [], members, now: now(12), day, ...o })[0];
 
 // 1. 初めは切ってある
 assert.equal(H.evaluate({ configRows: [], consentRows: [], todayRows: [], members, now: now(12), day })[0].state, 'off');
@@ -61,7 +66,7 @@ assert.match(html, /119番/);
 assert.match(html, /data-hitokoe-contacted="hon"/);
 assert.equal(H.cardHtml([r], 'imo'), '', '担当でない家族には出さない');
 // 15. 夜中0〜4時(前の日の扱い)には出さない
-assert.equal(H.evaluate({ configRows: [cfg()], consentRows: [yes], todayRows: [], members, now: new Date(2026, 9, 6, 1), day })[0].state, 'before-time');
+assert.equal(H.evaluate({ configRows: [cfg()], consentRows: [yes], todayRows: [], members, receiveRows, now: new Date(Date.UTC(2026, 9, 5, 16)), day })[0].state, 'before-time');
 // 16. 最新の設定が有効。切ったら出ない
 assert.equal(run({ configRows: [cfg(), cfg({ enabled: false, at: at(now(9)) })] }).state, 'off');
 // 17. 壊れた値でも落ちない(時刻は11時に戻す)
@@ -98,7 +103,7 @@ assert.ok(!set.includes('花子</option>'), 'ご本人は担当に選べない')
   assert.equal(asked.length, 1);
   assert.match(asked[0][0], /挨拶やお薬などの記録が11時までに1つもない日は、太郎さんに「声をかけるきっかけ」のお知らせが届きます。よろしいですか/);
   assert.deepEqual(asked[0].slice(1), ['はい', 'やめておく']);
-  assert.deepEqual(written.map((w) => [w.type, w.requestId, w.answer]), [['hitokoe-consent', 'r1', 'yes']]);
+  assert.deepEqual(written.map((w) => [w.type, w.requestId, w.answer, w.version]), [['hitokoe-consent', 'r1', 'yes', H.CONSENT_VERSION]]);
   listener(snap([cfg()]));
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(asked.length, 1, '同じお願いには2回聞かない');
@@ -106,7 +111,7 @@ assert.ok(!set.includes('花子</option>'), 'ご本人は担当に選べない')
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(asked.length, 1, '切っているときは聞かない');
   // ご本人は、あとから「その他の設定」でやめられる
-  listener(snap([cfg(), { type: 'hitokoe-consent', uid: 'hon', requestId: 'r1', answer: 'yes', clientAt: 1 }]));
+  listener(snap([cfg(), { type: 'hitokoe-consent', uid: 'hon', requestId: 'r1', answer: 'yes', version: H.CONSENT_VERSION, clientAt: 1 }]));
   assert.deepEqual(p.status(), { enabled: true, hour: 11, line: false, answer: 'yes' });
   await p.answer(false);
   assert.deepEqual(written.at(-1).answer, 'no');
@@ -117,3 +122,142 @@ assert.ok(!set.includes('花子</option>'), 'ご本人は担当に選べない')
   assert.match(asked[1][0], /まいにこの画面と、LINEにも届きます（LINEには名前や様子は書きません）。よろしいですか/);
 }
 console.log('ひと声のきっかけ: 了解・時刻・操作の判定・担当・お休み・連絡しました・文面・夜中・設定画面・ご本人への確認 19項目 passed');
+
+/* ===== 2026-10-18 安全性の見直し(架空データのみ) ===== */
+// 20. 受け取る家族本人の了承がなければ、その人には出さない。届け先に選ばれた・設定した人というだけでは了承とみなさない
+assert.equal(run({ receiveRows: [] }).state, 'no-receiver');
+assert.equal(H.cardHtml([run({ receiveRows: [] })], 'ani'), '', '了承していない人にカードを出さない');
+assert.equal(run({ receiveRows: [recv('ani'), recv('ani', { answer: 'no', at: at(prev(10)) })] }).state, 'no-receiver', '受け取らないに変えた');
+assert.equal(run({ configRows: [cfg({ assignees: { 1: 'imo' } })], receiveRows: [recv('ani')] }).assignee, 'ani', '届け先が了承していなければ、了承済みの設定した人へ');
+// 21. ご本人の「やめておく」は、家族が新しくお願いしても解除されない
+const no1 = { ...yes, answer: 'no', at: at(prev(10)) };
+assert.equal(run({ consentRows: [yes, no1], configRows: [cfg({ requestId: 'r2' })] }).state, 'declined', '本人の継続停止');
+assert.equal(run({ consentRows: [yes, no1, { ...yes, requestId: 'r2', at: at(prev(11)) }], configRows: [cfg({ requestId: 'r2' })] }).state, 'show', '本人が自分で戻せば動く');
+// 22. 了解した日・受け取りを了承した日(利用開始日)は出さない
+assert.equal(run({ consentRows: [{ ...yes, at: at(now(8, 30)) }] }).state, 'start-day');
+assert.equal(run({ receiveRows: [recv('ani', { at: at(now(9)) })] }).state, 'start-day');
+// 23. 設定・了解・記録をサーバーで確かめられていないときは「判定できない」。カードは出さない
+r = H.evaluate({ configRows: [cfg()], consentRows: [yes], receiveRows, todayRows: [], members, now: now(12), day, ready: false })[0];
+assert.equal(r.state, 'unknown'); assert.equal(H.cardHtml([r], 'ani'), '');
+// 24. 端末の時間帯がずれていても日本時間で判定する(日本時間10:59は時刻前、11:00は時刻後)
+assert.equal(run({ now: new Date(Date.UTC(2026, 9, 5, 1, 59)) }).state, 'before-time');
+assert.equal(run({ now: new Date(Date.UTC(2026, 9, 5, 2, 0)) }).state, 'show');
+// 25. LINEへの送信の記録は「受け付け」「結果不明」などと書き、届いた・読まれた・対応したとは書かない
+html = H.cardHtml([run({ todayRows: [{ type: 'hitokoe-sent', target: 'ani', status: 'accepted', date: day }] })], 'imo');
+assert.match(html, /太郎さんのLINEへ送る手続きが受け付けられました（届いたか・読まれたかは分かりません）/);
+html = H.cardHtml([run({ todayRows: [{ type: 'hitokoe-sent', target: 'ani', status: 'unknown', date: day }] })], 'ani');
+assert.match(html, /あなたへのLINEは、送信の結果が分かりませんでした/);
+assert.ok(!/届きました|既読|読まれました|対応しました/.test(html));
+assert.equal(run({ todayRows: [{ type: 'hitokoe-sent', target: 'ani', status: 'accepted', date: day, uid: '' }] }).state, 'show', '送信の記録は本人の操作に数えない');
+// 26. 表記: 「担当」「当番です」を使わず、対応は任意と書く。お休みには再開日を出す
+const set2 = H.settingsHtml(H.latestConfig([cfg({ pauses: [{ from: '2026-10-10', to: '2026-10-12' }] })]), members, [run()], receiveRows, 'ani', true);
+assert.ok(!/担当/.test(set2), '担当という言葉を使わない');
+assert.match(set2, /届け先は当番ではありません。対応・返事・報告は任意です。/);
+assert.match(set2, /10月13日から再開/);
+assert.match(set2, /あなたの受け取り/);
+assert.match(set2, /受け取る家族の了承：太郎さん＝受け取る（アプリの中だけ）/);
+html = H.cardHtml([run()], 'ani');
+assert.match(html, /連絡しました（任意）/); assert.match(html, /押さなくても大丈夫です/);
+
+// 27. 家族の画面: 設定・了解とその日の記録の両方をサーバーで確かめるまでカードを出さない。読み込み失敗でも出さない
+{
+  const box = { innerHTML: '', querySelectorAll: () => [] };
+  const document = { getElementById: (id) => (id === 'card' ? box : null), querySelector: () => null };
+  const L = {};
+  const written = [], confirms = [], storage = new Map();
+  const ctl = H.create({
+    document, col: () => ({ where: (f) => ({ onSnapshot: (opts, ok, err) => { L[f] = { ok, err, opts }; return () => {}; } }) }),
+    addEvent: async (d) => { written.push(d); }, uid: () => 'ani', myName: () => '太郎', members: () => members, day: () => day,
+    confirm: async (t, l) => { confirms.push([t, l]); return true; },
+    storage: { getItem: (k) => storage.get(k) || null, setItem: (k, v) => storage.set(k, v), removeItem: (k) => storage.delete(k) },
+    cardId: 'card', settingsId: 'set',
+  });
+  const RD = Date; const t = now(12).getTime();
+  class FD extends RD { constructor(...a) { if (a.length) super(...a); else super(t); } static now() { return t; } }
+  globalThis.Date = FD;
+  try {
+    ctl.start();
+    assert.equal(L.type.opts.includeMetadataChanges, true, '控えからサーバーへの確定を待つ');
+    const snap = (rows, meta = {}) => ({ metadata: meta, forEach: (fn) => rows.forEach((v) => fn({ data: () => v })) });
+    L.type.ok(snap([cfg(), yes, ...receiveRows]));
+    assert.equal(box.innerHTML, '', 'その日の記録をまだ確かめていない');
+    L.date.ok(snap([], { fromCache: true }));
+    assert.equal(box.innerHTML, '', '端末の控えだけでは出さない');
+    L.date.ok(snap([], { hasPendingWrites: true }));
+    assert.equal(box.innerHTML, '', '書き込み途中の一覧では出さない');
+    L.date.ok(snap([]));
+    assert.match(box.innerHTML, /ひと声のきっかけ/, '両方を確かめたら出す');
+    L.date.err(new Error('permission-denied'));
+    assert.equal(box.innerHTML, '', '読み込みに失敗したら出さない(記録なしと扱わない)');
+  } finally { globalThis.Date = RD; ctl.stop(); }
+}
+// 28. 受け取りに関わる家族には1回だけ「受け取りますか」と聞く。対応は任意と書く。「受け取らない」と答えた人には聞き直さない
+{
+  const mk = (answer) => {
+    const L = {}, written = [], confirms = [], storage = new Map();
+    const ctl = H.create({
+      document: { getElementById: () => null, querySelector: () => null },
+      col: () => ({ where: (f) => ({ onSnapshot: (opts, ok) => { L[f] = ok; return () => {}; } }) }),
+      addEvent: async (d) => { written.push(d); }, uid: () => 'ani', myName: () => '太郎', members: () => members, day: () => day,
+      confirm: async (t, l) => { confirms.push([t, l]); return answer; },
+      storage: { getItem: (k) => storage.get(k) || null, setItem: (k, v) => storage.set(k, v), removeItem: (k) => storage.delete(k) },
+      cardId: 'card', settingsId: 'set',
+    });
+    ctl.start();
+    return { L, written, confirms, ctl };
+  };
+  const snap = (rows) => ({ metadata: {}, forEach: (fn) => rows.forEach((v) => fn({ data: () => v })) });
+  let t = mk(true);
+  t.L.type(snap([cfg({ line: true })]));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(t.confirms.length, 1);
+  assert.match(t.confirms[0][0], /当番ではありません。対応・返事・報告は任意です。/);
+  assert.match(t.confirms[0][0], /LINEにも届きます/);
+  assert.deepEqual(t.written.map((w) => [w.type, w.answer, w.line]), [['hitokoe-receive', 'yes', true]]);
+  t.L.type(snap([cfg({ line: true })]));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(t.confirms.length, 1, '同じお願いには2回聞かない');
+  t.ctl.stop();
+  t = mk(false);
+  t.L.type(snap([cfg(), recv('ani', { answer: 'no' })]));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(t.confirms.length, 0, '受け取らないと答えた人には聞かない');
+  t.ctl.stop();
+  t = mk(true);
+  t.L.type(snap([cfg({ uid: 'imo' })]));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(t.confirms.length, 0, '設定した人でも届け先でもない家族には聞かない');
+  t.ctl.stop();
+}
+// 29. ご本人が「やめておく」を選んだあとは、家族が新しくお願いしても確認を出さない
+{
+  const asked = [];
+  let listener;
+  const p = H.createPersonPrompt({
+    col: () => ({ where: () => ({ onSnapshot: (ok) => { listener = ok; return () => {}; } }) }),
+    addEvent: async () => {}, uid: () => 'hon', members: () => members, day: () => day,
+    storage: { getItem: () => null, setItem() {}, removeItem() {} }, speak() {}, ask: async (t) => { asked.push(t); return true; },
+  });
+  p.start();
+  const snap = (rows) => ({ metadata: { fromCache: false }, forEach: (fn) => rows.forEach((v) => fn({ data: () => v })) });
+  listener(snap([cfg({ requestId: 'r2' }), no1]));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(asked.length, 0, '止めたご本人には聞き直さない');
+  assert.equal(p.status().answer, 'no', 'その他の設定では「止めている」と出る');
+}
+// 30. 説明の版が古い「はい」では動かず、ご本人にもう一度聞く(既存の利用者も再同意まで有効にしない)
+assert.equal(run({ consentRows: [{ ...yes, version: undefined }] }).state, 'waiting-consent', '古い説明への了解');
+{
+  const asked = [];
+  let listener;
+  const p = H.createPersonPrompt({
+    col: () => ({ where: () => ({ onSnapshot: (ok) => { listener = ok; return () => {}; } }) }),
+    addEvent: async () => {}, uid: () => 'hon', members: () => members, day: () => day,
+    storage: { getItem: () => null, setItem() {}, removeItem() {} }, speak() {}, ask: async (t) => { asked.push(t); return true; },
+  });
+  p.start();
+  listener({ metadata: { fromCache: false }, forEach: (fn) => [cfg(), { ...yes, version: undefined }].forEach((v) => fn({ data: () => v })) });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(asked.length, 1, '古い説明に「はい」と答えた人にも、新しい説明でもう一度聞く');
+}
+console.log('ひと声のきっかけ 2026-10-18 見直し: 受信の了承・本人の継続停止・利用開始日・判定できない状態・日本時間・送信の記録・表記・確定前は出さない・受け取りの確認・説明の版 11項目 passed');

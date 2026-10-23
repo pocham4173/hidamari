@@ -1,5 +1,5 @@
 import {consentFixture} from './helpers/consent-fixture.mjs';
-/* LINEで予定のお知らせ（2026-09-26）のルール動作検査（12ケース）。Firestoreエミュレーターで実行 */
+/* LINEで予定のお知らせ（2026-09-26）のルール動作検査。Firestoreエミュレーターで実行(2026-10-18 ひと声の受け取り・了解の記録の13ケースを追加) */
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import { doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, collection, query, where, serverTimestamp, Timestamp } from 'firebase/firestore';
 import fs from 'node:fs';
@@ -99,6 +99,37 @@ try {
   await check('25. 家族は「ひと声のきっかけ」の設定と「連絡しました」を書ける',
     setDoc(doc(m1, 'groups', 'g1', 'events', 'e9'), ev('m1', { type: 'hitokoe-config', enabled: true, hour: 11, requestId: 'r1' }))
       .then(() => setDoc(doc(m2, 'groups', 'g1', 'events', 'e10'), ev('m2', { type: 'hitokoe-contacted', target: 'h1' }))), true);
+  /* ひと声のきっかけ 2026-10-18: 受け取る家族本人の了承(hitokoe-receive)・了解の記録は消せない・送信の記録は送信役だけ */
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'groups', 'g1', 'events', 'hitokoe-sent-2026-10-01'),
+      { type: 'hitokoe-sent', date: '2026-10-01', target: 'm1', status: 'accepted', uid: '', at: Timestamp.now() });
+  });
+  await check('25a. 家族は自分の「受け取る」を書ける',
+    setDoc(doc(m1, 'groups', 'g1', 'events', 'hk1'), ev('m1', { type: 'hitokoe-receive', answer: 'yes', line: true })), true);
+  await check('25b. 家族はほかの家族の名義で「受け取る」を書けない',
+    setDoc(doc(m1, 'groups', 'g1', 'events', 'hk2'), ev('m2', { type: 'hitokoe-receive', answer: 'yes', line: true })), false);
+  await check('25c. ご本人は「受け取る」を書けない',
+    setDoc(doc(h1, 'groups', 'g1', 'events', 'hk3'), ev('h1', { type: 'hitokoe-receive', answer: 'yes', line: false })), false);
+  await check('25d. 「受け取る」の答えは yes / no だけ',
+    setDoc(doc(m2, 'groups', 'g1', 'events', 'hk4'), ev('m2', { type: 'hitokoe-receive', answer: 'maybe', line: false })), false);
+  await check('25e. 「LINEでも」は true / false だけ',
+    setDoc(doc(m2, 'groups', 'g1', 'events', 'hk5'), ev('m2', { type: 'hitokoe-receive', answer: 'yes', line: 'yes' })), false);
+  await check('25f. 承認待ちの人は「受け取る」を書けない',
+    setDoc(doc(p1, 'groups', 'g1', 'events', 'hk6'), ev('p1', { type: 'hitokoe-receive', answer: 'yes', line: false })), false);
+  await check('25g. ご本人は自分の了解の記録を消せない(「やめる」を消して前の「はい」を戻せない)',
+    deleteDoc(doc(h1, 'groups', 'g1', 'events', 'e7')), false);
+  await check('25h. 家族は自分の「受け取る」の記録を消せない',
+    deleteDoc(doc(m1, 'groups', 'g1', 'events', 'hk1')), false);
+  await check('25i. 画面からLINEの送信の記録(hitokoe-sent)は作れない',
+    setDoc(doc(m1, 'groups', 'g1', 'events', 'hk7'), ev('m1', { type: 'hitokoe-sent', target: 'm1', status: 'accepted' })), false);
+  await check('25j. 承認済みの家族は送信の記録を読める',
+    getDoc(doc(m2, 'groups', 'g1', 'events', 'hitokoe-sent-2026-10-01')), true);
+  await check('25k. 承認待ちの人は送信の記録を読めない',
+    getDoc(doc(p1, 'groups', 'g1', 'events', 'hitokoe-sent-2026-10-01')), false);
+  await check('25l. 送信の記録は家族も消せない',
+    deleteDoc(doc(m1, 'groups', 'g1', 'events', 'hitokoe-sent-2026-10-01')), false);
+  await check('25m. 「連絡しました」など、ほかの自分の記録は今までどおり消せる',
+    deleteDoc(doc(m2, 'groups', 'g1', 'events', 'e10')), true);
   await check('26. 今月のLINEの残り通数は、同意済みの利用者が見られる',
     getDoc(doc(m1, 'lineStatus', 'quota')), true);
   await check('27. 残り通数を画面から書き換えることはできない',

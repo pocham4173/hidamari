@@ -29,6 +29,8 @@ const pushes = [], replies = [], keys = [];
 let pushFailure=false, lostResponse=false, requests=0, failTo='';
 const seen=[];   // 見回りで読み書きした文書の場所(通信の節約の確認用)
 let quota={type:'limited',value:200}, usage=0;
+// 2026-10-19: 月の通数を戻して「新しい月」のように試すときは、共通の台帳(lineUsage/ledger-月)も空にする(本番の台帳は月の中で減らない)
+const clearLedger=()=>{for(const k of [...db.keys()])if(k.startsWith('lineUsage/ledger-'))db.delete(k);};
 const acceptedKeys=new Set();
 globalThis.fetch = async (url, opt = {}) => {
   requests++;
@@ -89,6 +91,7 @@ globalThis.fetch = async (url, opt = {}) => {
       if (!v || 'nullValue' in v) continue;
       const c = cmp(v, f.value);
       if ((f.op === 'EQUAL' && c === 0) || (f.op === 'LESS_THAN_OR_EQUAL' && c <= 0)) out.push({ document: docJson(p) });
+      else if (f.op === 'IN' && (f.value.arrayValue.values || []).some((x) => cmp(v, x) === 0)) out.push({ document: docJson(p) });
     }
     if(q.orderBy){const o=q.orderBy[0],sg=o.direction==='DESCENDING'?-1:1;out.sort((a,b)=>sg*cmp(a.document.fields[o.field.fieldPath],b.document.fields[o.field.fieldPath]));}
     const limited=q.limit?out.slice(0,q.limit):out;
@@ -449,7 +452,9 @@ const lastLog=(id)=>ystat(id).notifyLog.arrayValue.values.at(-1).mapValue.fields
 // 残り通数が家族に見えるように書かれる
 await tick();
 assert.equal(db.get('lineStatus/quota').fields.limit.integerValue,'200');
-assert.equal(Number(db.get('lineStatus/quota').fields.remaining.integerValue),200-usage,'残り通数を記録する');
+// 2026-10-19: 残り通数は、LINEの使用数と共通の台帳(予約済みで結果が分からない分も含む)の大きい方から計算する
+{ const led=[...db].find(([p])=>p.startsWith('lineUsage/ledger-')); const ledUsed=led?Number(led[1].fields.used.integerValue):0;
+  assert.equal(Number(db.get('lineStatus/quota').fields.remaining.integerValue),200-Math.max(usage,ledUsed),'残り通数を記録する'); }
 // 月の残りがタグ用の確保分(50通)に近づいたら、予定のお知らせは送らずに理由を残す
 usage=151;const b1=pushes.length;pending('lowQuota');await tick();
 assert.equal(pushes.length,b1,'残りが少ないときは予定を送らない');
@@ -464,7 +469,7 @@ db.delete('tagAlertCounters/tagA');
 usage=200;put('watchTags/tagA/alerts/reader10',{type:S('found'),situation:S('lost'),count:{integerValue:'1'},senderUid:S('reader10'),createdAt:T(new Date(Date.now()-2000))});
 const b2=pushes.length;await tick();assert.equal(pushes.length,b2,'使い切ったら送らない');
 assert.ok([...db].some(([p,d])=>p.startsWith('tagAlertReceipts/')&&d.fields.result?.stringValue==='monthly'),'使い切った理由を残す');
-usage=0;
+usage=0;clearLedger();
 // 家庭ごとの1日の上限: 今日の分を使い切った家庭の予定は送らない
 put('lineUsage/g1',{day:S(new Date(Date.now()+9*3600000).toISOString().slice(0,10)),count:{integerValue:'20'}});
 pending('homeLimit');const b3=pushes.length;await tick();
@@ -539,6 +544,63 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.deepEqual(got, ['Ub0', 'Ub1', 'Ub2', 'Ub3', 'Ub4', 'Ub5'], '6人全員に1回ずつ届く');
   console.log('家族が多い家庭のタグのお知らせ(続きから・二重なし) passed');
 }
+/* タグの途中送信の再開(PR #216 再レビュー指摘・2026-10-19): 予約した相手にだけ送り、途中から増えた家族は1通分を予約できたときだけ送る */
+{
+  // worker.js の deliveryKey と同じ作り方(再送キー)
+  const dkey = async (value) => {
+    const b = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+    b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+    const h = Array.from(b.slice(0, 16), (x) => x.toString(16).padStart(2, '0')).join('');
+    return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+  };
+  const month = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 7);
+  const ledger = (n) => put('lineUsage/ledger-' + month, { month: S(month), used: { integerValue: String(n) } });
+  const ledgerNow = () => Number(db.get('lineUsage/ledger-' + month)?.fields.used.integerValue || 0);
+  const setup = async ({ reservedMonth = month } = {}) => {
+    for (const k of [...db.keys()]) if (/^(watchTags|tagAlertCounters|tagAlertReceipts|lineUsage)\//.test(k) || /^(groups\/g7|lineLinks\/c\d|consents\/c\d)\b/.test(k)) db.delete(k);
+    put('groups/g7', { createdBy: S('c0') });
+    for (let i = 0; i < 3; i++) { put('groups/g7/members/c' + i, { name: S('家族' + i), status: S('approved') }); put('consents/c' + i, consent()); }
+    put('lineLinks/c0', { lineUserId: S('Uc0'), groupId: S('g7') });
+    put('lineLinks/c1', { lineUserId: S('Uc1'), groupId: S('g7') });
+    put('watchTags/t7', { groupId: S('g7'), active: { booleanValue: true } });
+    const at = new Date(Date.now() - 60000);
+    put('watchTags/t7/alerts/f7', { type: S('found'), situation: S('lost'), count: { integerValue: '1' }, senderUid: S('f7'), createdAt: T(at) });
+    const k = async (to) => dkey('watchTags/t7/alerts/f7\n' + at.toISOString() + '\n' + to);
+    // 前の回: 2人分を予約し、1人目(Uc0)へ送ったところで通信回数の上限で止まった状態
+    put('tagAlertReceipts/' + await dkey('watchTags/t7/alerts/f7'), { pendingAt: T(at), sentTo: { arrayValue: { values: [S(await k('Uc0'))] } },
+      reservedFor: { arrayValue: { values: [S(await k('Uc0')), S(await k('Uc1'))] } }, reservedMonth: S(reservedMonth),
+      expiresAt: T(new Date(Date.now() + 3 * 3600000)) });
+    // 再開の前に、承認・同意が有効な家族がもう1人LINE連携した
+    put('lineLinks/c2', { lineUserId: S('Uc2'), groupId: S('g7') });
+  };
+  const resume = async () => { const b = pushes.length; await tick(); return pushes.slice(b).filter((p) => /^Uc/.test(p.to)).map((p) => p.to).sort(); };
+  const receipt7 = async () => db.get('tagAlertReceipts/' + await dkey('watchTags/t7/alerts/f7')).fields;
+
+  // 1. 再レビューの再現: 月の台帳が200/200(予約済みの2人分を含む)・LINEの使用199。予約済みの残り1人(Uc1)にだけ送り、追加の家族(Uc2)には送らない
+  await setup(); quota = { type: 'limited', value: 200 }; usage = 199; ledger(200);
+  let got = await resume();
+  assert.deepEqual(got, ['Uc1'], '予約済みの相手にだけ送り、予約できない追加の家族には送らない');
+  assert.equal(ledgerNow(), 200, '台帳は予約数のまま(201通相当の送信をしない)');
+  assert.equal((await receipt7()).result.stringValue, 'sent', 'タグのお知らせは送り終えた扱い(追加の家族はアプリの中だけ)');
+  // 2. 枠があれば、追加の家族の1通分だけ予約して送る。予約済みのUc1を二重に数えない
+  await setup(); quota = { type: 'limited', value: 200 }; usage = 10; ledger(12);
+  got = await resume();
+  assert.deepEqual(got, ['Uc1', 'Uc2'], '予約済みの人と、1通分を予約できた追加の家族に送る');
+  assert.equal(ledgerNow(), 13, '追加の家族の1通分だけ増える(予約済みの人を二重に数えない)');
+  // 3. 予約した月と今の月が違う(月をまたいだ再開): 前の月の予約では送らず、今の月の分として1人ずつ予約し直す
+  await setup({ reservedMonth: '2000-01' }); quota = { type: 'limited', value: 200 }; usage = 199; ledger(199);
+  got = await resume();
+  assert.deepEqual(got, ['Uc1'], '今の月の枠が1通分しかなければ、1人にだけ送る');
+  assert.equal(ledgerNow(), 200, '今の月の台帳に数える');
+  // 4. 解除・脱退の確かめは続く: 予約済みでも、再開前にLINE解除した人には送らない
+  await setup(); quota = { type: 'limited', value: 200 }; usage = 10; ledger(12);
+  db.delete('lineLinks/c1'); db.delete('lineLinks/c2');
+  got = await resume();
+  assert.deepEqual(got, [], 'LINE解除した人には、予約済みでも送らない');
+  for (const k of [...db.keys()]) if (/^(watchTags|tagAlertCounters|tagAlertReceipts|lineUsage)\//.test(k) || /^(groups\/g7|lineLinks\/c\d|consents\/c\d)\b/.test(k)) db.delete(k);
+  usage = 0; clearLedger();
+  console.log('タグの途中送信の再開(予約した相手だけ・追加の家族は予約できたときだけ・二重に数えない・月またぎ・解除) passed');
+}
 /* ひと声のきっかけ(2026-10-04): 「LINEにも送る」をオンにし、ご本人が了解した家庭だけ、
    決めた時刻から3時間のうちに、ご本人の操作がない日に、その日の担当1人へ1日1通。名前・様子は書かない。 */
 {
@@ -561,17 +623,21 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   const config = (extra = {}) => ev({ type: S('hitokoe-config'), enabled: { booleanValue: true }, line: { booleanValue: true },
     hour: { integerValue: '11' }, requestId: S('r1'), uid: S('f4'), at: T(new RealDate(at('2026-10-04', 8, n))), ...extra });
   // 場面ごとに初めからやり直す(LINE側が覚えている再送キーも忘れさせる。同じ日の同じ家庭は同じ再送キーのため)
-  const clear = () => { for (const k of [...db.keys()]) if (/^(groups\/g4\/events|lineDeliveryReceipts|lineUsage)\//.test(k)) db.delete(k); acceptedKeys.clear();
+  // 受け取る家族本人の了承(2026-10-18)。前の日に「受け取る(LINEでも)」を選んでいる
+  const recv = (uid, extra = {}) => put('groups/g4/events/hk' + (n++), { type: S('hitokoe-receive'), uid: S(uid), answer: S('yes'),
+    line: { booleanValue: true }, at: T(new RealDate(at('2026-10-04', 9, 10 + n))), ...extra });
+  const clear = (withReceive = true) => { for (const k of [...db.keys()]) if (/^(groups\/g4\/events|lineDeliveryReceipts|lineUsage)\//.test(k)) db.delete(k); acceptedKeys.clear();
     // 承認済みでない・削除中の場面のあと、見回りの後片付けがLINE連携を消すことがある(正しい動き)。つなぎ直す
-    put('lineLinks/f4', { lineUserId: S('Uf4'), groupId: S('g4') }); put('lineLinks/f4b', { lineUserId: S('Uf4b'), groupId: S('g4') }); };
+    put('lineLinks/f4', { lineUserId: S('Uf4'), groupId: S('g4') }); put('lineLinks/f4b', { lineUserId: S('Uf4b'), groupId: S('g4') });
+    if (withReceive) { recv('f4'); recv('f4b'); } };
   const run = async (day, h, m = 0) => {
     fixed = at(day, h, m); globalThis.Date = FixedDate;
     const before = pushes.length;
     try { await tick(); } finally { globalThis.Date = RealDate; }
     return pushes.slice(before).filter((p) => /^Uf4/.test(p.to));
   };
-  const yes = (requestId = 'r1') => ev({ type: S('hitokoe-consent'), uid: S('h4'), requestId: S(requestId), answer: S('yes'), at: T(new RealDate(at('2026-10-04', 9))) });
-  quota = { type: 'limited', value: 200 }; usage = 0;
+  const yes = (requestId = 'r1') => ev({ type: S('hitokoe-consent'), uid: S('h4'), requestId: S(requestId), answer: S('yes'), version: S('2026-10-18'), at: T(new RealDate(at('2026-10-04', 9))) });
+  quota = { type: 'limited', value: 200 }; usage = 0; clearLedger();
 
   // 1. 月曜11:30、ご本人の操作なし → 設定した太郎さんへ1通。文面に名前・様子は書かない
   clear(); config(); yes();
@@ -579,9 +645,9 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.equal(got.length, 1, 'ひと声のきっかけが届く');
   assert.equal(got[0].to, 'Uf4');
   const text = got[0].messages[0].text;
-  assert.match(text, /ひと声のきっかけ（まいにこ）/);
-  assert.match(text, /返事や対応は必要ありません/);
-  assert.match(text, /安否確認・緊急通報ではありません/);
+  assert.match(text, /^まいにこ：今日の記録は、まだありません。/);
+  assert.match(text, /対応は任意です。記録がないことは、異常を意味しません。/);
+  assert.ok(!/確認できていません|体調|薬/.test(text), '取得障害と紛らわしい言葉・体調・服薬を書かない');
   assert.ok(!/花子|太郎|次子/.test(text), '名前を書かない');
   assert.equal(db.get('lineUsage/hitokoe-2026-10').fields.count.integerValue, '1', '月の数を数える');
   // 2. 同じ日の次の回には送らない(1日1通)
@@ -655,6 +721,8 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.equal((await run('2026-10-05', 11, 45)).length, 1, '次の回に届く');
   assert.equal((await run('2026-10-05', 12, 0)).length, 0, '受付済みの再送キーでは二重に届かない');
   console.log('ひと声のきっかけのLINE(1日1通・時刻・操作・連絡済み・了解・お休み・担当・上限・削除中・再送) passed');
+  await hitokoeSafety({ clear, config, yes, recv, ev, run, at, RealDate, FixedDate, setFixed: (v) => { fixed = v; }, setQuota: (q, u) => { quota = q; usage = u; },
+    setPush: (o) => { if ('fail' in o) pushFailure = o.fail; if ('lost' in o) lostResponse = o.lost; } });
 }
 /* 利用数の集計(2026-10-04): 日ごとに「ご本人の操作の数」と「家族の記録の数」だけを数え、運営者にだけ全体の数字を返す */
 {
@@ -788,7 +856,7 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
 /* 予定のお知らせを、受け取る人ごとに1通にまとめる(2026-10-04・事業計画書 第2版の「前日にまとめて1通」) */
 {
   for (const k of [...db.keys()]) if (/^(groups\/g[1-5]\/yotei|watchTags|tagAlertCounters|lineDeliveryReceipts|lineUsage)\//.test(k)) db.delete(k);
-  acceptedKeys.clear(); quota = { type: 'limited', value: 200 }; usage = 0;
+  acceptedKeys.clear(); quota = { type: 'limited', value: 200 }; usage = 0; clearLedger();
   put('groups/g6', { createdBy: S('o6') });
   put('groups/g6/members/o6', { name: S('りえ'), status: S('approved') });
   put('groups/g6/members/m6', { name: S('あに'), status: S('approved') });
@@ -878,4 +946,317 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.equal(db.get('lineLinks/legacyNf')?.fields.friend?.booleanValue, false, '友だちでなければ未追加');
   assert.equal(db.get('lineLinks/legacyErr')?.fields.friend, undefined, '確かめられないときは書かない');
   console.log('古い連携の友だち追加の確認(' + n + '回) passed');
+}
+
+/* ひと声のきっかけ 安全性の見直し(2026-10-18)。架空の家庭・偽のLINE・偽のFirestoreだけで確かめる(本物には送らない)。 */
+async function hitokoeSafety({ clear, config, yes, recv, ev, run, at, RealDate, setFixed }) {
+  const base = globalThis.fetch;
+  let hookFn = null;
+  globalThis.fetch = async (u, o = {}) => { if (hookFn) { const r = await hookFn(String(u), o); if (r) return r; } return base(u, o); };
+  const fail = (status = 500) => new Response('{}', { status });
+  const receipt = () => { for (const [k, v] of db) if (k.startsWith('lineDeliveryReceipts/') && v.fields.kind) return v.fields; return null; };
+  const state = () => receipt()?.state?.stringValue || '';
+  const sentLog = (day = '2026-10-05') => db.get('groups/g4/events/hitokoe-sent-' + day)?.fields;
+  // 受付を作った直後(1回目の確認と送信直前の確認の間)に、何かが起きる場面を作る
+  const between = (fn) => { hookFn = async (u, o) => {
+    if (u.endsWith(':commit') && String(o.body).includes('lineDeliveryReceipts') && String(o.body).includes('"exists":false')) {
+      const r = await base(u, o); fn(); hookFn = null; return r;
+    }
+    return null;
+  }; };
+  const reset = () => { hookFn = null; pushFailure = false; lostResponse = false; quota = { type: 'limited', value: 200 }; usage = 0; };
+  const go = async (day, h, m) => { try { return await run(day, h, m); } finally { hookFn = null; } };
+  const tue = { assignees: { mapValue: { fields: { 2: S('f4b') } } } };
+  reset();
+
+  // 1. 受け取る家族本人の了承がない・「受け取らない」が新しい・LINEでは受け取らない → 送らない
+  clear(false); config(); yes();
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '受信の了承がない');
+  clear(false); config(); yes(); recv('f4'); recv('f4', { answer: S('no') });
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '受信の了承を取り消した');
+  clear(false); config(); yes(); recv('f4', { line: { booleanValue: false } });
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, 'アプリでは受け取るがLINEでは受け取らない');
+  // 2. 曜日の届け先(火曜=次子さん)が了承していなければ、了承済みの設定した人へ。どちらもいなければ送らない
+  clear(false); config(tue); yes(); recv('f4');
+  assert.deepEqual((await go('2026-10-06', 11, 30)).map((p) => p.to), ['Uf4'], '届け先に選ばれただけでは了承とみなさない');
+  clear(false); config(tue); yes();
+  assert.equal((await go('2026-10-06', 11, 30)).length, 0, '了承した人がいない');
+  // 3. ご本人の「やめておく」は、家族が設定を変えても(新しいお願い番号でも)解除されない
+  clear(); config(); yes(); ev({ type: S('hitokoe-consent'), uid: S('h4'), requestId: S('r1'), answer: S('no'), at: T(new RealDate(at('2026-10-04', 10))) });
+  config({ requestId: S('r2') });
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '本人の継続停止');
+  ev({ type: S('hitokoe-consent'), uid: S('h4'), requestId: S('r2'), answer: S('yes'), version: S('2026-10-18'), at: T(new RealDate(at('2026-10-04', 11))) });
+  assert.equal((await go('2026-10-05', 11, 30)).length, 1, '本人が自分で「はい」に戻せば動く');
+  // 4. 利用開始日(ご本人が了解した日・受け取る家族が了承した日)は送らない。翌日から
+  clear();
+  ev({ type: S('hitokoe-config'), enabled: { booleanValue: true }, line: { booleanValue: true }, hour: { integerValue: '11' }, requestId: S('r1'), uid: S('f4'), at: T(new RealDate(at('2026-10-05', 8))) });
+  ev({ type: S('hitokoe-consent'), uid: S('h4'), requestId: S('r1'), answer: S('yes'), version: S('2026-10-18'), at: T(new RealDate(at('2026-10-05', 8, 30))) });
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '了解した日は送らない');
+  assert.equal((await go('2026-10-06', 11, 30)).length, 1, '翌日から送る');
+  clear(false); config(); yes(); recv('f4', { at: T(new RealDate(at('2026-10-05', 9))) });
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '受信を了承した日は送らない');
+  // 5. 読み取りに失敗したら送らない(名簿・受信の了承・連携の確認・当日の記録)
+  for (const [name, test] of [
+    ['名簿', (u, o) => u.endsWith(':runQuery') && String(o.body).includes('"collectionId":"members"')],
+    ['受信の了承', (u, o) => u.endsWith(':runQuery') && String(o.body).includes('hitokoe-receive')],
+    ['連携の確認', (u) => u.endsWith(':batchGet')],
+    ['当日の記録', (u, o) => u.endsWith(':runQuery') && String(o.body).includes('"fieldPath":"date"')],
+  ]) {
+    clear(); config(); yes();
+    hookFn = (u, o) => (test(u, o) ? fail() : null);
+    assert.equal((await go('2026-10-05', 11, 30)).length, 0, name + 'の読み取り失敗');
+    assert.equal(receipt(), null, name + ': 受付も作らない');
+  }
+  // 6. 受付を作った後、送信直前までに起きたことは反映する(本人の記録・本人の停止・受信の辞退・LINE解除・世帯削除・脱退)
+  for (const [name, fn] of [
+    ['本人が押した', () => ev({ type: S('aisatsu'), uid: S('h4'), date: S('2026-10-05') })],
+    ['本人が「今日はそっとしておいて」', () => ev({ type: S('onegai'), uid: S('h4'), text: S('今日はそっとしておいて'), date: S('2026-10-05') })],
+    ['本人がやめた', () => ev({ type: S('hitokoe-consent'), uid: S('h4'), requestId: S('r1'), answer: S('no'), at: T(new RealDate(at('2026-10-05', 11, 31))) })],
+    ['家族が受け取りをやめた', () => recv('f4', { answer: S('no'), at: T(new RealDate(at('2026-10-05', 11, 31))) })],
+    ['LINE解除', () => db.delete('lineLinks/f4')],
+    ['世帯削除', () => put('groups/g4', { createdBy: S('f4'), deletionState: S('deleting') })],
+    ['脱退', () => db.delete('groups/g4/members/f4')],
+    ['アカウント終了', () => put('accountClosures/f4', { at: T(new RealDate()) })],
+    ['家族が設定を切った', () => config({ enabled: { booleanValue: false }, at: T(new RealDate(at('2026-10-05', 11, 31))) })],
+  ]) {
+    clear(); config(); yes();
+    between(fn);
+    assert.equal((await go('2026-10-05', 11, 30)).length, 0, '送信直前: ' + name);
+    assert.equal(state(), 'skipped', name + ': 見送りとして残す');
+    put('groups/g4', { createdBy: S('f4') });
+    put('groups/g4/members/f4', { name: S('太郎'), role: S('kazoku'), status: S('approved') });
+    db.delete('accountClosures/f4');
+  }
+  // 7. 同時に2回の見回りが動いても1通だけ
+  clear(); config(); yes();
+  {
+    const before = pushes.length;
+    const t = at('2026-10-05', 11, 30);
+    const RD = globalThis.Date;
+    class FD extends RD { constructor(...a) { if (a.length) super(...a); else super(t); } static now() { return t; } }
+    globalThis.Date = FD;
+    // tick() は最後の1つしか待たないので、2つの見回りをそれぞれ確実に待つ(片方が次の場面に食い込まないように)
+    const ps = [];
+    try {
+      await Promise.all([0, 1].map(() => worker.scheduled({}, env, { waitUntil: (p) => { ps.push(p); } })));
+      await Promise.allSettled(ps);
+    } finally { globalThis.Date = RD; }
+    assert.equal(ps.length, 2, '2つの見回りを動かした');
+    assert.equal(pushes.slice(before).filter((p) => /^Uf4/.test(p.to)).length, 1, '同時実行でも1通');
+  }
+  // 8. 結果不明: 5分以内は送り直さない。その後は同じ宛先・同じキーで、条件を確かめ直してから
+  clear(); config(); yes(); pushFailure = true;
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0);
+  pushFailure = false;
+  assert.equal(state(), 'unknown', '結果不明として残す');
+  assert.equal(sentLog().status.stringValue, 'unknown', '家族向けの履歴も「結果不明」');
+  assert.equal((await go('2026-10-05', 11, 33)).length, 0, '5分以内は送り直さない');
+  const keysBefore = keys.length;
+  assert.equal((await go('2026-10-05', 11, 45)).length, 1, '期限内に同じキーで送り直す');
+  assert.equal(keys.at(-1), keys.at(keysBefore - 1), '再送キーは同じ');
+  assert.equal(state(), 'accepted');
+  assert.equal(sentLog().status.stringValue, 'accepted');
+  assert.ok(!('name' in sentLog()) && !JSON.stringify(sentLog()).includes('Uf4'), '履歴に名前・LINE識別子を書かない');
+  // 9. 結果不明の後、宛先が変わったら別の人へ振り替えない
+  clear(); config(); yes(); pushFailure = true;
+  await go('2026-10-05', 11, 30); pushFailure = false;
+  config({ uid: S('f4b'), at: T(new RealDate(at('2026-10-05', 11, 35))) });
+  assert.equal((await go('2026-10-05', 11, 45)).length, 0, '別の宛先へ振り替えない');
+  assert.equal(state(), 'skipped');
+  // 10. 再試行でも送信枠を確かめる(タグの分しか残っていなければ見送り)
+  clear(); config(); yes(); pushFailure = true;
+  await go('2026-10-05', 11, 30); pushFailure = false;
+  usage = 150;
+  assert.equal((await go('2026-10-05', 11, 45)).length, 0, '再試行でも枠不足なら送らない');
+  assert.equal(state(), 'skipped'); usage = 0;
+  // 11. 残り通数を確かめられないときは、ひと声は受付も作らない(前回の記録からの推定でも送らない)
+  clear(); config(); yes(); db.delete('lineStatus/quota');
+  hookFn = (u) => (u.startsWith('https://api.line.me/v2/bot/message/quota') ? fail() : null);
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '残り通数が分からない');
+  assert.equal(receipt(), null);
+  put('lineStatus/quota', { limit: { integerValue: '200' }, used: { integerValue: '10' }, checkedAt: T(new RealDate(at('2026-10-05', 11))) });
+  hookFn = (u) => (u.startsWith('https://api.line.me/v2/bot/message/quota') ? fail() : null);
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '推定の残り通数では送らない');
+  // 12. LINEが4xxで断ったら送り直さない
+  clear(); config(); yes(); failTo = 'Uf4';
+  hookFn = (u) => (u === 'https://api.line.me/v2/bot/message/push' ? fail(400) : null);
+  await go('2026-10-05', 11, 30); failTo = '';
+  assert.equal(state(), 'rejected');
+  const k0 = keys.length;
+  assert.equal((await go('2026-10-05', 11, 45)).length, 0);
+  assert.equal(keys.length, k0, '4xxの後はLINEへ要求を出さない');
+  // 13. 期限を過ぎた再試行・翌日への持ち越しはしない
+  clear(); config(); yes(); pushFailure = true;
+  await go('2026-10-05', 13, 50); pushFailure = false;
+  const k1 = keys.length;
+  assert.equal((await go('2026-10-05', 14, 5)).length, 0, '期限後は送らない');
+  assert.equal(keys.length, k1, '期限後はLINEへ要求を出さない');
+  // 14. 月替わり: 月の枠は送った月に数える(10月が上限でも11月1日は送る)
+  clear(); config(); yes();
+  put('lineUsage/hitokoe-2026-10', { month: S('2026-10'), count: { integerValue: '90' } });
+  assert.equal((await go('2026-10-31', 11, 30)).length, 0, '10月は上限');
+  assert.equal((await go('2026-11-01', 11, 30)).length, 1, '11月は新しい枠');
+  assert.equal(db.get('lineUsage/hitokoe-2026-11').fields.count.integerValue, '1');
+  // 15. 年末・うるう日でも日付と期限を正しく扱う
+  clear(); config(); yes();
+  assert.equal((await go('2026-12-31', 13, 45)).length, 1, '大みそか(期限14時の手前)');
+  clear(); config(); yes();
+  assert.equal((await go('2028-02-29', 11, 30)).length, 1, 'うるう日');
+  assert.ok(sentLog('2028-02-29'), 'うるう日の履歴');
+  // 16. 別の家庭の記録は判定に使わない
+  clear(); config(); yes();
+  put('groups/gX', { createdBy: S('fx') }); put('groups/gX/members/hx', { name: S('他人'), role: S('honnin'), status: S('approved') });
+  put('groups/gX/events/x1', { type: S('aisatsu'), uid: S('h4'), date: S('2026-10-05') });
+  assert.equal((await go('2026-10-05', 11, 30)).length, 1, '他の家庭の記録に影響されない');
+  db.delete('groups/gX/events/x1'); db.delete('groups/gX/members/hx'); db.delete('groups/gX');
+
+  // 17. 古い説明への「はい」(版なし)では送らない(既存の利用者も再同意まで有効にしない)
+  clear(); config(); ev({ type: S('hitokoe-consent'), uid: S('h4'), requestId: S('r1'), answer: S('yes'), at: T(new RealDate(at('2026-10-04', 9))) });
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '古い説明への了解');
+  // 18. LINEの429(混雑)は断られたのではなく結果不明。期限内に同じキーで送り直す
+  clear(); config(); yes();
+  hookFn = (u) => (u === 'https://api.line.me/v2/bot/message/push' ? fail(429) : null);
+  await go('2026-10-05', 11, 30);
+  assert.equal(state(), 'unknown', '429は結果不明');
+  assert.equal((await go('2026-10-05', 11, 45)).length, 1, '429の後は送り直す');
+  // 19. 月の90通目が結果不明になった後の再試行は、自分の予約分で止めない(二重に数えない)
+  clear(); config(); yes();
+  put('lineUsage/hitokoe-2026-10', { month: S('2026-10'), count: { integerValue: '89' } });
+  pushFailure = true; await go('2026-10-05', 11, 30); pushFailure = false;
+  assert.equal(db.get('lineUsage/hitokoe-2026-10').fields.count.integerValue, '90', '予約で90通目');
+  assert.ok(receipt().quotaMonth, '予約と同時に受付へ印');
+  assert.equal((await go('2026-10-05', 11, 45)).length, 1, '90通目の再試行は送る');
+  assert.equal(db.get('lineUsage/hitokoe-2026-10').fields.count.integerValue, '90', '再試行で数を増やさない');
+
+  /* ===== PR #216 レビュー指摘への再現テストと回帰テスト(2026-10-19) ===== */
+  const ledgerUsed = () => { const d = [...db].find(([k]) => k.startsWith('lineUsage/ledger-')); return d ? Number(d[1].fields.used.integerValue) : 0; };
+  const both = async (day, h, m) => {   // 別々の見回り2つを同時に動かし、両方を確実に待つ
+    const t = at(day, h, m), RD = globalThis.Date;
+    class FD extends RD { constructor(...a) { if (a.length) super(...a); else super(t); } static now() { return t; } }
+    const before = pushes.length, ps = [];
+    globalThis.Date = FD;
+    try { await Promise.all([0, 1].map(() => worker.scheduled({}, env, { waitUntil: (p) => { ps.push(p); } }))); await Promise.allSettled(ps); }
+    finally { globalThis.Date = RD; }
+    return pushes.slice(before);
+  };
+  const dueSchedule = (day) => put('groups/g4/yotei/s1', { date: S(day), label: S('通院'), uid: S('f4'), notifyAt: T(new RealDate(at(day, 11, 0))) });
+  const dropSchedule = () => { for (const k of [...db.keys()]) if (k.startsWith('groups/g4/yotei/')) db.delete(k); };
+  // 指摘1: ご本人のサービスの同意の撤回・アカウント終了を、送る判定に入れる
+  clear(); config(); yes(); db.delete('consents/h4');
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '指摘1: ご本人のサービスの同意を撤回したら送らない');
+  put('consents/h4', consent());
+  clear(); config(); yes(); put('accountClosures/h4', { requestedAt: T(new RealDate()) });
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '指摘1: ご本人のアカウント終了の手続き中は送らない');
+  db.delete('accountClosures/h4');
+  clear(); config(); yes(); between(() => db.delete('consents/h4'));
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '指摘1: 送信直前にご本人が同意を撤回');
+  assert.equal(state(), 'skipped'); put('consents/h4', consent());
+  clear(); config(); yes(); between(() => put('accountClosures/h4', { requestedAt: T(new RealDate()) }));
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '指摘1: 送信直前にご本人がアカウント終了');
+  assert.equal(state(), 'skipped'); db.delete('accountClosures/h4');
+  // ご本人が2人の家庭: 無効なご本人だけを外し、もう1人の記録がない日は送る(無効な人を理由に送らない)
+  put('groups/g4/members/h4b', { name: S('次郎'), role: S('honnin'), status: S('approved') }); put('consents/h4b', consent());
+  clear(); config(); yes(); ev({ type: S('hitokoe-consent'), uid: S('h4b'), requestId: S('r1'), answer: S('yes'), version: S('2026-10-18'), at: T(new RealDate(at('2026-10-04', 9))) });
+  ev({ type: S('aisatsu'), uid: S('h4b'), date: S('2026-10-05') });   // 次郎さんは押した
+  put('accountClosures/h4', { requestedAt: T(new RealDate()) });        // 花子さんはアカウント終了中
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '指摘1: 終了中のご本人の「記録なし」を理由に送らない');
+  clear(); config(); yes(); ev({ type: S('hitokoe-consent'), uid: S('h4b'), requestId: S('r1'), answer: S('yes'), version: S('2026-10-18'), at: T(new RealDate(at('2026-10-04', 9))) });
+  assert.equal((await go('2026-10-05', 11, 30)).length, 1, '指摘1: 有効なご本人(次郎さん)の記録がない日は送る');
+  db.delete('accountClosures/h4'); db.delete('groups/g4/members/h4b'); db.delete('consents/h4b');
+  // 指摘3: 枠の予約が終わった後、LINEへ要求を出す直前に期限を過ぎていたら送らない(期限内の要求開始だけ)
+  clear(); config(); yes();
+  hookFn = async (u, o) => {
+    if (u.endsWith(':commit') && String(o.body).includes('lineUsage/ledger-') && String(o.body).includes('lineUsage/hitokoe-')) {
+      const r = await base(u, o); setFixed(at('2026-10-05', 14, 0)); hookFn = null; return r;   // 予約の完了と同時に14:00(期限)になる
+    }
+    return null;
+  };
+  const k3 = keys.length;
+  assert.equal((await go('2026-10-05', 13, 59)).length, 0, '指摘3: 予約後に期限を過ぎたら送らない');
+  assert.equal(keys.length, k3, '指摘3: 期限後にLINEへの要求を出さない');
+  assert.equal(state(), 'skipped'); assert.equal(receipt().skipReason.stringValue, 'deadline');
+  assert.equal(ledgerUsed(), usage + 1, '指摘3: 予約した枠は戻さない(LINEの使用数＋この1通。多めに数える側)');
+  clear(); config(); yes();
+  assert.equal((await go('2026-10-05', 13, 59)).length, 1, '指摘3の回帰: 期限の直前(13:59)に予約と要求が終われば送る');
+  // 指摘2: 共通の送信枠。別々の見回りが同時に動いても、残り1枠を二重に使わない(タグ用の確保分も守る)
+  // (a) 予定＋ひと声: 月の残りがタグ用50通＋1通だけ
+  clear(); config(); yes(); dueSchedule('2026-10-05'); usage = 149;
+  let got2 = await both('2026-10-05', 11, 30);
+  assert.ok(got2.filter((p) => /^Uf4/.test(p.to)).length <= 1, '指摘2(a): 予定とひと声で残り1枠を二重に使わない');
+  assert.ok(ledgerUsed() <= 150, '指摘2(a): 月の台帳はタグ用の確保分(50通)を残す');
+  dropSchedule(); usage = 0;
+  // (b) 予定＋ひと声: 同じ家庭の今日の通数が上限の1つ手前
+  clear(); config(); yes(); dueSchedule('2026-10-05');
+  put('lineUsage/g4', { day: S('2026-10-05'), count: { integerValue: '19' } });
+  got2 = await both('2026-10-05', 11, 30);
+  assert.ok(got2.filter((p) => /^Uf4/.test(p.to)).length <= 1, '指摘2(b): 家庭の1日の上限を超えない');
+  assert.ok(Number(db.get('lineUsage/g4').fields.count.integerValue) <= 20, '指摘2(b): 家庭の通数は20を超えない');
+  dropSchedule();
+  // (a2)(b2) 割り込みの再現(決定的): ひと声が枠を書き込もうとした瞬間に、別の見回り(予定)が先に最後の1枠を取った状態を作る。
+  // 読んだ時点から台帳が変わっているので書き込みは失敗し、読み直して上限と判断し、送らない(上書き・超過しない)
+  const steal = (fn) => { hookFn = async (u, o) => {
+    if (u.endsWith(':commit') && String(o.body).includes('lineUsage/ledger-') && String(o.body).includes('lineUsage/hitokoe-')) { fn(); hookFn = null; }
+    return null;
+  }; };
+  const monthKey = 'lineUsage/ledger-2026-10';
+  clear(); config(); yes(); usage = 149;
+  steal(() => put(monthKey, { month: S('2026-10'), used: { integerValue: '150' } }));
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '指摘2(a2): 先に予定が最後の1枠を取ったら、ひと声は送らない');
+  assert.equal(ledgerUsed(), 150, '指摘2(a2): 月の台帳を上書きしない(151にならない)');
+  assert.equal(receipt().skipReason.stringValue, 'monthly');
+  usage = 0;
+  clear(); config(); yes();
+  put('lineUsage/g4', { day: S('2026-10-05'), count: { integerValue: '19' } });
+  steal(() => put('lineUsage/g4', { day: S('2026-10-05'), count: { integerValue: '20' } }));
+  assert.equal((await go('2026-10-05', 11, 30)).length, 0, '指摘2(b2): 先に予定が家庭の最後の1枠を取ったら、ひと声は送らない');
+  assert.equal(db.get('lineUsage/g4').fields.count.integerValue, '20', '指摘2(b2): 家庭の通数を上書きしない(21にならない)');
+  assert.equal(receipt().skipReason.stringValue, 'household');
+  // (c) 別の家庭のひと声どうし: 月の残り1枠を取り合う
+  put('groups/g6', { createdBy: S('f6') });
+  put('groups/g6/members/h6', { name: S('梅子'), role: S('honnin'), status: S('approved') });
+  put('groups/g6/members/f6', { name: S('三郎'), role: S('kazoku'), status: S('approved') });
+  for (const id of ['h6', 'f6']) put('consents/' + id, consent());
+  put('lineLinks/f6', { lineUserId: S('Uf6'), groupId: S('g6') });
+  const g6 = (id, f) => put('groups/g6/events/' + id, f);
+  clear(); config(); yes(); usage = 149;
+  g6('c1', { type: S('hitokoe-config'), enabled: { booleanValue: true }, line: { booleanValue: true }, hour: { integerValue: '11' }, requestId: S('r6'), uid: S('f6'), at: T(new RealDate(at('2026-10-04', 8))) });
+  g6('c2', { type: S('hitokoe-consent'), uid: S('h6'), requestId: S('r6'), answer: S('yes'), version: S('2026-10-18'), at: T(new RealDate(at('2026-10-04', 9))) });
+  g6('c3', { type: S('hitokoe-receive'), uid: S('f6'), answer: S('yes'), line: { booleanValue: true }, at: T(new RealDate(at('2026-10-04', 9, 30))) });
+  got2 = await both('2026-10-05', 11, 30);
+  assert.ok(got2.filter((p) => /^U(f4|f6)/.test(p.to)).length <= 1, '指摘2(c): 別の家庭のひと声どうしで残り1枠を二重に使わない');
+  assert.ok(ledgerUsed() <= 150, '指摘2(c): タグ用の確保分を残す');
+  for (const k of [...db.keys()]) if (/^(groups\/g6|consents\/(h6|f6)|lineLinks\/f6)\b/.test(k)) db.delete(k);
+  usage = 0;
+  // (d) 結果不明＋ほかの通知: 結果不明のひと声は予約を保ち、その間に来た予定は残り枠がなければ送らない。ひと声の再試行は二重に数えない
+  clear(); config(); yes(); usage = 149; pushFailure = true;
+  await go('2026-10-05', 11, 30); pushFailure = false;
+  assert.equal(state(), 'unknown'); assert.equal(ledgerUsed(), 150, '指摘2(d): 結果不明でも予約を保つ');
+  dueSchedule('2026-10-05');
+  got2 = await go('2026-10-05', 11, 45);
+  assert.equal(got2.filter((p) => p.messages[0].text.includes('予定')).length, 0, '指摘2(d): 結果不明のひと声の予約分は予定に使わせない');
+  assert.equal(got2.filter((p) => p.messages[0].text.startsWith('まいにこ：')).length, 1, '指摘2(d): ひと声は期限内に同じキーで送り直す');
+  assert.equal(ledgerUsed(), 150, '指摘2(d): 再試行で二重に数えない');
+  assert.equal(db.get('groups/g4/yotei/s1').fields.notificationStatus.stringValue, 'limited', '指摘2(d): 予定は上限として記録');
+  dropSchedule(); usage = 0;
+  // 回帰: 予定の送信の結果が分からなかったとき、送り直しで共通の枠を二重に数えない(受付ごとに1回だけ予約)
+  clear(); config({ enabled: { booleanValue: false } }); dueSchedule('2026-10-05'); pushFailure = true;
+  await go('2026-10-05', 11, 30); pushFailure = false;
+  const afterFail = ledgerUsed();
+  assert.ok(afterFail >= usage + 1, '予定の予約は送る前に数える');
+  got2 = await go('2026-10-05', 11, 45);
+  assert.ok(got2.filter((p) => p.messages[0].text.includes('予定')).length >= 1, '予定は次の回に送り直す');
+  assert.equal(ledgerUsed(), Math.max(afterFail, usage), '予定の送り直しで共通の枠を二重に数えない');
+  dropSchedule();
+  // 回帰: 枠に余裕があれば、予定とひと声の両方が届く
+  clear(); config(); yes(); dueSchedule('2026-10-05');
+  // 予定はひと声より優先。同じ回で通信回数の余裕がなければ、ひと声は次の回(15分後・期限内)に届く
+  got2 = [...await go('2026-10-05', 11, 30), ...await go('2026-10-05', 11, 45)];
+  assert.equal(got2.filter((p) => p.messages[0].text.startsWith('まいにこ：')).length, 1, '回帰: ひと声が届く(1日1通)');
+  assert.ok(got2.filter((p) => p.messages[0].text.includes('予定')).length >= 1, '回帰: 予定も届く');
+  dropSchedule();
+
+  globalThis.fetch = base;
+  reset();
+  console.log('ひと声のきっかけ PR #216 レビュー指摘(ご本人の同意撤回・終了・送信直前・複数のご本人／予約後の期限／共通の送信枠: 予定＋ひと声・家庭の上限・別家庭のひと声・結果不明＋予定・回帰) passed');
+  console.log('ひと声のきっかけ 安全性の見直し(受信の了承・本人の継続停止・利用開始日・読み取り失敗・送信直前の確認9種・同時実行・結果不明・宛先変更・再試行の枠・枠不明・4xx・期限・月替わり・年末・うるう日・世帯の分離・説明の版・429・90通目の再試行) passed');
 }
