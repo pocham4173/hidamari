@@ -231,3 +231,28 @@ test('dismiss cancel, storage failure, changed conversation and household switch
   assert.equal(f.writes.length,0);f.close();
  }
 });
+
+test('old requests stay folded; a recent reply resurfaces the source without writes',()=>{
+ const f=fixture();const old={...req,date:'2026-09-10',at:{seconds:1}};
+ f.events([old]);assert.equal(f.panel().open,false);
+ assert.equal(f.document.getElementById('family-requests-label').textContent,'以前のお願いを見る');
+ f.panel().open=true;const older=f.panel().querySelector('[data-open-key="family:older"]');assert.equal(older.open,false);
+ assert.equal(f.visible(older.querySelector('article')),false);
+ f.events([old,{...response,date:'2026-09-18'}]);
+ assert.equal(f.document.getElementById('family-requests-label').textContent,'お願い・返事を確認する');
+ f.panel().open=true;assert.equal(f.visible(f.panel().querySelector('article')),true);
+ assert.equal(f.writes.length,0);f.close();
+});
+
+test('schedule review shows today/yesterday only until older schedules are opened or searched',()=>{
+ const f=fixture();Object.assign(f.c,{familyYoteiStatus:'ready',yoteiReviewCat:'',yoteiReviewShown:15,yoteiNotes:[],
+  yoteiCache:[{_id:'old',date:'2026-09-01',label:'古い予定'},{_id:'yesterday',date:'2026-09-17',label:'昨日の予定'}],
+  renderReviewCategoryChips(){},yoteiColor:()=> '#000',yoteiDateJp:v=>v.date});
+ const a=html.indexOf('function renderYoteiReview(){'),b=html.indexOf('function openYoteiReview(',a);vm.runInContext(html.slice(a,b),f.c);
+ f.document.getElementById('t-home').style.display='none';f.document.getElementById('t-kiroku').style.display='block';
+ f.c.renderYoteiReview();const older=f.document.getElementById('yr-older');
+ assert.equal(older.open,false);assert.equal(f.visible(older.querySelector('button')),false);
+ assert.equal(f.visible(f.document.querySelector('#yr-list > button')),true);
+ f.document.getElementById('yr-search').value='古い';f.c.renderYoteiReview();assert.equal(f.document.getElementById('yr-older').open,true);
+ assert.equal(f.writes.length,0);f.close();
+});

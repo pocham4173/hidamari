@@ -956,6 +956,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .conversation-source.source-family h5{background:#E1ECFF;color:#244F8D;}
 .conversation-source .ev{margin:0 14px;padding:14px 0;border-left:0;background:transparent;overflow-wrap:anywhere;}
 .conversation-source .ev:last-child{border-bottom:0;}
+.conversation-source .save-state:empty{display:none;}
 .conversation-source .tm{line-height:1.6;}
 .conversation-source .source-empty{margin:0;padding:16px;color:#555F6F;font-size:1rem;line-height:1.7;}
 .source-history{margin:0 14px 10px;border-top:1px solid #C8CFD8;}
@@ -2137,7 +2138,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
           <div id="family-requests-list"></div>
         </details>
         <div class="communication-received" id="card-today-records">
-          <h4 id="home-date-h3">最近のやりとり</h4>
+          <h4 id="home-date-h3">今日・昨日のやりとり</h4>
           <div id="ev-list"><div class="empty" id="ev-empty">やりとりを読み込んでいます…</div></div>
         </div>
         <button class="family-jump" type="button" onclick="showTab('t-kiroku')">前の日のやりとりを見る</button>
@@ -2422,7 +2423,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <!-- ふり返り -->
     <div class="ftab" id="t-kiroku" style="display:none;">
       <div class="card dom-record" id="yr-card"><h3>予定のふり返り</h3>
-        <div class="note" style="margin-top:0;">これまでの予定を、予定ごとに見返せます。押すと、その日の様子やメモを確認できます。</div>
+        <div class="note" style="margin-top:0;">今日・昨日の予定を表示します。それ以前の予定は、必要なときに開いて見返せます。</div>
         <div class="yt-cats yr-cats" id="yr-cats" role="group" aria-label="分類で絞り込む"></div>
         <input type="search" class="yr-search" id="yr-search" placeholder="予定名・場所で探す（例：病院）" oninput="yoteiReviewShown=15;renderYoteiReview()" aria-label="予定名・場所で探す">
         <div id="yr-list"><div class="empty">読み込み中…</div></div>
@@ -2639,7 +2640,7 @@ window.mainicoMoveCode=MainicoDeviceMove.takeCode(location,history);
 <script src="medicine-notebook.js?v=20261001"></script>
 <script src="notebook-integration.js?v=20260930"></script>
 <script src="person-speech.js?v=20260917-voice"></script>
-<script src="request-handoff.js?v=20261022-dismiss"></script>
+<script src="request-handoff.js?v=20261023-recent"></script>
 <script src="person-button-feedback.js?v=20260917-voice"></script>
 <script src="family-connection.js?v=20260917-legacy"></script>
 <script src="person-tasks.js?v=20260930"></script>
@@ -3253,7 +3254,7 @@ let requestHandoffController=null;
 function getRequestHandoff(){
   if(typeof MainicoRequestHandoff==='undefined')return null;
   if(!requestHandoffController)requestHandoffController=MainicoRequestHandoff.create({
-    document,storage:previewStorage,
+    document,storage:previewStorage,isRecent:row=>recentHomeRecord(row),
     confirmDismiss:text=>appConfirm(text,'ホームから消す','やめる',true),
     context:()=>({uid:uid(),gid:gid(),generation:communicationGeneration,mode:previewStorage.getItem('mainicoMode'),kOnly:isKOnly(),
       familyReady:canUseFamilyFeature('person'),personReady:canUseFamilyFeature('family'),connection:familyConnection.status,
@@ -5101,7 +5102,7 @@ function renderFamilyConversation(){
   const requestIds=new Set(items.filter(v=>v.type==='onegai').map(v=>v._id));
   const hasRequestPanel=typeof MainicoRequestHandoff!=='undefined';
   // Requests with their source present live in one place; orphan replies stay readable here.
-  const vis=homeAttentionRows(items,replies,false).filter(v=>!hasRequestPanel||
+  const vis=homeAttentionRows(items,replies,false).filter(v=>recentHomeRecord(v)).filter(v=>!hasRequestPanel||
     !(v.type==='onegai'||(v.type==='onegai-back'&&requestIds.has(v.replyTo))));
   card.style.display='block';
   const label={
@@ -5159,12 +5160,12 @@ function renderFamilyConversation(){
     const rows=rowsMarkup.filter((_,i)=>fromPerson(vis[i])===(source==='person'));
     const historyId='family-earlier-conversation-'+source;
     const earlierOpen=box.querySelector?.('#'+historyId)?.open;
-    const empty=familyHomeEventStatus==='ready'?'表示できる記録はまだありません。':
+    const empty=familyHomeEventStatus==='ready'?'今日・昨日の記録はありません。':
       familyHomeEventStatus==='loading'?'読み込んでいます…':'通信を確認して、もう一度読み込んでください。';
     return '<section class="conversation-source source-'+source+'" id="conversation-from-'+source+'" aria-labelledby="conversation-title-'+source+'">'+
       '<h5 id="conversation-title-'+source+'">'+title+'</h5>'+
       (rows.length?rows.slice(0,2).join(''):'<p class="source-empty">'+empty+'</p>')+
-      (rows.length>2?'<details class="source-history" id="'+historyId+'"'+(earlierOpen?' open':'')+'><summary>前の記録を見る（'+(rows.length-2)+'件）</summary>'+rows.slice(2).join('')+'</details>':'')+'</section>';
+      (rows.length>2?'<details class="source-history" id="'+historyId+'"'+(earlierOpen?' open':'')+'><summary>今日・昨日のほかの記録（'+(rows.length-2)+'件）</summary>'+rows.slice(2).join('')+'</details>':'')+'</section>';
   }).join('');
   if(box.innerHTML!==markup){
     const active=document.activeElement;
@@ -5178,6 +5179,13 @@ function renderFamilyConversation(){
     if(next||summary||historySummary)(next||summary||historySummary).focus({preventScroll:true});
   }
   updateCommunicationAvailability();
+}
+function recentHomeRecord(row,day=(typeof personDay==='function'?personDay():todayStr())){
+  const yesterday=new Date(day+'T12:00:00');yesterday.setDate(yesterday.getDate()-1);
+  const prev=yesterday.getFullYear()+'-'+String(yesterday.getMonth()+1).padStart(2,'0')+'-'+String(yesterday.getDate()).padStart(2,'0');
+  let date=row.date;
+  if(!date&&Number.isFinite(row.at?.seconds)){const d=new Date(row.at.seconds*1000);date=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  return date===day||date===prev;
 }
 function homeAttentionRows(items,replies,kOnly){
   const types=['aisatsu','kibun','kusuri','onegai','aisatsu-back','ask-kusuri','family-message','onegai-back','family-message-back'];
@@ -8592,13 +8600,17 @@ function renderYoteiReview(){
   past.sort((a,b)=>a.date!==b.date?(a.date<b.date?1:-1):String(b.time||'').localeCompare(String(a.time||'')));
   if(!past.length){ box.innerHTML='<div class="empty">'+(q||yoteiReviewCat?'条件に当てはまる予定はありません':'まだ過ぎた予定はありません。予定の日が来ると、ここで見返せます')+'</div>'; return; }
   const count={}; yoteiNotes.forEach(n=>{count[n.yoteiId]=(count[n.yoteiId]||0)+1;});
-  box.innerHTML=past.slice(0,yoteiReviewShown).map(v=>
+  const renderRows=rows=>rows.map(v=>
     '<button type="button" class="yr-item" style="border-left-color:'+yoteiColor(v)+'" onclick="openYoteiReview(\''+jsArg(v._id)+'\')">'+
     '<small>'+esc(yoteiDateJp(v))+(v.date===t?'（今日）':'')+'</small><b>'+esc(v.kind||'📌')+' '+esc(v.label||'予定')+'</b>'+
     (v.place?'<small>📍'+esc(v.place)+'</small>':'')+
     (v.category?'<span class="yr-badge">🏷 '+esc(v.category)+'</span> ':'')+
-    (count[v._id]?'<span class="yr-badge">📝 メモ '+count[v._id]+'件</span>':'')+'</button>').join('')+
-    (past.length>yoteiReviewShown?'<button type="button" class="set-btn" onclick="yoteiReviewShown+=15;renderYoteiReview()">もっと見る（あと'+(past.length-yoteiReviewShown)+'件）</button>':'');
+    (count[v._id]?'<span class="yr-badge">📝 メモ '+count[v._id]+'件</span>':'')+'</button>').join('');
+  const recent=past.filter(v=>recentHomeRecord(v,t)),older=past.filter(v=>!recentHomeRecord(v,t));
+  const expanded=box.querySelector('#yr-older')?.open||!!q||!!yoteiReviewCat;
+  box.innerHTML=renderRows(recent)+(recent.length?'':'<div class="empty">今日・昨日の予定はありません。</div>')+
+    (older.length?'<details id="yr-older"'+(expanded?' open':'')+'><summary class="fold-ttl">それ以前の予定を見る</summary>'+renderRows(older.slice(0,yoteiReviewShown))+
+    (older.length>yoteiReviewShown?'<button type="button" class="set-btn" onclick="yoteiReviewShown+=15;renderYoteiReview()">もっと見る（あと'+(older.length-yoteiReviewShown)+'件）</button>':'')+'</details>':'');
 }
 function openYoteiReview(id){
   const v=yoteiCache.find(x=>x._id===id); if(!v) return;

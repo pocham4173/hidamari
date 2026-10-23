@@ -98,7 +98,12 @@
       const c=context(),allRows=data[role].filter(v=>v.type==='onegai'&&(role==='family'||v.uid===c.uid)).sort((a,b)=>compare(b,a));
       const hidden=role==='family'?hiddenRows():new Map();
       const archived=allRows.filter(v=>hidden.get(v._id)===version(v._id));
-      const rows=allRows.filter(v=>!archived.includes(v));
+      const available=allRows.filter(v=>!archived.includes(v));
+      const recent=req=>!options.isRecent||options.isRecent(req)||responses(req._id,role).some(options.isRecent);
+      const rows=available.filter(recent),older=available.filter(req=>!recent(req));
+      const ageKey=rows.length?'recent':'older';
+      if(role==='family'&&panel.dataset.ageKey!==ageKey){panel.open=false;panel.dataset.ageKey=ageKey;}
+
       // The family-only recording mode has no inbox from a person using the app.
       panel.hidden=!allRows.length||(role==='family'&&c.kOnly);
       const active=doc.activeElement,focusKey=list.contains(active)?active.dataset.handoffKey:null;
@@ -116,7 +121,7 @@
       }
       if(role==='family'){
         const summary=el('family-request-summary'),latest=rows[0];
-        const title=el('family-requests-label');if(title)title.textContent=rows.length?'お願い・返事を確認する':archived.length?'消したお願いを見る（'+archived.length+'件）':'お願い・返事を確認する';
+        const title=el('family-requests-label');if(title)title.textContent=rows.length?'お願い・返事を確認する':older.length?'以前のお願いを見る':archived.length?'消したお願いを見る（'+archived.length+'件）':'お願い・返事を確認する';
         if(summary)summary.textContent=!latest?'':(status.family!=='ready'?'最新の確認ができていません。':'')+
           stamp(latest)+' · 「'+(latest.text||'お願い')+'」'+(rows.length>1?' ほか'+(rows.length-1)+'件':'')+
           (rows.some(req=>responses(req._id,'family').length)?' · 返事があります':'');
@@ -125,10 +130,15 @@
       const connected=role==='family'?c.familyReady:c.personReady;
       state.textContent=(status[role]!=='ready'?'最新の確認ができていません。保存済みの内容です。':!connected?'今は家族と返事をやりとりできません。以前の内容を表示しています。':'')+
         '最近読み込んだ100件の記録の中のお願いです。保存は、相手が読んだことを意味しません。';
-      let more;
-      rows.forEach((req,index)=>{
+      let more,oldGroup;
+      [...rows,...older].forEach((req,index)=>{
         let parent=list;
-        if(index>=3){if(!more){more=node(list,'details');more.dataset.openKey=role;more.open=expanded.has(role);const summary=node(more,'summary','ほかのお願いを見る（'+(rows.length-3)+'件）');summary.dataset.handoffKey=role+':more';more.addEventListener('toggle',()=>{if(!more.isConnected)return;if(more.open)expanded.add(role);else expanded.delete(role);});}parent=more;}
+        if(index>=rows.length){
+          if(!oldGroup){oldGroup=node(list,'details');oldGroup.dataset.openKey=role+':older';oldGroup.open=expanded.has(role+':older');node(oldGroup,'summary','それ以前のお願いを見る');}
+          parent=oldGroup;
+        }
+
+        if(index>=3&&index<rows.length){if(!more){more=node(list,'details');more.dataset.openKey=role;more.open=expanded.has(role);const summary=node(more,'summary','ほかのお願いを見る（'+(rows.length-3)+'件）');summary.dataset.handoffKey=role+':more';more.addEventListener('toggle',()=>{if(!more.isConnected)return;if(more.open)expanded.add(role);else expanded.delete(role);});}parent=more;}
         const row=node(parent,'article',undefined,'request-item');row.dataset.requestId=req._id;
         node(row,'div',stamp(req)+(role==='family'?' · '+(req.name||'ご本人'):''),'request-meta');
         const heading=node(row,'h3','「'+(req.text||'お願い')+'」');heading.tabIndex=-1;heading.dataset.handoffKey=req._id+':heading';

@@ -29,7 +29,7 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  assert.equal(f.document.querySelector('#conversation-from-family > .ev').textContent.includes('また電話するね'),true);
  assert.equal(f.document.getElementById('family-earlier-conversation-family').open,true);
  assert.equal(f.document.activeElement.closest('details').id,'family-earlier-conversation-family','live update preserves history focus');
- f.events([greeting]);assert.match(f.document.getElementById('conversation-from-family').textContent,/表示できる記録はまだありません/);
+ f.events([greeting]);assert.match(f.document.getElementById('conversation-from-family').textContent,/今日・昨日の記録はありません/);
  f.events([],'error');assert.match(f.document.getElementById('conversation-from-person').textContent,/通信を確認/);
  assert.doesNotMatch(f.document.getElementById('conversation-from-person').textContent,/記録はまだありません/,'failure must not become empty-success');
  assert.equal(f.writes.length,0);f.close();
@@ -150,5 +150,18 @@ console.log('Production DOM: visible home conversations, latest reply first, inl
  f.events([],'cached');assert.match(glance.textContent,/確認できません/);
  f.events([]);assert.match(glance.textContent,/まだ今日の記録はありません/);
  f.c.isKOnly=()=>true;f.state(person);assert.equal(f.visible(f.document.getElementById('card-person-today')),false);
+ assert.equal(f.writes.length,0);f.close();
+}
+
+{
+ const f=homeFixture();f.state(person);
+ f.events([{...greeting,_id:'old',date:'2026-09-16',text:'古い挨拶'},{...reply,_id:'old-reply',date:'2026-09-16',text:'古い返事'},{...greeting,_id:'yesterday',date:'2026-09-17',text:'昨日の挨拶'}]);
+ const box=f.document.getElementById('ev-list');
+ assert.doesNotMatch(box.textContent,/古い挨拶|古い返事/);
+ assert.match(box.textContent,/昨日の挨拶/);
+ f.c.todayStr=()=> '2026-09-19';f.c.renderFamilyConversation();assert.doesNotMatch(box.textContent,/昨日の挨拶/,'age out without deleting saved records');
+ assert.equal(f.c.recentHomeRecord({date:'2026-09-30'},'2026-10-01'),true);
+ assert.equal(f.c.recentHomeRecord({date:'2025-12-31'},'2026-01-01'),true);
+ assert.equal(f.c.recentHomeRecord({date:'2026-10-02'},'2026-10-01'),false);
  assert.equal(f.writes.length,0);f.close();
 }
