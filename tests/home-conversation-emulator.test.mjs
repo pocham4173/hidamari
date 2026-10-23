@@ -3,6 +3,7 @@ import {consentFixture} from './helpers/consent-fixture.mjs';
    compat SDK/rules. Two independent authenticated identities; no live user data. */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 const handoff=require('../request-handoff.js');
@@ -40,12 +41,15 @@ try{
     await home.collection('members').doc('person').set({name:'本人',role:'honnin'}); // old registration
     await home.collection('members').doc('waiting').set({name:'承認待ち',role:'honnin',status:'pending'});
     await home.collection('events').doc('yesterday').set({type:'aisatsu',text:'おはよう',slot:'asa',uid:'person',
-      date:'2026-09-16',at:firebase.firestore.Timestamp.fromMillis(Date.now()-86400000)});
+      date:'2026-09-17',at:firebase.firestore.Timestamp.fromMillis(Date.now()-86400000)});
   });
   const {f:family,db:familyDb}=connect('kazoku','family');
   const {f:person}=connect('honnin','person');
   await until('previous-day greeting appears on family home with an enabled reply',()=>quick(family)&&!quick(family).disabled);
   assert.ok(family.visible(first(family)));assert.match(first(family).textContent,/おはよう/);
+  await env.withSecurityRulesDisabled(async ctx=>{await ctx.firestore().doc('groups/home/events/older').set({type:'aisatsu',text:'一昨日の挨拶',slot:'asa',uid:'person',date:'2026-09-16',at:firebase.firestore.Timestamp.now()});});
+  await until('older event snapshot reached',()=>vm.runInContext("familyHomeItems.some(v=>v._id==='older')",family.c));
+  assert.doesNotMatch(family.document.getElementById('ev-list').textContent,/一昨日の挨拶/);
   assert.equal(family.visible(quick(family)),false);
   quick(family).closest('details').open=true;
   await family.click(quick(family));
