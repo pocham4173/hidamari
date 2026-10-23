@@ -66,6 +66,7 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  const button=row.querySelector('[onclick^="replyToPersonEvent"]');
  assert.equal(f.visible(button),false,'reply choices stay closed until requested');
  assert.equal(f.writes.length,0,'reading does not send a reply');
+ f.document.getElementById('card-today-records').open=true;
  button.closest('details').open=true;
  f.events([greeting,reply,thanks]);
  assert.ok(f.document.querySelector('[data-person-reply="thanks"]').open,'live update keeps the chosen reply open');
@@ -120,6 +121,7 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
 }
 {
  const f=homeFixture();f.state(person);f.events([greeting]);
+ f.document.getElementById('card-today-records').open=true;
  const details=f.document.querySelector('[data-person-reply="hello"]');details.open=true;
  details.querySelector('summary').focus();
  f.events([{...greeting,text:'こんにちは'}]);
@@ -163,5 +165,16 @@ console.log('Production DOM: visible home conversations, latest reply first, inl
  assert.equal(f.c.recentHomeRecord({date:'2026-09-30'},'2026-10-01'),true);
  assert.equal(f.c.recentHomeRecord({date:'2025-12-31'},'2026-01-01'),true);
  assert.equal(f.c.recentHomeRecord({date:'2026-10-02'},'2026-10-01'),false);
+ assert.equal(f.writes.length,0);f.close();
+}
+
+{
+ const f=homeFixture();f.state(person);f.events([greeting,reply]);
+ const panel=f.document.getElementById('card-today-records');
+ assert.equal(panel.open,false);assert.equal(f.visible(f.document.querySelector('#ev-list .ev')),false);
+ f.events([greeting,reply,thanks]);assert.equal(panel.open,false,'arrival does not expand the home');
+ panel.open=true;assert.equal(f.visible(f.document.querySelector('#ev-list .ev')),true);
+ f.events([greeting,reply]);assert.equal(panel.open,true,'reading is not interrupted');
+ assert.doesNotMatch(f.document.getElementById('card-actions').textContent,/前の日のやりとりを見る/);
  assert.equal(f.writes.length,0);f.close();
 }

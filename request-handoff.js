@@ -34,6 +34,7 @@
       busy.clear();saved.clear();messages.clear();drafts.clear();expanded.clear();
       for(const role of ['person','family']){const summary=el(role+'-request-summary');if(summary)summary.textContent='';}
       for(const role of ['person','family']){const list=el(role+'-requests-list');if(list)list.replaceChildren();const panel=el(role+'-requests-panel');if(panel){panel.hidden=true;if(role==='family')panel.open=false;}}
+      const history=el('family-request-history');if(history){history.hidden=true;history.open=false;}el('family-request-history-list')?.replaceChildren();
       try{options.stopSpeech?.();}catch(_){}
     }
     function ensure(){const next=key(context());if(scope!==next){reset();scope=next;}}
@@ -76,18 +77,18 @@
       .map(v=>v._id).sort());}
     async function dismiss(id,restore=false){
       ensure();if(!ready()||busy.has(id)||!request(id))return false;
-      const token=generation,scopeKey=scope,before=version(id);busy.add(id);render('family');
+      const token=generation,scopeKey=scope,before=version(id),fromHistory=!!el('family-request-history')?.contains(doc.activeElement);busy.add(id);render('family');
       const current=()=>token===generation&&scope===scopeKey&&key(context())===scopeKey;
       try{
-        if(!restore&&!await options.confirmDismiss('このスマホのホームから、このお願いを消しますか？\n本人やほかの家族の記録は残ります。\n「消したお願い」から戻せます。新しい返事が届くと、再び表示します。'))return false;
+        if(!restore&&!await options.confirmDismiss('このスマホのホームから、このお願いを消しますか？\n本人やほかの家族の記録は残ります。\n「ふり返り」の「以前のお願い・ホームから消したお願い」から戻せます。新しい返事が届くと、再び表示します。'))return false;
         if(!current()||!ready()||!request(id))return false;
         if(version(id)!==before){messages.set(id,'返事が更新されました。内容を確認してから、もう一度お試しください。');return false;}
         const entries=hiddenRows();if(restore)entries.delete(id);else{entries.delete(id);entries.set(id,before);}
         options.storage.setItem(hiddenKey(),JSON.stringify([...entries].slice(-300)));
         messages.delete(id);expanded.delete(id);
         render('family');
-        const panel=el('family-requests-panel');if(!restore&&el('family-requests-label')?.textContent.startsWith('消したお願い'))panel.open=false;
-        el('family-requests-heading')?.focus({preventScroll:true});
+        const panel=el('family-requests-panel');if(panel.hidden)panel.open=false;
+        (fromHistory?el('family-request-history-heading'):panel.hidden?el('home-date-h3'):el('family-requests-heading'))?.focus({preventScroll:true});
         return true;
       }catch(_){if(current())messages.set(id,'このスマホに保存できなかったため、表示は変更していません。もう一度お試しください。');return false;}
       finally{if(current()){busy.delete(id);render('family');}}
@@ -106,10 +107,13 @@
 
       // The family-only recording mode has no inbox from a person using the app.
       panel.hidden=!allRows.length||(role==='family'&&c.kOnly);
-      const active=doc.activeElement,focusKey=list.contains(active)?active.dataset.handoffKey:null;
+      const historyPanel=role==='family'?el('family-request-history'):null;
+      const historyList=role==='family'?el('family-request-history-list'):null;
+      if(historyPanel){historyPanel.hidden=(!older.length&&!archived.length)||c.kOnly;panel.hidden=!rows.length||c.kOnly;}
+      const containers=[list,...(historyList?[historyList]:[])];
+      const active=doc.activeElement,focusKey=containers.some(box=>box.contains(active))?active.dataset.handoffKey:null;
       const selection=focusKey&&active.tagName==='INPUT'?[active.selectionStart,active.selectionEnd]:null;
-      list.querySelectorAll('details[data-open-key]').forEach(d=>{if(d.open)expanded.add(d.dataset.openKey);else expanded.delete(d.dataset.openKey);});
-      list.replaceChildren();
+      containers.forEach(box=>{box.querySelectorAll('details[data-open-key]').forEach(d=>{if(d.open)expanded.add(d.dataset.openKey);else expanded.delete(d.dataset.openKey);});box.replaceChildren();});
       if(role==='person'){
         const summary=el('person-request-summary');
         if(summary){
@@ -126,15 +130,16 @@
           stamp(latest)+' · 「'+(latest.text||'お願い')+'」'+(rows.length>1?' ほか'+(rows.length-1)+'件':'')+
           (rows.some(req=>responses(req._id,'family').length)?' · 返事があります':'');
       }
-      if(panel.hidden)return;
+      if(panel.hidden&&(!historyPanel||historyPanel.hidden))return;
       const connected=role==='family'?c.familyReady:c.personReady;
       state.textContent=(status[role]!=='ready'?'最新の確認ができていません。保存済みの内容です。':!connected?'今は家族と返事をやりとりできません。以前の内容を表示しています。':'')+
         '最近読み込んだ100件の記録の中のお願いです。保存は、相手が読んだことを意味しません。';
+      if(historyList)el('family-request-history-state').textContent=state.textContent;
       let more,oldGroup;
       [...rows,...older].forEach((req,index)=>{
         let parent=list;
         if(index>=rows.length){
-          if(!oldGroup){oldGroup=node(list,'details');oldGroup.dataset.openKey=role+':older';oldGroup.open=expanded.has(role+':older');node(oldGroup,'summary','それ以前のお願いを見る');}
+          if(!oldGroup){if(historyList)oldGroup=historyList;else{oldGroup=node(list,'details');oldGroup.dataset.openKey=role+':older';oldGroup.open=expanded.has(role+':older');node(oldGroup,'summary','それ以前のお願いを見る');}}
           parent=oldGroup;
         }
 
@@ -186,18 +191,18 @@
         node(row,'p',messages.get(req._id)||'','request-result').setAttribute('role','status');
       });
       if(role==='family'&&archived.length){
-        let parent=list;
-        if(rows.length){parent=node(list,'details');parent.dataset.openKey='archived';parent.open=expanded.has('archived');node(parent,'summary','消したお願いを見る（'+archived.length+'件）');}
+        let parent=historyList||list;
+        if(rows.length||older.length){parent=node(parent,'details');parent.dataset.openKey='archived';parent.open=expanded.has('archived');node(parent,'summary','消したお願いを見る（'+archived.length+'件）');}
         node(parent,'p','このスマホのホームから消したお願いです。本人やほかの家族の記録には影響しません。','request-note');
         archived.forEach(req=>{
           const row=node(parent,'article',undefined,'request-item');row.dataset.archivedRequestId=req._id;
           node(row,'p',stamp(req)+' · 「'+(req.text||'お願い')+'」');
           const actions=node(row,'div',undefined,'request-actions');
-          button(actions,'ホームに戻す',req._id,'restore',!ready()||busy.has(req._id),()=>dismiss(req._id,true));
+          button(actions,recent(req)?'ホームに戻す':'ふり返りに戻す',req._id,'restore',!ready()||busy.has(req._id),()=>dismiss(req._id,true));
           node(row,'p',messages.get(req._id)||'','request-result').setAttribute('role','status');
         });
       }
-      if(focusKey){const targets=[...list.querySelectorAll('[data-handoff-key]')];const target=targets.find(n=>n.dataset.handoffKey===focusKey)||targets.find(n=>n.dataset.handoffKey===focusKey.split(':')[0]+':heading');if(target&&!target.disabled){target.focus({preventScroll:true});if(selection)target.setSelectionRange(...selection);}}
+      if(focusKey){const targets=containers.flatMap(box=>[...box.querySelectorAll('[data-handoff-key]')]);const target=targets.find(n=>n.dataset.handoffKey===focusKey)||targets.find(n=>n.dataset.handoffKey===focusKey.split(':')[0]+':heading');if(target&&!target.disabled){target.focus({preventScroll:true});if(selection)target.setSelectionRange(...selection);}}
     }
     async function send(id,text,stage,expected){
       ensure();text=String(text||'').trim();const original=request(id),own=responses(id,'family').filter(v=>v.uid===context().uid).sort(compare).pop();
