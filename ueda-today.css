@@ -1,0 +1,30 @@
+.ueda-today{margin:0 0 14px;color:#263442;line-height:1.65;overflow-wrap:anywhere;font-size:1rem;}
+.ueda-today>details{border:2px solid #e99a52;border-radius:20px;background:#fffdf8;overflow:hidden;}
+.ueda-today summary{padding:12px 16px;cursor:pointer;background:#fff2df;min-height:48px;}
+.ueda-today summary strong{font-size:1.1em;}
+.ueda-today .ut-weather{display:block;margin-top:3px;font-weight:800;}
+.ueda-today .ut-time{display:block;font-size:.84em;color:#61503e;}
+.ueda-today .ut-open{display:block;font-size:.85em;color:#79502c;text-decoration:underline;text-underline-offset:3px;}
+.ueda-today details[open] .ut-open{display:none;}
+.ueda-today .ut-body{padding:14px 16px;}
+.ueda-today p{margin:0 0 10px;}
+.ueda-today .ut-area,.ueda-today .ut-note,.ueda-today .ut-topic-note{font-size:.9em;}
+.ueda-today .ut-tomorrow{font-weight:800;}
+.ueda-today .ut-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;}
+.ueda-today button,.ueda-today .ut-support{font:inherit;font-weight:700;min-height:48px;padding:10px 12px;border:2px solid #629d80;border-radius:12px;background:#fff;color:#285d44;cursor:pointer;}
+.ueda-today button:disabled{color:#62696c;border-color:#b5b9b7;cursor:default;}
+.ueda-today a{color:#235b91;text-underline-offset:3px;}
+.ueda-today .ut-source,.ueda-today .ut-more{display:inline-block;padding:10px 0;min-height:48px;}
+.ueda-today .ut-status:empty{display:none;}
+.ueda-today .ut-topics{border-top:1px solid #d6dddc;margin-top:10px;padding-top:12px;}
+.ueda-today h3{font-size:1.05em;margin:0 0 4px;}
+.ueda-today article{padding:10px 0;border-bottom:1px solid #e3e7e5;}
+.ueda-today article a{display:block;padding:6px 0;font-weight:800;min-height:48px;}
+.ueda-today article p{margin:0;}
+.ueda-today article small{display:block;color:#5b666c;font-size:.85em;}
+.ueda-today .ut-topic-note{margin-top:10px;}
+.ueda-today .ut-support{display:block;text-align:center;margin-top:12px;background:#eff8f1;}
+.ueda-today summary:focus-visible,.ueda-today button:focus-visible,.ueda-today a:focus-visible{outline:3px solid #245f96;outline-offset:-3px;}
+.ueda-today [hidden]{display:none!important;}
+#honnin .ueda-today{font-size:1.25rem;margin-bottom:0;}
+@media(prefers-reduced-motion:reduce){.ueda-today *{scroll-behavior:auto;}}
