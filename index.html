@@ -1064,6 +1064,9 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 #honnin .request-item{font-size:1.15rem;}
 .person-welcome button:focus-visible,.request-panel button:focus-visible,.request-panel summary:focus-visible{outline:3px solid #275CAE;outline-offset:3px;}
 </style>
+<link rel="stylesheet" href="ueda-today.css?v=20261024">
+<script defer src="ueda-today-topics.js?v=20261024"></script>
+<script defer src="ueda-today.js?v=20261024"></script>
 </head>
 <body>
 <div id="offline-bar" role="status" aria-live="polite" hidden>電波が届いていません。送る操作は電波が戻るまでできません。<a href="offline.html">もしもの控えを見る</a></div>
@@ -1497,6 +1500,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div id="h-today-list"></div>
       <button class="ht-yomi" type="button" onclick="event.stopPropagation();speakToday()">🔊 音声で聞く</button>
     </div>
+    <div data-ueda-today></div>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
     <div id="person-record-actions" hidden><button class="set-btn" id="person-record-correct" type="button" onclick="openCancel()">記録を確認・とりけす</button></div>
     <h2 class="person-record-heading">ご挨拶を記録する</h2>
@@ -2083,6 +2087,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <!-- 家族のホーム(2026-10-10 使いやすさの見直し): いま必要なこと → 今日見ること(今日の様子・直近の予定・未確認の伝言) → 記録する。
            一覧と入力欄はホームに重ねず、押すと開く「詳しい画面」(home-detail)に置く -->
       <div id="home-main">
+      <div data-ueda-today></div>
       <p class="connected-people" data-connected-people aria-live="polite"></p>
       <div class="next-invite" id="next-invite-f" data-next-invite hidden><b>次にすること：家族を招待する</b><p data-next-invite-text>まだ、ほかの家族がつながっていません。招待QRを出して、もう1台のスマホのカメラで読んでもらいます。</p><button class="set-btn" type="button" onclick="startInviteFromHome()">招待QRを出す</button></div>
       <div class="card tag-home" id="watch-tag-home" style="display:none;">

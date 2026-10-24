@@ -50,3 +50,5 @@ for(const s of w.UEDA_SERVICES){assert.equal(new URL(s.url).protocol,'https:');i
 assert.equal(new Set(w.UEDA_SERVICES.map(s=>s.name)).size,w.UEDA_SERVICES.length);
 assert.equal(d.querySelectorAll('script[src*="firebase"]').length,0);
 console.log('上田サポート：6分類・検索・該当なし・安全な文字表示・電話・外部リンク・戻る操作 passed');w.close();
+// 同じ上田の公開情報の検査として、既存CIから「今日の上田」も実行する。
+await import('./ueda-today.test.mjs');
