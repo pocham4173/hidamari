@@ -2,6 +2,8 @@
 
 電話・訪問など、親とのつながりを家族で記録するアプリです。
 
+- [上田で育てる、まいにこ](https://pocham4173.github.io/hidamari/ueda-vision.html)：支援候補者向けの短い説明。現在の機能と未実測の価値を区別。
+- [10月25日の到達点と次の確認](docs/final-review-20261025.md)：本人の意思、返信負担、公開・検査の範囲、優先3件。
 - [本人の挨拶・お願いの往復を普段の画面へ組み込む](docs/implementation/app-family-handoff-20261018.md)：変更範囲と検証条件。
 - [今日の上田：天気・地域の話題](docs/ueda-today-20261024.md)：予報の出典・鮮度、期限付きの催し案内、未確認の利用効果。
 - [紹介ページ](https://pocham4173.github.io/hidamari/about.html)
