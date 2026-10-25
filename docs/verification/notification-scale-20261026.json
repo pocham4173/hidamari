@@ -1,0 +1,118 @@
+{
+  "baselineCommit": "80813fb5e6b2cd2b935c5d6aae26d302e0fdf5d5",
+  "simulationOnly": true,
+  "before": [
+    {
+      "households": 5,
+      "schedules": 5,
+      "within15Minutes": 5,
+      "maxDelayMinutes": 0,
+      "hitokoe": 2,
+      "eligibleHitokoe": 2,
+      "maxRequests": 48,
+      "totalRequests": 3109,
+      "expired": 0
+    },
+    {
+      "households": 12,
+      "schedules": 12,
+      "within15Minutes": 12,
+      "maxDelayMinutes": 0,
+      "hitokoe": 6,
+      "eligibleHitokoe": 6,
+      "maxRequests": 48,
+      "totalRequests": 3836,
+      "expired": 0
+    },
+    {
+      "households": 18,
+      "schedules": 18,
+      "within15Minutes": 18,
+      "maxDelayMinutes": 0,
+      "hitokoe": 0,
+      "eligibleHitokoe": 9,
+      "maxRequests": 48,
+      "totalRequests": 4434,
+      "expired": 0
+    },
+    {
+      "households": 35,
+      "schedules": 35,
+      "within15Minutes": 32,
+      "maxDelayMinutes": 45,
+      "hitokoe": 0,
+      "eligibleHitokoe": 17,
+      "maxRequests": 48,
+      "totalRequests": 4451,
+      "expired": 0
+    },
+    {
+      "households": 100,
+      "schedules": 71,
+      "within15Minutes": 30,
+      "maxDelayMinutes": 705,
+      "hitokoe": 0,
+      "eligibleHitokoe": 50,
+      "maxRequests": 48,
+      "totalRequests": 4487,
+      "expired": 6
+    }
+  ],
+  "after": [
+    {
+      "households": 5,
+      "schedules": 5,
+      "within15Minutes": 5,
+      "maxDelayMinutes": 0,
+      "hitokoe": 2,
+      "eligibleHitokoe": 2,
+      "maxRequests": 47,
+      "totalRequests": 2800,
+      "expired": 0
+    },
+    {
+      "households": 12,
+      "schedules": 12,
+      "within15Minutes": 12,
+      "maxDelayMinutes": 0,
+      "hitokoe": 6,
+      "eligibleHitokoe": 6,
+      "maxRequests": 47,
+      "totalRequests": 3007,
+      "expired": 0
+    },
+    {
+      "households": 18,
+      "schedules": 18,
+      "within15Minutes": 18,
+      "maxDelayMinutes": 0,
+      "hitokoe": 9,
+      "eligibleHitokoe": 9,
+      "maxRequests": 47,
+      "totalRequests": 3111,
+      "expired": 0
+    },
+    {
+      "households": 35,
+      "schedules": 35,
+      "within15Minutes": 35,
+      "maxDelayMinutes": 0,
+      "hitokoe": 16,
+      "eligibleHitokoe": 17,
+      "maxRequests": 47,
+      "totalRequests": 4500,
+      "expired": 0
+    },
+    {
+      "households": 100,
+      "schedules": 100,
+      "within15Minutes": 63,
+      "maxDelayMinutes": 210,
+      "hitokoe": 12,
+      "eligibleHitokoe": 50,
+      "maxRequests": 47,
+      "totalRequests": 4491,
+      "expired": 0
+    }
+  ]
+}

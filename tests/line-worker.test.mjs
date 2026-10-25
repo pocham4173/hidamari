@@ -90,7 +90,13 @@ globalThis.fetch = async (url, opt = {}) => {
       const c = cmp(v, f.value);
       if ((f.op === 'EQUAL' && c === 0) || (f.op === 'LESS_THAN_OR_EQUAL' && c <= 0)) out.push({ document: docJson(p) });
     }
-    if(q.orderBy){const o=q.orderBy[0],sg=o.direction==='DESCENDING'?-1:1;out.sort((a,b)=>sg*cmp(a.document.fields[o.field.fieldPath],b.document.fields[o.field.fieldPath]));}
+    const valueOf = (d, field) => field === '__name__' ? { stringValue: d.name } : d.fields[field];
+    const order = (a, b) => { for (const o of q.orderBy || []) { const c = cmp(valueOf(a, o.field.fieldPath), valueOf(b, o.field.fieldPath)); if(c) return (o.direction === 'DESCENDING' ? -1 : 1) * c; } return 0; };
+    if(q.orderBy) out.sort((a,b)=>order(a.document,b.document));
+    if(q.startAt) {
+      const cursor = { name: q.startAt.values[1].referenceValue, fields: { [q.orderBy[0].field.fieldPath]: q.startAt.values[0] } };
+      for(let i=out.length-1;i>=0;i--) if(order(out[i].document,cursor) <= 0) out.splice(i,1);
+    }
     const limited=q.limit?out.slice(0,q.limit):out;
     return json(limited.length ? limited : [{readTime:'x'}]);
   }
@@ -439,8 +445,9 @@ const previousReplies=replies.length;
 await Promise.all(['Urace1','Urace2'].map(id=>hook([{type:'message',source:user(id),replyToken:id,message:{type:'text',text:'RACE2345'}}])));
 assert.equal(replies.slice(previousReplies).filter(r=>r.messages[0].text.includes('LINE連携しました')).length,1);
 // Several pending schedules exhaust the budget without losing the remainder.
-for(let i=0;i<10;i++)pending('budget'+i);
+for(let i=0;i<30;i++)pending('budget'+i);
 await tick();assert.ok(requests>=45&&requests<=49);assert.ok([...db].some(([p,d])=>p.includes('/yotei/budget')&&d.fields.notifyAt.timestampValue));
+for (const p of [...db.keys()]) if (p.startsWith('groups/g1/yotei/budget')) db.delete(p); // isolate the quota cases below
 console.log('atomic code consumption and budget exhaustion passed');
 
 /* ===== 月200通を守る上限ガード(2026-10-01) ===== */
@@ -879,3 +886,67 @@ console.log('LINE上限ガード(残り通数・タグの確保・家庭の上�
   assert.equal(db.get('lineLinks/legacyErr')?.fields.friend, undefined, '確かめられないときは書かない');
   console.log('古い連携の友だち追加の確認(' + n + '回) passed');
 }
+
+// A full first query page containing undeliverable notices must not hide the next page.
+{
+  db.clear(); acceptedKeys.clear(); usage = 0; quota = { type: 'limited', value: 100000 };
+  const RealDate = Date; let fixed = RealDate.parse('2026-10-26T07:00:00+09:00');
+  class FixedDate extends RealDate { constructor(...a) { super(...(a.length ? a : [fixed])); } static now() { return fixed; } }
+  globalThis.Date = FixedDate;
+  try {
+    for (let i = 0; i < 121; i++) {
+      const gid = 'page' + String(i).padStart(3, '0');
+      put('groups/' + gid, {});
+      put('groups/' + gid + '/yotei/one', { label: S('pagination'), uid: S('pageOwner'), notifyAt: T(new Date()) });
+    }
+    put('groups/page120/members/pageOwner', { status: S('approved') });
+    put('consents/pageOwner', consent());
+    put('lineLinks/pageOwner', { groupId: S('page120'), lineUserId: S('Upage'), friend: { booleanValue: true } });
+    const before = pushes.length;
+    for (let i = 0; i < 32 && pushes.length === before; i++) { await tick(); fixed += 900000; }
+    assert.equal(pushes.length, before + 1, 'page after 100 undeliverable schedules is reached');
+    assert.equal(pushes.at(-1).to, 'Upage');
+    assert.ok(db.get('ops/notificationProgress'), 'continuation survives Worker instances');
+  } finally { globalThis.Date = RealDate; }
+  console.log('通知候補の100件ページを越えて後ろの家庭に進む passed');
+}
+
+// A later page containing an opt-out must win over older enabled configurations.
+{
+  db.clear(); acceptedKeys.clear(); usage = 0; quota = { type: 'limited', value: 200 };
+  const RealDate = Date, fixed = RealDate.parse('2026-10-26T11:00:00+09:00');
+  class FixedDate extends RealDate { constructor(...a) { super(...(a.length ? a : [fixed])); } static now() { return fixed; } }
+  globalThis.Date = FixedDate;
+  try {
+    put('groups/configPages', {});
+    put('groups/configPages/members/f', { role: S('kazoku'), status: S('approved') });
+    put('groups/configPages/members/h', { role: S('honnin'), status: S('approved') });
+    put('consents/f', consent());
+    put('lineLinks/f', { groupId: S('configPages'), lineUserId: S('Uconfig'), friend: { booleanValue: true } });
+    put('groups/configPages/events/yes', { type: S('hitokoe-consent'), uid: S('h'), requestId: S('r'), answer: S('yes'), at: T(new Date(fixed - 1000)) });
+    for (let i = 0; i < 201; i++) put('groups/configPages/events/c' + String(i).padStart(3, '0'), {
+      type: S('hitokoe-config'), uid: S('f'), requestId: S('r'), enabled: { booleanValue: i < 200 },
+      line: { booleanValue: true }, at: T(new Date(fixed - 1000 + i)), hour: { integerValue: '11' } });
+    const before = pushes.length;
+    await tick();
+    assert.equal(pushes.length, before, 'latest opt-out on page 2 prevents notification');
+    db.delete('groups/configPages/events/c200');
+    await tick();
+    assert.equal(pushes.length, before + 1, 'same fixture with only enabled configs can send');
+    // Missing indexes produce an operational error, never an apparent successful empty scan.
+    const originalFetch = globalThis.fetch, originalError = console.error, errors = [];
+    globalThis.fetch = async (url, opt = {}) => {
+      if (String(url).endsWith(':runQuery') && typeof opt.body === 'string' && JSON.parse(opt.body).structuredQuery?.from?.[0]?.allDescendants)
+        return new Response(JSON.stringify({ error: { status: 'FAILED_PRECONDITION', message: 'index required' } }), { status: 400 });
+      return originalFetch(url, opt);
+    };
+    console.error = (...args) => errors.push(args.join(' '));
+    try { await tick(); } finally { globalThis.fetch = originalFetch; console.error = originalError; }
+    assert.ok(errors.some(e => e.includes('notification scan failed: schedules') && e.includes('index required')));
+    assert.ok(errors.some(e => e.includes('notification scan failed: hitokoe') && e.includes('index required')));
+  } finally { globalThis.Date = RealDate; }
+  console.log('設定の複数ページ・最新の停止・索引不足のエラー検知 passed');
+}
+
+// Persist and run the scale regression in the existing CI entry point.
+await import('../scripts/worker-scale-check.mjs');
