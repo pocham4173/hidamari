@@ -47,11 +47,10 @@
     const visible=host=>!doc.hidden&&host.isConnected&&!host.closest('[hidden]')&&!!host.closest('.page.active')&&(!host.closest('.ftab')||win.getComputedStyle(host.closest('.ftab')).display!=='none')&&(!host.closest('#home-main')||win.getComputedStyle(host.closest('#home-main')).display!=='none');
     const views=hosts.map(host=>{
       host.classList.add('ueda-today');
-      host.innerHTML='<details><summary><strong>今日の上田</strong><span class="ut-weather">天気を確認しています</span><small class="ut-time"></small><span class="ut-open">天気・まちの話題を見る</span></summary><div class="ut-body"><p class="ut-area">上田市を含む、長野県中部の予報です。</p><p class="ut-tomorrow"></p><div class="ut-actions"><button type="button" class="ut-read">天気を聞く</button><button type="button" class="ut-stop" hidden>読み上げを止める</button><button type="button" class="ut-retry">もう一度確認する</button></div><p class="ut-status" role="status"></p><a class="ut-source" target="_blank" rel="noopener noreferrer" href="'+SOURCE+'">出典：気象庁の天気予報 ↗</a><p class="ut-note">予報の文を抜き出して表示しています。</p><section class="ut-topics"><h3>まちの話題</h3><div class="ut-items"></div><p class="ut-topic-note"></p><a class="ut-more" href="https://www.city.ueda.nagano.jp/calendar/" target="_blank" rel="noopener noreferrer">上田市の催しカレンダーを見る ↗</a></section><a class="ut-support" href="ueda-support.html">ごみ出しなど、上田の暮らしサポートへ →</a></div></details>';
+      host.innerHTML='<details><summary><strong>今日の上田</strong><span class="ut-weather">天気を確認しています</span><small class="ut-time"></small><span class="ut-open">天気・まちの話題を見る</span></summary><div class="ut-body"><p class="ut-area">上田市を含む、長野県中部の予報です。</p><p class="ut-tomorrow"></p><div class="ut-actions"><button type="button" class="ut-read">天気を聞く</button><button type="button" class="ut-retry">もう一度確認する</button></div><p class="ut-status" role="status"></p><a class="ut-source" target="_blank" rel="noopener noreferrer" href="'+SOURCE+'">気象庁の天気予報（抜粋） ↗</a><section class="ut-topics"><h3>まちの話題</h3><div class="ut-items"></div><p class="ut-topic-note"></p><a class="ut-more" href="https://www.city.ueda.nagano.jp/calendar/" target="_blank" rel="noopener noreferrer">上田市の催しカレンダーを見る ↗</a></section><a class="ut-support" href="ueda-support.html">ごみ出しなど、上田の暮らしサポートへ →</a></div></details>';
       const get=s=>host.querySelector(s),view={host,get,newsKey:''};
       get('.ut-retry').addEventListener('click',()=>load(true));
-      get('.ut-read').addEventListener('click',()=>read(view));
-      get('.ut-stop').addEventListener('click',stop);
+      get('.ut-read').addEventListener('click',()=>voiceHost===host?stop():read(view));
       get('details').addEventListener('toggle',()=>{if(!get('details').open&&voiceHost===host)stop();});
       return view;
     });
@@ -59,7 +58,7 @@
       const wasSpeaking=!!voice;voice=null;
       if(wasSpeaking)win.speechSynthesis?.cancel();
       voiceHost=null;
-      views.forEach(v=>{v.get('.ut-stop').hidden=true;v.get('.ut-status').textContent='';});
+      views.forEach(v=>{v.get('.ut-read').textContent='天気を聞く';v.get('.ut-status').textContent='';});
     }
     function read(view){
       stop();
@@ -71,7 +70,7 @@
       const utterance=new win.SpeechSynthesisUtterance(text);utterance.lang='ja-JP';utterance.rate=0.9;
       const finish=()=>{if(voice===utterance)stop();};
       utterance.onend=finish;utterance.onerror=()=>{if(voice!==utterance)return;stop();view.get('.ut-status').textContent='声を再生できませんでした。音量を確認してください。';};
-      voice=utterance;voiceHost=view.host;view.get('.ut-stop').hidden=false;
+      voice=utterance;voiceHost=view.host;view.get('.ut-read').textContent='読み上げを止める';
       try{win.speechSynthesis.cancel();win.speechSynthesis.speak(utterance);}catch(e){utterance.onerror();}
     }
     function render(){
@@ -86,12 +85,12 @@
         if(v.newsKey!==key){
           v.newsKey=key;const box=v.get('.ut-items');box.replaceChildren();
           news.forEach(n=>{
-            const article=doc.createElement('article'),a=doc.createElement('a'),date=doc.createElement('p'),checked=doc.createElement('small');
+            const article=doc.createElement('article'),a=doc.createElement('a'),date=doc.createElement('p');
             a.textContent=n.title+' ↗';a.href=n.url;a.target='_blank';a.rel='noopener noreferrer';
-            date.textContent=n.when;checked.textContent=stamp(timestamp(n.checkedAt)).split(' ')[0]+' 案内を確認';
-            article.append(a,date,checked);box.append(article);
+            date.textContent=n.when;
+            article.append(a,date);box.append(article);
           });
-          v.get('.ut-topic-note').textContent=news.length?'まいにこで選んだ案内です。開催の変更や申込みは、上田市の案内で確認できます。':'今掲載できる話題はありません。新しい催しは、市のカレンダーで見られます。';
+          v.get('.ut-topic-note').textContent=news.length?'':'今掲載できる話題はありません。新しい催しは、市のカレンダーで見られます。';
         }
       });
     }
