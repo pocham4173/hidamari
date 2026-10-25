@@ -28,3 +28,6 @@
 .ueda-today [hidden]{display:none!important;}
 #honnin .ueda-today{font-size:1.25rem;margin-bottom:0;}
 @media(prefers-reduced-motion:reduce){.ueda-today *{scroll-behavior:auto;}}
+
+.ueda-today .ut-topic-note:empty{display:none;}
+.ueda-today .ut-read{min-width:10em;}

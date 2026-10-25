@@ -39,8 +39,8 @@ const h=d.querySelector('#honnin'),f=d.querySelector('#kazoku');
 assert.match(h.querySelector('.ut-weather').textContent,/くもり/);assert.match(h.querySelector('.ut-time').textContent,/10月24日 17:00発表/);
 assert.equal(h.querySelector('details').open,false,'最初は小さく閉じる');
 assert.equal(h.querySelector('.ut-items img'),null,'外部の文はHTMLとして実行しない');
-h.querySelector('details').open=true;await tick();h.querySelector('.ut-read').click();assert.equal(voices.length,1);assert.match(voices[0].text,/長野県中部/);assert.equal(h.querySelector('.ut-stop').hidden,false);
-h.querySelector('details').open=false;await tick();assert.equal(h.querySelector('.ut-stop').hidden,true);assert.ok(cancelled>0);
+h.querySelector('details').open=true;await tick();h.querySelector('.ut-read').click();assert.equal(voices.length,1);assert.match(voices[0].text,/長野県中部/);assert.equal(h.querySelector('.ut-read').textContent,'読み上げを止める'); h.querySelector('.ut-read').click(); assert.equal(h.querySelector('.ut-read').textContent,'天気を聞く'); h.querySelector('.ut-read').click();
+h.querySelector('details').open=false;await tick();assert.equal(h.querySelector('.ut-read').textContent,'天気を聞く');assert.ok(cancelled>0);
 h.classList.remove('active');f.classList.add('active');await tick();assert.equal(calls.length,1,'同じ予報を家族にも使い、連続取得しない');
 now=Date.parse('2026-10-25T00:01:00+09:00');client.refresh();await tick();assert.match(f.querySelector('.ut-weather').textContent,/雨 のち くもり/);
 fail=true;f.querySelector('.ut-retry').click();await tick();assert.match(f.querySelector('.ut-weather').textContent,/確認できません/);assert.equal(f.querySelector('.ut-read').disabled,true,'通信失敗を過去の予報で隠さない');
@@ -48,3 +48,5 @@ fail=false;let resolve;deferred=new Promise(r=>resolve=r);f.querySelector('.ut-r
 now=Date.parse('2026-10-31T17:01:00+09:00');client.refresh();await tick();assert.equal(f.querySelectorAll('.ut-items article').length,0);assert.match(f.querySelector('.ut-topic-note').textContent,/今掲載できる話題はありません/);
 client.destroy();w.close();
 console.log('今日の上田：地域・日本時間の日替わり・鮮度・失敗・期限・安全な表示・任意の音声・共有取得 OK');
+
+assert.equal(h.querySelector('.ut-note'),null); assert.equal(h.querySelector('article small'),null); assert.equal(h.querySelector('.ut-stop'),null);
