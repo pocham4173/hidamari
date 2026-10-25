@@ -95,18 +95,36 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  // 受け取った招待・参加を待っている人・つながっている人の1行・ホーム画面に追加・安全のお知らせのカード(ふだんは空か隠れている)は、ホームの一番上に置く。それ以外で数える
  const bodyKids=[...f.document.querySelector('.h-body').children].filter(el=>!['invite-switch','h-approve','next-invite-h','person-security-notices'].includes(el.id)&&!el.hasAttribute('data-install-card')&&!el.hasAttribute('data-connected-people'));
  const hTodayIndex=bodyKids.indexOf(f.document.getElementById('h-today'));
- assert.ok(hTodayIndex>=0&&hTodayIndex<=1,'今日の予定は本人画面の最上部側（初回案内の次まで）にある');
+ assert.ok(hTodayIndex>=0&&hTodayIndex<=2,'今日の予定は挨拶と天気に続く上部にある');
  assert.equal(bodyKids[0],f.document.querySelector('.person-welcome'),'日付の次は、本人の今日と押して聞ける挨拶');
  assert.ok(bodyKids.indexOf(f.document.getElementById('speech-notice'))>bodyKids.indexOf(f.document.getElementById('kusuri-box')),'声の説明は毎日の記録の下に置く');
- assert.ok(bodyKids.indexOf(f.document.getElementById('btn-a'))<bodyKids.indexOf(panel),'毎日の挨拶ボタンがやりとりより先に来る');
+ assert.ok(bodyKids.indexOf(panel)<bodyKids.indexOf(f.document.getElementById('btn-a')),'家族からの連絡は記録ボタンより先に見つけられる');
  assert.equal(f.document.getElementById('h-incoming-message').textContent,'','yesterday is kept off today’s home');
  assert.equal(panel.open,false);assert.equal(f.visible(f.document.getElementById('person-history-open')),false);
  panel.open=true;assert.ok(f.visible(f.document.getElementById('person-history-open')));
  f.events([greeting,{...reply,date:'2026-09-18',at:{seconds:1789722010}}]);
  assert.match(f.document.getElementById('h-incoming-message').textContent,/9月18日.*おはよう/);
+ const preview=f.document.getElementById('person-contact-preview');
+ panel.open=false;
+ assert.ok(f.visible(preview),'今日の連絡は欄を開かなくても読める');
+ assert.equal(preview.textContent,f.document.getElementById('h-incoming-message').textContent,'日時と送り主を含む同じ連絡を表示する');
+ assert.equal(f.writes.length,0,'読むだけでは返信・既読・保存を行わない');
+ panel.open=true;
+ assert.equal(f.visible(preview),false,'開くと本文を二重に表示しない');
  const button=[...f.document.querySelectorAll('#h-message-reply button')].find(b=>b.textContent==='ありがとう');
  await f.click(button);assert.equal(f.writes[0].replyTo,'reply');assert.equal(f.writes[0].text,'ありがとう');
  f.state(unknown);assert.ok(f.visible(panel));assert.ok(button.disabled);
+ panel.open=false;
+ f.events([{...reply,date:'2026-09-18',text:'<img src=x onerror=alert(1)>'}],'cached');
+ assert.equal(preview.querySelector('img'),null,'閉じた連絡も本文をHTMLとして解釈しない');
+ assert.match(f.document.getElementById('h-contact-state').textContent,/通信/,'確認待ちの案内を残す');
+ f.events([{...reply,date:'2026-09-17'}]);
+ assert.equal(preview.textContent,'','過去の連絡は先頭に残さない');
+ assert.equal(f.visible(preview),false);
+ f.events([{...reply,date:'2026-09-18'}]);
+ f.c.resetCommunication();
+ assert.equal(preview.textContent,'','家庭やアカウントを切り替えた後に前の連絡を残さない');
+ assert.equal(f.visible(preview),false);
  f.close();
 }
 {

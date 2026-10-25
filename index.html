@@ -1044,6 +1044,21 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 #person-request-summary{display:block;font-size:1rem;color:#305E45;margin-top:8px;font-weight:700;overflow-wrap:anywhere;}
 .person-welcome .welcome-stop{min-height:48px;padding:8px 12px;background:#fff;border:2px solid #956039;border-radius:12px;font-size:1rem;}
 .person-record-heading{font-size:1.15rem;margin:4px 0 0;}
+/* 暮らし → 家族の言葉 → 自分の記録。大きな文字と操作領域を保つ。 */
+#honnin .h-time{font-size:1.6rem;}
+#honnin .person-welcome{border-width:1px;background:#FFFAF4;}
+#honnin #person-welcome-read{background:transparent;min-height:48px;}
+#honnin #person-welcome-text{font-size:1.75rem;}
+#honnin .person-welcome .welcome-stop{margin-top:4px;}
+#honnin .yotei-card{padding:12px;}
+#honnin .yotei-card .days{font-size:1.65rem;line-height:1.5;}
+#honnin .yotei-card .pl{font-size:1.4rem;}
+#honnin .person-conversation-panel{padding:14px;border-color:#83A7DC;background:#F5F8FF;}
+#person-contact-preview{display:block;margin-top:10px;padding:12px;background:#fff;border-radius:12px;color:#263342;font-size:1.2rem;font-weight:700;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;}
+.person-conversation-panel[open] #person-contact-preview,#person-contact-preview:empty{display:none;}
+#honnin .person-record-heading{padding:14px 0 0;margin-top:4px;border-top:1px solid #DDD5CA;font-size:1.25rem;}
+.person-correction-note{font-size:1rem;line-height:1.7;margin-bottom:8px;color:#4E5969;}
+#person-record-actions{padding:12px;border:2px solid #8DB49E;border-radius:14px;background:#F4FAF6;}
 .request-panel{background:#F1F8F3;border:2px solid #70A583;border-radius:20px;padding:16px;margin:12px 0;min-width:0;}
 .request-panel[hidden]{display:none!important;}
 #family-request-summary{display:block;font-size:1rem;font-weight:400;line-height:1.6;margin-top:6px;overflow-wrap:anywhere;color:#305E45;}
@@ -1487,23 +1502,62 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
     <div id="invite-switch" class="invite-switch" role="region" aria-label="受け取った招待" hidden></div>
     <div id="h-approve"></div>
     <div id="person-security-notices"></div>
-    <section class="person-welcome" aria-label="本人の今日">
-      <div class="ht-lb">本人の今日</div>
+    <section class="person-welcome" aria-label="今日の暮らし">
+      <div class="ht-lb">今日の暮らし</div>
       <button id="person-welcome-read" type="button" onclick="speakPersonWelcome()"><span id="person-welcome-text">こんにちは。</span></button>
       <button class="welcome-stop" type="button" onclick="stopPersonSpeech()">読み上げを止める</button>
       <p id="person-welcome-status" role="status"></p>
     </section>
     <div class="next-invite" id="next-invite-h" data-next-invite hidden><b>次にすること：家族を招待する</b><p data-next-invite-text>まだ、ほかの家族がつながっていません。招待QRを出して、もう1台のスマホのカメラで読んでもらいます。</p><button class="set-btn" type="button" onclick="startInviteFromHome()">招待QRを出す</button></div>
     <div class="install-card" data-install-card hidden><b>📲 ホーム画面に追加しましょう</b><p>次から、ホーム画面の「まいにこ」のアイコンですぐ開けます。ブラウザーで開いたままだと、つながりが分かれることがあります。</p><button class="set-btn install-go" type="button" onclick="installApp()">ホーム画面に追加する</button><button class="set-btn sub" type="button" onclick="dismissInstallCard()">あとで</button></div>
+    <div data-ueda-today></div>
     <div class="h-today person-press-target" id="h-today" style="display:none;cursor:pointer;" onclick="speakToday()">
       <div class="ht-lb">今日の予定</div>
       <div id="h-today-list"></div>
       <button class="ht-yomi" type="button" onclick="event.stopPropagation();speakToday()">🔊 音声で聞く</button>
     </div>
-    <div data-ueda-today></div>
+    <!-- 次の予定(2026-10-13 ヒビルカから): 「明日 9:00」「デイサービス 🚐」を大きく。押すと場所などが見られる -->
+    <div class="yotei-card person-press-target" id="y-card" role="button" tabindex="0" aria-expanded="false" aria-controls="y-detail" onclick="toggleNextYotei()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleNextYotei();}" style="cursor:pointer;">
+      <div class="lb">次の予定</div>
+      <div class="days" id="y-days">読み込み中…</div>
+      <div class="pl" id="y-label"></div>
+      <div class="y-sub" id="y-sub" hidden></div>
+      <div class="y-detail" id="y-detail" hidden></div>
+      <div class="y-line" id="y-line" hidden></div>
+      <div class="y-more" id="y-more" aria-hidden="true">▼ 押すと、くわしく見られます</div>
+    </div>
+    <button class="cal-open" id="y-others" type="button" hidden onclick="openNextYoteiDay()"></button>
+    <!-- 今日の暮らしの次に、家族からの連絡。記録をしなくても読める。 -->
+    <details class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" aria-labelledby="person-conversation-heading">
+      <summary id="person-conversation-heading"><span class="person-contact-title">家族からの連絡</span><span id="person-contact-preview" hidden></span><span class="person-contact-hint"><span class="contact-closed">開いて返事・お願いを確認</span><span class="contact-open">押すと閉じます</span></span><span class="communication-status" id="h-contact-state" aria-live="polite"></span><span id="person-request-summary" role="status"></span></summary>
+      <div class="person-contact-content">
+    <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
+
+    <button class="set-btn" id="person-conversation-retry" type="button" hidden onclick="checkPersonConversation()">もう一度読み込む</button>
+    <div class="kibun" id="h-message-reply" data-communication-gate="family" hidden style="display:none;">
+      <div id="person-reply-options"><div class="q">返事を選ぶ</div><p id="h-reply-context" hidden></p>
+      <div class="kibun-grid">
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('読んだよ',this.dataset.replyTo)">読んだよ</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('ありがとう',this.dataset.replyTo)">ありがとう</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('あとで電話するね',this.dataset.replyTo)">あとで電話するね</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="openPersonMessageReply(this.dataset.replyTo)">自分で返事を書く</button>
+      </div>
+      </div>
+      <div class="save-state" id="h-message-reply-state" aria-live="polite"></div>
+      <button class="set-btn" id="person-reply-read" type="button" hidden onclick="speakElement('h-message-reply-state')">返事の結果を声で聞く</button>
+    </div>
+      <button class="cal-open" id="person-history-open" type="button" data-person-voice="前の連絡をひらきます" onclick="openPersonHistory()">前の連絡を見る</button>
+
+    <section class="request-panel" id="person-requests-panel" aria-labelledby="person-requests-heading" hidden>
+      <h2 id="person-requests-heading">お願いと、家族の返事</h2>
+      <p class="request-note" id="person-requests-state" role="status"></p>
+      <div id="person-requests-list"></div>
+    </section>
+      </div>
+    </details>
+    <h2 class="person-record-heading">自分から伝える・記録する</h2>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
-    <div id="person-record-actions" hidden><button class="set-btn" id="person-record-correct" type="button" onclick="openCancel()">記録を確認・とりけす</button></div>
-    <h2 class="person-record-heading">ご挨拶を記録する</h2>
+    <div id="person-record-actions" hidden><p class="person-correction-note">押し間違えたときは、記録を選んで取り消せます。</p><button class="set-btn" id="person-record-correct" type="button" onclick="openCancel()">今日の記録を確認・とりけす</button></div>
     <button class="aisatsu" id="btn-a" onclick="sendAisatsu()">
       <div class="ic" id="a-ic">☀️</div>
       <div class="tx" id="a-tx">おはよう</div>
@@ -1537,48 +1591,9 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <button class="set-btn person-press-target" type="button" onclick="dismissSpeechNotice(false)">このままでよい</button>
       <button class="set-btn person-press-target" type="button" onclick="dismissSpeechNotice(true)">音を消す</button>
     </div>
-    <!-- 次の予定(2026-10-13 ヒビルカから): 「明日 9:00」「デイサービス 🚐」を大きく。押すと場所などが見られる -->
-    <div class="yotei-card person-press-target" id="y-card" role="button" tabindex="0" aria-expanded="false" aria-controls="y-detail" onclick="toggleNextYotei()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleNextYotei();}" style="cursor:pointer;">
-      <div class="lb">次の予定</div>
-      <div class="days" id="y-days">読み込み中…</div>
-      <div class="pl" id="y-label"></div>
-      <div class="y-sub" id="y-sub" hidden></div>
-      <div class="y-detail" id="y-detail" hidden></div>
-      <div class="y-line" id="y-line" hidden></div>
-      <div class="y-more" id="y-more" aria-hidden="true">▼ 押すと、くわしく見られます</div>
-    </div>
-    <button class="cal-open" id="y-others" type="button" hidden onclick="openNextYoteiDay()"></button>
     <button class="cal-open" id="h-open-cal" data-person-voice="カレンダーを ひらきました" onclick="openCal()">カレンダーを見る</button>
     <button class="cal-open" id="h-open-tasks" type="button" data-person-voice="自分のやることをひらきました。やることを追加し、終わったら、できたを押します。" onclick="openPersonTasks()">自分のやること</button>
     <button class="cal-open" id="h-open-yotei" data-person-voice="予定の 入力を ひらきました" onclick="openHYotei()">予定を入れる</button>
-    <!-- 本人の予定を先に。お願いと連絡は一つの入口から開く。 -->
-    <details class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" aria-labelledby="person-conversation-heading">
-      <summary id="person-conversation-heading"><span class="person-contact-title">お願い・家族とのやりとり</span><span class="person-contact-hint"><span class="contact-closed">押すと、お願いと返事を見られます</span><span class="contact-open">押すと閉じます</span></span><span class="communication-status" id="h-contact-state" aria-live="polite"></span><span id="person-request-summary" role="status"></span></summary>
-      <div class="person-contact-content">
-    <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
-
-    <button class="set-btn" id="person-conversation-retry" type="button" hidden onclick="checkPersonConversation()">もう一度読み込む</button>
-    <div class="kibun" id="h-message-reply" data-communication-gate="family" hidden style="display:none;">
-      <div id="person-reply-options"><div class="q">返事を選ぶ</div><p id="h-reply-context" hidden></p>
-      <div class="kibun-grid">
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('読んだよ',this.dataset.replyTo)">読んだよ</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('ありがとう',this.dataset.replyTo)">ありがとう</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('あとで電話するね',this.dataset.replyTo)">あとで電話するね</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="openPersonMessageReply(this.dataset.replyTo)">自分で返事を書く</button>
-      </div>
-      </div>
-      <div class="save-state" id="h-message-reply-state" aria-live="polite"></div>
-      <button class="set-btn" id="person-reply-read" type="button" hidden onclick="speakElement('h-message-reply-state')">返事の結果を声で聞く</button>
-    </div>
-      <button class="cal-open" id="person-history-open" type="button" data-person-voice="前の連絡をひらきます" onclick="openPersonHistory()">前の連絡を見る</button>
-
-    <section class="request-panel" id="person-requests-panel" aria-labelledby="person-requests-heading" hidden>
-      <h2 id="person-requests-heading">お願いと、家族の返事</h2>
-      <p class="request-note" id="person-requests-state" role="status"></p>
-      <div id="person-requests-list"></div>
-    </section>
-      </div>
-    </details>
     <button class="cal-open h-cancel-btn" type="button" data-person-voice="今日の記録を ひらきます" onclick="openCancel()">今日の記録を確認・とりけす</button>
     <div class="h-links">
       <button data-share-gate="shared" hidden onclick="openMembers()">つながっている家族</button>
@@ -3227,7 +3242,7 @@ function renderFamilyConnection(){
     '本人用の画面で開いて確認できます。保存は、本人が読んだことを意味しません。');
   document.querySelectorAll('[data-share-gate]').forEach(el=>{el.hidden=!canUseFamilyFeature(el.dataset.shareGate);});
   const recordSharing=document.getElementById('person-record-sharing');
-  if(recordSharing)recordSharing.textContent=state.status==='unknown'?'記録は残せます。家族との共有状況は確認中です。':canUseFamilyFeature('shared')?'家族へ報告：承認された家族がアプリで確認できます。通知・既読の確認ではありません。':'今は自分の記録として残せます。家族が参加すると、これまでの記録も共有されます。';
+  if(recordSharing)recordSharing.textContent=state.status==='unknown'?'記録は残せます。家族との共有状況は確認中です。':canUseFamilyFeature('shared')?'承認された家族が、アプリを開いて確認できます。通知・既読の確認ではありません。':'今は自分の記録として残せます。家族が参加すると、これまでの記録も共有されます。';
   const connected=canUseFamilyFeature();
   const summary=document.getElementById('home-summary-description');
   if(summary)summary.textContent=canUseFamilyFeature('person')?'今日の様子、予定、お願いの順に確認できます。':connected?'今日の様子、予定、家族の伝言を確認できます。':'今日の様子と予定を確認できます。';
@@ -4240,6 +4255,8 @@ function renderPersonConversation(items,metadata={},announce=true){
   const displayed=target||msgs[0];
   const when=displayed?.at?new Date(displayed.at.seconds*1000):null;
   incoming.textContent=displayed?((when?(when.getMonth()+1)+'月'+when.getDate()+'日 '+when.getHours()+':'+String(when.getMinutes()).padStart(2,'0')+'　':'')+displayed.text):'';
+  const preview=document.getElementById('person-contact-preview');
+  if(preview){preview.textContent=incoming.textContent;preview.hidden=!incoming.textContent;}
   incoming.classList.toggle('show',!!msgs.length);
   personIncomingShown=!!msgs.length;
   renderPersonReplyState();
@@ -5009,7 +5026,7 @@ function resetCommunication(){
   onegaiBackFreeId='';personMessageReplyTargetId='';
   ['in-family-message','onegai-reply-text','person-message-reply-text'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   familyMessageReplyTarget='';currentFamilyMessageId='';personIncomingShown=false;
-  ['ev-list','h-reply-context','h-message-reply-state','family-message-state','family-message-target','note-aisatsu-back','note-ask','pop-msg','h-incoming-message'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
+  ['ev-list','h-reply-context','h-message-reply-state','family-message-state','family-message-target','note-aisatsu-back','note-ask','pop-msg','h-incoming-message','person-contact-preview'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
   ['onegai-reply-send','person-message-reply-send','onegai-free-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=false;});
   ['onegai-reply-modal','person-message-reply-modal'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('show');});
   ['pop-msg','h-incoming-message'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('show');});
