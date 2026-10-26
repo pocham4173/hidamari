@@ -7,6 +7,7 @@ import { webcrypto, generateKeyPairSync, createHmac } from 'node:crypto';
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 const worker = (await import(process.env.WORKER_FILE ? pathToFileURL(resolve(process.env.WORKER_FILE)).href : '../worker.js')).default;
 
 const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -187,8 +188,109 @@ for (const households of [5, 12, 18, 35, 100]) {
   assert.equal(new Set(hitokoe).size, hitokoe.length, 'no duplicate hitokoe');
   assert.ok(hitokoe.every(to => Number(to.slice(2)) % 2 === 1), 'no prompt for an active person');
 }
-console.log(JSON.stringify({ fakeServices: true, results }, null, 2));
+
+// Measure a successful notification, excluding cron setup, token acquisition and final usage flush.
+// Expose internals only in this test module; the deployed Worker keeps its existing interface.
+const source = readFileSync(process.env.WORKER_FILE ? resolve(process.env.WORKER_FILE) : new URL('../worker.js', import.meta.url), 'utf8');
+const internal = await import('data:text/javascript;base64,' + Buffer.from(source + '\nexport { Firestore, UsageBook, sendDueSchedules, runHitokoe };').toString('base64'));
+const unitRequests = {};
+async function seedUnit() {
+  db.clear(); pushes.length = 0; acceptedKeys.clear(); usage = 0; failTo = ''; lostResponse = false;
+  fixed = RealDate.parse('2026-10-26T11:00:00+09:00');
+  put('groups/unit', {});
+  put('groups/unit/members/f', { name: S('家族'), role: S('kazoku'), status: S('approved') });
+  put('groups/unit/members/h', { name: S('本人'), role: S('honnin'), status: S('approved') });
+  put('consents/f', { version: S('2026-09-19.1'), mode: S('kazoku'), privacyAccepted: { booleanValue: true }, sensitiveAccepted: { booleanValue: true },
+    sharingAccepted: { booleanValue: true }, subjectBasis: S('explained-and-agreed'), acceptedAt: T(new RealDate(fixed - 1000)) });
+  put('lineLinks/f', { groupId: S('unit'), lineUserId: S('Uunit'), friend: { booleanValue: true } });
+  put('groups/unit/events/config', { type: S('hitokoe-config'), enabled: { booleanValue: true }, line: { booleanValue: true },
+    uid: S('f'), requestId: S('r'), hour: { integerValue: '11' }, at: T(new RealDate(fixed - 1000)) });
+  put('groups/unit/events/consent', { type: S('hitokoe-consent'), uid: S('h'), requestId: S('r'), answer: S('yes'), at: T(new RealDate(fixed - 900)) });
+  put('groups/unit/yotei/one', { label: S('単件試験'), date: S('2026-10-26'), uid: S('f'), notifyAt: T(new RealDate(fixed)) });
+  const fs = new internal.Firestore(env);
+  await fs.token();
+  const g = await fs.get('groups/unit'), due = [await fs.get('groups/unit/yotei/one')];
+  const book = new internal.UsageBook(fs, new Date(fixed)); book.quota = { limit: 200, used: 0 };
+  fs.count = 0; requests = 0;
+  return { fs, g, due, book };
+}
+globalThis.Date = FixedDate;
+try {
+  for (const kind of ['schedule', 'hitokoe']) {
+    const {fs, g, due, book} = await seedUnit();
+    if (kind === 'schedule') await internal.sendDueSchedules(env, fs, g, due, new Date(), book);
+    else { fs.softLimit = 40; await internal.runHitokoe(env, fs, new Date(), book, [g], {}); }
+    assert.equal(pushes.length, 1, kind + ': one recipient accepted');
+    unitRequests[kind] = requests;
+  }
+  // Prefetched stored counters must not erase sends counted earlier in this invocation.
+  {
+    const {fs, g, due, book} = await seedUnit();
+    put('lineUsage/unit', { day: S('2026-10-26'), count: { integerValue: '19' } });
+    await internal.sendDueSchedules(env, fs, g, due, new Date(), book);
+    assert.equal(pushes.length, 1); assert.equal(book.homes.get('unit'), 20);
+    fs.count = 0; fs.softLimit = 40;
+    await internal.runHitokoe(env, fs, new Date(), book, [g], {});
+    assert.equal(pushes.length, 1, 'hitokoe cannot overwrite the current household count with stored 19');
+  }
+  {
+    const {fs, g, book} = await seedUnit();
+    const rename = value => {
+      if (Array.isArray(value)) return value.map(rename);
+      if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k,v]) => [k, rename(v)]));
+      return value === 'f' ? 'f2' : value === 'h' ? 'h2' : value === 'unit' ? 'unit2' : value === 'Uunit' ? 'Uunit2' : value;
+    };
+    for (const [path, doc] of [...db]) if (path.startsWith('groups/unit/') || path === 'groups/unit' || path === 'consents/f' || path === 'lineLinks/f') {
+      const target = path.replace(/^groups\/unit(?=\/|$)/, 'groups/unit2').replace(/\/(f|h)$/, (_, id) => '/' + id + '2');
+      put(target, rename(doc.fields));
+    }
+    put('lineUsage/hitokoe-2026-10', { count: { integerValue: '89' } });
+    const other = await fs.get('groups/unit2'); fs.count = 0; fs.softLimit = 40;
+    await internal.runHitokoe(env, fs, new Date(), book, [g, other], {});
+    assert.equal(pushes.length, 1, 'monthly count 89 permits only one new notification across two households');
+    assert.equal(book.hitokoeCount, 90);
+  }
+  // Another invocation created the receipt first: use its immutable payload, not our newly composed one.
+  {
+    const {fs, g, due, book} = await seedUnit();
+    const originalFetch = globalThis.fetch;
+    let injected = false;
+    globalThis.fetch = async (url, opt = {}) => {
+      if (!injected && String(url).endsWith(':commit')) {
+        const writes = JSON.parse(opt.body).writes;
+        const w = writes.find(w => w.currentDocument?.exists === false && w.update?.name.includes('/lineDeliveryReceipts/'));
+        if (w) { injected = true; put(w.update.name.slice(ROOT.length + 1), { ...w.update.fields, text: S('先行処理が保存した本文') }); }
+      }
+      return originalFetch(url, opt);
+    };
+    try { await internal.sendDueSchedules(env, fs, g, due, new Date(), book); } finally { globalThis.fetch = originalFetch; }
+    assert.equal(pushes.length, 1); assert.equal(pushes[0].messages[0].text, '先行処理が保存した本文');
+  }
+  // A lost create response must not send speculatively; retry reads the stored receipt and sends once.
+  for (const kind of ['schedule', 'hitokoe']) {
+    const {fs, g, due, book} = await seedUnit(); fs.softLimit = 40;
+    const originalFetch = globalThis.fetch;
+    let dropped = false;
+    globalThis.fetch = async (url, opt = {}) => {
+      const response = await originalFetch(url, opt);
+      if (!dropped && String(url).endsWith(':commit') && JSON.parse(opt.body).writes.some(w => w.currentDocument?.exists === false && w.update?.name.includes('/lineDeliveryReceipts/'))) {
+        dropped = true; throw new Error('create response lost');
+      }
+      return response;
+    };
+    const run = () => kind === 'schedule' ? internal.sendDueSchedules(env, fs, g, due, new Date(), book)
+      : internal.runHitokoe(env, fs, new Date(), book, [g], {});
+    try { await assert.rejects(run, /create response lost/); } finally { globalThis.fetch = originalFetch; }
+    assert.equal(pushes.length, 0, 'no speculative send');
+    fs.count = 0; await run();
+    assert.equal(pushes.length, 1, 'retry sends once');
+  }
+} finally { globalThis.Date = RealDate; }
+console.log(JSON.stringify({ fakeServices: true, results, unitRequests }, null, 2));
+
 if (!process.argv.includes('--report-only')) {
+  assert.ok(unitRequests.schedule <= 8, 'schedule notification request regression');
+  assert.ok(unitRequests.hitokoe <= 10, 'hitokoe notification request regression');
   const r = results.find(r => r.households === 18);
   assert.equal(r.hitokoe, r.eligibleHitokoe, '18 households: hitokoe is no longer starved');
   for (const r of results) assert.equal(r.schedules, r.households, 'all scheduled notices processed within the simulated day');

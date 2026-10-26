@@ -788,20 +788,23 @@ async function runHitokoe(env, fs, now, book, groups, progress = {}) {
     const fam = (u) => (u && memberApproved(members[u]) && !memberHonnin(members[u]) ? u : '');
     const assignee = fam(cfg.assignees[String(weekday)] || '') || fam(cfg.uid);
     if (!assignee) continue;
-    const link = await fs.get('lineLinks/' + assignee);
+    // 宛先と権限、今回必要な通数を1回で読む。送信直前の確認項目は省略しない。
+    const [currentGroup, currentMember, closure, consent, link, homeUsage, monthUsage] = await fs.getMany([
+      g.path, g.path + '/members/' + assignee, 'accountClosures/' + assignee, 'consents/' + assignee,
+      'lineLinks/' + assignee, 'lineUsage/' + g.id, 'lineUsage/hitokoe-' + book.day.slice(0, 7)]);
     const to = link && link.fields.groupId === g.id && typeof link.fields.lineUserId === 'string' ? link.fields.lineUserId : '';
-    if (!to) continue;
-    // 最新の承認・同意・退会・家庭削除を1回の通信で確認する(確認項目は減らさない)。
-    const [currentGroup, currentMember, closure, consent] = await fs.getMany([
-      g.path, g.path + '/members/' + assignee, 'accountClosures/' + assignee, 'consents/' + assignee]);
-    if (!currentGroup || currentGroup.fields.deletionState === 'deleting'
+    if (!to || !currentGroup || currentGroup.fields.deletionState === 'deleting'
       || !memberApproved(currentMember && currentMember.fields) || closure || !validConsent(consent && consent.fields)) continue;
+    // 同じ回ですでに数えた送信を、読み戻した古い通数で上書きしない。
+    if (!book.homes.has(g.id)) {
+      const f = homeUsage ? homeUsage.fields : {};
+      book.homes.set(g.id, f.day === book.day && Number.isFinite(f.count) ? f.count : 0);
+    }
+    if (book.hitokoeCount === undefined) book.hitokoeCount = monthUsage && Number.isFinite(monthUsage.fields.count) ? monthUsage.fields.count : 0;
     if (!receipt) {
       if (await book.hitokoeBlocked(g.id)) continue;                     // 上限: アプリの中のお知らせだけになる
-      await fs.commit([{ update: { name: fs.root + '/' + receiptPath,
-        fields: toFields({ text: HITOKOE_TEXT, expiresAt: new Date(now.getTime() + 2 * 86400000) }) },
-        currentDocument: { exists: false } }]);
-      receipt = await fs.get(receiptPath);
+      receipt = await createDeliveryReceipt(fs, receiptPath, {
+        text: HITOKOE_TEXT, expiresAt: new Date(now.getTime() + 2 * 86400000) });
       if (!receipt || receipt.fields.acceptedAt instanceof Date) continue;
     }
     const r = await push(env, fs, to, HITOKOE_TEXT, key);
@@ -1201,16 +1204,17 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
       : deliveryKey('bundle\n' + list.map(y => y.path + '\n' + y.updateTime).join('\n') + '\n' + to);
     let key = await keyOf(items);
     let receiptPath = 'lineDeliveryReceipts/' + key;
-    let receipt = await fs.get(receiptPath);
+    // 受付記録も、予定・宛先の最新状態と同じ通信で読み込む。
+    const itemSet = new Set(items);
+    const mine = pairs.filter((p) => itemSet.has(p.y));
+    for (const y of items) docCache.delete(y.path);   // 予定は送る直前の状態を読み直す
+    docCache.delete(receiptPath);
+    await prefetch([receiptPath, ...mine.flatMap((p) => checkPaths(p.link, p.y)), ...items.map((y) => y.path)]);
+    let receipt = cget(receiptPath);
     if (receipt && receipt.fields.acceptedAt instanceof Date) {
       for (const y of items) { const p = plans.get(y.path); p.accepted++; p.eligible = true; }
       continue;
     }
-    // Recheck server state immediately before each external transmission (この人の分を1回でまとめて読む)
-    const itemSet = new Set(items);
-    const mine = pairs.filter((p) => itemSet.has(p.y));
-    for (const y of items) docCache.delete(y.path);   // 予定は送る直前の状態を読み直す
-    await prefetch([...mine.flatMap((p) => checkPaths(p.link, p.y)), ...items.map((y) => y.path)]);
     const okItems = [];
     for (const y of items) {
       let ok = false;
@@ -1242,10 +1246,7 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
       const text = items.length === 1
         ? buildMessage(items[0].fields, ownerName(items[0]), now, g.id, items[0].id)
         : buildBundleMessage(items, ownerName, now, g.id);
-      await fs.commit([{update:{name:fs.root+'/'+receiptPath,
-        fields:toFields({text,expiresAt:new Date(lastAt+13*3600000)})},
-        currentDocument:{exists:false}}]);
-      receipt = await fs.get(receiptPath);
+      receipt = await createDeliveryReceipt(fs, receiptPath, { text, expiresAt: new Date(lastAt + 13 * 3600000) });
     }
     if (!receipt || typeof receipt.fields.text !== 'string') { for (const y of items) plans.get(y.path).complete = false; continue; }
     const r = await push(env, fs, to, receipt.fields.text, key);
@@ -1272,6 +1273,14 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
     // No eligible recipient or failed delivery: keep notifyAt for the next run.
   }
   return sent;
+}
+
+/* 新規作成が成功したときは、その保存済みの値を使う。並行実行で先に作られていた
+ * ときだけ読み戻し、先行処理が保存した本文・受付済みの印を優先する。通信失敗は送信に進めない。 */
+async function createDeliveryReceipt(fs, path, fields) {
+  const created = await fs.commit([{ update: { name: fs.root + '/' + path, fields: toFields(fields) },
+    currentDocument: { exists: false } }]);
+  return created ? { path, fields } : fs.get(path);
 }
 
 async function deliveryKey(value) {
