@@ -67,7 +67,7 @@ const TAG_REQUEST_BUDGET = 30;               // タグの処理に使う通信�
                                              // (途中で止まった読み取りは、次の回に同じ再送キーで続きから送る)
 const HITOKOE_MONTHLY_LIMIT = 90;           // ひと声のきっかけのLINEは、まいにこ全体で月90通まで(無料の200通の内側)
 const HITOKOE_WINDOW_HOURS = 3;              // 決めた時刻から3時間のうちだけ送る(遅れた知らせは送らない)
-const HITOKOE_REQUEST_BUDGET = 36;           // ひと声の処理はここまで。残りは後片付けに回す
+const NOTIFICATION_REQUEST_BUDGET = 40;           // 予定・ひと声はここまで。残りは後片付けと通数・進捗の保存に回す
 const HITOKOE_NOT_ACTIVITY = new Set(['hitokoe-consent', 'device-recovery', 'person-ui-config', 'line-login-signin', 'device-reconnect']); // hitokoe.js と同じ
 const USAGE_KEEP_DAYS = 70;                  // 利用数の集計: 日ごとの数を残す日数(8週間の継続を見るため)
 const USAGE_PER_RUN = 4;                     // 1回の見回りで集計する世帯の数
@@ -443,6 +443,7 @@ async function runNotifications(env) {
   const now = new Date();
   let sent = 0;
   const book = new UsageBook(fs, now);
+  let progress = null;
   try {
     // 期限切れの手続きの片付けは、通知より先に、決まった通信回数だけで行う(忙しい回でも後回しにならない)
     await cleanupAuthTx(fs, now);
@@ -460,22 +461,24 @@ async function runNotifications(env) {
     catch (e) { if (e.message === 'request-budget' && fs.count >= SUBREQUEST_BUDGET) throw e; console.error('tag alerts', e.message); }
     finally { fs.softLimit = 0; }
     const groups = await fs.list('groups', ['deletionState']);
-    // Rotate the starting household; a busy household cannot monopolize every run.
-    const offset = groups.length ? Math.floor(now.getTime() / 900000) % groups.length : 0;
-    for (const g of [...groups.slice(offset), ...groups.slice(0, offset)]) {
-      if (g.fields.deletionState === 'deleting') continue;
-      const due = await fs.query(g.path, {
-        from: [{collectionId:'yotei'}],
-        where: {fieldFilter:{field:{fieldPath:'notifyAt'},op:'LESS_THAN_OR_EQUAL',value:{timestampValue:now.toISOString()}}},
-        orderBy: [{field:{fieldPath:'notifyAt'},direction:'ASCENDING'}], limit:10,
-      });
-      sent += await sendDueSchedules(env, fs, g, due, now, book);
+    progress = { ...((await fs.get('ops/notificationProgress'))?.fields || {}) };
+    // 両方に仕事がある回でも、一方が毎回予算を使い切らないよう先に処理する種類を交代する。
+    // タグは従来どおり最優先。使い切った種類は続きの位置を残し、もう一方と後片付けへ進む。
+    const hitokoeFirst = progress.nextLane === 'hitokoe';
+    progress.nextLane = hitokoeFirst ? 'schedules' : 'hitokoe';
+    const lanes = hitokoeFirst ? ['hitokoe', 'schedules'] : ['schedules', 'hitokoe'];
+    for (let i = 0; i < lanes.length; i++) {
+      const lane = lanes[i];
+      fs.softLimit = NOTIFICATION_REQUEST_BUDGET;
+      try {
+        sent += lane === 'schedules'
+          ? await runScheduleScan(env, fs, now, book, groups, progress)
+          : await runHitokoe(env, fs, now, book, groups, progress);
+      } catch (e) {
+        if (e.message === 'request-budget') console.warn('notification deferred:', lane);
+        else console.error('notification scan failed:', lane, e.message);
+      } finally { fs.softLimit = 0; }
     }
-    // ひと声のきっかけ(予定のお知らせの後。15分遅れても困らないため)
-    fs.softLimit = HITOKOE_REQUEST_BUDGET;
-    try { sent += await runHitokoe(env, fs, now, book, groups); }
-    catch (e) { if (e.message !== 'request-budget') console.error('hitokoe', e.message); }
-    finally { fs.softLimit = 0; }
     // 利用数の集計(前の日の分を、世帯ごとに少しずつ)
     fs.softLimit = USAGE_REQUEST_BUDGET;
     try { await runUsageStats(fs, now, groups); }
@@ -536,12 +539,64 @@ async function runNotifications(env) {
     }
   } catch (e) {
     if (e.message !== 'request-budget') throw e;
+    console.warn('notification deferred: maintenance or setup');
     // Pending schedules retain their notifyAt and receipts for the next run.
   } finally {
     // 数えた通数と残り通数は、途中で止まっても必ず書き残す(最後の後片付け枠を使う)
     try { await book.flush(); } catch (e) { console.error('usage flush', e.message); }
+    if (progress) {
+      try { await fs.set('ops/notificationProgress', { ...progress, updatedAt: now }, true); }
+      catch (e) { console.error('notification progress save failed', e.message); }
+    }
   }
   console.log('notifications accepted:', sent, 'requests:', fs.count);
+}
+
+/* 期限が来た予定だけを全家庭から検索する。notifyAt の COLLECTION_GROUP 索引が必要。
+ * 時刻＋文書パスの続きから読むため、届かない1家庭が先頭に残っても後ろを妨げない。
+ * 途中で予算に達した家庭は次の一巡で再試行。notifyAt・再送キーは既存の処理が保持する。 */
+async function runScheduleScan(env, fs, now, book, groups, progress) {
+  const query = {
+    from: [{ collectionId: 'yotei', allDescendants: true }],
+    where: { fieldFilter: { field: { fieldPath: 'notifyAt' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: now.toISOString() } } },
+    orderBy: [{ field: { fieldPath: 'notifyAt' }, direction: 'ASCENDING' }, { field: { fieldPath: '__name__' }, direction: 'ASCENDING' }],
+    limit: 100,
+  };
+  if (progress.scheduleAt instanceof Date && typeof progress.schedulePath === 'string'
+      && /^groups\/[^/]+\/yotei\/[^/]+$/.test(progress.schedulePath)) {
+    query.startAt = { before: false, values: [{ timestampValue: progress.scheduleAt.toISOString() }, { referenceValue: fs.root + '/' + progress.schedulePath }] };
+  }
+  let rows = await fs.query('', query);
+  if (!rows.length && query.startAt) {
+    delete query.startAt;
+    progress.scheduleAt = null; progress.schedulePath = '';
+    rows = await fs.query('', query);
+  }
+  const byId = new Map(groups.map(g => [g.id, g]));
+  const handled = new Set();
+  let sent = 0;
+  for (let i = 0; i < rows.length;) {
+    const path = rows[i].path.split('/'), gid = path[1];
+    const batch = [rows[i++]];
+    // 同じ家庭が続く部分は今までどおり最大10件をまとめる。
+    while (i < rows.length && batch.length < 10 && rows[i].path.split('/').length === 4 && rows[i].path.split('/').slice(0, 3).join('/') === path.slice(0, 3).join('/')) batch.push(rows[i++]);
+    if (fs.count >= fs.softLimit) throw new Error('request-budget');
+    const g = byId.get(gid);
+    try {
+      if (path.length === 4 && path[0] === 'groups' && g && g.fields.deletionState !== 'deleting' && !handled.has(gid)) {
+        handled.add(gid);
+        // 間に別家庭の予定があっても、この検索に含まれる同じ家庭の予定を最大10件まとめる。
+        const due = rows.filter(row => row.path.split('/').length === 4 && row.path.startsWith(g.path + '/yotei/')).slice(0, 10);
+        sent += await sendDueSchedules(env, fs, g, due, now, book);
+      }
+    } finally {
+      const last = batch[batch.length - 1];
+      progress.scheduleAt = last.fields.notifyAt;
+      progress.schedulePath = last.path;
+    }
+  }
+  if (rows.length < query.limit) { progress.scheduleAt = null; progress.schedulePath = ''; }
+  return sent;
 }
 
 /* ================= 月200通を守る上限ガード(2026-10-01) =================
@@ -611,23 +666,22 @@ class UsageBook {
     if (this.quota) { this.quota.used++; this.quotaDirty = true; }
   }
   async flush() {
-    // ひと声の月の数は上限(90通)の判断に使うので、いちばん先に、最後の後片付け枠で書く
-    if (this.hitokoeDirty) {
-      await this.fs.set('lineUsage/hitokoe-' + this.day.slice(0, 7), { month: this.day.slice(0, 7), count: this.hitokoeCount,
-        limit: HITOKOE_MONTHLY_LIMIT, updatedAt: new Date(), expiresAt: new Date(this.now.getTime() + 40 * 86400000) }, true);
-      this.hitokoeDirty = false;
-    }
-    for (const groupId of this.dirty) {
-      await this.fs.set('lineUsage/' + groupId, { day: this.day, count: this.homes.get(groupId), updatedAt: new Date(), expiresAt: new Date(this.now.getTime() + 2 * 86400000) }, true);
-    }
-    this.dirty.clear();
+    const writes = [];
+    const add = (path, fields) => writes.push({ update: { name: this.fs.root + '/' + path, fields: toFields(fields) } });
+    if (this.hitokoeDirty) add('lineUsage/hitokoe-' + this.day.slice(0, 7), {
+      month: this.day.slice(0, 7), count: this.hitokoeCount, limit: HITOKOE_MONTHLY_LIMIT,
+      updatedAt: new Date(), expiresAt: new Date(this.now.getTime() + 40 * 86400000) });
+    for (const groupId of this.dirty) add('lineUsage/' + groupId, {
+      day: this.day, count: this.homes.get(groupId), updatedAt: new Date(), expiresAt: new Date(this.now.getTime() + 2 * 86400000) });
     if (this.quota) {
       const remaining = this.quota.limit === null ? null : Math.max(0, this.quota.limit - this.quota.used);
-      // 推定(LINEから取れず、前回の記録で判断した)ときは checkedAt を進めない(古い数をいつまでも新しいと扱わない)
-      await this.fs.set('lineStatus/quota', this.quota.estimated
+      add('lineStatus/quota', this.quota.estimated
         ? { used: this.quota.used, remaining, estimatedAt: new Date() }
-        : { limit: this.quota.limit, used: this.quota.used, remaining, reserve: TAG_RESERVE, checkedAt: new Date() }, true);
+        : { limit: this.quota.limit, used: this.quota.used, remaining, reserve: TAG_RESERVE, checkedAt: new Date() });
     }
+    if (writes.length && !await this.fs.commit(writes, undefined, true)) throw new Error('usage commit failed');
+    this.hitokoeDirty = false;
+    this.dirty.clear();
   }
 }
 
@@ -663,26 +717,56 @@ function hitokoeConfig(f) {
 }
 const memberApproved = (m) => !!m && (m.status === undefined || m.status === 'approved');
 const memberHonnin = (m) => !!m && (m.role === 'honnin' || m.mode === 'honnin');
-async function runHitokoe(env, fs, now, book, groups) {
+async function runHitokoe(env, fs, now, book, groups, progress = {}) {
   const jst = new Date(now.getTime() + 9 * 3600000), hour = jst.getUTCHours();
   if (hour < HITOKOE_HOURS[0] || hour >= HITOKOE_HOURS[HITOKOE_HOURS.length - 1] + HITOKOE_WINDOW_HOURS) return 0;
   const day = jstDateString(now), weekday = jst.getUTCDay();
   let sent = 0;
-  const offset = groups.length ? Math.floor(now.getTime() / 900000) % groups.length : 0;
-  for (const g of [...groups.slice(offset), ...groups.slice(0, offset)]) {
-    if (g.fields.deletionState === 'deleting') continue;
+  // 設定のない家庭・停止中・時刻外の家庭を、家庭ごとの通信なしで除く。
+  // 最新の「やめる」も必ず含めるため enabled/line では検索しない。
+  const configs = new Map();
+  const configQuery = { from: [{ collectionId: 'events', allDescendants: true }],
+    where: fieldEq('type', { stringValue: 'hitokoe-config' }),
+    orderBy: [{ field: { fieldPath: 'type' }, direction: 'ASCENDING' }, { field: { fieldPath: '__name__' }, direction: 'ASCENDING' }],
+    select: { fields: ['type', 'enabled', 'line', 'hour', 'offWeekdays', 'pauses', 'assignees', 'requestId', 'uid', 'at', 'clientAt'].map(fieldPath => ({ fieldPath })) }, limit: 200 };
+  while (true) {
+    const rows = await fs.query('', configQuery);
+    for (const row of rows) {
+      const parts = row.path.split('/');
+      if (parts.length !== 4 || parts[0] !== 'groups') continue;
+      const prev = configs.get(parts[1]);
+      if (!prev || eventMillis(row.fields) > eventMillis(prev.fields)) configs.set(parts[1], row);
+    }
+    if (rows.length < configQuery.limit) break;
+    configQuery.startAt = { before: false, values: [{ stringValue: 'hitokoe-config' }, { referenceValue: fs.root + '/' + rows[rows.length - 1].path }] };
+  }
+  const ordered = groups.filter(g => {
+    const row = configs.get(g.id);
+    if (!row || g.fields.deletionState === 'deleting') return false;
+    const cfg = hitokoeConfig(row.fields);
+    return cfg.enabled && cfg.line && cfg.requestId && hour >= cfg.hour && hour < cfg.hour + HITOKOE_WINDOW_HOURS
+      && !cfg.off.includes(weekday) && !cfg.pauses.some(p => p.from <= day && day <= p.to);
+  }).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const receiptPaths = new Map();
+  const receipts = new Map();
+  // 当日送信済みの家庭は、設定・本人の記録を家庭ごとに読み直す前に除外。
+  for (let i = 0; i < ordered.length; i += 100) {
+    const batch = ordered.slice(i, i + 100);
+    const paths = await Promise.all(batch.map(async g => 'lineDeliveryReceipts/' + await deliveryKey('hitokoe\n' + g.id + '\n' + day)));
+    const docs = await fs.getMany(paths);
+    batch.forEach((g, j) => { receiptPaths.set(g.id, paths[j]); receipts.set(g.id, docs[j]); });
+  }
+  const next = ordered.findIndex(g => g.id > (progress.hitokoeAfter || ''));
+  const offset = next < 0 ? 0 : next;
+  for (const g of [...ordered.slice(offset), ...ordered.slice(0, offset)]) {
+    if (fs.count >= fs.softLimit) throw new Error('request-budget');
+    progress.hitokoeAfter = g.id;
     const eventsOf = (type, fields) => fs.query(g.path, { from: [{ collectionId: 'events' }], where: fieldEq('type', { stringValue: type }),
       select: { fields: fields.map((fieldPath) => ({ fieldPath })) } });
-    const newest = newestEvent(await eventsOf('hitokoe-config',
-      ['type', 'enabled', 'line', 'hour', 'offWeekdays', 'pauses', 'assignees', 'requestId', 'uid', 'at', 'clientAt']));
-    if (!newest) continue;
-    const cfg = hitokoeConfig(newest.fields);
-    if (!cfg.enabled || !cfg.line || !cfg.requestId) continue;
-    if (hour < cfg.hour || hour >= cfg.hour + HITOKOE_WINDOW_HOURS) continue;
-    if (cfg.off.includes(weekday) || cfg.pauses.some((p) => p.from <= day && day <= p.to)) continue;
-    const key = await deliveryKey('hitokoe\n' + g.id + '\n' + day);
-    const receiptPath = 'lineDeliveryReceipts/' + key;
-    let receipt = await fs.get(receiptPath);
+    const cfg = hitokoeConfig(configs.get(g.id).fields);
+    const receiptPath = receiptPaths.get(g.id);
+    const key = receiptPath.split('/')[1];
+    let receipt = receipts.get(g.id);
     if (receipt && receipt.fields.acceptedAt instanceof Date) continue;   // 今日はもう送った
     const memberDocs = await fs.list(g.path + '/members', ['name', 'role', 'mode', 'status']);
     const members = Object.fromEntries(memberDocs.map((m) => [m.id, m.fields]));
@@ -704,16 +788,23 @@ async function runHitokoe(env, fs, now, book, groups) {
     const fam = (u) => (u && memberApproved(members[u]) && !memberHonnin(members[u]) ? u : '');
     const assignee = fam(cfg.assignees[String(weekday)] || '') || fam(cfg.uid);
     if (!assignee) continue;
-    const link = await fs.get('lineLinks/' + assignee);
+    // 宛先と権限、今回必要な通数を1回で読む。送信直前の確認項目は省略しない。
+    const [currentGroup, currentMember, closure, consent, link, homeUsage, monthUsage] = await fs.getMany([
+      g.path, g.path + '/members/' + assignee, 'accountClosures/' + assignee, 'consents/' + assignee,
+      'lineLinks/' + assignee, 'lineUsage/' + g.id, 'lineUsage/hitokoe-' + book.day.slice(0, 7)]);
     const to = link && link.fields.groupId === g.id && typeof link.fields.lineUserId === 'string' ? link.fields.lineUserId : '';
-    if (!to) continue;
-    if (!await approvedMember(fs, g.id, assignee)) continue;
+    if (!to || !currentGroup || currentGroup.fields.deletionState === 'deleting'
+      || !memberApproved(currentMember && currentMember.fields) || closure || !validConsent(consent && consent.fields)) continue;
+    // 同じ回ですでに数えた送信を、読み戻した古い通数で上書きしない。
+    if (!book.homes.has(g.id)) {
+      const f = homeUsage ? homeUsage.fields : {};
+      book.homes.set(g.id, f.day === book.day && Number.isFinite(f.count) ? f.count : 0);
+    }
+    if (book.hitokoeCount === undefined) book.hitokoeCount = monthUsage && Number.isFinite(monthUsage.fields.count) ? monthUsage.fields.count : 0;
     if (!receipt) {
       if (await book.hitokoeBlocked(g.id)) continue;                     // 上限: アプリの中のお知らせだけになる
-      await fs.commit([{ update: { name: fs.root + '/' + receiptPath,
-        fields: toFields({ text: HITOKOE_TEXT, expiresAt: new Date(now.getTime() + 2 * 86400000) }) },
-        currentDocument: { exists: false } }]);
-      receipt = await fs.get(receiptPath);
+      receipt = await createDeliveryReceipt(fs, receiptPath, {
+        text: HITOKOE_TEXT, expiresAt: new Date(now.getTime() + 2 * 86400000) });
       if (!receipt || receipt.fields.acceptedAt instanceof Date) continue;
     }
     const r = await push(env, fs, to, HITOKOE_TEXT, key);
@@ -1113,16 +1204,17 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
       : deliveryKey('bundle\n' + list.map(y => y.path + '\n' + y.updateTime).join('\n') + '\n' + to);
     let key = await keyOf(items);
     let receiptPath = 'lineDeliveryReceipts/' + key;
-    let receipt = await fs.get(receiptPath);
+    // 受付記録も、予定・宛先の最新状態と同じ通信で読み込む。
+    const itemSet = new Set(items);
+    const mine = pairs.filter((p) => itemSet.has(p.y));
+    for (const y of items) docCache.delete(y.path);   // 予定は送る直前の状態を読み直す
+    docCache.delete(receiptPath);
+    await prefetch([receiptPath, ...mine.flatMap((p) => checkPaths(p.link, p.y)), ...items.map((y) => y.path)]);
+    let receipt = cget(receiptPath);
     if (receipt && receipt.fields.acceptedAt instanceof Date) {
       for (const y of items) { const p = plans.get(y.path); p.accepted++; p.eligible = true; }
       continue;
     }
-    // Recheck server state immediately before each external transmission (この人の分を1回でまとめて読む)
-    const itemSet = new Set(items);
-    const mine = pairs.filter((p) => itemSet.has(p.y));
-    for (const y of items) docCache.delete(y.path);   // 予定は送る直前の状態を読み直す
-    await prefetch([...mine.flatMap((p) => checkPaths(p.link, p.y)), ...items.map((y) => y.path)]);
     const okItems = [];
     for (const y of items) {
       let ok = false;
@@ -1154,10 +1246,7 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
       const text = items.length === 1
         ? buildMessage(items[0].fields, ownerName(items[0]), now, g.id, items[0].id)
         : buildBundleMessage(items, ownerName, now, g.id);
-      await fs.commit([{update:{name:fs.root+'/'+receiptPath,
-        fields:toFields({text,expiresAt:new Date(lastAt+13*3600000)})},
-        currentDocument:{exists:false}}]);
-      receipt = await fs.get(receiptPath);
+      receipt = await createDeliveryReceipt(fs, receiptPath, { text, expiresAt: new Date(lastAt + 13 * 3600000) });
     }
     if (!receipt || typeof receipt.fields.text !== 'string') { for (const y of items) plans.get(y.path).complete = false; continue; }
     const r = await push(env, fs, to, receipt.fields.text, key);
@@ -1184,6 +1273,14 @@ async function sendDueSchedules(env, fs, g, due, now, book) {
     // No eligible recipient or failed delivery: keep notifyAt for the next run.
   }
   return sent;
+}
+
+/* 新規作成が成功したときは、その保存済みの値を使う。並行実行で先に作られていた
+ * ときだけ読み戻し、先行処理が保存した本文・受付済みの印を優先する。通信失敗は送信に進めない。 */
+async function createDeliveryReceipt(fs, path, fields) {
+  const created = await fs.commit([{ update: { name: fs.root + '/' + path, fields: toFields(fields) },
+    currentDocument: { exists: false } }]);
+  return created ? { path, fields } : fs.get(path);
 }
 
 async function deliveryKey(value) {
@@ -1974,8 +2071,8 @@ class Firestore {
   async rollback(transaction) {
     try { await this.call('POST', this.base + ':rollback', { transaction }, true); } catch (e) { /* 期限で自然に終わる */ }
   }
-  async commit(writes, transaction) {
-    const res = await this.call('POST',this.base+':commit',transaction ? {writes, transaction} : {writes});
+  async commit(writes, transaction, hard = false) {
+    const res = await this.call('POST',this.base+':commit',transaction ? {writes, transaction} : {writes}, hard);
     if (res.ok) return true;
     if ([400,404,409,412].includes(res.status)) return false;
     throw new Error('commit failed '+res.status);
