@@ -4375,7 +4375,7 @@ function renderNextYotei(){
   if(personYoteiStatus==='error'){elD.textContent='確認できません';elL.textContent='予定を読み込めませんでした。通信を確認して、アプリを開き直してください';return;}
   const n=nextYoteiInfo();
   const cached=personYoteiStatus==='cached'?'通信の確認待ち（この端末に保存された予定です）':'';
-  if(!n){elD.textContent='ありません';elL.textContent='これからの予定はありません';show(sub,cached);return;}
+  if(!n){elD.textContent=cached?'保存された予定はありません':'予定はありません';elL.textContent='';show(sub,cached);return;}
   const v=n.item;
   elD.textContent=n.when+(v.time?'　'+v.time:'');
   elL.textContent=(v.label||'予定')+(v.kind?' '+v.kind:'');
@@ -8117,9 +8117,10 @@ function speakNextYotei(){
   if(typeof personYoteiStatus!=='undefined'&&personYoteiStatus==='loading'){ speak('予定を読み込んでいます', true); return; }
   if(typeof personYoteiStatus!=='undefined'&&personYoteiStatus==='error'){ speak('予定を読み込めませんでした。通信を確認してください', true); return; }
   const n=nextYoteiInfo();
-  if(!n){ speak('これからの予定はありません', true); return; }
+  const cached=typeof personYoteiStatus!=='undefined'&&personYoteiStatus==='cached';
+  if(!n){ speak(cached?'保存された予定はありません。通信の確認待ちのため、最新の予定は確認できません':'これからの予定はありません', true); return; }
   const v=n.item;
-  speak('次の予定は、'+(n.days===0?'今日':n.days===1?'明日':dateYomi(n.date))+'、'+(v.time?timeYomi(v.time)+'に、':'')+(v.label||'予定')+'です。'+(n.days>=2?'あと'+n.days+'日です。':'')+(n.others.length?'この日は、ほかに'+n.others.length+'件あります。':''), true);
+  speak((cached?'この端末に保存された予定です。最新の予定は通信が戻ってから確認してください。':'')+'次の予定は、'+(n.days===0?'今日':n.days===1?'明日':dateYomi(n.date))+'、'+(v.time?timeYomi(v.time)+'に、':'')+(v.label||'予定')+'です。'+(n.days>=2?'あと'+n.days+'日です。':'')+(n.others.length?'この日は、ほかに'+n.others.length+'件あります。':''), true);
 }
 function morningGreet(){
   if(greetedThisOpen || !speechOn()) return;
