@@ -1044,7 +1044,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 #person-request-summary{display:block;font-size:1rem;color:#305E45;margin-top:8px;font-weight:700;overflow-wrap:anywhere;}
 .person-welcome .welcome-stop{min-height:48px;padding:8px 12px;background:#fff;border:2px solid #956039;border-radius:12px;font-size:1rem;}
 .person-record-heading{font-size:1.15rem;margin:4px 0 0;}
-/* 暮らし → 家族の言葉 → 自分の記録。大きな文字と操作領域を保つ。 */
+/* 暮らし → 自分の記録 → 家族の言葉。大きな文字と操作領域を保つ。 */
 #honnin .h-time{font-size:1.6rem;}
 #honnin .person-welcome{border-width:1px;background:#FFFAF4;}
 #honnin #person-welcome-read{background:transparent;min-height:48px;}
@@ -1527,34 +1527,6 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <div class="y-more" id="y-more" aria-hidden="true">▼ 押すと、くわしく見られます</div>
     </div>
     <button class="cal-open" id="y-others" type="button" hidden onclick="openNextYoteiDay()"></button>
-    <!-- 今日の暮らしの次に、家族からの連絡。記録をしなくても読める。 -->
-    <details class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" aria-labelledby="person-conversation-heading">
-      <summary id="person-conversation-heading"><span class="person-contact-title">家族からの連絡</span><span id="person-contact-preview" hidden></span><span class="person-contact-hint"><span class="contact-closed">開いて返事・お願いを確認</span><span class="contact-open">押すと閉じます</span></span><span class="communication-status" id="h-contact-state" aria-live="polite"></span><span id="person-request-summary" role="status"></span></summary>
-      <div class="person-contact-content">
-    <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
-
-    <button class="set-btn" id="person-conversation-retry" type="button" hidden onclick="checkPersonConversation()">もう一度読み込む</button>
-    <div class="kibun" id="h-message-reply" data-communication-gate="family" hidden style="display:none;">
-      <div id="person-reply-options"><div class="q">返事を選ぶ</div><p id="h-reply-context" hidden></p>
-      <div class="kibun-grid">
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('読んだよ',this.dataset.replyTo)">読んだよ</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('ありがとう',this.dataset.replyTo)">ありがとう</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('あとで電話するね',this.dataset.replyTo)">あとで電話するね</button>
-        <button class="kibun-btn" data-send-audience="family" disabled onclick="openPersonMessageReply(this.dataset.replyTo)">自分で返事を書く</button>
-      </div>
-      </div>
-      <div class="save-state" id="h-message-reply-state" aria-live="polite"></div>
-      <button class="set-btn" id="person-reply-read" type="button" hidden onclick="speakElement('h-message-reply-state')">返事の結果を声で聞く</button>
-    </div>
-      <button class="cal-open" id="person-history-open" type="button" data-person-voice="前の連絡をひらきます" onclick="openPersonHistory()">前の連絡を見る</button>
-
-    <section class="request-panel" id="person-requests-panel" aria-labelledby="person-requests-heading" hidden>
-      <h2 id="person-requests-heading">お願いと、家族の返事</h2>
-      <p class="request-note" id="person-requests-state" role="status"></p>
-      <div id="person-requests-list"></div>
-    </section>
-      </div>
-    </details>
     <h2 class="person-record-heading">自分から伝える・記録する</h2>
     <div class="pop" id="pop-msg" role="button" tabindex="0" aria-live="polite" onclick="speakPopMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakPopMessage();}"></div>
     <div id="person-record-actions" hidden><p class="person-correction-note">押し間違えたときは、記録を選んで取り消せます。</p><button class="set-btn" id="person-record-correct" type="button" onclick="openCancel()">今日の記録を確認・とりけす</button></div>
@@ -1591,6 +1563,34 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       <button class="set-btn person-press-target" type="button" onclick="dismissSpeechNotice(false)">このままでよい</button>
       <button class="set-btn person-press-target" type="button" onclick="dismissSpeechNotice(true)">音を消す</button>
     </div>
+    <!-- 毎日の記録の下に、家族からの連絡。記録をしなくても読める。 -->
+    <details class="person-conversation-panel" id="person-conversation-panel" data-communication-gate="family" aria-labelledby="person-conversation-heading">
+      <summary id="person-conversation-heading"><span class="person-contact-title">家族からの連絡</span><span id="person-contact-preview" hidden></span><span class="person-contact-hint"><span class="contact-closed">開いて返事・お願いを確認</span><span class="contact-open">押すと閉じます</span></span><span class="communication-status" id="h-contact-state" aria-live="polite"></span><span id="person-request-summary" role="status"></span></summary>
+      <div class="person-contact-content">
+    <div class="pop" id="h-incoming-message" role="button" tabindex="0" aria-live="polite" onclick="speakIncomingMessage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();speakIncomingMessage();}"></div>
+
+    <button class="set-btn" id="person-conversation-retry" type="button" hidden onclick="checkPersonConversation()">もう一度読み込む</button>
+    <div class="kibun" id="h-message-reply" data-communication-gate="family" hidden style="display:none;">
+      <div id="person-reply-options"><div class="q">返事を選ぶ</div><p id="h-reply-context" hidden></p>
+      <div class="kibun-grid">
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('読んだよ',this.dataset.replyTo)">読んだよ</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('ありがとう',this.dataset.replyTo)">ありがとう</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="sendFamilyMessageBack('あとで電話するね',this.dataset.replyTo)">あとで電話するね</button>
+        <button class="kibun-btn" data-send-audience="family" disabled onclick="openPersonMessageReply(this.dataset.replyTo)">自分で返事を書く</button>
+      </div>
+      </div>
+      <div class="save-state" id="h-message-reply-state" aria-live="polite"></div>
+      <button class="set-btn" id="person-reply-read" type="button" hidden onclick="speakElement('h-message-reply-state')">返事の結果を声で聞く</button>
+    </div>
+      <button class="cal-open" id="person-history-open" type="button" data-person-voice="前の連絡をひらきます" onclick="openPersonHistory()">前の連絡を見る</button>
+
+    <section class="request-panel" id="person-requests-panel" aria-labelledby="person-requests-heading" hidden>
+      <h2 id="person-requests-heading">お願いと、家族の返事</h2>
+      <p class="request-note" id="person-requests-state" role="status"></p>
+      <div id="person-requests-list"></div>
+    </section>
+      </div>
+    </details>
     <button class="cal-open" id="h-open-cal" data-person-voice="カレンダーを ひらきました" onclick="openCal()">カレンダーを見る</button>
     <button class="cal-open" id="h-open-tasks" type="button" data-person-voice="自分のやることをひらきました。やることを追加し、終わったら、できたを押します。" onclick="openPersonTasks()">自分のやること</button>
     <button class="cal-open" id="h-open-yotei" data-person-voice="予定の 入力を ひらきました" onclick="openHYotei()">予定を入れる</button>
