@@ -1261,7 +1261,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 <div class="modal" id="tag-preview-modal" role="dialog" aria-modal="true" aria-labelledby="tag-preview-title">
   <div class="modal-box adult-font">
     <div class="ttl" id="tag-preview-title">読み取った方に見える画面（見本）</div>
-    <div class="note" style="margin-top:0;">実際に表示される画面と同じ内容の見本です。この見本から送信はされません。</div>
+    <div class="note" style="margin-top:0;">読み取った方の画面の主な内容です。この見本から送信はされません。家族と会話したり、現在地を伝えたりする機能ではありません。</div>
     <div class="tag-preview-card" aria-hidden="true">
       <div class="tp-mark">☀️</div>
       <h4>まいにこ おまもりタグ</h4>
@@ -2546,7 +2546,14 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       </div>
       <div class="card dom-soudan" id="anshin-tag-card" style="display:none;">
         <h3>おまもりタグ</h3>
-        <p class="tag-lead">外出先で困っているとき、周りの方がQRを読み取ると家族に知らせが届くタグです。QRに名前・住所・電話番号は入りません。</p>
+        <p class="tag-lead">外出先で困っているとき、読み取った方が選んだ状況を、家族の画面に記録するタグです。QRに名前・住所・電話番号は入りません。</p>
+        <details class="tag-guide" id="tag-choice-guide"><summary>上田市の見守りシール・緊急時のカードとの違い</summary>
+          <p><b>上田市の見守りシール</b><br>市内の対象となる方へ配布され、読み取った方と家族が連絡を取れます。利用条件は市の案内で確認できます。</p>
+          <a class="set-btn" href="https://www.city.ueda.nagano.jp/soshiki/korei/2692.html" target="_blank" rel="noopener noreferrer">上田市の見守りシールの案内 ↗</a>
+          <p><b>まいにこのおまもりタグ</b><br>選んだ状況を、いつもの家族画面に残します。発見者との会話・現在地の共有・捜索はできません。市の仕組みとの連携はありません。</p>
+          <p><b>災害・緊急時支援カード</b><br>本人が選んだ手助けと連絡先を、紙とQRで伝えます。印刷した文字はスマホなしでも読めます。誰でも読めるため、本人と連絡先の同意が必要です。家族への自動通知はありません。</p>
+          <button class="set-btn" type="button" onclick="openDisasterQr()">災害・緊急時支援カードを確認する</button>
+        </details>
         <div class="tag-steps">
           <div class="tag-step"><b>1</b><span>下でタグを作り、「タグを印刷する」を押します</span></div>
           <div class="tag-step"><b>2</b><span>印刷した紙をはさみで切り、バッグ・杖・キーホルダーなど、いつもの持ち物に付けます</span></div>
@@ -8028,19 +8035,17 @@ async function cancelInvite(targetId,code){
    QRには推測しにくいランダムIDだけを入れます。
    氏名・住所・電話番号・病歴・家族情報・位置情報は入れません。 */
 function printDisasterQr(){
-  if(typeof qrcode!=='function'){alert('QRを読み込めません。通信を確認して、もう一度お試しください。');return;}
   let v=null; try{ v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null'); }catch(e){}
   if(!v){ alert('先に災害用QRを作ってください。'); return; }
   if(v.consentVersion!==2){alert('本人と連絡先の同意を確認して、QRを作り直してください。');return;}
-  const qr=qrcode(0,'M'); qr.addData(unescape(encodeURIComponent(disasterQrText(v)))); qr.make();
-  const img=qr.createImgTag(6,12,'まいにこ 災害用QR');
+  let img='';
+  try{const qr=qrcode(0,'M'); qr.addData(unescape(encodeURIComponent(disasterQrText(v)))); qr.make();img=qr.createImgTag(6,12,'まいにこ 災害用QR');}catch(e){ /* 保存済みの文字カードはQR部品なしでも印刷する。 */ }
   openPrintWindow('災害・緊急時支援カード',
     '<h1>災害・緊急時支援カード</h1>'+
     '<div class="cardbox">呼び名：'+esc(v.name)+'<br>必要な支援：'+esc(v.help)+
     (v.free?('<br>メモ：'+esc(v.free)):'')+
     '<br>緊急連絡先：'+esc(v.relation)+' '+esc(v.phone)+'<br>作成日：'+esc(v.createdAt||'記録なし（旧QR）')+'<br>更新日：'+esc(v.updatedAt)+'</div>'+
-    '<div class="qr" style="margin-top:12px;">'+img+'</div>'+
-    '<div class="note">QRにも同じ内容が入っています（通信がなくても読めます）。</div>'+
+    (img?'<div class="qr" style="margin-top:12px;">'+img+'</div><div class="note">QRにも同じ内容が入っています（対応端末では通信がなくても読めます）。</div>':'<div class="note">QRなしの支援カードです。上の文字を読んでお使いください。</div>')+
     '<div class="warn">命の危険がある場合は119番へ</div>'+
     '<div class="note">作成時に、本人と掲載する連絡先の同意を確認しています。コピーは遠隔で消せません。<br>財布・お薬手帳・非常持出し袋に入れてお使いください。</div>');
 }
@@ -8056,13 +8061,13 @@ function printWatchTag(){
     '<div class="qr">'+big+'</div>'+
     '<h2>このタグを見つけた方へ</h2>'+
     '<ol><li>スマートフォンのカメラでQRを読み取ってください</li>'+
-    '<li>開いた画面で、いまの様子を選んで送ってください（ご家族に届きます）</li>'+
-    '<li>あなたの個人情報が送られることはありません</li></ol>'+
+    '<li>開いた画面で、いまの様子を選んで記録してください（家族がすぐ読むとは限りません）</li>'+
+    '<li>氏名・電話番号の入力は不要です</li></ol>'+
     '<div class="warn">けが・急病は119番／事件・保護が必要なときは110番</div>'+
     '<div class="note">このタグに氏名・住所・連絡先は入っていません。<br>まいにこ（家族の連絡アプリ）のおまもりタグです。</div>'+
     '<div class="cut">はさみで切って、持ち物に付けられます'+
-    '<div class="minis"><div class="mini">'+mini+'<br>見つけたらQRを読み取ってください（家族に知らせが送られます）</div>'+
-    '<div class="mini">'+mini+'<br>見つけたらQRを読み取ってください（家族に知らせが送られます）</div></div></div>');
+    '<div class="minis"><div class="mini">'+mini+'<br>お困りのときはQRから状況を記録<br>急ぐときは119・110番へ</div>'+
+    '<div class="mini">'+mini+'<br>お困りのときはQRから状況を記録<br>急ぐときは119・110番へ</div></div></div>');
 }
 function openPrintWindow(title, body){
   const w=window.open('','_blank');
@@ -9170,7 +9175,13 @@ function disasterQrMarkup(v){
     '<div class="note">作成日：'+esc(v.createdAt||'記録なし（旧QR）')+'<br>更新日：'+esc(v.updatedAt)+'<br>この端末に保存した内容です。印刷前に別の端末で読み取り、内容を確認してください。</div>';
 }
 function renderDisasterQr(v,markup){
-  document.getElementById('disaster-qr-preview').innerHTML=markup||disasterQrMarkup(v);
+  if(!markup){
+    try{markup=disasterQrMarkup(v);}catch(e){
+      markup='<p>QRを表示できません。この端末に保存した内容は残っています。</p>'+
+        (v.consentVersion===2?'<button class="set-btn" type="button" onclick="printDisasterQr()">保存した支援カードを印刷する</button>':'<p>本人と連絡先の同意を確認して作り直してください。</p>');
+    }
+  }
+  document.getElementById('disaster-qr-preview').innerHTML=markup;
   document.getElementById('disaster-delete').style.display='block';
 }
 function makeDisasterQr(){
