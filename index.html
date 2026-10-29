@@ -8042,6 +8042,7 @@ function printDisasterQr(){
   try{const qr=qrcode(0,'M'); qr.addData(unescape(encodeURIComponent(disasterQrText(v)))); qr.make();img=qr.createImgTag(6,12,'まいにこ 災害用QR');}catch(e){ /* 保存済みの文字カードはQR部品なしでも印刷する。 */ }
   openPrintWindow('災害・緊急時支援カード',
     '<h1>災害・緊急時支援カード</h1>'+
+    '<p>まず本人に、どの手助けが必要か確かめてください。</p>'+
     '<div class="cardbox">呼び名：'+esc(v.name)+'<br>必要な支援：'+esc(v.help)+
     (v.free?('<br>メモ：'+esc(v.free)):'')+
     '<br>緊急連絡先：'+esc(v.relation)+' '+esc(v.phone)+'<br>作成日：'+esc(v.createdAt||'記録なし（旧QR）')+'<br>更新日：'+esc(v.updatedAt)+'</div>'+
@@ -8271,9 +8272,10 @@ async function loadWatchTag(){
             if(t>latest){ latest=t; latestLabel=situation; }
             if(t>seenAt) unread++;
           }
-          rows.push('<div class="tag-alert"><strong>'+esc(situation)+'</strong><br>読み取った方の入力が履歴に記録されました'+
+          rows.push('<div class="tag-alert">読み取った方から：<br><strong>'+esc(situation)+'</strong><br>読み取った方の入力が履歴に記録されました'+
             (d?'<time>'+esc(dateJp(d))+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+'</time>':'')+'</div>');
         });
+        if(rows.length)rows.push('<div class="note">この記録は安否確認済みという意味ではありません。ご本人や、一緒にいる方に電話などで状況を確かめてください。この画面から発見者へ返信したり、居場所を調べたりはできません。<br><a href="https://www.city.ueda.nagano.jp/soshiki/korei/127011.html" target="_blank" rel="noopener">行方不明のときは、すぐ警察へ（上田市の案内）</a></div>');
         alerts.innerHTML=rows.join('');
         if(snap.metadata&&snap.metadata.fromCache){
           if(home){home.style.display='block';home.classList.remove('tag-unread');}
@@ -8289,7 +8291,7 @@ async function loadWatchTag(){
         if(unread>0 && latest>tagNotifiedThrough){
           tagNotifiedThrough=latest;
           tagNotifySound();
-          tagOsNotify(latestLabel+'（新着'+unread+'件）');
+          tagOsNotify('読み取った方から：'+latestLabel+'（新着'+unread+'件）');
         }
       },()=>{
         if(!current())return;

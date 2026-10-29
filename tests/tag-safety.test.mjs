@@ -7,7 +7,9 @@ const app=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const tick=async()=>{for(let i=0;i<12;i++)await Promise.resolve();};
 function fixture({storageBlocked=false,sdkMissing=false,invalid=false,anonymous=false}={}){
   const dom=new JSDOM(html,{url:'https://example.test/tag.html?id='+(invalid?'bad':'A'.repeat(32)),runScripts:'outside-only'});
-  const w=dom.window,d=w.document,writes=[];let authCalls=0;
+  const w=dom.window,d=w.document,writes=[],timers=new Map();let authCalls=0,timerId=0;
+  w.setTimeout=(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id;};
+  w.clearTimeout=id=>timers.delete(id);
   if(storageBlocked)Object.defineProperty(w,'localStorage',{get(){throw Error('storage blocked');}});
   const alertRef={set(payload,options){return new Promise((resolve,reject)=>writes.push({payload,options,resolve,reject}));}};
   const alerts={doc(uid){assert.equal(uid,'finder');return alertRef;}};
@@ -18,7 +20,7 @@ function fixture({storageBlocked=false,sdkMissing=false,invalid=false,anonymous=
   if(!sdkMissing)w.firebase={initializeApp:()=>({firestore:()=>db,auth:()=>auth}),firestore:{FieldValue:{increment:n=>({increment:n}),serverTimestamp:()=>({serverTime:true})}}};
   for(const script of d.querySelectorAll('script:not([src])'))w.eval(script.textContent);
   const select=value=>{const input=d.querySelector('[value="'+value+'"]');input.checked=true;input.dispatchEvent(new w.Event('change'));};
-  return {w,d,writes,select,button:d.querySelector('#notify'),status:d.querySelector('#status'),get authCalls(){return authCalls;},close:()=>w.close()};
+  return {w,d,writes,timers,select,button:d.querySelector('#notify'),status:d.querySelector('#status'),get authCalls(){return authCalls;},close:()=>w.close()};
 }
 {
   const f=fixture();assert.equal(f.writes.length,0);assert.equal(f.authCalls,0,'開くだけで認証・送信しない');
@@ -49,6 +51,26 @@ for(const options of [{sdkMissing:true},{invalid:true}]){
 }
 {
   const f=fixture({anonymous:true});assert.equal(f.authCalls,0);f.select('called');f.button.click();await tick();assert.equal(f.authCalls,1);assert.equal(f.writes.length,1,'明示送信時だけ従来の匿名認証を使う');f.writes[0].resolve();await tick();f.close();
+}
+// サーバー応答が遅くても失敗・成功を決めつけず、同じ書込みを維持する。
+for(const outcome of ['success','error']){
+  const f=fixture();f.select('lost');f.button.click();await tick();
+  const pending=[...f.timers.values()].find(t=>t.ms===12000);
+  assert.ok(pending,'待ち続ける画面に遅延案内を用意する');pending.fn();
+  assert.match(f.status.textContent,/完了を確認できません/);
+  assert.equal(f.button.disabled,true);f.button.click();await tick();assert.equal(f.writes.length,1);
+  if(outcome==='success')f.writes[0].resolve();else f.writes[0].reject(Error('offline'));
+  await tick();const settled=f.status.textContent;pending.fn();
+  assert.equal(f.status.textContent,settled,'遅れて実行された案内が完了・失敗を上書きしない');
+  assert.equal(f.timers.size,0,'応答後はタイマーを解除する');
+  if(outcome==='success')assert.match(settled,/返事は届きません/);
+  else assert.equal(f.button.disabled,false);
+  f.close();
+}
+{
+  const f=fixture();f.select('safe');f.button.click();await tick();f.writes[0].resolve();await tick();
+  assert.match(f.status.textContent,/急ぐときは.*119.*110/);
+  assert.equal(f.timers.size,0,'早い成功も遅延案内を残さない');f.close();
 }
 // 紙の支援カードは、保存済みで双方同意済みの場合だけ、QR部品なしでも印刷できる。
 const section=(a,b)=>app.slice(app.indexOf(a),app.indexOf(b,app.indexOf(a)));

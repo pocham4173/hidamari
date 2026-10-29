@@ -38,7 +38,7 @@ button{width:100%;min-height:58px;border:0;border-radius:17px;background:#1F8A82
   <div class="manual" id="manual"><label for="tag-code">QRを読み取れない場合</label><input id="tag-code" type="text" maxlength="32" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="タグコード32文字を入力"><button id="open-code" type="button">タグコードを確認する</button><div class="note">QRタグの裏面などに記載されたコードだけを入力してください。氏名・住所・電話番号・病歴は入力しません。</div></div>
   <button id="notify" type="button" disabled>状況を選んでください</button>
   <div class="status" id="status" role="status" aria-live="polite"></div>
-  <div class="note">選んだ状況は家族のアプリ内履歴に記録され、LINEの設定をしている家族にはLINEでもお知らせが届きます（15分ほど遅れることがあります）。電話やメールは届きません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。家族がすぐ気づいたり応答したりすることを保証する機能ではありません。まいにこが、暗証番号・口座・カード情報・支払い・アプリのインストールをお願いすることはありません。</div>
+  <div class="note">選んだ状況は家族のアプリ内履歴に記録され、LINEの設定をしている家族にはLINEでもお知らせしますが、遅れたり届かなかったりすることがあります。電話やメールは届きません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。家族がすぐ気づいたり応答したりすることを保証する機能ではありません。まいにこが、暗証番号・口座・カード情報・支払い・アプリのインストールをお願いすることはありません。</div>
 </main>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -101,6 +101,10 @@ button.addEventListener('click',async()=>{
   }
   sending=true;document.getElementById('situation-group').disabled=true;
   button.disabled=true;button.textContent='記録しています…';showStatus('家族のアプリ内履歴へ記録しています。','');
+  let finished=false;
+  const slowNotice=setTimeout(()=>{
+    if(!finished)showStatus('記録の完了を確認できません。通信の応答を待っています。急ぐときは、この画面の完了を待たず119番・110番へ電話してください。','');
+  },12000);
   try{
     let user=auth.currentUser;
     if(!user){const result=await auth.signInAnonymously();user=result.user;}
@@ -112,7 +116,7 @@ button.addEventListener('click',async()=>{
     lastRecordedAt=Date.now();
     try{previewStorage.setItem('mainicoTagSent-'+tagId,String(lastRecordedAt));}catch(e){ /* サーバー保存済み。端末保存の失敗を送信失敗にしない。 */ }
     button.textContent='履歴に記録しました';
-    showStatus('家族のまいにこのアプリ内履歴へ記録しました。LINEの設定をしている家族にはLINEでもお知らせします（多くは15分ほどですが、遅れたり届かなかったりすることがあります）。家族がすぐ気づくとは限りません。ご協力ありがとうございます。','ok');
+    showStatus('家族の画面に記録しました。この画面に家族からの返事は届きません。急ぐときは家族の対応を待たず、上の119番・110番へ電話してください。ご協力ありがとうございます。','ok');
   }catch(e){
     button.textContent='家族の画面に状況を記録する';
     if(e&&e.code==='permission-denied'){
@@ -122,6 +126,7 @@ button.addEventListener('click',async()=>{
       showStatus('送信できませんでした。通信状態を確認して、もう一度お試しください。','err');
     }
   }finally{
+    finished=true;clearTimeout(slowNotice);
     sending=false;document.getElementById('situation-group').disabled=false;
   }
 });

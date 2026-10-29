@@ -82,7 +82,7 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
     'home-watch-tag-status','watch-tag-history','tag-unread-count','tag-seen-btn']
     .map(id=>[id,new Element()]));
   ids['watch-tag-home'].classList={add(){},remove(){}};
-  let listener,mirrored=0,notified=0;
+  let listener,mirrored=0,notified=0,notificationText='';
   const context={
     document:{getElementById:id=>ids[id]},gid:()=> 'group',watchTagUnsub:null,
     col:()=>({doc:()=>({get:async()=>({exists:true,data:()=>({watchTagActive:true,watchTagId:'tag1'})})})}),
@@ -90,7 +90,7 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
       onSnapshot(options,callback){assert.equal(options.includeMetadataChanges,true);listener=callback;return ()=>{};}})})})},
     uid:()=> 'owner', householdBootGeneration:1,householdVerified:true,householdDeleting:false,watchTagLoadGeneration:0,
     renderWatchTag(){},tagLastSeen:()=>0,mirrorTagAlert(){mirrored++;},tagApplyUnread:n=>{ids['watch-tag-home'].style.display=n?'block':'none';},
-    tagNotifySound(){notified++;},tagOsNotify(){},esc:v=>v,dateJp:()=> '9月12日',tagNotifiedThrough:0,
+    tagNotifySound(){notified++;},tagOsNotify:text=>{notificationText=text;},esc:v=>v,dateJp:()=> '9月12日',tagNotifiedThrough:0,
     console:{warn(){}},Date
   };
   vm.runInNewContext(section('async function loadWatchTag(){','function renderWatchTag(id){'),context);
@@ -104,6 +104,14 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
   listener({metadata:{fromCache:false},forEach:fn=>fn(alert)});
   assert.equal(notified,1);
   assert.equal(mirrored,1);
+  assert.match(notificationText,/読み取った方から：安全な場所/);
+  assert.match(ids['watch-tag-alerts'].innerHTML,/読み取った方から/);
+  assert.match(ids['watch-tag-alerts'].innerHTML,/安否確認済みという意味ではありません/);
+  assert.match(ids['watch-tag-alerts'].innerHTML,/ご本人や、一緒にいる方に電話/);
+  assert.match(ids['watch-tag-history'].innerHTML,/127011.html/);
+  listener({metadata:{fromCache:false},forEach:()=>{}});
+  assert.equal(ids['watch-tag-alerts'].innerHTML,'','記録がないときに行動案内だけをホームに残さない');
+
   console.log('✅ タグも通信未確認と確定した通知を区別する');
 }
 
