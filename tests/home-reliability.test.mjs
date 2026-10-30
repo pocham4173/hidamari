@@ -82,18 +82,19 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
     'home-watch-tag-status','watch-tag-history','tag-unread-count','tag-seen-btn']
     .map(id=>[id,new Element()]));
   ids['watch-tag-home'].classList={add(){},remove(){}};
-  let listener,mirrored=0,notified=0;
+  let listener,onFailure,mirrored=0,notified=0,notificationText='';
   const context={
     document:{getElementById:id=>ids[id]},gid:()=> 'group',watchTagUnsub:null,
     col:()=>({doc:()=>({get:async()=>({exists:true,data:()=>({watchTagActive:true,watchTagId:'tag1'})})})}),
     db:{collection:()=>({doc:()=>({collection:()=>({orderBy(){return this;},limit(){return this;},
-      onSnapshot(options,callback){assert.equal(options.includeMetadataChanges,true);listener=callback;return ()=>{};}})})})},
+      onSnapshot(options,callback,error){assert.equal(options.includeMetadataChanges,true);listener=callback;onFailure=error;return ()=>{};}})})})},
     uid:()=> 'owner', householdBootGeneration:1,householdVerified:true,householdDeleting:false,watchTagLoadGeneration:0,
     renderWatchTag(){},tagLastSeen:()=>0,mirrorTagAlert(){mirrored++;},tagApplyUnread:n=>{ids['watch-tag-home'].style.display=n?'block':'none';},
-    tagNotifySound(){notified++;},tagOsNotify(){},esc:v=>v,dateJp:()=> '9月12日',tagNotifiedThrough:0,
+    tagNotifySound(){notified++;},tagOsNotify:text=>{notificationText=text;},esc:v=>v,dateJp:()=> '9月12日',tagNotifiedThrough:0,
     console:{warn(){}},Date
   };
   vm.runInNewContext(section('async function loadWatchTag(){','function renderWatchTag(id){'),context);
+  vm.runInNewContext(section('function tagApplyUnread(n){','function tagNotifySound(){'),context);
   await context.loadWatchTag();
   const alert={id:'alert1',data:()=>({situation:'safe',createdAt:{toDate:()=>new Date()}})};
   listener({metadata:{fromCache:true},forEach:fn=>fn(alert)});
@@ -104,6 +105,22 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
   listener({metadata:{fromCache:false},forEach:fn=>fn(alert)});
   assert.equal(notified,1);
   assert.equal(mirrored,1);
+  assert.match(notificationText,/読み取った方から：安全な場所/);
+  assert.match(ids['watch-tag-alerts'].innerHTML,/読み取った方から/);
+  assert.match(ids['watch-tag-alerts'].innerHTML,/安否確認済みという意味ではありません/);
+  assert.match(ids['watch-tag-alerts'].innerHTML,/ご本人や、一緒にいる方に電話/);
+  assert.match(ids['watch-tag-history'].innerHTML,/127011.html/);
+  assert.equal(ids['tag-seen-btn'].style.display,'block');
+  onFailure(Error('connection failed'));
+  assert.equal(ids['tag-seen-btn'].style.display,'none','読めない内容を確認済みにするボタンを残さない');
+  assert.equal(ids['tag-unread-count'].style.display,'none','古い新着件数を現在の件数と表示しない');
+  assert.equal(ids['watch-tag-home'].style.display,'block','確認不能の案内は残す');
+  assert.equal(mirrored,1);assert.equal(notified,1,'エラーで通知・書込みを増やさない');
+  listener({metadata:{fromCache:false},forEach:fn=>fn(alert)});
+  assert.equal(ids['tag-seen-btn'].style.display,'block','再取得後は確認操作が戻る');
+  listener({metadata:{fromCache:false},forEach:()=>{}});
+  assert.equal(ids['watch-tag-alerts'].innerHTML,'','記録がないときに行動案内だけをホームに残さない');
+
   console.log('✅ タグも通信未確認と確定した通知を区別する');
 }
 

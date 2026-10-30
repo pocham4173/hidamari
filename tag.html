@@ -26,6 +26,8 @@ button{width:100%;min-height:58px;border:0;border-radius:17px;background:#1F8A82
   <div class="emergency"><a href="tel:119">けが・意識障害<br>119</a><a href="tel:110">危険・事件の心配<br>110</a></div>
   <p class="note"><strong>本サービスは119番通報や安否確認、医療行為の代替ではありません。</strong></p>
   <div class="privacy"><b>この画面に個人情報は表示されません。</b><br>氏名・住所・電話番号・病歴・家族の連絡先・現在地は取得も表示もしません。</div>
+  <p><b>家族への状況記録です。ここで家族と会話したり、現在地を伝えたりはできません。</b></p>
+  <noscript><p>記録にはJavaScriptが必要です。急ぐときは上の119番・110番へ電話してください。</p></noscript>
   <fieldset id="situation-group">
     <legend>いちばん近い状況を選んでください</legend>
     <label class="choice"><input type="radio" name="situation" value="lost">道に迷っているようです</label>
@@ -36,7 +38,7 @@ button{width:100%;min-height:58px;border:0;border-radius:17px;background:#1F8A82
   <div class="manual" id="manual"><label for="tag-code">QRを読み取れない場合</label><input id="tag-code" type="text" maxlength="32" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="タグコード32文字を入力"><button id="open-code" type="button">タグコードを確認する</button><div class="note">QRタグの裏面などに記載されたコードだけを入力してください。氏名・住所・電話番号・病歴は入力しません。</div></div>
   <button id="notify" type="button" disabled>状況を選んでください</button>
   <div class="status" id="status" role="status" aria-live="polite"></div>
-  <div class="note">選んだ状況は家族のアプリ内履歴に記録され、LINEの設定をしている家族にはLINEでもお知らせが届きます（15分ほど遅れることがあります）。電話やメールは届きません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。家族がすぐ気づいたり応答したりすることを保証する機能ではありません。まいにこが、暗証番号・口座・カード情報・支払い・アプリのインストールをお願いすることはありません。</div>
+  <div class="note">選んだ状況は家族のアプリ内履歴に記録され、LINEの設定をしている家族にはLINEでもお知らせしますが、遅れたり届かなかったりすることがあります。電話やメールは届きません。バックグラウンドや画面ロック中は音・表示が届かないことがあります。家族がすぐ気づいたり応答したりすることを保証する機能ではありません。まいにこが、暗証番号・口座・カード情報・支払い・アプリのインストールをお願いすることはありません。</div>
 </main>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -49,6 +51,8 @@ const previewStorage={
   setItem(key,value){ return window.localStorage.setItem(this.prefix+key,value); },
   removeItem(key){ return window.localStorage.removeItem(this.prefix+key); }
 };
+let db=null,auth=null;
+try{
 const previewApp=firebase.initializeApp({
   apiKey:"AIzaSyA3bGGlSk_btdBP5i0XWg0VidskwviHR3A",
   authDomain:"hidamari-5f8de.firebaseapp.com",
@@ -57,36 +61,50 @@ const previewApp=firebase.initializeApp({
   messagingSenderId:"565713968884",
   appId:"1:565713968884:web:0a9665d1fe5e0fa161c8a1"
 });
-const db=previewApp.firestore();
-const auth=previewApp.auth();
+db=previewApp.firestore();
+auth=previewApp.auth();
+}catch(e){ /* 通信部品が届かなくても、119・110の入口は使える。 */ }
 const button=document.getElementById('notify');
 const statusBox=document.getElementById('status');
 const manualBox=document.getElementById('manual'),codeInput=document.getElementById('tag-code'),openCode=document.getElementById('open-code');
 const tagId=new URLSearchParams(location.search).get('id')||'';
 const validTag=/^[A-Za-z0-9_-]{32}$/.test(tagId);
 const cooldownMs=10*60*1000;
+let sending=false,lastRecordedAt=0;
+function lastSent(){
+  let cached=0;
+  try{cached=Number(previewStorage.getItem('mainicoTagSent-'+tagId)||0);}catch(e){}
+  if(!Number.isFinite(cached)||cached>Date.now())cached=0;
+  return Math.max(lastRecordedAt,cached);
+}
 
 function showStatus(text,kind){statusBox.textContent=text;statusBox.className='status show '+kind;}
+if(!db||!auth)showStatus('通信の準備ができませんでした。通信が戻ったら画面を開き直してください。急ぐときは上の119番・110番へ電話してください。','err');
 if(!validTag){button.disabled=true;manualBox.classList.add('show');showStatus(tagId?'タグコードを確認してください。32文字の英数字で入力します。':'QRを読み取るか、タグコードを入力してください。','err');}
 openCode.addEventListener('click',function(){var code=codeInput.value.trim();if(!/^[A-Za-z0-9_-]{32}$/.test(code)){showStatus('タグコードは32文字の英数字です。もう一度確認してください。','err');codeInput.focus();return;}location.href='tag.html?id='+encodeURIComponent(code);});
 document.querySelectorAll('input[name="situation"]').forEach(input=>{
   input.addEventListener('change',()=>{
-    if(!validTag)return;
+    if(!validTag||!db||!auth||sending)return;
     button.disabled=false;
     button.textContent='家族の画面に状況を記録する';
   });
 });
 
 button.addEventListener('click',async()=>{
-  if(!validTag||button.disabled)return;
+  if(!validTag||!db||!auth||sending||button.disabled)return;
   const selected=document.querySelector('input[name="situation"]:checked');
   if(!selected){showStatus('状況を一つ選んでください。','err');return;}
-  const sentAt=Number(previewStorage.getItem('mainicoTagSent-'+tagId)||0);
+  const sentAt=lastSent();
   if(sentAt&&Date.now()-sentAt<cooldownMs){
-    showStatus('ご家族へお知らせ済みです。状況が変わった場合は、10分後にもう一度知らせることができます。','ok');
+    showStatus('家族の画面に記録済みです。家族が読んだかは分かりません。次の記録は前回から10分後にできます。急ぐときは119番・110番へ電話してください。','ok');
     return;
   }
+  sending=true;document.getElementById('situation-group').disabled=true;
   button.disabled=true;button.textContent='記録しています…';showStatus('家族のアプリ内履歴へ記録しています。','');
+  let finished=false;
+  const slowNotice=setTimeout(()=>{
+    if(!finished)showStatus('記録の完了を確認できません。通信の応答を待っています。急ぐときは、この画面の完了を待たず119番・110番へ電話してください。','');
+  },12000);
   try{
     let user=auth.currentUser;
     if(!user){const result=await auth.signInAnonymously();user=result.user;}
@@ -95,9 +113,10 @@ button.addEventListener('click',async()=>{
       count:firebase.firestore.FieldValue.increment(1),
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     },{merge:true});
-    previewStorage.setItem('mainicoTagSent-'+tagId,String(Date.now()));
+    lastRecordedAt=Date.now();
+    try{previewStorage.setItem('mainicoTagSent-'+tagId,String(lastRecordedAt));}catch(e){ /* サーバー保存済み。端末保存の失敗を送信失敗にしない。 */ }
     button.textContent='履歴に記録しました';
-    showStatus('家族のまいにこのアプリ内履歴へ記録しました。LINEの設定をしている家族にはLINEでもお知らせします（多くは15分ほどですが、遅れたり届かなかったりすることがあります）。家族がすぐ気づくとは限りません。ご協力ありがとうございます。','ok');
+    showStatus('家族の画面に記録しました。この画面に家族からの返事は届きません。急ぐときは家族の対応を待たず、上の119番・110番へ電話してください。ご協力ありがとうございます。','ok');
   }catch(e){
     button.textContent='家族の画面に状況を記録する';
     if(e&&e.code==='permission-denied'){
@@ -106,6 +125,9 @@ button.addEventListener('click',async()=>{
       button.disabled=false;
       showStatus('送信できませんでした。通信状態を確認して、もう一度お試しください。','err');
     }
+  }finally{
+    finished=true;clearTimeout(slowNotice);
+    sending=false;document.getElementById('situation-group').disabled=false;
   }
 });
 </script>
