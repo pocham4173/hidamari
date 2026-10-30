@@ -8296,6 +8296,8 @@ async function loadWatchTag(){
       },()=>{
         if(!current())return;
         alerts.innerHTML='<div class="note">お知らせを読み込めませんでした。未確認の有無は判断できません。</div>';
+        document.getElementById('tag-unread-count').style.display='none';
+        document.getElementById('tag-seen-btn').style.display='none';
         if(history)history.textContent='お知らせを読み込めませんでした。通信状態を確認してください。';
         if(home){home.style.display='block';home.classList.add('tag-unread');}
         if(homeStatus)homeStatus.textContent='お知らせを確認できません。通信状態を確認してください。';
