@@ -87,3 +87,32 @@ saved={...saved,consentVersion:2};c.qrcode=()=>({addData(){},make(){},createImgT
 const guide=new JSDOM(app).window;assert.equal(guide.document.querySelector('#tag-choice-guide').open,false,'比較の説明は日常画面で広げない');
 assert.ok(guide.document.querySelector('#tag-choice-guide a[href="https://www.city.ueda.nagano.jp/soshiki/korei/2692.html"]'));guide.close();
 console.log('タグ：二重送信・端末保存不可・SDK不調・再試行・無操作時の送信なし／支援カード：QRなし印刷・同意・HTML保護 OK');
+
+// 開き直すときは保存領域を読み直し、前回の個人情報・QRを残さない。
+{
+  const dom=new JSDOM(app,{url:'https://example.test/',runScripts:'outside-only'}),w=dom.window,d=w.document;
+  w.DISASTER_QR_KEY='test-card';
+  w.esc=v=>String(v);w.qrcode=()=>({addData(){},make(){},createImgTag:()=>'<img alt="saved QR">'});
+  w.eval(section('function resetDisasterConsent(', 'async function deleteDisasterQr('));
+  const card={name:'架空の本人',relation:'架空の家族',phone:'000-0000-0000',help:'筆談',free:'架空のメモ',consentVersion:2,updatedAt:'2026年11月1日'};
+  w.localStorage.setItem('test-card',JSON.stringify(card));w.openDisasterQr();
+  assert.match(d.getElementById('disaster-qr-preview').innerHTML,/saved QR/);
+  w.closeDisasterQr();w.localStorage.removeItem('test-card');w.openDisasterQr();
+  assert.equal(d.getElementById('disaster-qr-preview').innerHTML,'','保存内容がなくなった後に古いQRを見せない');
+  for(const k of ['name','relation','phone','help','free'])assert.equal(d.getElementById('disaster-'+k).value,'');
+  assert.equal(d.getElementById('disaster-delete').style.display,'none');
+  w.localStorage.setItem('test-card',JSON.stringify(card));w.openDisasterQr();
+  w.localStorage.setItem('test-card','{broken');w.openDisasterQr();
+  assert.equal(d.getElementById('disaster-qr-preview').innerHTML,'');
+  assert.match(d.getElementById('disaster-qr-state').textContent,/開けません/);
+  w.localStorage.setItem('test-card',JSON.stringify({...card,name:'更新した本人'}));w.openDisasterQr();
+  assert.equal(d.getElementById('disaster-name').value,'更新した本人');
+  assert.equal(d.getElementById('disaster-consent').checked,false);
+  assert.equal(d.getElementById('disaster-contact-consent').checked,false);
+  assert.match(d.getElementById('disaster-qr-preview').innerHTML,/saved QR/);
+  Object.defineProperty(w,'localStorage',{get(){throw Error('storage blocked');}});w.openDisasterQr();
+  assert.equal(d.getElementById('disaster-qr-preview').innerHTML,'');
+  assert.equal(d.getElementById('disaster-phone').value,'');
+  assert.match(d.getElementById('disaster-qr-state').textContent,/開けません/);dom.window.close();
+  console.log('支援カード：再表示時の保存消失・破損・復帰で古いQRと個人情報を残さない OK');
+}

@@ -9155,6 +9155,9 @@ function disasterQrState(text,error=false){
 function openDisasterQr(){
   const m=document.getElementById('disaster-qr-modal');if(!m)return;
   m.classList.add('show');resetDisasterConsent();disasterQrState('');
+  ['name','relation','phone','help','free'].forEach(key=>document.getElementById('disaster-'+key).value='');
+  document.getElementById('disaster-qr-preview').innerHTML='';
+  document.getElementById('disaster-delete').style.display='none';
   try{
     const v=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null');
     if(v){
