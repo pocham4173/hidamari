@@ -9200,7 +9200,10 @@ function makeDisasterQr(){
   if(help==='その他（下の欄に記入）'&&!free){disasterQrState('その他の内容を入力してください。',true);return;}
   if(!document.getElementById('disaster-consent').checked||!document.getElementById('disaster-contact-consent').checked){disasterQrState('本人と、掲載する連絡先の本人の同意を両方確認してください。',true);return;}
   try{
-    const previous=JSON.parse(localStorage.getItem(DISASTER_QR_KEY)||'null');
+    const previousRaw=localStorage.getItem(DISASTER_QR_KEY);
+    let previous=null;
+    // 読取拒否は外側で中止。JSON破損だけは、入力・双方同意済みの明示作成で置き換える。
+    try{previous=JSON.parse(previousRaw||'null');}catch(e){}
     const date=disasterUpdatedAt();
     const v={...values,createdAt:previous?(previous.createdAt||'記録なし（旧QR）'):date,updatedAt:date,consentVersion:2,consentedAt:date};
     const markup=disasterQrMarkup(v);

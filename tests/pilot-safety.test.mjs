@@ -31,6 +31,22 @@ await context.deleteDisasterQr();assert.ok(saved);assert.equal(el('disaster-name
 saved=JSON.stringify({name:'旧QR',updatedAt:'2026年9月1日'});el('disaster-consent').checked=true;el('disaster-contact-consent').checked=true;context.makeDisasterQr();assert.equal(JSON.parse(saved).createdAt,'記録なし（旧QR）');
 console.log('✅ 災害QRは双方の同意・保存失敗・削除失敗・日付継承・旧形式を処理する');
 
+// 壊れた保存内容は、入力と双方同意をやり直した明示作成でだけ置き換える。
+saved='{broken';const beforeRepair=writes;
+context.openDisasterQr();assert.equal(saved,'{broken');assert.equal(writes,beforeRepair,'開くだけで修復・消去しない');
+el('disaster-name').value='新しい架空の本人';el('disaster-phone').value='000-0000-0000';el('disaster-relation').value='家族';el('disaster-help').value='筆談をお願いします';
+context.makeDisasterQr();assert.equal(saved,'{broken');assert.equal(writes,beforeRepair,'同意なしで壊れた保存内容を置き換えない');
+el('disaster-consent').checked=true;el('disaster-contact-consent').checked=true;
+failQr=true;context.makeDisasterQr();assert.equal(saved,'{broken');failQr=false;
+failSave=true;context.makeDisasterQr();assert.equal(saved,'{broken');assert.match(el('disaster-qr-state').textContent,/保存できません/);failSave=false;
+const getItem=context.localStorage.getItem;context.localStorage.getItem=()=>{throw Error('read blocked');};
+context.makeDisasterQr();assert.equal(saved,'{broken');assert.equal(writes,beforeRepair,'保存領域を読めない場合は書き込まない');context.localStorage.getItem=getItem;
+context.makeDisasterQr();assert.equal(writes,beforeRepair+1,'壊れた保存内容から明示作成で復帰する');
+const repaired=JSON.parse(saved);assert.equal(repaired.name,'新しい架空の本人');assert.equal(repaired.help,'筆談をお願いします');assert.equal(repaired.createdAt,clock);assert.equal(repaired.updatedAt,clock);assert.equal(repaired.consentVersion,2);
+assert.match(el('disaster-qr-state').textContent,/保存しました/);assert.equal(el('disaster-consent').checked,false);assert.equal(el('disaster-contact-consent').checked,false);
+console.log('✅ 支援カードの保存破損から再作成：明示操作・双方同意・読取拒否・QR失敗・書込失敗・新規作成日を検査');
+
+
 function historyFixture(){
   const elements=new Map(),el=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);};
   const listens=[],received=[],originals=new Map(),serverReplies=[];let unsubscribed=0,resolveWrite,rejectWrite,writeFailure=false,account='person',group='home',generation=1,connected=true,holdRead=null;
