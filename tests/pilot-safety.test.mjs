@@ -47,6 +47,47 @@ assert.match(el('disaster-qr-state').textContent,/保存しました/);assert.eq
 console.log('✅ 支援カードの保存破損から再作成：明示操作・双方同意・読取拒否・QR失敗・書込失敗・新規作成日を検査');
 
 
+// 削除確認中の別タブ更新・取消・保存領域の読取拒否を隔離して再現する。
+function cardDeleteFixture(){
+  const elements=new Map(),el=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);};
+  let saved='old-card',removes=0,asks=0,failRead=false,resolveConfirm;
+  const c={document:{getElementById:el},DISASTER_QR_KEY:'test',localStorage:{
+    getItem:()=>{if(failRead)throw Error('blocked');return saved;},
+    removeItem:()=>{removes++;saved=null;}
+  },appConfirm:()=>{asks++;return new Promise(resolve=>resolveConfirm=resolve);}};
+  vm.createContext(c);vm.runInContext(section('function resetDisasterConsent(){','\n\n</script>'),c);
+  return {c,el,get saved(){return saved;},set saved(v){saved=v;},get removes(){return removes;},get asks(){return asks;},set failRead(v){failRead=v;},confirm:v=>resolveConfirm(v)};
+}
+{
+  const f=cardDeleteFixture();f.el('disaster-name').value='入力を残す';
+  const pending=f.c.deleteDisasterQr();f.saved='updated-card';f.confirm(true);await pending;
+  assert.equal(f.saved,'updated-card','確認中に更新されたカードを削除しない');assert.equal(f.removes,0);
+  assert.equal(f.el('disaster-name').value,'入力を残す');assert.match(f.el('disaster-qr-state').textContent,/変わった/);
+}
+{
+  const f=cardDeleteFixture();const pending=f.c.deleteDisasterQr();f.saved=null;f.confirm(true);await pending;
+  assert.equal(f.removes,0,'確認中に他の画面で削除された内容に再度削除を実行しない');
+}
+{
+  const f=cardDeleteFixture();const pending=f.c.deleteDisasterQr();f.confirm(false);await pending;
+  assert.equal(f.saved,'old-card');assert.equal(f.removes,0,'取消では変更しない');
+}
+{
+  const f=cardDeleteFixture();f.el('disaster-name').value='消す入力';const pending=f.c.deleteDisasterQr();f.confirm(true);await pending;
+  assert.equal(f.saved,null);assert.equal(f.removes,1);assert.equal(f.el('disaster-name').value,'');
+}
+{
+  const f=cardDeleteFixture();f.failRead=true;await f.c.deleteDisasterQr();
+  assert.equal(f.asks,0,'保存内容を読めないときは削除確認を始めない');assert.equal(f.removes,0);
+  assert.match(f.el('disaster-qr-state').textContent,/削除できません/);
+}
+{
+  const f=cardDeleteFixture();const pending=f.c.deleteDisasterQr();f.failRead=true;f.confirm(true);await pending;
+  assert.equal(f.saved,'old-card');assert.equal(f.removes,0,'確認後の読取拒否でも削除しない');
+  assert.match(f.el('disaster-qr-state').textContent,/削除できません/);
+}
+console.log('✅ 支援カード削除：確認中の更新・削除、取消、通常削除、確認前後の読取拒否を検査');
+
 function historyFixture(){
   const elements=new Map(),el=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);};
   const listens=[],received=[],originals=new Map(),serverReplies=[];let unsubscribed=0,resolveWrite,rejectWrite,writeFailure=false,account='person',group='home',generation=1,connected=true,holdRead=null;

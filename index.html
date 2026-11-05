@@ -9213,8 +9213,16 @@ function makeDisasterQr(){
   }catch(e){disasterQrState('QRを作成・保存できませんでした。入力は残っています。通信と端末の保存設定を確認して、もう一度お試しください。',true);}
 }
 async function deleteDisasterQr(){
+  let beforeConfirmation;
+  try{beforeConfirmation=localStorage.getItem(DISASTER_QR_KEY);}
+  catch(e){disasterQrState('保存内容を確認できないため、削除できませんでした。',true);return;}
   if(!await (typeof appConfirm==='function'?appConfirm:(t=>confirm(t)))('この端末に保存した災害用QRを削除しますか？\n印刷済み・撮影済みのQRは消えません。','削除する'))return;
-  try{localStorage.removeItem(DISASTER_QR_KEY);}
+  try{
+    if(localStorage.getItem(DISASTER_QR_KEY)!==beforeConfirmation){
+      disasterQrState('確認中に保存内容が変わったため、削除を中止しました。いったん閉じて、内容を確認し直してください。',true);return;
+    }
+    localStorage.removeItem(DISASTER_QR_KEY);
+  }
   catch(e){disasterQrState('削除できませんでした。保存内容は消去できていません。',true);return;}
   ['name','phone','free','relation','help'].forEach(key=>document.getElementById('disaster-'+key).value='');
   resetDisasterConsent();document.getElementById('disaster-qr-preview').innerHTML='';
