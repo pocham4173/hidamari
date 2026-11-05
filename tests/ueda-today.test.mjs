@@ -27,9 +27,9 @@ for(const url of ['javascript:alert(1)','https://www.city.ueda.nagano.jp.evil.te
 assert.equal(topics([{...topic,checkedAt:'2026-10-25T17:00:00+09:00'}],now).length,0);
 
 const dom=new JSDOM('<div class="page" id="honnin"><div data-ueda-today></div></div><div class="page" id="kazoku"><div class="ftab" id="t-home"><div id="home-main"><div data-ueda-today></div></div></div></div>',{url:'https://example.test/',pretendToBeVisual:true});
-const {window:w}=dom,d=w.document;let calls=[],voices=[],cancelled=0,fail=false,deferred=null;
+const {window:w}=dom,d=w.document;let calls=[],voices=[],cancelled=0,fail=false,deferred=null,replacement=null;
 w.speechSynthesis={cancel(){cancelled++;},speak(u){voices.push(u);}};w.SpeechSynthesisUtterance=function(text){this.text=text;};
-const client=mount(d,{now:()=>now,topics:[{...topic,title:'<img src=x onerror=alert(1)>'}],fetch:async(url,options)=>{calls.push({url,options});if(deferred)return deferred;if(fail)throw Error('offline');return {ok:true,json:async()=>report()};}});
+const client=mount(d,{now:()=>now,topics:[{...topic,title:'<img src=x onerror=alert(1)>'}],fetch:async(url,options)=>{calls.push({url,options});if(deferred)return deferred;if(fail)throw Error('offline');return {ok:true,json:async()=>replacement||report()};}});
 const tick=()=>new Promise(r=>w.setTimeout(r,10));
 await tick();assert.equal(calls.length,0,'入口では外部予報を取得しない');
 d.querySelector('#honnin').classList.add('active');await tick();
@@ -42,8 +42,22 @@ assert.equal(h.querySelector('.ut-items img'),null,'外部の文はHTMLとして
 h.querySelector('details').open=true;await tick();h.querySelector('.ut-read').click();assert.equal(voices.length,1);assert.match(voices[0].text,/長野県中部/);assert.equal(h.querySelector('.ut-read').textContent,'読み上げを止める'); h.querySelector('.ut-read').click(); assert.equal(h.querySelector('.ut-read').textContent,'天気を聞く'); h.querySelector('.ut-read').click();
 h.querySelector('details').open=false;await tick();assert.equal(h.querySelector('.ut-read').textContent,'天気を聞く');assert.ok(cancelled>0);
 h.classList.remove('active');f.classList.add('active');await tick();assert.equal(calls.length,1,'同じ予報を家族にも使い、連続取得しない');
-now=Date.parse('2026-10-25T00:01:00+09:00');client.refresh();await tick();assert.match(f.querySelector('.ut-weather').textContent,/雨 のち くもり/);
+f.querySelector('details').open=true;await tick();f.querySelector('.ut-read').click();
+const beforeSame=cancelled;client.refresh();await tick();assert.equal(cancelled,beforeSame,'同じ予報の再描画で音声を止めない');
+const beforeDay=cancelled;
+now=Date.parse('2026-10-25T00:01:00+09:00');client.refresh();
+assert.ok(cancelled>beforeDay,'日替わりで今日と明日が変わったら古い音声を止める');await tick();assert.match(f.querySelector('.ut-weather').textContent,/雨 のち くもり/);
+f.querySelector('.ut-read').click();const oldVoice=voices.at(-1),beforeUpdate=cancelled,spokenBefore=voices.length;
+replacement=report();replacement[0].timeSeries[0].areas[1].weathers[1]='晴れ';
+f.querySelector('.ut-retry').click();await tick();
+assert.ok(cancelled>beforeUpdate,'取得した予報が変わったら古い音声を止める');
+assert.equal(voices.length,spokenBefore,'更新した予報を自動再生しない');
+assert.equal(f.querySelector('.ut-read').textContent,'天気を聞く');
+f.querySelector('.ut-read').click();assert.match(voices.at(-1).text,/今日、晴れ/);
+oldVoice.onend();assert.equal(f.querySelector('.ut-read').textContent,'読み上げを止める','古い終了通知は新しい再生を止めない');
+const beforeFail=cancelled;
 fail=true;f.querySelector('.ut-retry').click();await tick();assert.match(f.querySelector('.ut-weather').textContent,/確認できません/);assert.equal(f.querySelector('.ut-read').disabled,true,'通信失敗を過去の予報で隠さない');
+assert.ok(cancelled>beforeFail,'取得失敗でボタンが無効になる前に音声も停止');assert.equal(f.querySelector('.ut-read').textContent,'天気を聞く');
 fail=false;let resolve;deferred=new Promise(r=>resolve=r);f.querySelector('.ut-retry').click();await tick();assert.equal(f.querySelector('.ut-retry').disabled,true);const before=calls.length;client.refresh();await tick();assert.equal(calls.length,before,'同時取得を重ねない');resolve({ok:false});await tick();assert.equal(f.querySelector('.ut-retry').disabled,false);deferred=null;
 now=Date.parse('2026-10-31T17:01:00+09:00');client.refresh();await tick();assert.equal(f.querySelectorAll('.ut-items article').length,0);assert.match(f.querySelector('.ut-topic-note').textContent,/今掲載できる話題はありません/);
 client.destroy();w.close();

@@ -98,7 +98,7 @@ const thanks={_id:'thanks',uid:'person',name:'本人',type:'family-message-back'
  assert.ok(hTodayIndex>=0&&hTodayIndex<=2,'今日の予定は挨拶と天気に続く上部にある');
  assert.equal(bodyKids[0],f.document.querySelector('.person-welcome'),'日付の次は、本人の今日と押して聞ける挨拶');
  assert.ok(bodyKids.indexOf(f.document.getElementById('speech-notice'))>bodyKids.indexOf(f.document.getElementById('kusuri-box')),'声の説明は毎日の記録の下に置く');
- assert.ok(bodyKids.indexOf(panel)<bodyKids.indexOf(f.document.getElementById('btn-a')),'家族からの連絡は記録ボタンより先に見つけられる');
+ assert.ok(bodyKids.indexOf(panel)>bodyKids.indexOf(f.document.getElementById('kusuri-box')),'家族からの連絡は挨拶・お薬の記録より下に置く');
  assert.equal(f.document.getElementById('h-incoming-message').textContent,'','yesterday is kept off today’s home');
  assert.equal(panel.open,false);assert.equal(f.visible(f.document.getElementById('person-history-open')),false);
  panel.open=true;assert.ok(f.visible(f.document.getElementById('person-history-open')));
