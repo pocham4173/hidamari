@@ -85,7 +85,9 @@
         v.get('.ut-read').disabled=!value;v.get('.ut-retry').disabled=pending;
         const key=JSON.stringify(news);
         if(v.newsKey!==key){
-          v.newsKey=key;const box=v.get('.ut-items');box.replaceChildren();
+          v.newsKey=key;const box=v.get('.ut-items');
+          const focusedUrl=box.contains(doc.activeElement)?doc.activeElement.href:null;
+          box.replaceChildren();
           news.forEach(n=>{
             const article=doc.createElement('article'),a=doc.createElement('a'),date=doc.createElement('p');
             a.textContent=n.title+' ↗';a.href=n.url;a.target='_blank';a.rel='noopener noreferrer';
@@ -93,6 +95,10 @@
             article.append(a,date);box.append(article);
           });
           v.get('.ut-topic-note').textContent=news.length?'':'今掲載できる話題はありません。新しい催しは、市のカレンダーで見られます。';
+          if(focusedUrl){
+            const next=[...box.querySelectorAll('a')].find(link=>link.href===focusedUrl)||v.get('.ut-more');
+            next.focus({preventScroll:true});
+          }
         }
       });
     }

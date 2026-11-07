@@ -64,3 +64,25 @@ client.destroy();w.close();
 console.log('今日の上田：地域・日本時間の日替わり・鮮度・失敗・期限・安全な表示・任意の音声・共有取得 OK');
 
 assert.equal(h.querySelector('.ut-note'),null); assert.equal(h.querySelector('article small'),null); assert.equal(h.querySelector('.ut-stop'),null);
+
+// 期限を迎えたとき、開いたままの両方のホームで選択位置を保つ。
+for(const page of ['honnin','kazoku'])for(const selected of ['remaining','ending','outside']){
+  const dom=new JSDOM('<main class="page active" id="'+page+'"><section data-ueda-today></section></main>',{pretendToBeVisual:true});
+  const win=dom.window,doc=win.document;
+  let at=Date.parse('2026-11-08T14:59:59+09:00'),timer;
+  win.setInterval=fn=>{timer=fn;return 1;};win.clearInterval=()=>{};
+  const ending={...topic,checkedAt:'2026-11-02T06:00:00+09:00',endsAt:'2026-11-08T15:00:00+09:00'};
+  const remaining={...ending,url:ending.url+'2',endsAt:'2026-11-23T00:00:00+09:00'};
+  const client=mount(doc,{now:()=>at,topics:[ending,remaining],fetch:async()=>({ok:false})});
+  doc.querySelector('details').open=true;
+  const links=doc.querySelectorAll('.ut-items a'),more=doc.querySelector('.ut-more');
+  const focus=selected==='remaining'?links[1]:selected==='ending'?links[0]:more;
+  focus.focus();assert.equal(doc.activeElement,focus);
+  at+=1000;timer();
+  assert.equal(doc.querySelectorAll('.ut-items a').length,1);
+  assert.equal(doc.activeElement,selected==='remaining'?doc.querySelector('.ut-items a'):more,'期限切れ時の選択位置 '+page+' '+selected);
+  at=Date.parse('2026-11-09T06:00:00+09:00');win.dispatchEvent(new win.Event('pageshow'));
+  assert.equal(doc.querySelectorAll('.ut-items a').length,0);assert.equal(doc.activeElement,more);
+  client.destroy();win.close();
+}
+console.log('地域の話題：終了・7日期限・画面復帰・本人/家族のフォーカス保持 OK');
