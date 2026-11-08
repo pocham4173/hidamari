@@ -85,6 +85,7 @@ openCode.addEventListener('click',function(){var code=codeInput.value.trim();if(
 document.querySelectorAll('input[name="situation"]').forEach(input=>{
   input.addEventListener('change',()=>{
     if(!validTag||!db||!auth||sending)return;
+    if(!statusBox.classList.contains('err')){statusBox.textContent='';statusBox.className='status';}
     button.disabled=false;
     button.textContent='家族の画面に状況を記録する';
   });
@@ -96,7 +97,7 @@ button.addEventListener('click',async()=>{
   if(!selected){showStatus('状況を一つ選んでください。','err');return;}
   const sentAt=lastSent();
   if(sentAt&&Date.now()-sentAt<cooldownMs){
-    showStatus('家族の画面に記録済みです。家族が読んだかは分かりません。次の記録は前回から10分後にできます。急ぐときは119番・110番へ電話してください。','ok');
+    showStatus('今回は記録していません。次の記録は前回から10分後にできます。急ぐときは記録を待たず、上の119番・110番へ電話してください。','');
     return;
   }
   sending=true;document.getElementById('situation-group').disabled=true;

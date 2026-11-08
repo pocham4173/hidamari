@@ -29,7 +29,11 @@ function fixture({storageBlocked=false,sdkMissing=false,invalid=false,anonymous=
   assert.equal(f.writes[0].payload.situation,'lost');
   assert.deepEqual(Object.keys(f.writes[0].payload).sort(),['count','createdAt','senderUid','situation','type']);
   f.writes[0].resolve();await tick();assert.match(f.status.textContent,/記録しました/);
-  f.select('safe');f.button.click();await tick();assert.equal(f.writes.length,1,'保存済みの短時間再送を防ぐ');
+  f.select('safe');
+  assert.doesNotMatch(f.status.textContent,/記録しました/,'選び直した状況に前の成功表示を残さない');
+  f.button.click();await tick();assert.equal(f.writes.length,1,'保存済みの短時間再送を防ぐ');
+  assert.match(f.status.textContent,/今回は記録していません/,'前回の成功と今回の未記録を区別');
+  assert.equal(f.status.classList.contains('ok'),false,'今回は成功の色にしない');
   assert.doesNotMatch(f.status.textContent,/お知らせ済み/,'保存を相手の受信と表現しない');
   const later=f.w.Date.now()+11*60*1000;f.w.Date.now=()=>later;f.button.click();await tick();assert.equal(f.writes.length,2,'10分後は新しい状況を記録できる');f.writes[1].resolve();await tick();f.close();
 }
