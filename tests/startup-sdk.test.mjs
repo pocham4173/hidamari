@@ -21,3 +21,17 @@ await check(base+'auth-compat.js?v=other',true,'net');
 await check('https://example.test/index.html',true,'net','document');
 await check('https://firestore.googleapis.com/example',true,'pass','');
 console.log('PASS: four versioned SDK cache hits avoid network, misses fetch, other requests unchanged');
+// 通常の再訪は毎回サーバーに更新を確認する。招待等のURLは保存しない設定を維持。
+async function navigation(path,offline=false){
+ let handler,out,opt;
+ const url='https://example.test'+path, fallback={offline:true};
+ vm.runInNewContext(src,{URL,Response,self:{location:{origin:'https://example.test'},addEventListener(k,f){if(k==='fetch')handler=f;}},
+ caches:{open:async()=>({put:async()=>{}}),match:async k=>k==='offline.html'?fallback:undefined},
+ fetch:async(u,o)=>{assert.equal(u,url);opt=o;if(offline)throw Error('offline');return new Response('fresh');}});
+ handler({request:{url,mode:'navigate',method:'GET'},respondWith(p){out=p;}});
+ const res=await out;
+ assert.equal(opt.cache,path.includes('?')?'no-store':'no-cache');
+ if(offline)assert.equal(res,fallback);else assert.equal(await res.text(),'fresh');
+}
+await navigation('/hidamari/');await navigation('/hidamari/index.html');await navigation('/hidamari/?invite=test');await navigation('/hidamari/',true);
+console.log('PASS: revisit revalidates, query bypasses HTTP cache, offline opens fallback');

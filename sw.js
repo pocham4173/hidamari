@@ -57,8 +57,8 @@ self.addEventListener('fetch', function(e){
     })());
     return;
   }
-  /* アプリ本体の画面はブラウザーの一時保存を使わず、毎回通信で確かめる(電波がない時に古い画面が出ないように) */
-  const net=isAppPage(req)?fetch(req.url,{cache:'no-store',credentials:'same-origin'}):fetch(req);
+  /* 通常のホームは毎回更新を確認し、変更なしならHTML本体を再転送しなくてよい。 */
+  const net=isAppPage(req)?fetch(req.url,{cache:new URL(req.url).search?'no-store':'no-cache',credentials:'same-origin'}):fetch(req);
   e.respondWith(
     net.then(function(res){
       if(res && (res.ok || res.type==='opaque')){
