@@ -144,7 +144,7 @@ function setup(clock){
   c.toggleNextYotei();assert.match(spoken.at(-1),/読み込めませんでした/,'error is not reported as no events');
   vm.runInContext('personYoteiStatus="ready"',c);c.renderNextYotei();
   assert.equal(txt('y-days'),'明日　09:00','9:00 today already passed; not shown as next, not marked done');
-  assert.equal(txt('y-label'),'デイサービス 🚐');
+  assert.equal(txt('y-label'),'デイサービス 🚐');assert.equal(d.getElementById('y-card').dataset.view,'plan');
   assert.equal(d.getElementById('y-others').hidden,false);assert.match(txt('y-others'),/ほか1件/);
   assert.equal(d.getElementById('y-detail').hidden,true);
   c.toggleNextYotei();
@@ -154,10 +154,10 @@ function setup(clock){
   c.openNextYoteiDay();assert.equal(c.__cal,true);assert.equal(vm.runInContext('scheduleSelectedDay',c),'2026-10-14');
   vm.runInContext('yoteiCache=[{_id:"x",label:"訪問",date:"2026-10-30",time:""}]',c);c.renderNextYotei();
   assert.equal(txt('y-days'),'10月30日（金）','no time is not invented');assert.match(txt('y-sub'),/あと17日/);
-  vm.runInContext('yoteiCache=[]',c);c.renderNextYotei();assert.equal(txt('y-days'),'予定はありません');assert.equal(txt('y-label'),'');
+  vm.runInContext('yoteiCache=[]',c);c.renderNextYotei();assert.equal(txt('y-days'),'これからの予定はありません');assert.equal(d.getElementById('y-card').dataset.view,'empty');assert.equal(txt('y-label'),'');
   c.speakNextYotei();assert.equal(spoken.at(-1),'これからの予定はありません');
   vm.runInContext('personYoteiStatus="cached"',c);c.renderNextYotei();
-  assert.equal(txt('y-days'),'保存された予定はありません');assert.match(txt('y-sub'),/通信の確認待ち/);
+  assert.equal(d.getElementById('y-card').dataset.view,'status');assert.equal(txt('y-days'),'保存された予定はありません');assert.match(txt('y-sub'),/通信の確認待ち/);
   c.speakNextYotei();assert.match(spoken.at(-1),/最新の予定は確認できません/);
   vm.runInContext('yoteiCache=[{_id:"x",label:"訪問",date:"2026-10-30",time:""}]',c);c.renderNextYotei();
   c.speakNextYotei();assert.match(spoken.at(-1),/保存された予定です/);assert.match(spoken.at(-1),/訪問/);

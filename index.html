@@ -1048,12 +1048,14 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 .person-record-heading{font-size:1.15rem;margin:4px 0 0;}
 /* 暮らし → 自分の記録 → 家族の言葉。大きな文字と操作領域を保つ。 */
 #honnin .h-time{font-size:1.6rem;}
-#honnin .person-welcome{border-width:1px;background:#FFFAF4;}
+#honnin .person-welcome{border:1px solid #E3E6E9;background:#fff;color:var(--cha);}
 #honnin #person-welcome-read{background:transparent;min-height:48px;}
 #honnin #person-welcome-text{font-size:1.75rem;}
 #honnin .person-welcome .welcome-stop{margin-top:4px;}
 #honnin .yotei-card{padding:12px;}
-#honnin .yotei-card .days{font-size:1.65rem;line-height:1.5;}
+#honnin .yotei-card .days{font-size:1.1rem;line-height:1.5;color:var(--cha);font-weight:700;}
+#honnin .yotei-card[data-view="plan"] .days{font-size:1.9rem;color:#315FAE;font-weight:900;}
+#honnin .yotei-card[data-view="empty"] .lb,#honnin .yotei-card .pl:empty{display:none;}
 #honnin .yotei-card .pl{font-size:1.4rem;}
 #honnin .person-conversation-panel{padding:14px;border-color:#83A7DC;background:#F5F8FF;}
 #person-contact-preview{display:block;margin-top:10px;padding:12px;background:#fff;border-radius:12px;color:#263342;font-size:1.2rem;font-weight:700;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;}
@@ -4380,14 +4382,15 @@ function renderNextYotei(){
   const others=document.getElementById('y-others'),elLine=document.getElementById('y-line'),card=document.getElementById('y-card');
   const show=(el,text)=>{if(el){el.textContent=text||'';el.hidden=!text;}};
   [sub,det,elLine].forEach(el=>show(el,''));if(others)others.hidden=true;if(more)more.hidden=true;
-  if(card)card.setAttribute('aria-expanded','false');
+  if(card){card.setAttribute('aria-expanded','false');card.dataset.view='status';}
   /* 読み込み中・通信失敗・予定なしを分ける */
   if(personYoteiStatus==='loading'){elD.textContent='読み込み中…';elL.textContent='';return;}
   if(personYoteiStatus==='error'){elD.textContent='確認できません';elL.textContent='予定を読み込めませんでした。通信を確認して、アプリを開き直してください';return;}
   const n=nextYoteiInfo();
   const cached=personYoteiStatus==='cached'?'通信の確認待ち（この端末に保存された予定です）':'';
-  if(!n){elD.textContent=cached?'保存された予定はありません':'予定はありません';elL.textContent='';show(sub,cached);return;}
+  if(!n){if(card&&!cached)card.dataset.view='empty';elD.textContent=cached?'保存された予定はありません':'これからの予定はありません';elL.textContent='';show(sub,cached);return;}
   const v=n.item;
+  if(card)card.dataset.view='plan';
   elD.textContent=n.when+(v.time?'　'+v.time:'');
   elL.textContent=(v.label||'予定')+(v.kind?' '+v.kind:'');
   show(sub,[n.days>=2?'あと'+n.days+'日':'',cached].filter(Boolean).join('　'));
