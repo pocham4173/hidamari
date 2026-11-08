@@ -12,6 +12,8 @@
 <meta property="og:type" content="website">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preload" as="script" crossorigin="anonymous" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js">
 <meta name="theme-color" content="#E0711A">
 <script>
 /* Androidのホーム画面アプリだけ、OSの操作ボタンの背面を塗れるようにする。
@@ -2653,10 +2655,10 @@ setTimeout(function(){
   window.showStartupProblem(window.mainicoStartupProblem||'読み込みが進んでいません');
 },15000);
 </script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-check-compat.js"></script>
+<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-check-compat.js"></script>
 <script src="mainico-config.js"></script>
 <script async data-optional="true" src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA" crossorigin="anonymous"></script>
 <script src="ueda-centers.js?v=20260918"></script>
