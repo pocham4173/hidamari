@@ -146,32 +146,52 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
   const loading = new Element();
   let delayed;
   const stage = { addEventListener: (name, fn) => { if (name === 'error') stage.onError = fn; } };
+  let reloads = 0;
   const watchdog = section("window.mainicoStartupStage='必要なファイルの読み込み中';", '</script>');
   vm.runInNewContext(watchdog, {
     document: { getElementById: () => loading, createElement: tag => new Element(tag) },
-    window: stage,
+    window: stage, location: { reload(){reloads++;} },
     setTimeout: (fn, ms) => { assert.equal(ms, 15000); delayed = fn; },
     console: { warn() {} }
   });
   stage.mainicoStartupStage = 'ログインの応答待ち';
   delayed();
-  assert.match(loading.textContent, /ログインの応答待ち/);
-  assert.match(loading.textContent, /もう一度読み込む/);
-  assert.match(loading.textContent, /Safariで開く/);
-  assert.equal(loading.children.length, 3, '縦並びの案内と再試行ボタンを表示');
+  assert.equal(stage.mainicoStartupProblem, '', '時間だけでは失敗にしない');
+  assert.match(loading.textContent, /このまま.*待/);
+  assert.equal(reloads,0);
+  assert.equal(loading.children.some(el=>el.tagName==='button'),false,'待ち時間だけで再読み込みを促さない');
+  const help=loading.children.find(el=>el.tagName==='details');
+  assert.ok(help&&!help.open,'止まったかもしれないときの操作は閉じておく');
+  assert.match(help.textContent,/ログインの応答待ち/);
+  assert.ok(help.children.some(el=>el.tagName==='button'),'自分で選んで再読み込みできる');
   const beforeOptional=loading.textContent;
   stage.onError({target:{tagName:'SCRIPT',dataset:{optional:'true'}}});
   assert.equal(loading.textContent,beforeOptional,'QRの読込失敗でアプリ全体の起動エラーにしない');
   stage.onError({ target: { tagName: 'SCRIPT' } });
   assert.match(loading.textContent, /外部ファイルを読み込めませんでした/);
+  const errorButton=loading.children.find(el=>el.tagName==='button');
+  assert.ok(errorButton,'失敗を確認したら再読み込みは直接選べる');
+  delayed();
+  assert.ok(loading.children.includes(errorButton),'待ち時間の案内で失敗表示を上書きしない');
+  errorButton._click();assert.equal(reloads,1);
   loading.style.display = 'none';
   loading.innerHTML = '画面を開きました';
   delayed();
   assert.equal(loading.innerHTML, '画面を開きました');
-  console.log('✅ 起動が止まれば縦並びの再試行と段階を表示し、起動済みの画面は妨げない');
+  console.log('✅ 待ち時間だけではやり直しを求めず、失敗時だけ再読み込みを前に出す');
 }
 assert.match(html, /window\.mainicoStartupStage='ログインの応答待ち';/);
-assert.match(html, /try\{ navigator\.serviceWorker\.register\('sw\.js'\)\.catch/);
+{
+  const registrations=[...html.matchAll(/navigator\.serviceWorker\.register\('sw\.js'\)/g)];
+  assert.equal(registrations.length,1,'起動用ファイルを待つ間に二重登録しない');
+  const start=html.indexOf("  document.addEventListener('DOMContentLoaded',function registerOfflineShell");
+  const setup=section("  document.addEventListener('DOMContentLoaded',function registerOfflineShell","  window.addEventListener('load',");
+  let onReady,count=0;
+  vm.runInNewContext(setup,{document:{addEventListener:(event,fn)=>{assert.equal(event,'DOMContentLoaded');onReady=fn;}},
+    navigator:{serviceWorker:{register(){count++;return Promise.resolve();}}}});
+  assert.equal(count,0);onReady();assert.equal(count,1);
+  assert.ok(start<registrations[0].index);
+}
 assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8'), /window\.showStartupProblem\('ログインできませんでした'\)/);
 
 {

@@ -922,6 +922,7 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 #loading>*{width:100%;max-width:360px;flex:none;}
 #loading .startup-title{font-weight:900;color:var(--cha);font-size:1.12rem;}
 #loading .startup-hint{font-size:.9rem;}
+#loading details summary{padding:12px;cursor:pointer;color:var(--cha);}
 #loading .startup-retry{width:auto;min-width:190px;min-height:52px;margin-top:6px;padding:10px 20px;border:2px solid #B56B37;border-radius:12px;background:#fff;color:#7B451A;font:inherit;font-weight:900;cursor:pointer;}
 
 /* 2026-09-07 完成優先の画面整理 */
@@ -1120,10 +1121,14 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
       box.hidden=false;
     }catch(e){}
   });
-  /* アプリ本体が始まらなくても、控えの仕組み(Service Worker)は先に登録しておく */
-  try{if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});}catch(e){}
+  /* 起動用スクリプトの読込中に、オフライン用の部品取得を開始しない。
+     アプリ初期化とは別に登録し、必須の部品が失敗しても控えは準備する。 */
+  document.addEventListener('DOMContentLoaded',function registerOfflineShell(){
+    try{if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});}catch(e){}
+  },{once:true});
   window.addEventListener('load',function(){
     if(typeof firebase==='undefined'){
+      window.mainicoStartupProblem='必要なファイルを読み込めませんでした';
       var l=document.getElementById('loading');
       if(l)l.innerHTML='まいにこを開けませんでした。電波の状態を確認してください。<br><a href="offline.html" style="display:inline-block;margin-top:14px;padding:12px 18px;border-radius:12px;background:#1D4E9E;color:#fff;font-weight:900;text-decoration:none">もしもの控えを見る</a> <a href="index.html" style="display:inline-block;margin-top:14px;padding:12px 18px;border-radius:12px;border:2px solid #1D4E9E;color:#1D4E9E;font-weight:900;text-decoration:none">もう一度ためす</a>';
     }
@@ -2628,15 +2633,18 @@ a.set-btn.ln-line,a.set-btn.ln-soft{text-decoration:none;}
 <script>
 window.mainicoStartupStage='必要なファイルの読み込み中';
 window.mainicoStartupProblem='';
+function startupRetryButton(){
+  var button=document.createElement('button');button.className='startup-retry';button.type='button';button.textContent='もう一度読み込む';
+  button.addEventListener('click',function(){location.reload();});
+  return button;
+}
 window.showStartupProblem=function(message){
   var loading=document.getElementById('loading');
   if(!loading || loading.style.display==='none') return;
   window.mainicoStartupProblem=message;
   var title=document.createElement('div');title.className='startup-title';title.textContent=message+'（'+window.mainicoStartupStage+'）。';
   var hint=document.createElement('div');hint.className='startup-hint';hint.textContent='通信状態を確認してください。アプリ内ブラウザーなら右下のコンパスからSafariで開くこともできます。';
-  var button=document.createElement('button');button.className='startup-retry';button.type='button';button.textContent='もう一度読み込む';
-  button.addEventListener('click',function(){location.reload();});
-  loading.replaceChildren(title,hint,button);
+  loading.replaceChildren(title,hint,startupRetryButton());
 };
 window.addEventListener('error',function(e){
   if(e.target && e.target.tagName==='SCRIPT'){
@@ -2653,8 +2661,16 @@ window.addEventListener('error',function(e){
 },true);
 setTimeout(function(){
   var loading=document.getElementById('loading');
-  if(!loading || loading.style.display==='none') return;
-  window.showStartupProblem(window.mainicoStartupProblem||'読み込みが進んでいません');
+  if(!loading || loading.style.display==='none' || window.mainicoStartupProblem) return;
+  var title=document.createElement('div');title.className='startup-title';title.textContent='まいにこを開いています';
+  var hint=document.createElement('div');hint.textContent='このままお待ちください。準備ができたら画面が開きます。';
+  var help=document.createElement('details'),summary=document.createElement('summary');
+  summary.textContent='なかなか開かないとき';
+  var stage=document.createElement('p');stage.className='startup-hint';
+  help.addEventListener('toggle',function(){if(help.open)stage.textContent=window.mainicoStartupStage;});
+  stage.textContent=window.mainicoStartupStage;
+  help.appendChild(summary);help.appendChild(stage);help.appendChild(startupRetryButton());
+  loading.replaceChildren(title,hint,help);
 },15000);
 </script>
 <script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -2721,10 +2737,6 @@ window.db = db;
 /* LINEでログインは、送信役の場所が設定されるまで(準備中のあいだ)メニューに出さない */
 document.querySelectorAll('[data-line-login-only]').forEach(el=>{el.hidden=!window.MAINICO_LINE_AUTH_URL;});
 window.mainicoStartupStage='ログインの準備中';
-if('serviceWorker' in navigator){
-  try{ navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('service worker',e); }); }
-  catch(e){ console.warn('service worker',e); }
-}
 /* 六曜・祝日は calendar-marks.js(日本時間の旧暦計算。2026-10-12 1日ずれていた表を差し替え) */
 function rokuyoOf(d){ return typeof MainicoCalendarMarks!=='undefined'?MainicoCalendarMarks.rokuyoOf(d):''; }
 function holidayOf(d){ return typeof MainicoCalendarMarks!=='undefined'?MainicoCalendarMarks.holidayOf(d):''; }
