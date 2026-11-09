@@ -35,8 +35,7 @@ const pick = (re) => { const m = html.match(re); assert.ok(m, 'not found: ' + re
   assert.deepEqual(run('https://www.google.com/recaptcha/enterprise.js?render=x'), [], 'reCAPTCHA');
   assert.deepEqual(run('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js'), ['外部ファイルを読み込めませんでした'], 'Firebase本体は知らせる');
   assert.deepEqual(run('https://pocham4173.github.io/hidamari/line-notify.js?v=1'), ['外部ファイルを読み込めませんでした']);
-  // 15秒たっても進まないときは、もう一度読み込むボタンを出す(今までどおり)
-  assert.match(html, /window\.showStartupProblem\(window\.mainicoStartupProblem\|\|'読み込みが進んでいません'\);\n\},15000\);/);
+  // 遅延時・失敗時の案内は home-reliability.test.mjs で実行して確認する。
 }
 // 3. ご本人が管理者のとき、ご本人の「その他の設定」から家族へ管理者を引き継げる(2026-10-11)。
 //    「管理者を引き継ぐ」は1つだけ置き、開いた設定画面へ移す

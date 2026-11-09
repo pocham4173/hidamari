@@ -43,7 +43,7 @@
     const win=doc.defaultView,now=options.now||Date.now,fetcher=options.fetch||win.fetch?.bind(win);
     const hosts=[...doc.querySelectorAll('[data-ueda-today]')];
     if(!hosts.length)return {destroy(){}};
-    let raw=null,attempt=-Infinity,pending=false,controller=null,disposed=false,voice=null,voiceHost=null;
+    let raw=null,attempt=-Infinity,pending=false,controller=null,disposed=false,voice=null,voiceHost=null,voiceForecast=null;
     const visible=host=>!doc.hidden&&host.isConnected&&!host.closest('[hidden]')&&!!host.closest('.page.active')&&(!host.closest('.ftab')||win.getComputedStyle(host.closest('.ftab')).display!=='none')&&(!host.closest('#home-main')||win.getComputedStyle(host.closest('#home-main')).display!=='none');
     const views=hosts.map(host=>{
       host.classList.add('ueda-today');
@@ -55,7 +55,7 @@
       return view;
     });
     function stop(){
-      const wasSpeaking=!!voice;voice=null;
+      const wasSpeaking=!!voice;voice=null;voiceForecast=null;
       if(wasSpeaking)win.speechSynthesis?.cancel();
       voiceHost=null;
       views.forEach(v=>{v.get('.ut-read').textContent='天気を聞く';v.get('.ut-status').textContent='';});
@@ -70,12 +70,14 @@
       const utterance=new win.SpeechSynthesisUtterance(text);utterance.lang='ja-JP';utterance.rate=0.9;
       const finish=()=>{if(voice===utterance)stop();};
       utterance.onend=finish;utterance.onerror=()=>{if(voice!==utterance)return;stop();view.get('.ut-status').textContent='声を再生できませんでした。音量を確認してください。';};
-      voice=utterance;voiceHost=view.host;view.get('.ut-read').textContent='読み上げを止める';
+      voice=utterance;voiceHost=view.host;voiceForecast=JSON.stringify(value);view.get('.ut-read').textContent='読み上げを止める';
       try{win.speechSynthesis.cancel();win.speechSynthesis.speak(utterance);}catch(e){utterance.onerror();}
     }
     function render(){
       if(disposed)return;
       const time=now(),value=forecast(raw,time),news=topics(options.topics||global.MAINICO_UEDA_TOPICS,time);
+      // 日替わり・予報更新・取得失敗で、画面と異なる音声を続けない。自動で再生し直さない。
+      if(voice&&voiceForecast!==JSON.stringify(value))stop();
       views.forEach(v=>{
         v.get('.ut-weather').textContent=value?'今日：'+value.today.text:pending?'天気を確認しています':'今の天気予報を確認できません';
         v.get('.ut-time').textContent=value?'長野県中部・'+stamp(value.issued)+'発表':'長野県中部の予報';
@@ -83,7 +85,9 @@
         v.get('.ut-read').disabled=!value;v.get('.ut-retry').disabled=pending;
         const key=JSON.stringify(news);
         if(v.newsKey!==key){
-          v.newsKey=key;const box=v.get('.ut-items');box.replaceChildren();
+          v.newsKey=key;const box=v.get('.ut-items');
+          const focusedUrl=box.contains(doc.activeElement)?doc.activeElement.href:null;
+          box.replaceChildren();
           news.forEach(n=>{
             const article=doc.createElement('article'),a=doc.createElement('a'),date=doc.createElement('p');
             a.textContent=n.title+' ↗';a.href=n.url;a.target='_blank';a.rel='noopener noreferrer';
@@ -91,6 +95,10 @@
             article.append(a,date);box.append(article);
           });
           v.get('.ut-topic-note').textContent=news.length?'':'今掲載できる話題はありません。新しい催しは、市のカレンダーで見られます。';
+          if(focusedUrl){
+            const next=[...box.querySelectorAll('a')].find(link=>link.href===focusedUrl)||v.get('.ut-more');
+            next.focus({preventScroll:true});
+          }
         }
       });
     }

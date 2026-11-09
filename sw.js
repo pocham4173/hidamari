@@ -2,7 +2,7 @@
    - 通信できるときは常に最新を取りに行き、取れたものを端末に控えておく(ネット優先)。
    - 電波がないときは控えを使う。アプリの画面が開けないときは offline.html(もしもの控え)を出す。
    - 共有記録(Firestore)の通信は控えない。控えるのは画面の部品だけ。 */
-const CACHE = 'mainico-shell-v73';  /* 2026-10-25 本人ホーム：暮らし・家族の連絡・自分の記録の順に整理 */
+const CACHE = 'mainico-shell-v86';  /* 本人ホームの挨拶と予定の配色 */
 const SHELL = [
   'ueda-today.js', 'ueda-today.css', 'ueda-today-topics.js',
   'about.html', 'about.css', 'about.js', 'docs/introduction/family-only.jpg', 'docs/introduction/person-greeting.jpg', 'docs/introduction/family-greeting.jpg', 'partners.html', 'ueda-support.html', 'ueda-support.css', 'ueda-support.js', 'ueda-services.js',
@@ -45,8 +45,20 @@ function isAppPage(req){
 self.addEventListener('fetch', function(e){
   const req=e.request;
   if(!cacheable(req)) return;   /* 共有記録などの通信はそのまま */
-  /* アプリ本体の画面はブラウザーの一時保存を使わず、毎回通信で確かめる(電波がない時に古い画面が出ないように) */
-  const net=isAppPage(req)?fetch(req.url,{cache:'no-store',credentials:'same-origin'}):fetch(req);
+  // 起動に必要な固定版の公開SDKだけ、正常に取得できた同じURLの控えを使う。
+  if(req.destination==='script' && req.mode==='cors' &&
+     /^https:\/\/www\.gstatic\.com\/firebasejs\/10\.14\.1\/firebase-(?:app|auth|firestore|app-check)-compat\.js$/.test(req.url)){
+    e.respondWith((async function(){
+      let cache;
+      try{cache=await caches.open(CACHE);const hit=await cache.match(req);if(hit&&hit.ok)return hit;}catch(_){}
+      const response=await fetch(req);
+      if(cache&&response.ok){try{e.waitUntil(cache.put(req,response.clone()).catch(function(){}));}catch(_){}}
+      return response;
+    })());
+    return;
+  }
+  /* 通常のホームは毎回更新を確認し、変更なしならHTML本体を再転送しなくてよい。 */
+  const net=isAppPage(req)?fetch(req.url,{cache:new URL(req.url).search?'no-store':'no-cache',credentials:'same-origin'}):fetch(req);
   e.respondWith(
     net.then(function(res){
       if(res && (res.ok || res.type==='opaque')){

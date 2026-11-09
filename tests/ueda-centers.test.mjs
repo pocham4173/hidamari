@@ -23,3 +23,5 @@ const tag=c.randWatchTagId();assert.match(tag,/^[A-Za-z0-9_-]{32}$/);
 const qr={URL,location:{href:'https://example.invalid/hidamari/?person=private#private'}};vm.createContext(qr);vm.runInContext(html.slice(html.indexOf('function watchTagUrl('),html.indexOf('function watchTagQr(')),qr);
 assert.equal(qr.watchTagUrl(tag),'https://example.invalid/hidamari/tag.html?id='+tag);
 dom.window.close();console.log('ueda/tag: 10 centers, exact numbers/boundaries, unknown hours, all detail/phone displays and QR payload passed');
+// 既存CIの上田・タグ検査から、発見者画面と支援カードの隔離検査も実行する。
+await import('./tag-safety.test.mjs');

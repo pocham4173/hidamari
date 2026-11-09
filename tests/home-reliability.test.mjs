@@ -24,6 +24,24 @@ class Element {
   get innerHTML() { return this._text; }
 }
 
+{
+  const box=new Element();
+  const c={document:{getElementById:()=>box,createElement:tag=>new Element(tag),createTextNode:text=>{const e=new Element();e.textContent=text;return e;}},foByNewest:(a,b)=>b.clientAt-a.clientAt,foDateTime:v=>String(v.clientAt)};
+  vm.createContext(c);vm.runInContext(section('function renderTodayQuickRecords(', 'async function saveCareConfig(){'),c);
+  const records=[{type:'care-log',careKey:'call',text:'電話で確認した',name:'姉',clientAt:10},...Array.from({length:4},(_,i)=>({type:'care-log',careKey:'meal',text:'食事をとった',name:'弟',clientAt:20+i})),{type:'memo',text:'次の通院は相談中',name:'姉',clientAt:30}];
+  c.renderTodayQuickRecords(records);
+  assert.match(box.textContent,/電話で確認した.*姉/,'最近の食事記録で電話を埋もれさせない');
+  assert.match(box.textContent,/次の通院は相談中/,'ひとことメモをホームから確認できる');
+  assert.equal(box.children.filter(x=>x.tagName==='div').length,3,'ホームの記録は最大3件');
+  assert.equal(box.textContent.split('電話で確認した').length-1,1,'同じ連絡を重複表示しない');
+  c.renderTodayQuickRecords([{type:'care-log',careKey:'visit',text:'訪問した',name:'弟',clientAt:40},...records]);
+  assert.match(box.children[1].textContent,/訪問した.*弟/,'配列順に依存せず直近の電話・訪問を先頭へ');
+  c.renderTodayQuickRecords(records,true);assert.match(box.textContent,/最新かは未確認/);
+  c.renderTodayQuickRecords([],true);assert.doesNotMatch(box.textContent,/今日の記録はありません/,'保存済み0件から今日の未記録を断定しない');
+  c.renderTodayQuickRecords([]);assert.match(box.textContent,/読み込んだ中に今日の記録はありません/);
+  console.log('✅ 家族の引継ぎ：直近の電話・訪問、メモ、3件上限、重複なし、並び順、通信未確認を区別');
+}
+
 assert.match(html, /id="card-family-notes"[\s\S]*?<details class="family-compose" id="family-note-compose"/);
 assert.match(html, /id="card-family-tasks"[\s\S]*?<details class="family-compose" id="family-task-compose"/);
 assert.ok(!/insertBefore\([\s\S]{0,80}'card-care-quick'/.test(html), '家族だけの記録カードはやりとりのすぐ下に固定');
@@ -82,18 +100,19 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
     'home-watch-tag-status','watch-tag-history','tag-unread-count','tag-seen-btn']
     .map(id=>[id,new Element()]));
   ids['watch-tag-home'].classList={add(){},remove(){}};
-  let listener,mirrored=0,notified=0;
+  let listener,onFailure,mirrored=0,notified=0,notificationText='';
   const context={
     document:{getElementById:id=>ids[id]},gid:()=> 'group',watchTagUnsub:null,
     col:()=>({doc:()=>({get:async()=>({exists:true,data:()=>({watchTagActive:true,watchTagId:'tag1'})})})}),
     db:{collection:()=>({doc:()=>({collection:()=>({orderBy(){return this;},limit(){return this;},
-      onSnapshot(options,callback){assert.equal(options.includeMetadataChanges,true);listener=callback;return ()=>{};}})})})},
+      onSnapshot(options,callback,error){assert.equal(options.includeMetadataChanges,true);listener=callback;onFailure=error;return ()=>{};}})})})},
     uid:()=> 'owner', householdBootGeneration:1,householdVerified:true,householdDeleting:false,watchTagLoadGeneration:0,
     renderWatchTag(){},tagLastSeen:()=>0,mirrorTagAlert(){mirrored++;},tagApplyUnread:n=>{ids['watch-tag-home'].style.display=n?'block':'none';},
-    tagNotifySound(){notified++;},tagOsNotify(){},esc:v=>v,dateJp:()=> '9月12日',tagNotifiedThrough:0,
+    tagNotifySound(){notified++;},tagOsNotify:text=>{notificationText=text;},esc:v=>v,dateJp:()=> '9月12日',tagNotifiedThrough:0,
     console:{warn(){}},Date
   };
   vm.runInNewContext(section('async function loadWatchTag(){','function renderWatchTag(id){'),context);
+  vm.runInNewContext(section('function tagApplyUnread(n){','function tagNotifySound(){'),context);
   await context.loadWatchTag();
   const alert={id:'alert1',data:()=>({situation:'safe',createdAt:{toDate:()=>new Date()}})};
   listener({metadata:{fromCache:true},forEach:fn=>fn(alert)});
@@ -104,6 +123,22 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
   listener({metadata:{fromCache:false},forEach:fn=>fn(alert)});
   assert.equal(notified,1);
   assert.equal(mirrored,1);
+  assert.match(notificationText,/読み取った方から：安全な場所/);
+  assert.match(ids['watch-tag-alerts'].innerHTML,/読み取った方から/);
+  assert.match(ids['watch-tag-alerts'].innerHTML,/安否確認済みという意味ではありません/);
+  assert.match(ids['watch-tag-alerts'].innerHTML,/ご本人や、一緒にいる方に電話/);
+  assert.match(ids['watch-tag-history'].innerHTML,/127011.html/);
+  assert.equal(ids['tag-seen-btn'].style.display,'block');
+  onFailure(Error('connection failed'));
+  assert.equal(ids['tag-seen-btn'].style.display,'none','読めない内容を確認済みにするボタンを残さない');
+  assert.equal(ids['tag-unread-count'].style.display,'none','古い新着件数を現在の件数と表示しない');
+  assert.equal(ids['watch-tag-home'].style.display,'block','確認不能の案内は残す');
+  assert.equal(mirrored,1);assert.equal(notified,1,'エラーで通知・書込みを増やさない');
+  listener({metadata:{fromCache:false},forEach:fn=>fn(alert)});
+  assert.equal(ids['tag-seen-btn'].style.display,'block','再取得後は確認操作が戻る');
+  listener({metadata:{fromCache:false},forEach:()=>{}});
+  assert.equal(ids['watch-tag-alerts'].innerHTML,'','記録がないときに行動案内だけをホームに残さない');
+
   console.log('✅ タグも通信未確認と確定した通知を区別する');
 }
 
@@ -111,32 +146,52 @@ console.log('✅ 家族ホームはワンタップ記録を先に、補助入力
   const loading = new Element();
   let delayed;
   const stage = { addEventListener: (name, fn) => { if (name === 'error') stage.onError = fn; } };
+  let reloads = 0;
   const watchdog = section("window.mainicoStartupStage='必要なファイルの読み込み中';", '</script>');
   vm.runInNewContext(watchdog, {
     document: { getElementById: () => loading, createElement: tag => new Element(tag) },
-    window: stage,
+    window: stage, location: { reload(){reloads++;} },
     setTimeout: (fn, ms) => { assert.equal(ms, 15000); delayed = fn; },
     console: { warn() {} }
   });
   stage.mainicoStartupStage = 'ログインの応答待ち';
   delayed();
-  assert.match(loading.textContent, /ログインの応答待ち/);
-  assert.match(loading.textContent, /もう一度読み込む/);
-  assert.match(loading.textContent, /Safariで開く/);
-  assert.equal(loading.children.length, 3, '縦並びの案内と再試行ボタンを表示');
+  assert.equal(stage.mainicoStartupProblem, '', '時間だけでは失敗にしない');
+  assert.match(loading.textContent, /このまま.*待/);
+  assert.equal(reloads,0);
+  assert.equal(loading.children.some(el=>el.tagName==='button'),false,'待ち時間だけで再読み込みを促さない');
+  const help=loading.children.find(el=>el.tagName==='details');
+  assert.ok(help&&!help.open,'止まったかもしれないときの操作は閉じておく');
+  assert.match(help.textContent,/ログインの応答待ち/);
+  assert.ok(help.children.some(el=>el.tagName==='button'),'自分で選んで再読み込みできる');
   const beforeOptional=loading.textContent;
   stage.onError({target:{tagName:'SCRIPT',dataset:{optional:'true'}}});
   assert.equal(loading.textContent,beforeOptional,'QRの読込失敗でアプリ全体の起動エラーにしない');
   stage.onError({ target: { tagName: 'SCRIPT' } });
   assert.match(loading.textContent, /外部ファイルを読み込めませんでした/);
+  const errorButton=loading.children.find(el=>el.tagName==='button');
+  assert.ok(errorButton,'失敗を確認したら再読み込みは直接選べる');
+  delayed();
+  assert.ok(loading.children.includes(errorButton),'待ち時間の案内で失敗表示を上書きしない');
+  errorButton._click();assert.equal(reloads,1);
   loading.style.display = 'none';
   loading.innerHTML = '画面を開きました';
   delayed();
   assert.equal(loading.innerHTML, '画面を開きました');
-  console.log('✅ 起動が止まれば縦並びの再試行と段階を表示し、起動済みの画面は妨げない');
+  console.log('✅ 待ち時間だけではやり直しを求めず、失敗時だけ再読み込みを前に出す');
 }
 assert.match(html, /window\.mainicoStartupStage='ログインの応答待ち';/);
-assert.match(html, /try\{ navigator\.serviceWorker\.register\('sw\.js'\)\.catch/);
+{
+  const registrations=[...html.matchAll(/navigator\.serviceWorker\.register\('sw\.js'\)/g)];
+  assert.equal(registrations.length,1,'起動用ファイルを待つ間に二重登録しない');
+  const start=html.indexOf("  document.addEventListener('DOMContentLoaded',function registerOfflineShell");
+  const setup=section("  document.addEventListener('DOMContentLoaded',function registerOfflineShell","  window.addEventListener('load',");
+  let onReady,count=0;
+  vm.runInNewContext(setup,{document:{addEventListener:(event,fn)=>{assert.equal(event,'DOMContentLoaded');onReady=fn;}},
+    navigator:{serviceWorker:{register(){count++;return Promise.resolve();}}}});
+  assert.equal(count,0);onReady();assert.equal(count,1);
+  assert.ok(start<registrations[0].index);
+}
 assert.match(fs.readFileSync(new URL('../household-ui.js',import.meta.url),'utf8'), /window\.showStartupProblem\('ログインできませんでした'\)/);
 
 {
@@ -407,11 +462,11 @@ assert.match(html, /onSnapshot\(\{includeMetadataChanges:true\},snap=>/);
   const context = {
     document: { getElementById: () => today, createElement: tag => new Element(tag),
       createTextNode: text => ({ textContent: text }) },
-    foDateTime: () => '9月12日 14:20'
+    foDateTime: () => '9月12日 14:20', foByNewest:()=>0
   };
-  vm.runInNewContext(section('function renderTodayQuickRecords(items){', 'async function saveCareConfig(){'), context);
+  vm.runInNewContext(section('function renderTodayQuickRecords(', 'async function saveCareConfig(){'), context);
   context.renderTodayQuickRecords([{ type: 'care-log', text: '訪問した', name: '家族A' }]);
-  assert.match(today.textContent, /訪問した ・ 家族Aさん ・ 9月12日 14:20/);
+  assert.match(today.textContent, /訪問した ・ 家族Aさん ・ 記録 9月12日 14:20/);
   console.log('✅ ワンタップ記録の結果はその場で名前と時刻を確認できる');
 }
 
